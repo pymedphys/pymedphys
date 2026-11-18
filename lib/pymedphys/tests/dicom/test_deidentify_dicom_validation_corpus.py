@@ -23,7 +23,12 @@ the end-to-end tests, one for each policy of
 :data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`: among them
 ``basic``, ``basic-clean-descriptors`` with a reviewed ROI name and one the
 automatic tier renames, and ``basic`` over the corpus with its images
-compressed, which is skipped where a decoding plugin is not installed.
+compressed, which is skipped where a decoding plugin is not installed. This
+module runs and checks the policies whose names begin with a letter from a
+to o, and
+:mod:`~pymedphys.tests.dicom.test_deidentify_dicom_validation_corpus_p_z`
+runs the others through the same checks, so that CI can validate the two
+halves on two runners.
 
 The tests are marked ``dicom_validators``, so they run only when asked for,
 with ``--dicom-validators`` or ``--include-dicom-validators``. Without the
@@ -70,7 +75,7 @@ from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 
 from . import _corpus_run as runs
 from ._corpus_run import MARKER_SIGNATURES
-from .corpus_runs import CORPUS_RUNS
+from .corpus_runs import FIRST_HALF
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.dicom_validators]
 
@@ -81,7 +86,8 @@ BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
 # The corpus's SOP Classes that dicom3tools' January 2024 snapshot does not
 # know, including Label Map Segmentation and the XA/XRF Grayscale and Variable
-# Modality LUT Softcopy Presentation States, which it names but has no IOD for.
+# Modality LUT Softcopy, Grayscale Planar MPR Volumetric, and Volume Rendering
+# Volumetric Presentation States, which it names but has no IOD for.
 UNKNOWN_TO_DICOM3TOOLS = tuple(
     dicom_validation.sop_class_name(uid)
     for uid in (
@@ -96,6 +102,8 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         corpus_module.XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         corpus_module.VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        corpus_module.GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        corpus_module.VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         corpus_module.RT_SEGMENT_ANNOTATION_STORAGE,
         corpus_module.RT_RADIATION_SET_STORAGE,
         corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
@@ -164,10 +172,14 @@ class Validated:
 @pytest.fixture(
     name="validated",
     scope="module",
-    params=[corpus_run.param() for corpus_run in CORPUS_RUNS],
+    params=[corpus_run.param() for corpus_run in FIRST_HALF],
 )
 def fixture_validated(request, toolset, published):  # pylint: disable = unused-argument
-    spec = request.param
+    return _validate(request.param, toolset)
+
+
+def _validate(spec, toolset):
+    """Run ``spec`` and return its outputs' and inputs' validation."""
     prepared = runs.prepare(spec)
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.

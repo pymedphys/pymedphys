@@ -28,7 +28,7 @@ import inspect
 from pymedphys._imports import pytest
 
 from . import test_deidentify_corpus_end_to_end as first_half
-from .test_deidentify_corpus_end_to_end import SECOND_HALF
+from .corpus_runs import SECOND_HALF
 
 # The first half's fixture, which pytest finds here by its name.
 from .test_deidentify_corpus_end_to_end import (  # noqa: F401  # pylint: disable = unused-import

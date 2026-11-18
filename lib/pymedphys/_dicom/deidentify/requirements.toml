@@ -427,7 +427,7 @@ implementation = [
 ]
 note = '''
 The engine applies the Clean Graphics Option to a custom option set; no preset selects it (D-041).
-No cleaner of graphics exists yet, so each of the four rows that Table E.1-1 gives C under the option takes its Basic Profile action: Curve Data, Overlay Data, and Overlay Comments are removed, Overlay Data with its overlay group where the IOD's Overlay Plane Module is user-optional, and Graphic Annotation Sequence takes D, which removes it from every supported IOD but the softcopy Presentation States, where it is Type 1, so one that holds it is sequestered, as under the Basic Profile (D-010, D-021).
+No cleaner of graphics exists yet, so each of the four rows that Table E.1-1 gives C under the option takes its Basic Profile action: Curve Data, Overlay Data, and Overlay Comments are removed, Overlay Data with its overlay group where the IOD's Overlay Plane Module is user-optional, and Graphic Annotation Sequence takes D, which removes it from every supported IOD but the Presentation States, where it is Type 1, so one that holds it is sequestered, as under the Basic Profile, as is a volumetric one that holds a Volumetric Annotation Sequence or Volumetric Presentation Input Annotation Sequence, whose supplementary rule takes the same D (D-010, D-021, D-022).
 Every instance written under the option claims it, since E.3.3 specifies what the option removes and Table E.1-1 gives the minimum actions, as for Clean Descriptors (D-009).
 An overlay group that has no Overlay Data may place its overlay in unused bits of Pixel Data; under the option, that bit plane is cleared above High Bit in native Pixel Data, in the same write as Clean Pixel Data's redaction, the written Pixel Data is checked to differ from the source in nothing else, and the overlay's group is removed, so the instance is released with the option's code (D-041).
 An instance whose overlay cannot be so cleared, such as one in compressed Pixel Data or within Bits Stored, is sequestered under the option as overlay-in-pixel-data.
@@ -822,10 +822,13 @@ implementation = [
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/option_kept.py",
+  "_dicom/deidentify/qc_attestation.py",
+  "_dicom/deidentify/qc_pack.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/residual_exemptions.py",
+  "_dicom/deidentify/residual_review.py",
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/risk_assessment.py",
   "_dicom/deidentify/risk_assessment_command.py",
@@ -843,6 +846,7 @@ Nor is a finding whose source is the Code Meaning of a code of a scheme that PS3
 A UID equal to a whole UID that a selected option keeps does not withhold the file where only instances that the run does not write held it for the subject; one that a written instance also held still does, unless its source is a private data element that every instance which held it removed (D-042).
 Under Retain Safe Private, nor is text found in a private creator whose whole value is one that the run's safe private list keeps in its group, where its source is a private creator, a private data element, or an equipment attribute; Institution Name, Station Name, and every other source found there still go to review, and the coverage records the list (D-042).
 A person name found inside the data set in an attribute that a selected option keeps and that the pinned dictionary gives only VRs of text, such as a physician's name that is also a word of the Institution Name that Retain Institution Identity keeps, goes to review rather than withholding the file, and is never explained; the same name in a value that the Basic Profile keeps, in a private element, in a UID, in other text, or outside the data set still withholds the file (D-042).
+A reviewer who judges from the QC pack's excerpts that the values holding an instance's review findings, of either kind, are not identifying clears the instance in the pack's attestation, and a later run given that pack releases its file, exempting as reviewed only each finding that the pack showed in the same source file, by its SHA-256, matching the same bytes at the same place in a value with the same SHA-256; a withholding finding is never cleared (D-042).
 The release report counts the released instances with each finding that these exemptions keep from review, by exemption, source attribute, and the attribute it was found in, naming no value (D-032).
 An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, to the policy, and to the reviewed lists and region rules that the run applied, by the salted digest that the run records in its pack, and the statistical gate passes only for the same files, policy, lists, and rules, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none; the Institution Code Sequence of the RT Beams Treatment Record's and the RT Ion Beams Treatment Record's interlock resolution users, whose dummy item a reviewed rule writes there (D-021), is planted in both; the Structured Reports are VERIFIED, and their Verifying Observer Sequence, which a reviewed rule keeps with dummy values (D-021), and Requested Procedure ID in their Referenced Request Sequence, which a plain X empties there (D-020), are planted in each report, and Source Manufacturer in the RT Brachy Treatment Record's Recorded Source Sequence, Patient Treatment Preparation Procedure Parameter Description in the RT Treatment Preparation's Patient Treatment Preparation Procedure Sequence, and Prior Treatment Dose Description in the RT Physician Intent's RT Prescription Sequence, which a plain X empties there too, in the record, the preparation, and the intent; each report's content tree is built by its template, with a marker in the value of each content item that can identify a person, a device, or a time.
@@ -1024,7 +1028,7 @@ Every element, whether or not the pinned dictionary lists its attribute, has one
 `pymedphys dev deid-tables --check-current` reports when NEMA's current edition would change a generated table or cannot be read, and `.github/workflows/deid-edition-check.yml` runs it monthly.
 The run's instance transform removes private attributes from, and applies each element's rule to, each instance it de-identifies, and the run sequesters the instances so classified and lists them in the release report with their reasons.
 An object of any other SOP Class is handled by classifying and sequestering it, not by de-identifying it.
-The six softcopy Presentation State IODs are supported, with their text reviewed ahead of support (D-022); one that conforms to its IOD is sequestered under the Basic Profile without a date option, since Table E.1-1's plain X removes its Type 1 Presentation Creation Date and Time, and one with a Graphic Annotation Sequence under every preset, since a sequence has no dummy value for D (D-010, D-020, D-021).
+The six softcopy Presentation State IODs, the Planar MPR and Volume Rendering Volumetric Presentation State IODs, and the Advanced Blending Presentation State IOD are supported, with their text reviewed ahead of support (D-022); one that conforms to its IOD is sequestered under the Basic Profile without a date option, since Table E.1-1's plain X removes its Type 1 Presentation Creation Date and Time, and one with a Graphic Annotation Sequence, or a volumetric one with either sequence of its Volumetric Graphic Annotation Module, under every preset, since a sequence has no dummy value for D (D-010, D-020, D-021).
 The release report names the IOD of each instance of an unsupported IOD, as PS3.4 Table B.5-1 names it, never from a value of the instance (D-010).
 Sequestering those objects rather than processing them is a deliberate restriction (D-010).
 '''
@@ -1266,6 +1270,7 @@ implementation = [
   "_dicom/deidentify/qc_surfaces.py",
   "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/release_report_markdown.py",
+  "_dicom/deidentify/residual_review.py",
   "_dicom/deidentify/run.py",
   "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/run_report.py",

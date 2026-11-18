@@ -124,6 +124,12 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.11.12": (
         "Variable Modality LUT Softcopy Presentation State"
     ),
+    "1.2.840.10008.5.1.4.1.1.11.6": "Planar MPR Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.7": "Planar MPR Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.8": "Advanced Blending Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.9": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.10": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.11": "Volume Rendering Volumetric Presentation State",
     "1.2.840.10008.5.1.4.1.1.104.1": "Encapsulated PDF",
 }
 
@@ -195,6 +201,9 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
         "Encapsulated PDF",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
@@ -255,20 +264,12 @@ def test_padding_is_ignored():
     "sop_class, iod",
     [
         # The other Structured Reports, which the design always sequesters,
-        # and the volumetric, advanced blending, and waveform Presentation
-        # States, which later changes are to bring into scope.
+        # and the waveform Presentation States, which a later change is to
+        # bring into scope.
         ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
-        (
-            "1.2.840.10008.5.1.4.1.1.11.6",
-            "Planar MPR Volumetric Presentation State",
-        ),
-        (
-            "1.2.840.10008.5.1.4.1.1.11.9",
-            "Volume Rendering Volumetric Presentation State",
-        ),
-        ("1.2.840.10008.5.1.4.1.1.11.8", "Advanced Blending Presentation State"),
         ("1.2.840.10008.5.1.4.1.1.9.100.1", "Waveform Presentation State"),
+        ("1.2.840.10008.5.1.4.1.1.9.100.2", "Waveform Acquisition Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, height map segmentations, spatial fiducials,
         # and the second-generation RT objects not yet supported, such as the
@@ -483,6 +484,12 @@ def test_pydicom_names_the_same_uids():
         uid.BlendingSoftcopyPresentationStateStorage,
         uid.XAXRFGrayscaleSoftcopyPresentationStateStorage,
         uid.VariableModalityLUTSoftcopyPresentationStateStorage,
+        uid.GrayscalePlanarMPRVolumetricPresentationStateStorage,
+        uid.CompositingPlanarMPRVolumetricPresentationStateStorage,
+        uid.AdvancedBlendingPresentationStateStorage,
+        uid.VolumeRenderingVolumetricPresentationStateStorage,
+        uid.SegmentedVolumeRenderingVolumetricPresentationStateStorage,
+        uid.MultipleVolumeRenderingVolumetricPresentationStateStorage,
         uid.EncapsulatedPDFStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (

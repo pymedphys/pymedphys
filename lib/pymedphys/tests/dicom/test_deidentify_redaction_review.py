@@ -326,7 +326,7 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
     assert attestation.redactions == _recorded(_verdicts(positions))
     assert qc_attestation.attested_pack(pack)[0] == attestation
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
-    assert written["format"] == "pymedphys-deid-qc-attestation/7"
+    assert written["format"] == "pymedphys-deid-qc-attestation/8"
     assert {
         "position": positions[_REVISED],
         "redaction": "revised",
@@ -1067,8 +1067,10 @@ def test_the_statement_gives_the_code_only_after_review():
         "Annotation SR, Real World Value Mapping, Grayscale Softcopy Presentation "
         "State, Color Softcopy Presentation State, Pseudo-Color Softcopy "
         "Presentation State, Blending Softcopy Presentation State, XA/XRF "
-        "Grayscale Softcopy Presentation State, and Variable Modality LUT "
-        "Softcopy Presentation State."
+        "Grayscale Softcopy Presentation State, Variable Modality LUT Softcopy "
+        "Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, and Advanced Blending "
+        "Presentation State."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -1131,6 +1133,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
     }
 
 
@@ -1589,7 +1594,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
         "review_modes": {"every-frame": 3, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
-    assert report["format"] == "pymedphys-deid-release-report/69"
+    assert report["format"] == "pymedphys-deid-release-report/70"
 
 
 class _Blind(Finder):
