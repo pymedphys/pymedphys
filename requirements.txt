@@ -149,6 +149,8 @@ pynetdicom==3.0.4
     # via pymedphys
 pyparsing==3.3.3
     # via matplotlib
+pypdfium2==5.15.0
+    # via pymedphys
 python-dateutil==4.0.0
     # via
     #   matplotlib
