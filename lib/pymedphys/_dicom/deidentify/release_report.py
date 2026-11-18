@@ -89,6 +89,10 @@ and codes that the engine defines, never by a source value or path:
   frames required, and how many frames of those files the reviewer was not
   shown, which only an instance of an IOD whose review needs only its
   flagged frames can have (D-059); None otherwise.
+- ``residual_review``: the opaque reference of the earlier run's attested
+  QC pack whose clearings of residual findings the run applied (D-042);
+  None otherwise. ``exempted_findings`` counts the findings it cleared as
+  ``reviewed``.
 - ``pixel_regions``: under the Clean Pixel Data Option, how many regions
   the option blacked out in the instances that the run released or held
   without a reviewer's verdict, by what gave them: the text finder or a
@@ -873,6 +877,7 @@ class ReleaseReport:
         With ``redaction_review``, how many of the source files that its
         verdicts approved were reviewed in each mode, by the mode's value,
         as :data:`REVIEW_MODES` names them; None without it.
+    residual_review : str or None
     pixel_regions : PixelRegionCounts or None
     readiness : Readiness or None
     released : tuple of pathlib.PurePosixPath
@@ -902,6 +907,7 @@ class ReleaseReport:
     redaction_review: str | None = None
     redaction_frames_not_shown: int | None = None
     redaction_review_modes: Mapping[str, int] | None = None
+    residual_review: str | None = None
     pixel_regions: PixelRegionCounts | None = None
     readiness: Readiness | None = None
     released: tuple[PurePosixPath, ...] = ()
@@ -1356,6 +1362,7 @@ def release_report(
     redaction_review: str | None = None,
     redaction_frames_not_shown: int | None = None,
     redaction_review_modes: Mapping[str, int] | None = None,
+    residual_review: str | None = None,
     pixel_regions: PixelRegionCounts | None = None,
     readiness: Readiness | None = None,
     released: Iterable[PurePosixPath] = (),
@@ -1447,6 +1454,11 @@ def release_report(
         files that its verdicts approved were reviewed in each mode, every
         mode that :data:`REVIEW_MODES` names given
         (:attr:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview.modes`).
+    residual_review : str, optional
+        The reference of the attested QC pack whose clearings of residual
+        findings the run applied, from
+        :class:`~pymedphys._dicom.deidentify.residual_review.ResidualReview`;
+        None, the default, otherwise.
     pixel_regions : PixelRegionCounts, optional
         Under the Clean Pixel Data Option, how many regions the option
         blacked out in the run's instances without a reviewer's verdict, by
@@ -1524,7 +1536,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'icc_profiles', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks', 'studies_with_several_patients']
+    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'residual_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'icc_profiles', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks', 'studies_with_several_patients']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1563,6 +1575,7 @@ def release_report(
         redaction_review=redaction_review,
         redaction_frames_not_shown=redaction_frames_not_shown,
         redaction_review_modes=redaction_review_modes,
+        residual_review=residual_review,
         pixel_regions=(
             PixelRegionCounts()
             if pixel_regions is None and CLEAN_PIXEL_DATA in policy.options
@@ -1969,6 +1982,16 @@ def _redaction_review_section(
         "review_modes": {mode: modes[mode] for mode in REVIEW_MODES},
         "frames_not_shown": not_shown,
     }
+
+
+def _residual_review_section(reference: str | None) -> dict | None:
+    """Return the section that names the earlier run's attested QC pack whose
+    clearings of residual findings the run applied."""
+    if reference is None:
+        return None
+    if _string(reference) is None or not _REFERENCE.fullmatch(reference):
+        raise _refuse("residual_review", "is not a QC pack's reference")
+    return {"reference": reference}
 
 
 def _pixel_regions_section(
@@ -2410,7 +2433,7 @@ def report_document(report: ReleaseReport) -> dict:
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``key``, ``qc_review``, ``face_review``,
-    ``redaction_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
+    ``redaction_review``, ``residual_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``, ``icc_profiles``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
     ``exempted_findings``, ``source_gaps``, ``structural_checks``, and
@@ -2425,6 +2448,7 @@ def report_document(report: ReleaseReport) -> dict:
     ``not_defaced`` by code,
     ``redaction_review`` null or an object with the reference,
     ``review_modes``, and ``frames_not_shown``,
+    ``residual_review`` null or an object with the reference,
     ``pixel_regions`` null without the Clean Pixel Data Option and
     otherwise an object with the ``detected`` and ``rule`` counts,
     ``readiness`` null or an object with ``ready``, the ``review`` and
@@ -2500,6 +2524,7 @@ def report_document(report: ReleaseReport) -> dict:
             report.redaction_frames_not_shown,
             report.redaction_review_modes,
         ),
+        "residual_review": _residual_review_section(report.residual_review),
         "pixel_regions": _pixel_regions_section(report.pixel_regions, report.policy),
         "readiness": _readiness_section(report.readiness, report.policy),
         "released": _released_section(report.released),
