@@ -30,8 +30,14 @@ document with no script, style sheet, or external reference:
   dashed line through its Graphic Data (0070,0022), whatever its type,
   with its tick labels, which its text values also list;
 - each text object of Text Object Sequence (0070,0008) as its text, at the
-  top left corner of its bounding box or, without one, at its anchor
-  point, with a line from the box to its anchor point where it has both
+  top of its bounding box, at the left edge, centre, or right edge that
+  its Bounding Box Text Horizontal Justification (0070,0012) names, with
+  the box's outline, faint and dotted, since a display fits the text to
+  the box in ways that the standard leaves open (PS3.3 C.10.5.1.1), or,
+  without a box, at its anchor point; one whose justification is none of
+  LEFT, CENTER, and RIGHT, or whose box has no bottom right corner, is
+  drawn at the left and counted as not drawn whole; with a line from the
+  box to its anchor point where it has both
   and its Anchor Point Visibility (0070,0015) is not N, since a display
   then shows no link to the anchor point (PS3.3 C.10.5.1.1); one whose
   visibility is neither Y nor N is drawn with the line and counted as not
@@ -60,12 +66,16 @@ the objects of an annotation look alike, but objects that look different,
 such as opaque and transparent strokes of one grid, can spell a name that
 the drawing cannot show. So each graphic object and compound graphic
 whose style, its Line Style Sequence (0070,0232) and Fill Style Sequence
-(0070,0233) but for a fill's pattern, which is drawn, differs from that of
-the item's first one is counted as not drawn whole, as is each text
-object whose Text Style Sequence (0070,0231), its colour, opacity, and
-shadow, differs from that of the first text object. A text object's other
-elements, such as its justification, only place its text, which the text
-values list, and a graphic's other elements, such as a compound
+(0070,0233), differs from that of the item's first one is counted as not
+drawn whole, as is each text object whose Text Style Sequence (0070,0231),
+its colour, opacity, and shadow, differs from that of the first text
+object. A fill's pattern is compared too, though each is drawn: the
+drawing shades every filled object alike and draws each pattern in a
+panel apart from the objects that it fills, so which object a display
+fills with which pattern, such as an opaque one in some cells of a grid
+and a clear one in the others, would not be shown. A text object's other
+elements, such as its justification, place its text, which the drawing
+places as they do, and a graphic's other elements, such as a compound
 graphic's rotation, shape it, not how it shows. Text and graphics are
 drawn in the one colour too, where a display may draw them differently,
 such as dotted text under a hatching that is transparent, which the
@@ -132,9 +142,9 @@ _LAYER_NAMING = frozenset(
 )
 # The style sequences of a graphic object or compound graphic.
 _STYLES = ("LineStyleSequence", "FillStyleSequence")
-# The element of a style that the drawing draws: a fill's pattern, in a
-# panel of its own.
-_DRAWN = frozenset({"FillPattern"})
+# Where a box's Bounding Box Text Horizontal Justification puts its text:
+# the SVG text-anchor, and the fraction of the box's width from its left.
+_JUSTIFIED = {"LEFT": ("start", 0.0), "CENTER": ("middle", 0.5), "RIGHT": ("end", 1.0)}
 
 Point = tuple[float, float]
 
@@ -393,10 +403,22 @@ def _compound(drawing: _Drawing, compound: pydicom.Dataset) -> None:
         panel.shapes.append(_text(label, (x, y)))
 
 
-def _text(value: str, at: Point) -> str:
+def _text(value: str, at: Point, anchor: str = "start") -> str:
     x, y = at
+    placed = "" if anchor == "start" else f' text-anchor="{anchor}"'
     return (
-        f'<text x="{_number(x)}" y="{_number(y)}" stroke="none">{_escape(value)}</text>'
+        f'<text x="{_number(x)}" y="{_number(y)}"{placed} stroke="none">'
+        f"{_escape(value)}</text>"
+    )
+
+
+def _box(top_left: Point, bottom_right: Point) -> str:
+    """Return a bounding box's outline, faint, as the drawing's evidence of it."""
+    (left, top), (right, bottom) = top_left, bottom_right
+    return (
+        f'<rect x="{_number(min(left, right))}" y="{_number(min(top, bottom))}" '
+        f'width="{_number(abs(right - left))}" height="{_number(abs(bottom - top))}" '
+        'fill="none" stroke-opacity="0.35" stroke-dasharray="2 2"/>'
     )
 
 
@@ -415,10 +437,22 @@ def _text_object(drawing: _Drawing, text: pydicom.Dataset) -> None:
     if box and box_panel is not None:
         units = str(text.BoundingBoxAnnotationUnits)
         top_left = _scaled(units, box)[0]
-        box_panel.texts.append(_text(value, (top_left[0], top_left[1] + 12)))
+        bottom_right = _scaled(units, corner)[0] if corner else None
+        justified = _JUSTIFIED.get(
+            str(text.get("BoundingBoxTextHorizontalJustification", "") or "").strip()
+        )
+        if justified is None or bottom_right is None:
+            # Where a display puts the text in its box is not known.
+            drawing.skipped += 1
+            justified = _JUSTIFIED["LEFT"]
+        text_anchor, across = justified
+        right = bottom_right[0] if bottom_right else top_left[0]
+        x = top_left[0] + across * (right - top_left[0])
+        box_panel.texts.append(_text(value, (x, top_left[1] + 12), text_anchor))
         box_panel.points.append(top_left)
-        if corner:
-            box_panel.points.append(_scaled(units, corner)[0])
+        if bottom_right:
+            box_panel.texts.append(_box(top_left, bottom_right))
+            box_panel.points.append(bottom_right)
         if anchor and anchor_panel is box_panel:
             visibility = str(text.get("AnchorPointVisibility", "") or "").strip()
             point = _scaled(units, anchor)[0]
@@ -446,12 +480,14 @@ def _frame(units: str, panel: _Panel) -> tuple[float, float, float, float]:
     return (left - pad, top - pad, side + 2 * pad, side + 2 * pad)
 
 
-def _appearance(dataset: pydicom.Dataset, drawn: frozenset[str] = _DRAWN) -> tuple:
+def _appearance(dataset: pydicom.Dataset, drawn: frozenset[str] = frozenset()) -> tuple:
     """Return what of an object the drawing does not draw, to compare.
 
     Each element but those in ``drawn`` and UIDs, by tag, with its items'
     appearances or its value's text, so that two objects that look alike
-    have the same appearance.
+    have the same appearance. A fill's pattern is compared too: the drawing
+    shades every filled object alike and draws each distinct pattern in a
+    panel of its own, apart from the objects that it fills.
     """
     parts = []
     for element in dataset:

@@ -1324,6 +1324,205 @@ def test_text_split_from_a_transparent_hatching_is_drawn_alone_in_their_set():
     assert _dots_drawn(_panel(drawing, "pixel units, text alone")) == DOTS
 
 
+# "HI" in a five by five grid, a cell a "1".
+LETTERED_CELLS = ("10101", "10101", "11101", "10101", "10101")
+
+
+def _cells(mask):
+    """Filled square cells, each STIPPELED with an all-ones pattern where
+    ``mask`` has a "1" and an all-zeros one where it has a "0".
+
+    The foreground is opaque and the background clear, so a display fills
+    the "1" cells and leaves the others clear; the outlines are clear.
+    """
+    objects = []
+    for row, cells in enumerate(mask):
+        for column, cell in enumerate(cells):
+            left, top = float(column * 10), float(row * 10)
+            corners = [
+                (left, top),
+                (left + 9, top),
+                (left + 9, top + 9),
+                (left, top + 9),
+                (left, top),
+            ]
+            objects.append(
+                synthetic.item(
+                    GraphicAnnotationUnits="PIXEL",
+                    GraphicDimensions=2,
+                    NumberOfGraphicPoints=5,
+                    GraphicData=[value for point in corners for value in point],
+                    GraphicType="POLYLINE",
+                    GraphicFilled="Y",
+                    LineStyleSequence=[
+                        synthetic.item(
+                            PatternOnOpacity=0.0,
+                            LineThickness=1.0,
+                            LineDashingStyle="SOLID",
+                        )
+                    ],
+                    FillStyleSequence=[
+                        synthetic.item(
+                            PatternOnColorCIELabValue=[65535, 32896, 32896],
+                            PatternOffColorCIELabValue=[0, 32896, 32896],
+                            PatternOnOpacity=1.0,
+                            PatternOffOpacity=0.0,
+                            FillMode="STIPPELED",
+                            FillPattern=(b"\xff" if cell == "1" else b"\x00") * 128,
+                        )
+                    ],
+                )
+            )
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+        GraphicObjectSequence=objects,
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_cells_whose_fill_patterns_spell_lettering_are_held():
+    # The drawing shades every cell alike and draws the two patterns apart
+    # from the cells, so which cells a display fills is not shown: the
+    # drawing is the same whichever cells hold which pattern.
+    lettered = _cells(LETTERED_CELLS)
+    control = _cells(("10000", "00000", "00000", "00000", "00001"))
+    reviewed = _reviewed(annotation=(annotation_digest(lettered), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(lettered), reviewed)
+
+    unlike = sum(row.count("0") for row in LETTERED_CELLS)
+    assert undrawn_objects(lettered) == unlike
+    assert re.sub(r"\d+ object", "", draw_annotation(lettered)) == re.sub(
+        r"\d+ object", "", draw_annotation(control)
+    )
+    assert isinstance(result, run.Transformed), result
+    (held,) = getattr(result.evidence, "held")
+    assert held.reason is Held.NOT_DRAWN
+
+
+def test_cells_alike_in_their_fill_pattern_are_drawn_whole():
+    assert undrawn_objects(_cells(("11111",) * 5)) == 0
+    assert undrawn_objects(_cells(("00000",) * 5)) == 0
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_cells_split_by_fill_pattern_across_annotations_are_held_together():
+    filled = _cells(LETTERED_CELLS)
+    filled.GraphicObjectSequence = [
+        each
+        for each in filled.GraphicObjectSequence
+        if each.FillStyleSequence[0].FillPattern[0]
+    ]
+    clear = _cells(LETTERED_CELLS)
+    clear.GraphicObjectSequence = [
+        each
+        for each in clear.GraphicObjectSequence
+        if not each.FillStyleSequence[0].FillPattern[0]
+    ]
+    reviewed = _kept_alone(filled, clear)
+    reviewed.record(
+        together_digest([annotation_digest(filled), annotation_digest(clear)]),
+        Review.KEEP,
+    )
+
+    _, result = _transformed(_presentation_state(filled, clear), reviewed)
+
+    assert undrawn_objects(filled) == undrawn_objects(clear) == 0
+    assert isinstance(result, run.Transformed), result
+    assert {each.reason for each in getattr(result.evidence, "held")} == {
+        Held.NOT_DRAWN
+    }
+
+
+def _boxed(rights, justification="RIGHT"):
+    """Dots, one a box from the left edge of its row to each right edge."""
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+        TextObjectSequence=[
+            synthetic.item(
+                BoundingBoxAnnotationUnits="PIXEL",
+                BoundingBoxTopLeftHandCorner=[0.0, float(row * 4)],
+                BoundingBoxBottomRightHandCorner=[float(right), float(row * 4 + 3)],
+                BoundingBoxTextHorizontalJustification=justification,
+                UnformattedTextValue=".",
+            )
+            for row, right in rights
+        ],
+    )
+
+
+# The right edges of boxes that put a dot at each set cell of DOTTED.
+RIGHT_EDGES = [
+    (row, 10 + column * 4)
+    for row, cells in enumerate(DOTTED)
+    for column, cell in enumerate(cells)
+    if cell == "1"
+]
+
+
+def _placed_dots(drawing, title="pixel units"):
+    """Return each dot's (x, text-anchor) in the drawing's panel of ``title``."""
+    return sorted(
+        (float(x), anchor or "start")
+        for x, anchor in re.findall(
+            r'<text x="([^"]+)" y="[^"]+"(?: text-anchor="([^"]+)")? stroke="none">\.<',
+            _panel(drawing, title),
+        )
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize("as_one", [False, True])
+def test_justified_text_is_drawn_where_its_box_puts_it(as_one):
+    # Boxes that all start at the left edge, whose right edges spell "HI":
+    # a display puts RIGHT-justified text at the right edge.
+    lettered = _boxed(RIGHT_EDGES)
+    column = _boxed([(row, 30) for row, _ in RIGHT_EDGES])
+    if as_one:
+        half = len(RIGHT_EDGES) // 2
+        lettered = together([_boxed(RIGHT_EDGES[:half]), _boxed(RIGHT_EDGES[half:])])
+
+    drawing = draw_annotation(lettered)
+
+    assert undrawn_objects(lettered) == 0
+    assert _placed_dots(drawing) == sorted(
+        (float(right), "end") for _, right in RIGHT_EDGES
+    )
+    assert drawing != draw_annotation(column)
+    # Each box is outlined, so where a display may fit the text is shown.
+    assert drawing.count('stroke-dasharray="2 2"') == len(RIGHT_EDGES)
+
+
+def test_centred_text_is_drawn_at_its_boxs_centre():
+    drawing = draw_annotation(_boxed([(0, 20)], justification="CENTER"))
+
+    assert _placed_dots(drawing) == [(10.0, "middle")]
+
+
+@pytest.mark.parametrize("justification", ["JUSTIFIED", None])
+def test_text_placed_in_a_way_the_drawing_does_not_know_is_not_drawn_whole(
+    justification,
+):
+    item = _boxed([(0, 20)])
+    if justification is None:
+        del item.TextObjectSequence[0].BoundingBoxTextHorizontalJustification
+    else:
+        item.TextObjectSequence[
+            0
+        ].BoundingBoxTextHorizontalJustification = justification
+    cornerless = _boxed([(0, 20)])
+    del cornerless.TextObjectSequence[0].BoundingBoxBottomRightHandCorner
+
+    assert undrawn_objects(item) == 1
+    assert undrawn_objects(cornerless) == 1
+
+
 def test_an_anchor_of_unknown_visibility_is_not_drawn_whole():
     dots = _dots("Y" * 3)
     del dots.TextObjectSequence[1].AnchorPointVisibility
