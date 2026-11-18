@@ -194,6 +194,10 @@ class Exemption(enum.Enum):
     VOCABULARY_MEANING = "vocabulary-meaning"
     # in a technique descriptor made only of the reviewed technique vocabulary
     VOCABULARY_DESCRIPTOR = "vocabulary-descriptor"
+    # a finding that would hold the file for review, which a reviewer cleared
+    # in an attested QC pack of an earlier run of the same source file, in
+    # the same value (residuals.ReviewedFinding)
+    REVIEWED = "reviewed"
 
 
 @dataclasses.dataclass(frozen=True)

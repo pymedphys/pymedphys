@@ -30,7 +30,8 @@ and the reference graph's second pass, under a new run-scoped key
 (:func:`~pymedphys._dicom.deidentify.command.transform_for` with
 ``unvalidated_policy``). It takes what the run command takes for Clean
 Descriptors, Clean Pixel Data, Clean Recognizable Visual Features, Retain
-Safe Private, and the readiness of a ``public-release`` run, and its opt-in
+Safe Private, a reviewer's clearing of residual findings (D-042), and the
+readiness of a ``public-release`` run, and its opt-in
 that sequesters a study whose instances name several patients rather than
 stopping the run (D-026), so that a pilot can count such studies and still
 measure the rest of the export, but no project key, which a run refuses
@@ -246,6 +247,15 @@ def _add_input_arguments(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--residual-review",
+        metavar="DIRECTORY",
+        help=(
+            "the QC pack of an earlier run of the same files, attested with "
+            "residual findings cleared, whose findings in the same values "
+            "then hold no file for review"
+        ),
+    )
+    parser.add_argument(
         "--readiness-review",
         metavar="DIRECTORY",
         help=(
@@ -413,6 +423,7 @@ def _transform(
         region_rules=arguments.region_rules,
         safe_private_list=SafePrivateList(arguments.safe_private_list),
         face_review=arguments.face_review,
+        residual_review=arguments.residual_review,
         readiness_review=arguments.readiness_review,
         readiness_report=arguments.readiness_report,
         unvalidated_policy=True,

@@ -108,7 +108,7 @@ from ._corpus_run import (
     structure_set,
     with_a_second_roi,
 )
-from .corpus_runs import CORPUS_RUNS
+from .corpus_runs import CORPUS_RUNS, FIRST_HALF, FIRST_LETTERS, SECOND_HALF
 
 pytestmark = pytest.mark.pydicom
 
@@ -169,18 +169,6 @@ UNREVIEWED = CorpusRun(
     preset=CLEAN_DESCRIPTORS,
     corpus=_unreviewed_corpus,
     reviewed_roi_names=_no_reviewed_names,
-)
-
-
-# The policies' runs take most of this module's time, so CI shares them
-# between two parts by the first letter of each policy's name. The letters
-# are listed, as in the workflow's glob of de-identification modules.
-FIRST_LETTERS = frozenset("abcdefghijklmno")
-FIRST_HALF = tuple(
-    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] in FIRST_LETTERS
-)
-SECOND_HALF = tuple(
-    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] not in FIRST_LETTERS
 )
 
 
@@ -1583,7 +1571,7 @@ def test_each_option_of_table_e1_1_has_its_code_and_temporal_value():
 
 
 def test_each_run_is_in_one_half():
-    """Every policy's run is checked in this module or in the second half's."""
+    """Every policy's run is in one half, which a module or its second half checks."""
     first = [corpus_run.name for corpus_run in FIRST_HALF]
     second = [corpus_run.name for corpus_run in SECOND_HALF]
 
