@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module gives every planned element its edit, so it is long.
+
 """Work out what each planned element of a data set becomes.
 
 The walker's second step takes an instance's plan
