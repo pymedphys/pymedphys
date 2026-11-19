@@ -1054,7 +1054,9 @@ def test_the_statement_gives_the_code_only_after_review():
         "Continuous RT Image, RT Segment Annotation, RT Radiation Set, C-Arm "
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
-        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, "
+        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
+        "Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, "
         "C-Arm Photon-Electron Radiation Record, "
         "Tomotherapeutic Radiation Record, "
         "Robotic-Arm Radiation Record, "
@@ -1114,6 +1116,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "C-Arm Photon-Electron Radiation Record",
         "Tomotherapeutic Radiation Record",
         "Robotic-Arm Radiation Record",
@@ -1615,7 +1620,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
         "review_modes": {"every-frame": 3, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
-    assert report["format"] == "pymedphys-deid-release-report/80"
+    assert report["format"] == "pymedphys-deid-release-report/81"
 
 
 class _Blind(Finder):

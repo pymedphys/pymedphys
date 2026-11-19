@@ -281,6 +281,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "76-rt-brachy-delivery-instruction.dcm",
         "77-rt-radiation-set-delivery-instruction.dcm",
         "78-rt-radiation-record-set.dcm",
+        "79-rt-physician-intent.dcm",
+        "80-rt-treatment-preparation.dcm",
+        "81-rt-position-acquisition-instruction.dcm",
         "82-c-arm-radiation-record.dcm",
         "83-tomotherapeutic-radiation-record.dcm",
         "84-robotic-arm-radiation-record.dcm",
@@ -356,6 +359,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
         "RT Radiation Record Set",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "C-Arm Photon-Electron Radiation Record",
         "Tomotherapeutic Radiation Record",
         "Robotic-Arm Radiation Record",
@@ -370,7 +376,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     ]
     # Counted from the start, so that a file added at the end moves none.
     presentation_states = (
-        corpus.files[55:61] + corpus.files[77:80] + corpus.files[82:84]
+        corpus.files[55:61] + corpus.files[80:83] + corpus.files[85:87]
     )
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
         file.name for file in corpus.files[21:31] + corpus.files[33:46]
@@ -406,7 +412,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[80:82])
+    ) == tuple(file.name for file in corpus.files[83:85])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
@@ -420,12 +426,17 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
     ) == tuple(file.name for file in corpus.files[69:72])
     assert (
+        corpus_module.PHYSICIAN_INTENT_FILE,
+        corpus_module.TREATMENT_PREPARATION_FILE,
+        corpus_module.POSITION_ACQUISITION_INSTRUCTION_FILE,
+    ) == tuple(file.name for file in corpus.files[73:76])
+    assert (
         corpus_module.RADIATION_RECORD_SET_FILE,
         corpus_module.C_ARM_RADIATION_RECORD_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_RECORD_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_RECORD_FILE,
         corpus_module.RADIATION_SALVAGE_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[72:77])
+    ) == tuple(file.name for file in corpus.files[72:73] + corpus.files[76:80])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -500,7 +511,11 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
 # Source Conceptual Volume UID lie five or six items deep, in the Conceptual
 # Volume Macro of a task's patient position displacement; the RT Radiation
 # Set and the radiations hold them less deep, and their actions in the
-# instruction are tested apart there too.
+# instruction are tested apart there too. Five items deep too are the
+# Selector values that RT Patient Position Acquisition Instruction gives a
+# constraint and Source Conceptual Volume UID, in the Conceptual Volumes of
+# RT Physician Intent and RT Treatment Preparation, which
+# test_deidentify_beyond_the_corpus_depth.py tests apart.
 ONLY_BEYOND_THE_DEPTH_CAP = {
     "(0400,0402)",
     "(0400,0403)",
@@ -508,9 +523,23 @@ ONLY_BEYOND_THE_DEPTH_CAP = {
     "(300A,067C)",
     "(300A,067D)",
     "(300A,0785)",
+    "(0072,005E)",  # Selector AE Value
+    "(0072,005F)",  # Selector AS Value
+    "(0072,0061)",  # Selector DA Value
+    "(0072,0063)",  # Selector DT Value
+    "(0072,0065)",  # Selector OB Value
+    "(0072,0066)",  # Selector LO Value
+    "(0072,0068)",  # Selector LT Value
+    "(0072,006A)",  # Selector PN Value
+    "(0072,006B)",  # Selector TM Value
+    "(0072,006C)",  # Selector SH Value
+    "(0072,006D)",  # Selector UN Value
+    "(0072,006E)",  # Selector ST Value
+    "(0072,0070)",  # Selector UT Value
+    "(0072,0071)",  # Selector UR Value
     "(3010,000B)",
     "(3010,0013)",
-    "(3010,0015)",
+    "(3010,0015)",  # Source Conceptual Volume UID
 }
 
 
