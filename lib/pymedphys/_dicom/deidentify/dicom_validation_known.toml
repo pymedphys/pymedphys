@@ -196,3 +196,45 @@ instance that the sequence lists.
 Where no reference to an instance survives outside the module, the engine
 removes both of the module's sequences.
 """
+
+[[difference]]
+validator = "dicom-validator"
+severity = "error"
+message = "TagUnexpected (Type Undefined)"
+paths = [
+  "(0018,0060)",
+  "(0018,1110)",
+  "(0018,1111)",
+  "(0018,1150)",
+  "(0018,1151)",
+  "(0018,1152)",
+  "(0018,1153)",
+  "(0018,1156)",
+  "(0018,1160)",
+  "(0018,1191)",
+  "(0018,11A0)",
+  "(0018,7050)",
+  "(0018,7052)",
+  "(0018,7054)",
+  "(0018,7056)",
+  "(0018,7058)",
+  "(0018,8150)",
+  "(0018,8151)",
+]
+category = "validator"
+reason = """
+In the Digital X-Ray Image IOD (PS3.3 Table A.26-1), the user-optional X-Ray
+Acquisition Dose Module (Table C.8-33) shares these attributes with the
+user-optional DX Positioning, X-Ray Filtration, and X-Ray Generation Modules.
+Each module defines each of them as Type 3, so an output that keeps them
+conforms. dicom-validator checks a user-optional module only where the data
+set holds an attribute of it that no other module present holds. X-Ray
+Filtration has none of its own, and the Basic Profile removes attributes
+that are the other three modules' own: Comments on Radiation Dose
+(0040,0310) of X-Ray Acquisition Dose, Generator ID (0018,1005) and Exposure
+Control Mode Description (0018,7062) of X-Ray Generation, and Paddle
+Description (0018,11A4) of DX Positioning. Where an output keeps no
+attribute of a module's own, the validator checks none of the modules that
+share these attributes and reports each of them as unexpected, as it does in
+a source that never held such an attribute.
+"""
