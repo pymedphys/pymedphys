@@ -628,11 +628,13 @@ def test_d_on_any_other_sequence_is_refused():
         # Its reviewed rule holds only where it says (D-021).
         "InstitutionCodeSequence",
     }
-    # The reviewed rules of Verifying Observer Sequence, and of Operator
-    # Identification Sequence in an item of Override Sequence, keep their
-    # source items instead of writing items of their own (D-021).
+    # The reviewed rules of Verifying Observer Sequence, of Referenced Study
+    # Sequence, and of Operator Identification Sequence in an item of
+    # Override Sequence keep their source items instead of writing items of
+    # their own (D-021).
     assert set(dummy_values.KEPT_ITEM_ATTRIBUTES) == {
         "(0040,A073)",
+        "(0008,1110)",
         OPERATOR_IDENTIFICATION_SEQUENCE,
     }
     for attribute in sequences:
