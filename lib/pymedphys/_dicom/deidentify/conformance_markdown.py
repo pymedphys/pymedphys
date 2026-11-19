@@ -45,9 +45,9 @@ from .conformance import (
     AttributeAction,
     ConformanceStatement,
 )
-from .conformance_values import code as _code
+from .conformance_prose import code as _code
 from .conformance_safe_private import safe_private_section
-from .conformance_values import join as _join
+from .conformance_prose import join as _join
 from .markers import PROFILE_CODE
 from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
@@ -697,7 +697,11 @@ _REVIEW_CONDITIONS = {
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
         "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, "
-        "MR Spectroscopy, Spatial "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface "
         "Segmentation, X-Ray Radiation Dose "
         "SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation "
@@ -730,9 +734,10 @@ _REVIEW_CONDITIONS = {
         "free of a recognisable face in the attested "
         "QC pack of an earlier run of the same files, and whose pixel data, "
         "by their SHA-256, are written as that run wrote them, which its "
-        "review showed, as are an RT Structure Set's contours and a "
-        "deformable registration's grids, which their own sheets in that "
-        "pack showed. Such an instance also "
+        "review showed, as are an RT Structure Set's contours, a "
+        "deformable registration's grids, and a Surface Segmentation's "
+        "meshes, which their own sheets in that pack showed. Such an "
+        "instance also "
         "has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
         "E.3.2 requires, including in an IOD that does not define the "
         "attribute, which of the supported IODs are RT Plan, RT Structure "
@@ -742,7 +747,12 @@ _REVIEW_CONDITIONS = {
         "Annotation, RT Radiation Set, C-Arm Photon-Electron Radiation, "
         "Tomotherapeutic Radiation, Robotic-Arm Radiation, RT Beams Delivery "
         "Instruction, RT Brachy Application Setup Delivery Instruction, RT "
-        "Radiation Set Delivery Instruction, MR Spectroscopy, Spatial "
+        "Radiation Set Delivery Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial "
         "Registration, Surface Segmentation, X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose "
@@ -764,9 +774,7 @@ _REVIEW_CONDITIONS = {
         "level of the data set as an attribute of the instance, where every "
         "PS3.3 module that defines it, such as the General Image Module, "
         "places it. Any other instance that can show a face does not gain "
-        "that code, and is held for review, so it is never released; so is "
-        "every Surface Segmentation, and any other instance with a surface "
-        "mesh, since no preview of the pack draws a mesh. The "
+        "that code, and is held for review, so it is never released. The "
         "run also sets to air the region in front of a plane just behind the "
         "centres of the eyes, from their lower edge up, of each CT Image "
         "series in which it finds both eyes, keeping the brain in the "

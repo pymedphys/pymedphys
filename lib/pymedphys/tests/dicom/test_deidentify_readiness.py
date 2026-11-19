@@ -64,6 +64,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
     NO_GRIDS_SHA256,
     NO_PIXELS_SHA256,
+    NO_SURFACES_SHA256,
     Disposition,
     InstanceEntry,
     PixelRiskEntry,
@@ -132,6 +133,7 @@ def _entry(position, disposition=Disposition.RELEASED, **changes):
             pixel_sha256=_pixels(position) if position in IMAGES else NO_PIXELS_SHA256,
             contour_sha256=NO_CONTOURS_SHA256,
             grid_sha256=NO_GRIDS_SHA256,
+            surface_sha256=NO_SURFACES_SHA256,
         )
     if disposition is Disposition.HELD_FOR_REVIEW:
         fields.update(reasons=("held",))
