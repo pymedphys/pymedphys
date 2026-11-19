@@ -67,6 +67,24 @@ Name (0040,A123) takes the PN constant, Person Identification Code Sequence
 and Institution Name (0008,0080) and Institution Code Sequence (0008,0082),
 Type 2 there, are emptied (:func:`kept_item_attributes`).
 
+Referenced Study Sequence (0008,1110) has a rule of the same kind, which the
+maintainer decided on 16 November 2026. Table E.1-1 gives it X/Z, which
+resolves to D only where the sequence is Type 1: in the items of an RT
+Physician Intent's RT Physician Intent Input Instance Sequence (3010,005F)
+and Planning Input Information Sequence (3010,0076), and of an RT Patient
+Position Acquisition Instruction's Referenced Position Reference Instance
+Sequence (3002,0132). There its item names a study by Study Instance UID
+(0020,000D), as the Related Information Entities Macro defines it (PS3.3
+Table 10.37-1), rather than by a SOP Instance reference. D keeps each source
+item, with only the three attributes that the macro defines in it, each
+under its own rule: Study Instance UID takes its keyed replacement, as U
+gives it, so that the written instance names the written study; Pertinent
+SOP Classes in Study (3010,0052) names SOP Classes and is kept; and
+Referenced Series Sequence (0008,1115) is kept, with its items' attributes
+under their own rules, so that Series Instance UID (0020,000E) takes its
+keyed replacement and Referenced Image Sequence (0008,1140), which X/Z/U*
+removes where it is Type 3, is removed.
+
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
 D's dummy value, from :func:`values_for_d`, since a zero-length value would
 make the attribute invalid there.
@@ -148,6 +166,7 @@ REVIEWED_WITHIN: Mapping[str, frozenset[str]] = types.MappingProxyType(
 )
 ICC_PROFILE = "(0028,2000)"
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"
+REFERENCED_STUDY_SEQUENCE = "(0008,1110)"
 # The sequences whose D a reviewed rule gives by keeping each source item,
 # with only these of its attributes, each under its own rule, so that each
 # takes the action that the policy gives it there (D-021): Verifying
@@ -164,6 +183,13 @@ KEPT_ITEM_ATTRIBUTES: Mapping[str, frozenset[str]] = types.MappingProxyType(
                 "(0040,A030)",  # Verification DateTime
                 "(0040,A075)",  # Verifying Observer Name
                 "(0040,A088)",  # Verifying Observer Identification Code Sequence
+            }
+        ),
+        REFERENCED_STUDY_SEQUENCE: frozenset(
+            {
+                "(0008,1115)",  # Referenced Series Sequence
+                "(0020,000D)",  # Study Instance UID
+                "(3010,0052)",  # Pertinent SOP Classes in Study
             }
         ),
         OPERATOR_IDENTIFICATION_SEQUENCE: frozenset(

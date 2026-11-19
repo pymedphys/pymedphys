@@ -776,6 +776,9 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("Macular Grid Thickness and Volume Report", ()),
         ("Waveform Annotation SR", ()),
         ("Encapsulated PDF", ()),
+        ("RT Physician Intent", ()),
+        ("RT Treatment Preparation", ()),
+        ("RT Patient Position Acquisition Instruction", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 

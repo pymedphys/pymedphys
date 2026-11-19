@@ -92,6 +92,9 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.21": "RT Radiation Set Delivery Instruction",
     "1.2.840.10008.5.1.4.34.7": "RT Beams Delivery Instruction",
     "1.2.840.10008.5.1.4.34.10": "RT Brachy Application Setup Delivery Instruction",
+    "1.2.840.10008.5.1.4.1.1.481.10": "RT Physician Intent",
+    "1.2.840.10008.5.1.4.1.1.481.22": "RT Treatment Preparation",
+    "1.2.840.10008.5.1.4.1.1.481.25": "RT Patient Position Acquisition Instruction",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
@@ -170,6 +173,9 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
@@ -286,9 +292,7 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, height map segmentations, spatial fiducials,
-        # and the second-generation RT objects not yet supported, such as RT
-        # Physician Intent.
+        # that are not images, height map segmentations, and spatial fiducials.
         # The projection radiographs of IODs of their own, beside Computed
         # Radiography Image and Digital X-Ray Image.
         ("1.2.840.10008.5.1.4.1.1.1.2", "Digital Mammography X-Ray Image"),
@@ -298,7 +302,6 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
-        ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         # The encapsulated documents other than PDF: a CDA document, whose
         # XML is text throughout, and the 3D models and their materials.
         ("1.2.840.10008.5.1.4.1.1.104.2", "Encapsulated CDA"),

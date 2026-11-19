@@ -193,6 +193,9 @@ SUPPORTED_SECOND_GENERATION_RT_IODS = (
     "RT Beams Delivery Instruction",
     "RT Brachy Application Setup Delivery Instruction",
     "RT Radiation Set Delivery Instruction",
+    "RT Physician Intent",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
     "RT Radiation Record Set",
     "RT Radiation Salvage Record",
     "C-Arm Photon-Electron Radiation Record",
@@ -580,12 +583,13 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # 14, the two dose-report IODs, the three delivery instructions, which add
     # 1, the six softcopy Presentation State IODs, which add 7, Encapsulated
     # PDF, which adds 8, the volumetric and advanced blending Presentation
-    # State IODs, which add 2, and the Secondary Capture IODs, which add 3
-    # more, besides Pixel Spacing Calibration Description, which the
-    # radiographs use too, and the five of the SC Equipment Module that
-    # Encapsulated PDF uses too, whose supplementary rules cover 218 text
-    # attributes.
-    assert len(omitted) == 218
+    # State IODs, which add 2, RT Physician Intent, RT Treatment Preparation,
+    # and RT Patient Position Acquisition Instruction, which add 3, and the
+    # Secondary Capture IODs, which add 3 more, besides Pixel Spacing
+    # Calibration Description, which the radiographs use too, and the five of
+    # the SC Equipment Module that Encapsulated PDF uses too, whose
+    # supplementary rules cover 221 text attributes.
+    assert len(omitted) == 221
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -600,7 +604,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 102,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 105,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 34,
         # Coded and technical values, and De-identification Method.
@@ -2326,8 +2330,9 @@ SECOND_GENERATION_KEPT_TEXT = {
     "(3010,0086)",  # Intended Start Day of Week
 }
 # Of the kept text, what the supported second-generation RT IODs use: RT
-# Radiation Set uses Intended Start Day of Week, and the four records of
-# treatment tolerance violations use Selector Attribute Name and Keyword.
+# Radiation Set and RT Physician Intent use Intended Start Day of Week, and RT
+# Patient Position Acquisition Instruction and the four records of treatment
+# tolerance violations use Selector Attribute Name and Keyword.
 SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(0082,0018)", "(0082,0019)", "(3010,0086)"}
 SECOND_GENERATION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (SECOND_GENERATION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
@@ -2823,20 +2828,22 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
     # Reason for Omission Description (300C,0113), none of them kept;
     # Nuclear Medicine Image adds 3: Processing Function (0018,5020), Energy
     # Window Name (0054,0018), and Image ID (0054,0400), none of them kept;
-    # the Computed Radiography and Digital X-Ray Image IODs add 20: the 14
-    # text attributes that Table E.1-1 omits and that no IOD before them
-    # used, eight of them kept, and the six that Table E.1-1 lists, none of
-    # them kept; the volumetric and advanced blending Presentation State IODs
-    # add two reviewed text attributes; the waveform Presentation State IODs
-    # add five that Table E.1-1 lists, none of them kept: the montage's and
-    # filters' descriptions and labels; the four records of treatment
-    # tolerance violations add four: Selector Attribute Name and Keyword,
-    # both kept, and the violation's description and identification, neither
-    # kept; and the Secondary Capture IODs add three more reviewed
-    # operator-typed text attributes, Pixel Spacing Calibration Description
-    # and the SC Equipment Module's text of Encapsulated PDF being already
-    # among them.
-    assert len(basic) == 372
+    # and the Computed Radiography and Digital X-Ray Image IODs add 20: the 14
+    # text attributes that only they use and Table E.1-1 omits, eight of them
+    # kept, and the six that Table E.1-1 lists, none of them kept. RT
+    # Physician Intent, RT Treatment Preparation, and RT Patient Position
+    # Acquisition Instruction add 23 more; the last two also use Displacement
+    # Reference Label. The volumetric and advanced blending Presentation
+    # States add 2: RGBA Transfer Function Description (0070,1A09), not kept,
+    # and Referenced Optical Path Identifier (006A,000E), kept. The waveform
+    # Presentation States add 5, and the radiation records and RT Radiation
+    # Record Set 2 more, beside Selector Attribute Name (0082,0018) and
+    # Selector Attribute Keyword (0082,0019), which RT Patient Position
+    # Acquisition Instruction also uses. The Secondary Capture IODs add 3
+    # more reviewed operator-typed text attributes, Pixel Spacing Calibration
+    # Description and the SC Equipment Module's text of Encapsulated PDF being
+    # already among them.
+    assert len(basic) == 393
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT

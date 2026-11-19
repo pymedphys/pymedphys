@@ -21,8 +21,9 @@ the RT Structure Set, RT Plan, RT
 Dose, RT Image, Enhanced RT Image, Enhanced Continuous RT Image, RT Beams
 Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
 Treatment Record, RT Treatment Summary Record, RT Beams Delivery
-Instruction, RT Brachy Application Setup Delivery Instruction, and RT
-Radiation Set Delivery Instruction IODs, of the C-Arm Photon-Electron
+Instruction, RT Brachy Application Setup Delivery Instruction, RT Radiation
+Set Delivery Instruction, RT Physician Intent, RT Treatment Preparation, and
+RT Patient Position Acquisition Instruction IODs, of the C-Arm Photon-Electron
 Radiation Record, Tomotherapeutic Radiation Record, Robotic-Arm Radiation
 Record, RT Radiation Salvage Record, and RT Radiation Record Set IODs, of the
 Spatial Registration and Deformable Spatial
@@ -125,9 +126,12 @@ SUPPORTED_IODS = frozenset(
         "Robotic-Arm Radiation",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
+        "RT Patient Position Acquisition Instruction",
+        "RT Physician Intent",
         "RT Plan",
         "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
+        "RT Treatment Preparation",
         "RT Treatment Summary Record",
         "C-Arm Photon-Electron Radiation Record",
         "Tomotherapeutic Radiation Record",

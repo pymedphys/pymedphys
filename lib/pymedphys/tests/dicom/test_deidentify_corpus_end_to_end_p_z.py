@@ -205,6 +205,29 @@ def test_the_brachy_records_source_manufacturer_is_emptied_or_kept(policy_run):
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_intent_preparation_and_position_instruction_name_what_they_reference(
+    policy_run,
+):
+    first_half.test_the_intent_preparation_and_position_instruction_name_what_they_reference(
+        policy_run
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_a_type_1_referenced_study_sequence_keeps_its_items_keyed(policy_run):
+    first_half.test_a_type_1_referenced_study_sequence_keeps_its_items_keyed(policy_run)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_the_required_preparation_and_prescription_descriptions_are_emptied(
+    policy_run,
+):
+    first_half.test_the_required_preparation_and_prescription_descriptions_are_emptied(
+        policy_run
+    )
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(policy_run):
     first_half.test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
