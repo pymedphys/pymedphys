@@ -2175,22 +2175,25 @@ def _marker(vr: str, number: int, latin_1: bool, own: int) -> object:
     text = f"{MARKER_PREFIX}-{number:05d}"
     if vr in _WORD_BYTES:
         return _padded(text, vr)
-    day = _marker_date(own)
-    # strftime does not pad a year before 1000 to four digits on every platform.
-    date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
-    seconds = own % _SECONDS_IN_A_DAY
-    time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
-    time += _TIME_SIGNATURE
+    # A date or a time is made only for its own VRs, whose limits keep ``own``
+    # in range; a marker of any other VR may be numbered past them.
+    if vr in ("DA", "DT"):
+        day = _marker_date(own)
+        # strftime does not pad a year before 1000 to four digits on every
+        # platform.
+        date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
+        return date + _NOON if vr == "DT" else date
+    if vr == "TM":
+        seconds = own % _SECONDS_IN_A_DAY
+        time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
+        return time + _TIME_SIGNATURE
     given = "MÄRKER" if latin_1 else "MARKER"
     formats: dict[str, object] = {
         "AE": text,
         "CS": f"{MARKER_PREFIX}_{number:05d}",
-        "DA": date,
         "DS": f"8{number:05d}.5",
-        "DT": date + _NOON,
         "IS": f"7{number:05d}",
         "PN": f"{MARKER_PREFIX}{number:05d}^{given}{number:05d}",
-        "TM": time,
         "UI": f"{MARKER_UID_ROOT}{number:05d}",
         "UR": f"https://synmk.invalid/{text}",
         "AT": 0x7FFF0000 + number,

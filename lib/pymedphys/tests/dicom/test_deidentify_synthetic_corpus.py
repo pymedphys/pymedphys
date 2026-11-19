@@ -1332,6 +1332,35 @@ def test_markers_have_five_digits_and_their_16_bit_integers_are_distinct(corpus)
         assert all(low <= value <= high for value in values), vr
 
 
+# The corpus's private marker numbering and the limits of its kinds.
+_KIND_LIMITS = corpus_module._KIND_LIMITS  # pylint: disable = protected-access
+_MARKERS = corpus_module._Markers  # pylint: disable = protected-access
+
+
+@pytest.mark.parametrize(
+    "vr, limit",
+    [
+        ("SH", corpus_module.MAX_MARKERS - 1),
+        ("DA", _KIND_LIMITS["date"]),
+        ("DT", _KIND_LIMITS["date"]),
+        ("TM", _KIND_LIMITS["time"]),
+        ("SS", _KIND_LIMITS["SS"]),
+        ("US", _KIND_LIMITS["US"]),
+    ],
+)
+def test_markers_of_each_vr_reach_their_limit_and_stop_with_an_error(vr, limit):
+    # A marker of each VR can be given up to its own limit, whatever the
+    # others' limits are, and the next one is refused with a ValueError.
+    markers = _MARKERS()
+    values, texts = markers.values(vr, limit)
+    assert len(set(texts)) == limit
+    if vr in ("DA", "DT"):
+        assert texts[-1][:4] >= "0100"
+    with pytest.raises(ValueError, match="markers than"):
+        markers.values(vr, 1)
+    assert len(values) == limit
+
+
 def test_times_are_distinct(corpus):
     times = [
         value
