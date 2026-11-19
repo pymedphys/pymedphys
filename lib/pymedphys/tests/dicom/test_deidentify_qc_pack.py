@@ -71,6 +71,7 @@ SOURCE_SHA256 = "0f" * 32
 PIXEL_SHA256 = qc_pack.NO_PIXELS_SHA256
 CONTOUR_SHA256 = qc_pack.NO_CONTOURS_SHA256
 GRID_SHA256 = qc_pack.NO_GRIDS_SHA256
+SURFACE_SHA256 = qc_pack.NO_SURFACES_SHA256
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -90,6 +91,7 @@ def _written(
     pixel_sha256=None,
     contour_sha256=None,
     grid_sha256=None,
+    surface_sha256=None,
 ):
     return InstanceEntry(
         position,
@@ -100,6 +102,7 @@ def _written(
         pixel_sha256=pixel_sha256,
         contour_sha256=contour_sha256,
         grid_sha256=grid_sha256,
+        surface_sha256=surface_sha256,
     )
 
 
@@ -140,6 +143,7 @@ def _full_pack():
                 pixel_sha256=PIXEL_SHA256,
                 contour_sha256=CONTOUR_SHA256,
                 grid_sha256=GRID_SHA256,
+                surface_sha256=SURFACE_SHA256,
             ),
             _sequestered(1),
         ),
@@ -250,6 +254,7 @@ _DIGESTS = {
     "pixel_sha256": (PIXEL_SHA256, "pixel data's SHA-256"),
     "contour_sha256": (CONTOUR_SHA256, "contours' SHA-256"),
     "grid_sha256": (GRID_SHA256, "deformation grids' SHA-256"),
+    "surface_sha256": (SURFACE_SHA256, "surface meshes' SHA-256"),
 }
 
 
@@ -596,6 +601,7 @@ def test_the_document_holds_every_section():
             "pixel_sha256": PIXEL_SHA256,
             "contour_sha256": CONTOUR_SHA256,
             "grid_sha256": GRID_SHA256,
+            "surface_sha256": SURFACE_SHA256,
         },
         {
             "position": 1,
@@ -608,6 +614,7 @@ def test_the_document_holds_every_section():
             "pixel_sha256": None,
             "contour_sha256": None,
             "grid_sha256": None,
+            "surface_sha256": None,
         },
     ]
     (residual,) = document["residual_findings"]
