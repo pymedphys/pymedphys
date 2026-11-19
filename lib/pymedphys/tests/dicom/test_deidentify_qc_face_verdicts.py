@@ -35,6 +35,7 @@ from pymedphys._dicom.deidentify.face_review import (
     contour_data_sha256,
     grid_data_sha256,
     pixel_data_sha256,
+    surface_data_sha256,
 )
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -309,6 +310,7 @@ _FIELDS = {
     "pixel_data_sha256": "pixel_sha256",
     "contour_data_sha256": "contour_sha256",
     "grid_data_sha256": "grid_sha256",
+    "surface_data_sha256": "surface_sha256",
 }
 
 
@@ -327,9 +329,10 @@ def test_a_written_file_that_cannot_be_read_has_no_digests(monkeypatch, digester
         "pixel_sha256": pixel_data_sha256(dataset).hex(),
         "contour_sha256": contour_data_sha256(dataset).hex(),
         "grid_sha256": grid_data_sha256(dataset).hex(),
+        "surface_sha256": surface_data_sha256(dataset).hex(),
     }
     digests = run_qc._written_sha256  # pylint: disable = protected-access
-    # A file without contours or grids has the digest of none, shown or not.
+    # A file without contours, grids, or meshes has the digest of none, shown or not.
     assert digests(data, False, True) == expected
     monkeypatch.setattr(run_qc, digester, fails)
     # Whatever taking a digest raises, the pack is still built, and no
@@ -340,6 +343,7 @@ def test_a_written_file_that_cannot_be_read_has_no_digests(monkeypatch, digester
         "pixel_sha256": None,
         "contour_sha256": None,
         "grid_sha256": None,
+        "surface_sha256": None,
     }
 
 

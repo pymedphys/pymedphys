@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """A reviewer's face verdicts, for the Clean Recognizable Visual Features Option.
 
 A run claims the option (PS3.15 E.3.2) only for an instance that cannot
@@ -32,17 +34,20 @@ than they listed, counting for an RT Dose only its dose-levels previews' and
 for a Segmentation only its segments sheet's;
 of the contours of each RT Structure Set that it wrote
 (:func:`contour_data_sha256`), only where its contour sheet shows them;
-and of the deformation grids of each deformable registration that it wrote
+of the deformation grids of each deformable registration that it wrote
 (:func:`grid_data_sha256`), only where its grid sheets show every one of
-them (:mod:`~pymedphys._dicom.deidentify.qc_grids`). An instance that
-carries visual features (:func:`carries_visual_features`) satisfies the
-option only where the SHA-256 of its source file is that of an instance of
-a series marked absent, and the pixel data, contours, and deformation grids
-that the second run writes are those that the first run wrote of it; any
-other such instance is held for review (:func:`FaceReview.hold_reason`), so
-it is never released. A source file changed since the review no longer
-matches, and nor does one whose pixel data, contours, or grids the second
-run writes otherwise, such as a CT slice defaced since the reviewer saw it
+them (:mod:`~pymedphys._dicom.deidentify.qc_grids`); and of the surface
+meshes of each Surface Segmentation that it wrote
+(:func:`surface_data_sha256`), only where its surfaces sheet shows every
+one of them (:mod:`~pymedphys._dicom.deidentify.qc_meshes`). An instance
+that carries visual features (:func:`carries_visual_features`) satisfies
+the option only where the SHA-256 of its source file is that of an
+instance of a series marked absent, and the pixel data, contours,
+deformation grids, and surface meshes that the second run writes are those
+that the first run wrote of it; any other such instance is held for review
+(:func:`FaceReview.hold_reason`), so it is never released. A source file
+changed since the review no longer matches, and nor does one whose pixel
+data, contours, grids, or meshes the second run writes otherwise, such as a CT slice defaced since the reviewer saw it
 as received, or blacked out in other regions, or a structure set cut by a
 face block that the first run did not find.
 
@@ -83,7 +88,7 @@ import re
 
 from pymedphys._imports import pydicom
 
-from . import face_review_digests
+from . import face_review_digests, qc_meshes
 from .qc_attestation import (
     Face,
     Outcome,
@@ -97,6 +102,7 @@ from .qc_pack import (
     NO_CONTOURS_SHA256,
     NO_GRIDS_SHA256,
     NO_PIXELS_SHA256,
+    NO_SURFACES_SHA256,
     NotPreviewedReason,
     PreviewKind,
     QcPackError,
@@ -125,7 +131,31 @@ GRID_TAGS = (0x00200037, 0x00200032, 0x00640007, 0x00640008, 0x00640009)
 # Surface Sequence (0066,0002) of the Surface Mesh Module (PS3.3 Section
 # C.27.1), whose items' Point Coordinates Data (0066,0016) place each point
 # of a mesh in the patient, so that a mesh of the skin traces the face.
-SURFACE_SEQUENCE = 0x00660002
+SURFACE_SEQUENCE = qc_meshes.SURFACE_SEQUENCE
+# The Surface Points Sequence (0066,0011) of a Surface Sequence item, and
+# the elements of its item that place its points: Point Coordinates Data
+# (0066,0016), and Double Point Coordinates Data (0066,0022), which no
+# sheet draws, in the order that the digest takes them.
+SURFACE_POINTS = (
+    qc_meshes.SURFACE_POINTS_SEQUENCE,
+    (qc_meshes.POINT_COORDINATES_DATA, qc_meshes.DOUBLE_POINT_COORDINATES_DATA),
+)
+# The Surface Mesh Primitives Sequence (0066,0013) of a Surface Sequence
+# item, its items' Vertex, Edge, and Triangle Point Index Lists, Long and
+# retired, its items' Triangle Strip, Triangle Fan, Line, and Facet
+# Sequences, and their items' Primitive Point Index Lists, Long and
+# retired, in the order that the digest takes them.
+SURFACE_PRIMITIVES = (
+    qc_meshes.SURFACE_MESH_PRIMITIVES_SEQUENCE,
+    (*qc_meshes.VERTEX_LISTS, *qc_meshes.EDGE_LISTS, *qc_meshes.TRIANGLE_LISTS),
+    (
+        qc_meshes.TRIANGLE_STRIP_SEQUENCE,
+        qc_meshes.TRIANGLE_FAN_SEQUENCE,
+        qc_meshes.LINE_SEQUENCE,
+        qc_meshes.FACET_SEQUENCE,
+    ),
+    qc_meshes.PRIMITIVE_LISTS,
+)
 # The IOD whose instances hold surface meshes (PS3.3 Section A.57).
 SURFACE_SEGMENTATION = "Surface Segmentation"
 # Source Frame of Reference UID (0064,0003), in each item of the Deformable
@@ -136,6 +166,7 @@ FRAME_OF_REFERENCE = 0x00200052
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _NO_PIXELS = bytes.fromhex(NO_PIXELS_SHA256)
 NO_GRIDS = bytes.fromhex(NO_GRIDS_SHA256)
+NO_SURFACES = bytes.fromhex(NO_SURFACES_SHA256)
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -219,6 +250,11 @@ class FaceReview:
         traces, so bound a Segmentation's. :func:`read_face_review` always
         gives it; None, the default, releases no Segmentation with pixel
         data.
+    absent_surfaces : frozenset of (bytes, bytes), optional
+        Like ``absent_grids``, with the :func:`surface_data_sha256` of that
+        file's surface meshes, where its surfaces sheet showed every one of
+        them, or it has none; empty by default, so that no instance with a
+        mesh satisfies the option.
     """
 
     reference: str
@@ -233,6 +269,7 @@ class FaceReview:
     dose_choices: frozenset[tuple[bytes, DoseChoice, bool]] = frozenset()
     own_verdicts: frozenset[bytes] = frozenset()
     absent_segment_frames: frozenset[tuple[bytes, bytes, int]] | None = None
+    absent_surfaces: frozenset[tuple[bytes, bytes]] = frozenset()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -249,7 +286,12 @@ class FaceReview:
                 isinstance(d, bytes) and len(d) == 32 for d in digests
             ):
                 raise QcPackError("a face review's files are SHA-256 digests")
-        for pairs in (self.absent_pixels, self.absent_contours, self.absent_grids):
+        for pairs in (
+            self.absent_pixels,
+            self.absent_contours,
+            self.absent_grids,
+            self.absent_surfaces,
+        ):
             if not isinstance(pairs, frozenset) or not all(
                 isinstance(pair, tuple)
                 and len(pair) == 2
@@ -258,8 +300,8 @@ class FaceReview:
                 for pair in pairs
             ):
                 raise QcPackError(
-                    "a face review's pixel data, contours, and grids are "
-                    "SHA-256 digests of files marked absent"
+                    "a face review's pixel data, contours, grids, and surfaces "
+                    "are SHA-256 digests of files marked absent"
                 )
         for counts in (
             self.absent_frames,
@@ -337,6 +379,7 @@ class FaceReview:
         dose: bool = False,
         grids: bytes | None = NO_GRIDS,
         segmentation: bool = False,
+        surfaces: bytes | None = NO_SURFACES,
     ) -> VisualFeaturesReason | None:
         """Return why an instance cannot claim the option.
 
@@ -371,16 +414,21 @@ class FaceReview:
             where ``absent_segment_frames`` is not given. An instance that
             is both an RT Dose and a Segmentation, by one's SOP Class UID
             and the other's Modality, is held unless both showed them.
+        surfaces : bytes or None, optional
+            The :func:`surface_data_sha256` of the surface meshes that the
+            run writes of it, or None where that cannot be found; by
+            default, that of none, which needs no sheet.
 
         Returns
         -------
         VisualFeaturesReason or None
             None where the reviewer marked its series absent, and not also a
             series with the same file present, which a pack never holds, and
-            the run writes the pixel data, contours, and deformation grids
-            that the reviewed run wrote of it, and the pack showed every
-            frame of those pixel data, which it records only where its
-            previews draw them all, and every one of those grids.
+            the run writes the pixel data, contours, deformation grids, and
+            surface meshes that the reviewed run wrote of it, and the pack
+            showed every frame of those pixel data, which it records only
+            where its previews draw them all, and every one of those grids
+            and meshes.
         """
         if digest in self.present:
             return VisualFeaturesReason.FACE_PRESENT
@@ -417,6 +465,9 @@ class FaceReview:
         # before grids were shown still covers it.
         if grids != NO_GRIDS and (digest, grids) not in self.absent_grids:
             return VisualFeaturesReason.OTHER_GRIDS
+        # Likewise, a file without a mesh needs no surfaces sheet.
+        if surfaces != NO_SURFACES and (digest, surfaces) not in self.absent_surfaces:
+            return VisualFeaturesReason.OTHER_SURFACES
         return None
 
 
@@ -439,8 +490,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         taken as absent, since its verdict was on the defaced images beside
         it, unless the attestation chose to have that RT Dose written as
         received, when its verdict was on its own dose-levels previews of it
-        so; nor is one whose contours or deformation grids the pack could not show, since its
-        verdict was on none of them. Each RT Dose of the pack's
+        so; nor is one whose contours, deformation grids, or surface meshes
+        the pack could not show, since its verdict was on none of them. Each RT Dose of the pack's
         ``dose_checks`` has the attestation's dose choice, or else the one
         that the pack's run applied, if any. A file of the pack's
         ``undefaced_instances`` is never taken by its series' verdict, but
@@ -508,8 +559,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     # was judged beside defaced images, while its own outlines, pixel data,
     # or grids were left as they were, so a verdict of absent does not cover
     # it, whatever a later run defaces. One whose contours no contour sheet
-    # showed, or whose grids its grid sheets did not all show, was judged
-    # without them.
+    # showed, whose grids its grid sheets did not all show, or whose meshes
+    # no surfaces sheet showed, was judged without them.
     absent = {each for each in by_face[Face.ABSENT] if not each[3]}
     # Such a file, in a defaced frame and not cleaned of the face, is judged
     # by its own verdict instead, from its own previews, which showed all of
@@ -537,15 +588,17 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         ),
         frozenset(
             (source, pixels, shown)
-            for source, pixels, _, _, shown, _, _, _ in absent
+            for source, pixels, _, _, shown, _, _, _, _ in absent
             if pixels is not None and shown is not None
         ),
         frozenset(
             (source, pixels, shown)
-            for source, pixels, _, _, _, shown, _, _ in absent
+            for source, pixels, _, _, _, shown, _, _, _ in absent
             if pixels is not None and shown is not None
         ),
-        frozenset((source, grids) for source, *_, grids in absent if grids is not None),
+        frozenset(
+            (source, grids) for source, *_, grids, _ in absent if grids is not None
+        ),
         confirmed_blocks=frozenset(
             bytes.fromhex(checks[first].block_sha256)
             for first in attestation.confirmed_blocks
@@ -554,8 +607,13 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         own_verdicts=frozenset(by_position[position][0] for position in own),
         absent_segment_frames=frozenset(
             (source, pixels, shown)
-            for source, pixels, _, _, _, _, shown, _ in absent
+            for source, pixels, _, _, _, _, shown, _, _ in absent
             if pixels is not None and shown is not None
+        ),
+        absent_surfaces=frozenset(
+            (source, surfaces)
+            for source, *_, surfaces in absent
+            if surfaces is not None
         ),
     )
 
@@ -591,11 +649,11 @@ def _dose_choices(
 # of it, if any, whether a verdict of absent on its series leaves it out:
 # where the run held it beside a CT series that it defaced, as received, or
 # released it on a verdict of its own, or the pack could not show its
-# contours or its deformation grids; how many frames of pixel
-# data other than none its previews showed, from the first, where it has
-# their digest, how many its dose-levels previews showed, and how many its
-# segments sheet showed, where each shows any so; and the SHA-256 of the
-# deformation grids written of it, if any.
+# contours, its deformation grids, or its surface meshes; how many frames
+# of pixel data other than none its previews showed, from the first, where
+# it has their digest, how many its dose-levels previews showed, and how
+# many its segments sheet showed, where each shows any so; and the SHA-256
+# of the deformation grids and of the surface meshes written of it, if any.
 _File = tuple[
     bytes,
     bytes | None,
@@ -604,6 +662,7 @@ _File = tuple[
     int | None,
     int | None,
     int | None,
+    bytes | None,
     bytes | None,
 ]
 # Those holds' reasons as the QC pack words them, which run_qc.reason_text
@@ -637,6 +696,7 @@ def _series_files(
         raise malformed
     shown, unshown, pictured, dosed, segmented = _previews(document)
     gridded = _gridded(document)
+    surfaced = _surfaced(document)
     digests: dict[int, _File] = {}
     for instance in instances:
         if not isinstance(instance, dict):
@@ -645,13 +705,14 @@ def _series_files(
         pixels = instance.get("pixel_sha256")
         contours = instance.get("contour_sha256")
         grids = instance.get("grid_sha256")
+        surfaces = instance.get("surface_sha256")
         reasons = instance.get("reasons")
         if isinstance(position, int) and isinstance(digest, str):
             if (
                 not _SHA256.fullmatch(digest)
                 or not all(
                     each is None or (isinstance(each, str) and _SHA256.fullmatch(each))
-                    for each in (pixels, contours, grids)
+                    for each in (pixels, contours, grids, surfaces)
                 )
                 or not isinstance(reasons, list)
             ):
@@ -662,6 +723,10 @@ def _series_files(
                 raise malformed
             # Likewise, grids' only to grids that every grid sheet showed.
             if grids not in (None, NO_GRIDS_SHA256) and position not in gridded:
+                raise malformed
+            # Likewise, surface meshes' only to meshes that a surfaces sheet
+            # showed.
+            if surfaces not in (None, NO_SURFACES_SHA256) and position not in surfaced:
                 raise malformed
             # Likewise, pixel data's binds it only to the frames previewed.
             frames = dose_frames = segment_frames = None
@@ -683,6 +748,7 @@ def _series_files(
                 dose_frames,
                 segment_frames,
                 None if grids is None else bytes.fromhex(grids),
+                None if surfaces is None else bytes.fromhex(surfaces),
             )
     files: dict[int, frozenset[_File]] = {}
     for entry in series:
@@ -744,12 +810,14 @@ def _previews(
     return shown, unshown, pictured, dosed, segmented
 
 
-# The reasons for which a pack lists a file whose contours or deformation
-# grids it does not show, so that a verdict is not of them.
+# The reasons for which a pack lists a file whose contours, deformation
+# grids, or surface meshes it does not show, so that a verdict is not of
+# them.
 _UNSHOWN = frozenset(
     {
         NotPreviewedReason.CONTOURS_NOT_SHOWN.value,
         NotPreviewedReason.GRIDS_NOT_SHOWN.value,
+        NotPreviewedReason.SURFACES_NOT_SHOWN.value,
     }
 )
 
@@ -778,6 +846,30 @@ def _gridded(document: dict) -> set[int]:
             continue
         if all(by_kind.get(kind) == set(range(total)) for kind in kinds):
             whole.add(position)
+    return whole
+
+
+def _surfaced(document: dict) -> set[int]:
+    """The run positions each of whose surface meshes a pack's surfaces
+    sheet shows, its one sheet listing each of them, as
+    :class:`~.qc_pack.QcPack` checks it.
+
+    The pack's previews have been checked to be of their format by
+    :func:`_previews`.
+    """
+    whole = set()
+    for preview in document["previews"]:
+        if preview.get("kind") != PreviewKind.SURFACE_MESHES.value:
+            continue
+        frames = preview["frames"]
+        total = preview.get("total_frames")
+        if not frames or not isinstance(total, int) or isinstance(total, bool):
+            continue
+        positions = {frame["position"] for frame in frames}
+        if len(positions) != 1:
+            continue
+        if sorted(frame["frame"] for frame in frames) == list(range(total)):
+            whole |= positions
     return whole
 
 
@@ -810,6 +902,19 @@ def grid_data_sha256(dataset: pydicom.Dataset) -> bytes:
         DEFORMABLE_REGISTRATION_SEQUENCE,
         DEFORMABLE_REGISTRATION_GRID_SEQUENCE,
         GRID_TAGS,
+    )
+
+
+def surface_data_sha256(dataset: pydicom.Dataset) -> bytes:
+    """Return the SHA-256 of a data set's surface meshes.
+
+    The byte layout, the elements taken, and ValueError conditions are
+    described by :func:`~.face_review_digests.surface_data_sha256`, which is
+    given every element of a mesh that a surfaces sheet draws
+    (:mod:`~pymedphys._dicom.deidentify.qc_meshes`) or refuses for.
+    """
+    return face_review_digests.surface_data_sha256(
+        dataset, SURFACE_SEQUENCE, SURFACE_POINTS, SURFACE_PRIMITIVES
     )
 
 
@@ -943,8 +1048,9 @@ def holds_surface_mesh(dataset: pydicom.Dataset) -> bool:
     Segmentation does (PS3.3 Section C.27.1), whatever its items: their
     Point Coordinates Data (0066,0016) place each point of a mesh in the
     patient, so a mesh of the skin or of the body traces the face, whatever
-    its segment's label or code says. No preview of the QC pack draws a
-    mesh, so no verdict is of one.
+    its segment's label or code says, and a verdict covers it only where
+    the QC pack's surfaces sheet showed every mesh
+    (:mod:`~pymedphys._dicom.deidentify.qc_meshes`).
     """
     return SURFACE_SEQUENCE in dataset
 
