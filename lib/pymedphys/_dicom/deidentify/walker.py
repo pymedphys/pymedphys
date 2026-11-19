@@ -185,6 +185,7 @@ from .compound_actions import (
     resolve_plain_in_iod,
     resolve_plain_x_in_iod,
 )
+from .encapsulated_documents import ENCAPSULATED_DOCUMENT, releases_document
 from .dummy_values import DUMMY_VRS, ICC_PROFILE, KEPT_ITEM_ATTRIBUTES, reviewed_within
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
@@ -643,7 +644,18 @@ def _plan(
                     path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
                 )
             )
-        elif action == "D" and not _has_dummy(path, vr, container, action):
+        elif (
+            action == "D"
+            and not _has_dummy(path, vr, container, action)
+            and not (
+                path == ENCAPSULATED_DOCUMENT
+                and vr == "OB"
+                and releases_document(rules.policy.options, iod.name)
+            )
+        ):
+            # Under Clean Pixel Data, an Encapsulated PDF's document takes
+            # its reviewed rendering for D, which the edit leaves to come
+            # (D-061).
             sequestrations.append(
                 Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
             )

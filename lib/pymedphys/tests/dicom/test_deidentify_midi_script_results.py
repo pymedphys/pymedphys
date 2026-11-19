@@ -1,0 +1,356 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Tests of the answer key that the NCI validation script is given (D-018).
+
+The answer keys and mapping files are made by hand, with synthetic UIDs, in
+the layouts that the script and the harness use.
+"""
+
+import json
+import sqlite3
+
+from pymedphys._imports import pydicom, pytest
+
+from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
+from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.uids import replacement_uid
+
+from . import _synthetic_references as synthetic
+
+RELEASED = "2.25.101"
+WITHHELD = "2.25.102"
+WRAPPED = "2.25.103"
+REPLACEMENTS = {RELEASED: "2.25.901", WITHHELD: "2.25.902", WRAPPED: "2.25.903"}
+
+
+def _answer_key(path, sop_instance_uids):
+    connection = sqlite3.connect(path)
+    with connection:
+        connection.execute(
+            "CREATE TABLE answer_data "
+            "(id INTEGER PRIMARY KEY, SOPInstanceUID TEXT, AnswerData TEXT)"
+        )
+        connection.execute("CREATE TABLE other (value TEXT)")
+        connection.execute("INSERT INTO other VALUES ('SYNTHETIC OTHER')")
+        for uid in sop_instance_uids:
+            connection.execute(
+                "INSERT INTO answer_data (SOPInstanceUID, AnswerData) VALUES (?, ?)",
+                [uid, json.dumps({"uid": uid})],
+            )
+    connection.close()
+    return path
+
+
+def _mapping(path):
+    path.write_text(
+        "id_old,id_new\n"
+        + "".join(f"{old},{new}\n" for old, new in REPLACEMENTS.items()),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _written(uid):
+    """Return a file that holds the SOP Instance UID ``uid``."""
+    return synthetic.written(
+        synthetic.instance(synthetic.CT_IMAGE_STORAGE, uid, synthetic.CT_SERIES)
+    )
+
+
+def _release(directory, *old_uids):
+    directory.mkdir()
+    for uid in old_uids:
+        (directory / f"{REPLACEMENTS[uid]}.dcm").write_bytes(
+            _written(REPLACEMENTS[uid])
+        )
+    return directory
+
+
+def _rows(path):
+    connection = sqlite3.connect(path)
+    try:
+        return connection.execute(
+            "SELECT id, SOPInstanceUID, AnswerData FROM answer_data ORDER BY id"
+        ).fetchall()
+    finally:
+        connection.close()
+
+
+def test_the_released_answer_key_keeps_only_the_released_instances_rows(tmp_path):
+    key = _answer_key(tmp_path / "key.db", [RELEASED, WITHHELD, RELEASED])
+    out = tmp_path / "released.db"
+
+    counts = midi_script_results.write_released_answer_key(
+        key,
+        _release(tmp_path / "release", RELEASED),
+        _mapping(tmp_path / "uids.csv"),
+        out,
+    )
+
+    assert counts == {"released_instances": 1, "answer_key_instances": 1, "rows": 2}
+    assert _rows(out) == [
+        (1, RELEASED, json.dumps({"uid": RELEASED})),
+        (3, RELEASED, json.dumps({"uid": RELEASED})),
+    ]
+    connection = sqlite3.connect(out)
+    try:
+        tables = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()
+    finally:
+        connection.close()
+    assert tables == [("answer_data",)]
+
+
+def test_the_released_answer_key_matches_a_wrapped_uid(tmp_path):
+    key = _answer_key(tmp_path / "key.db", [f"<{WRAPPED}>", WITHHELD])
+    out = tmp_path / "released.db"
+
+    counts = midi_script_results.write_released_answer_key(
+        key,
+        _release(tmp_path / "release", WRAPPED),
+        _mapping(tmp_path / "uids.csv"),
+        out,
+    )
+
+    assert counts["rows"] == 1
+    assert [row[1] for row in _rows(out)] == [f"<{WRAPPED}>"]
+
+
+def test_a_part_of_the_release_may_link_to_its_files(tmp_path):
+    # The workflow scores the release in parts, each a tree of links.
+    release = _release(tmp_path / "release", RELEASED, WITHHELD)
+    part = tmp_path / "part" / "nested"
+    part.mkdir(parents=True)
+    linked = f"{REPLACEMENTS[RELEASED]}.dcm"
+    (part / linked).symlink_to(release / linked)
+    out = tmp_path / "released.db"
+
+    counts = midi_script_results.write_released_answer_key(
+        _answer_key(tmp_path / "key.db", [RELEASED, WITHHELD]),
+        tmp_path / "part",
+        _mapping(tmp_path / "uids.csv"),
+        out,
+    )
+
+    assert counts == {"released_instances": 1, "answer_key_instances": 1, "rows": 1}
+    assert [row[1] for row in _rows(out)] == [RELEASED]
+
+
+def test_a_file_is_looked_up_by_the_uid_it_holds_not_its_name(tmp_path):
+    # Under Retain UIDs, a file holds its source's UID, which the mapping
+    # maps to itself, but is named by the UID's keyed replacement.
+    release = tmp_path / "release"
+    release.mkdir()
+    (release / "2.25.999.dcm").write_bytes(_written(RELEASED))
+    mapping = tmp_path / "uids.csv"
+    mapping.write_text(f"id_old,id_new\n{RELEASED},{RELEASED}\n", encoding="utf-8")
+    out = tmp_path / "released.db"
+
+    counts = midi_script_results.write_released_answer_key(
+        _answer_key(tmp_path / "key.db", [RELEASED, WITHHELD]), release, mapping, out
+    )
+
+    assert counts == {"released_instances": 1, "answer_key_instances": 1, "rows": 1}
+    assert [row[1] for row in _rows(out)] == [RELEASED]
+
+
+def test_a_file_whose_uid_cannot_be_read_is_refused(tmp_path):
+    release = _release(tmp_path / "release", RELEASED)
+    (release / "2.25.998.dcm").write_bytes(b"SYNTHETIC NOT DICOM")
+
+    with pytest.raises(
+        midi_script_results.ScriptResultsError, match="could not be read"
+    ):
+        midi_script_results.write_released_answer_key(
+            _answer_key(tmp_path / "key.db", [RELEASED]),
+            release,
+            _mapping(tmp_path / "uids.csv"),
+            tmp_path / "released.db",
+        )
+    assert not (tmp_path / "released.db").exists()
+
+
+def test_an_output_without_a_mapped_input_is_refused(tmp_path):
+    release = _release(tmp_path / "release", RELEASED)
+    (release / "2.25.999.dcm").write_bytes(_written("2.25.999"))
+
+    with pytest.raises(midi_script_results.ScriptResultsError, match="UID mapping"):
+        midi_script_results.write_released_answer_key(
+            _answer_key(tmp_path / "key.db", [RELEASED]),
+            release,
+            _mapping(tmp_path / "uids.csv"),
+            tmp_path / "released.db",
+        )
+    assert not (tmp_path / "released.db").exists()
+
+
+def test_an_existing_destination_is_refused(tmp_path):
+    out = tmp_path / "released.db"
+    out.write_bytes(b"")
+
+    with pytest.raises(midi_script_results.ScriptResultsError, match="must not exist"):
+        midi_script_results.write_released_answer_key(
+            _answer_key(tmp_path / "key.db", [RELEASED]),
+            _release(tmp_path / "release", RELEASED),
+            _mapping(tmp_path / "uids.csv"),
+            out,
+        )
+    assert out.read_bytes() == b""
+
+
+def test_an_answer_key_without_its_table_is_refused(tmp_path):
+    key = tmp_path / "key.db"
+    connection = sqlite3.connect(key)
+    with connection:
+        connection.execute("CREATE TABLE other (value TEXT)")
+    connection.close()
+
+    with pytest.raises(midi_script_results.ScriptResultsError, match="answer_data"):
+        midi_script_results.write_released_answer_key(
+            key,
+            _release(tmp_path / "release", RELEASED),
+            _mapping(tmp_path / "uids.csv"),
+            tmp_path / "released.db",
+        )
+    assert not (tmp_path / "released.db").exists()
+
+
+def test_the_command_writes_the_released_answer_key(tmp_path, capsys):
+    out = tmp_path / "released.db"
+
+    assert (
+        midi_benchmark_command.main(
+            [
+                "released-answer-key",
+                str(_answer_key(tmp_path / "key.db", [RELEASED, WITHHELD])),
+                "--release",
+                str(_release(tmp_path / "release", RELEASED)),
+                "--uid-mapping",
+                str(_mapping(tmp_path / "uids.csv")),
+                "--out",
+                str(out),
+            ]
+        )
+        == 0
+    )
+
+    assert json.loads(capsys.readouterr().out) == {
+        "released_instances": 1,
+        "answer_key_instances": 1,
+        "rows": 1,
+    }
+    assert [row[1] for row in _rows(out)] == [RELEASED]
+
+
+KEY = DeidKey(bytes(32))
+FRAME = "2.25.801"
+REFERENCED = "2.25.802"
+DUMMY_SOURCE = "2.25.803"
+REMOVED = "2.25.804"
+CREATOR = "2.25.805"
+
+
+def _replaced(uid):
+    return replacement_uid(KEY, uid)
+
+
+def _source_and_written():
+    """A source and a written file that holds, for each of its UIDs, the
+    replacement, the UID itself, a dummy value, or nothing."""
+    source = synthetic.instance(
+        synthetic.CT_IMAGE_STORAGE,
+        synthetic.CT_SLICES[0],
+        synthetic.CT_SERIES,
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, REFERENCED),
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, DUMMY_SOURCE),
+        ],
+    )
+    synthetic.uid(source, "FrameOfReferenceUID", f"{FRAME}\x00")
+    synthetic.uid(source, "InstanceCreatorUID", CREATOR)
+    synthetic.uid(source, "StorageMediaFileSetUID", REMOVED)
+    written = synthetic.instance(
+        synthetic.CT_IMAGE_STORAGE,
+        _replaced(synthetic.CT_SLICES[0]),
+        _replaced(synthetic.CT_SERIES),
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, _replaced(REFERENCED)),
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, "2.25.999"),
+        ],
+    )
+    written.StudyInstanceUID = _replaced(synthetic.STUDY)
+    written.FrameOfReferenceUID = _replaced(FRAME)
+    written.InstanceCreatorUID = CREATOR
+    return source, written
+
+
+def test_each_uid_maps_to_the_replacement_or_the_uid_that_the_file_holds():
+    source, written = _source_and_written()
+
+    mapped = midi_script_results.uid_replacements(source, written, KEY)
+
+    assert mapped == {
+        synthetic.CT_IMAGE_STORAGE: synthetic.CT_IMAGE_STORAGE,
+        synthetic.CT_SLICES[0]: _replaced(synthetic.CT_SLICES[0]),
+        synthetic.STUDY: _replaced(synthetic.STUDY),
+        synthetic.CT_SERIES: _replaced(synthetic.CT_SERIES),
+        # Within a sequence item, and without its padding.
+        REFERENCED: _replaced(REFERENCED),
+        FRAME: _replaced(FRAME),
+        # Kept unchanged.
+        CREATOR: CREATOR,
+    }
+    # A dummy value is no replacement, and a removed UID is not mapped.
+    assert DUMMY_SOURCE not in mapped and REMOVED not in mapped
+
+
+def test_a_uid_kept_in_one_place_and_replaced_in_another_maps_to_its_replacement():
+    source = pydicom.Dataset()
+    source.FrameOfReferenceUID = FRAME
+    source.SynchronizationFrameOfReferenceUID = FRAME
+    written = pydicom.Dataset()
+    written.FrameOfReferenceUID = _replaced(FRAME)
+    written.SynchronizationFrameOfReferenceUID = FRAME
+
+    assert midi_script_results.uid_replacements(source, written, KEY) == {
+        FRAME: _replaced(FRAME)
+    }
+
+
+def test_each_value_of_a_multi_valued_uid_is_mapped_and_an_empty_one_is_not():
+    source = pydicom.Dataset()
+    source.InstanceCreatorUID = None
+    source.FailedSOPInstanceUIDList = [FRAME, REFERENCED]
+    written = pydicom.Dataset()
+    written.InstanceCreatorUID = None
+    written.FailedSOPInstanceUIDList = [_replaced(FRAME), _replaced(REFERENCED)]
+
+    assert midi_script_results.uid_replacements(source, written, KEY) == {
+        FRAME: _replaced(FRAME),
+        REFERENCED: _replaced(REFERENCED),
+    }
+
+
+def test_the_uids_of_an_implicit_vr_file_are_read_by_the_dictionary():
+    source, written = _source_and_written()
+    implicit = synthetic.read(
+        synthetic.written(source, synthetic.IMPLICIT_VR_LITTLE_ENDIAN)
+    )
+    assert implicit.get_item(0x00200052).VR is None
+
+    assert midi_script_results.uid_replacements(
+        implicit, written, KEY
+    ) == midi_script_results.uid_replacements(source, written, KEY)

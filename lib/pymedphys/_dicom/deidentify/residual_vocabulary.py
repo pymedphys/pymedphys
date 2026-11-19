@@ -59,14 +59,17 @@ only where all of these hold:
   place, an organisation, or a device. None of them is descriptive, so this
   repeats the test above for a descriptive attribute nested in such an item.
 
-Whatever removed text is found inside a meaning made only of technique and
-anatomy words is itself such words, so the finding reveals nothing that the
-kept meaning does not. A private copy reveals nothing that its descriptive
-original, already exempt, does not: its text is the same text. A meaning
-with any other word stays under review, as does any other kept element. The vocabulary is always the one that PyMedPhys
-ships, never one that a run gives Clean Descriptors, so the exemption is the
-same in every run, and the method digest covers it through the engine's
-files under every policy (D-024).
+What the rule checks is the complete kept meaning, not the removed text
+found in it: that text can be just a substring of the meaning, and need not
+itself pass the word rules, as ``MARY`` found in ``CT PRIMARY`` does not.
+The meaning passes them and the echo check, and the profile keeps it anyway,
+so the finding reveals nothing that the kept meaning does not. A private
+copy reveals nothing that its descriptive original, already exempt, does
+not: its text is the same text. A meaning with any other word stays under
+review, as does any other kept element. The vocabulary is always the one
+that PyMedPhys ships, never one that a run gives Clean Descriptors, so the
+exemption is the same in every run, and the method digest covers it through
+the engine's files under every policy (D-024).
 
 Only a text finding is read: a person name, UID, date, datetime, or direct
 identifier found anywhere still withholds the file. No value is reported.
