@@ -101,6 +101,11 @@ def _counts(**counts):
         (lambda dataset: add_overlay(dataset, 0x601E), "overlay_data"),
         (add_overlay_in_pixel_data, "overlay_in_pixel_data"),
         (add_graphic_annotation, "graphic_annotation_sequence"),
+        # Presence is counted, not content, so an empty sequence counts too.
+        (
+            lambda dataset: setattr(dataset, "GraphicAnnotationSequence", []),
+            "graphic_annotation_sequence",
+        ),
     ],
 )
 def test_each_graphic_is_found(add, found):
@@ -166,7 +171,8 @@ def test_each_instance_and_written_file_is_counted_by_sop_class():
     counts = _counted(
         (_ct(add_overlay), _written(_ct())),
         (_ct(add_curve, add_graphic_annotation), _written(_ct(add_curve))),
-        # An instance with graphics that the transform sequestered.
+        # An instance with graphics that the transform sequestered, which is
+        # not written, so it cannot show the option removing them.
         (_ct(add_overlay_in_pixel_data), Sequestered(())),
         # An instance without, written.
         (_ct(), _written(_ct())),
@@ -183,9 +189,12 @@ def test_each_instance_and_written_file_is_counted_by_sop_class():
             graphic_annotation_sequence=1,
             overlay_in_pixel_data=1,
             written=3,
-            written_with_graphics=1,
+            written_with_graphics_before=2,
+            written_with_graphics_after=1,
         ),
-        "RT Dose Storage": _counts(instances=1, written=1, written_with_graphics=1),
+        "RT Dose Storage": _counts(
+            instances=1, written=1, written_with_graphics_after=1
+        ),
     }
     assert list(counts) == ["CT Image Storage", "RT Dose Storage"]
     assert all(list(each) == list(graphics.COUNTED) for each in counts.values())

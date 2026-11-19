@@ -31,9 +31,15 @@ receives, as the standard names it, the instances that hold each of the
 four rows, and an overlay group without Overlay Data, as the engine finds
 one (:func:`~pymedphys._dicom.deidentify.pixel_risk.overlay_groups_without_data`);
 and, of the instances that the transform writes, whether or not the run
-then releases them, those whose written file still holds any of them. It
-reads which attributes are present at the top level of each data set, where
-the IODs define them, and no value of the instance.
+then releases them, those whose source held any of them, and those whose
+written file still holds any of them. An instance that holds any of them
+and that the transform sequesters is not written, so only the written
+instances whose source held any show the option removing them. It reads
+which attributes are present at the top level of each data set, where the
+IODs define them, and no value of the instance: an empty Graphic Annotation
+Sequence counts as one, and an overlay that lies in Pixel Data is found by
+its group's attributes, not by its bits, which the engine's own check of
+the written file verifies (D-041).
 """
 
 from __future__ import annotations
@@ -65,7 +71,8 @@ COUNTED = (
     "instances_with_graphics",
     *GRAPHICS,
     "written",
-    "written_with_graphics",
+    "written_with_graphics_before",
+    "written_with_graphics_after",
 )
 
 _CURVE_GROUPS = 0x5000
@@ -140,9 +147,13 @@ class GraphicsCounter:
         """Return ``transform``, counting the graphics of each instance that
         it receives, and of each file that it writes.
 
-        An instance whose file cannot be read is counted under
-        ``unreadable``, with no graphics. A written file that cannot be read
-        counts as one that holds graphics, since it cannot be shown not to.
+        Each written instance is counted under ``written``, under
+        ``written_with_graphics_before`` where its source held any graphics,
+        and under ``written_with_graphics_after`` where its written file
+        still holds any. An instance whose file cannot be read is counted
+        under ``unreadable``, with no graphics. A written file that cannot be
+        read counts as one that holds graphics, since it cannot be shown not
+        to.
         A transform's ``prepare`` method, which the run calls before any
         instance, is kept, as
         :meth:`~pymedphys._dicom.deidentify.midi_benchmark_errors.ErrorRecorder.transform`
@@ -161,7 +172,12 @@ class GraphicsCounter:
                 written = _read(result.data)
                 kept = written is None or bool(written[1])
                 self._count(
-                    sop_class, ["written", *(["written_with_graphics"] if kept else [])]
+                    sop_class,
+                    [
+                        "written",
+                        *(["written_with_graphics_before"] if found else []),
+                        *(["written_with_graphics_after"] if kept else []),
+                    ],
                 )
             return result
 

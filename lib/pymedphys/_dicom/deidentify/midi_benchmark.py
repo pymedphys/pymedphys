@@ -105,8 +105,9 @@ Under Clean Pixel Data, the pinned text detector
 the text, and every instance that the option cleans is held for review,
 since no reviewer attests a benchmark's regions. Under Clean Graphics, which
 gives each of its rows its Basic Profile action (D-041), the results count,
-by SOP Class, the instances that hold what the option removes, and the
-written files that still hold any of it
+by SOP Class, the instances that hold what the option removes, and, of the
+instances written, those whose source held any of it and those whose
+written file still holds any of it
 (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_graphics`), since the
 release alone cannot show whether the data set holds any. Under Clean
 Recognizable Visual Features, as under ``public-release``, a run is given a
@@ -895,7 +896,8 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     Data, what the text detector found, by SOP Class
     (:meth:`~pymedphys._dicom.deidentify.midi_benchmark_text.TextCounter.counts`);
     and ``graphics``, under Clean Graphics, the instances that hold what the
-    option removes, by SOP Class, and the written files that still hold it
+    option removes, by SOP Class, and, of the instances written, those whose
+    source held it and those whose written file still holds it
     (:meth:`~pymedphys._dicom.deidentify.midi_benchmark_graphics.GraphicsCounter.counts`).
 
     In a ``shard`` of a run, the checks of the instances in ``outside``,

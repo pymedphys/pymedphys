@@ -498,7 +498,8 @@ _GRAPHICS_HEADINGS = (
     "Graphic Annotation Sequence",
     "Overlay in Pixel Data",
     "Written",
-    "Written with graphics",
+    "Written, with graphics before",
+    "Written, with graphics after",
 )
 
 
@@ -520,8 +521,11 @@ def _graphics(counts: Mapping[str, object]) -> list[str]:
         "Table E.1-1 (Curve Data, Overlay Data, Overlay Comments, and Graphic "
         "Annotation Sequence) or an overlay group without Overlay Data, whose "
         "overlay may lie in Pixel Data, and those that hold each; and the "
-        "instances whose file the transform wrote, and those whose written file "
-        "still holds any of them:",
+        "instances whose file the transform wrote, whether or not the run "
+        "released it, those of them whose source held any of them, and those "
+        "whose written file still holds any of them. Each is counted by which "
+        "attributes are present, not by their values, and an instance with "
+        "graphics that the transform sequestered is not written:",
         "",
         *_rows_or_none(("SOP Class", *_GRAPHICS_HEADINGS), rows),
         "",

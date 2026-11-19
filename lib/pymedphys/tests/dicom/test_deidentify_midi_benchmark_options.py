@@ -511,16 +511,17 @@ def test_clean_graphics_counts_what_it_removes(sources):
         "graphic_annotation_sequence": 1,
         "overlay_in_pixel_data": 0,
         "written": 3,
-        "written_with_graphics": 0,
+        "written_with_graphics_before": 3,
+        "written_with_graphics_after": 0,
     }
     assert all(
-        each["instances_with_graphics"] == each["written_with_graphics"] == 0
+        each["instances_with_graphics"] == each["written_with_graphics_after"] == 0
         for name, each in counts.items()
         if name != "CT Image Storage"
     )
     assert list(counts) == sorted(counts)
     markdown = (work / "benchmark.md").read_text()
-    assert "| CT Image Storage | 3 | 3 | 1 | 1 | 1 | 1 | 0 | 3 | 0 |" in markdown
+    assert "| CT Image Storage | 3 | 3 | 1 | 1 | 1 | 1 | 0 | 3 | 3 | 0 |" in markdown
     assert "| All | " in markdown
 
 
