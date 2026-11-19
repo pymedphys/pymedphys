@@ -209,6 +209,17 @@ from .reasons import (
     VisualFeaturesReason,
 )
 from .pixel_region_rules import PixelRegionRules
+from .document_cleaning import (
+    DocumentRedaction,
+    clean_document,
+    document_problem,
+    holds_document,
+)
+from .encapsulated_documents import (
+    ENCAPSULATED_DOCUMENT,
+    ENCAPSULATED_DOCUMENT_LENGTH,
+    releases_document,
+)
 from .redaction_review import RedactionReview, Regions
 from .residual_review import ResidualReview
 from .readiness import ReadinessReview
@@ -559,6 +570,7 @@ def coverage_of(
     retained: frozenset[ElementPath] = frozenset(),
     options: tuple[str, ...] = (),
     safe_private_list: SafePrivateList | None = None,
+    digest: str | None = None,
 ) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
@@ -579,7 +591,9 @@ def coverage_of(
     replace, keep, or leave to come is not (D-042).
     ``safe_private_list``, the list that the run chose under the Retain Safe
     Private Option, says which kept private creators can explain a finding
-    in them (D-042).
+    in them (D-042). ``digest``, the method digest that the run's markers
+    write into De-identification Method (0012,0063), explains a finding that
+    lies wholly inside it (D-032).
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     planned = frozenset(
@@ -616,6 +630,7 @@ def coverage_of(
         options=options,
         removed=frozenset(value for value in collected if value.source in removing),
         safe_private_list=safe_private_list,
+        method_digest=digest,
     )
 
 
@@ -1700,6 +1715,53 @@ class InstanceTransform:
             return None
         return self._face_blocks.get(record.series)
 
+    def _document(
+        self, data: bytes, source: SourceEvidence, iod: IOD
+    ) -> tuple[DocumentRedaction | None, bool]:
+        """Return an Encapsulated PDF's document rendered and cleaned under
+        Clean Pixel Data, and whether a reviewer approved its regions.
+
+        None where the policy does not release a document, or the instance
+        holds none. As for Pixel Data (:meth:`_black_out`), the regions are
+        those that the redaction review approved for the source file, on
+        pages that render to the SHA-256 that it records, and otherwise the
+        finder's, when the instance is held again (D-061).
+
+        Raises
+        ------
+        _Refused
+            With :attr:`~.reasons.TransformReason.REDACTION_REJECTED` where
+            the review rejected the source file, or the reason of
+            :class:`~.pixel_cleaning.PixelDataRefused`.
+        """
+        if (
+            self._finder is None
+            or not releases_document(self._policy.options, iod.name)
+            or not holds_document(source)
+        ):
+            return None, False
+        approved = decoded = None
+        if self._redaction_review is not None:
+            digest = hashlib.sha256(data).digest()
+            if digest in self._redaction_review.rejected:
+                raise _Refused(TransformReason.REDACTION_REJECTED)
+            approved = self._redaction_review.approved.get(digest)
+            decoded = self._redaction_review.decoded.get(digest)
+        try:
+            if approved is not None:
+                try:
+                    return (
+                        clean_document(
+                            source, None, reviewed=approved, decoded_sha256=decoded
+                        ),
+                        True,
+                    )
+                except PixelsNotReviewed:
+                    pass
+            return clean_document(source, self._finder), False
+        except PixelDataRefused as refused:
+            raise _Refused(refused.reason) from None
+
     def _black_out(
         self,
         data: bytes,
@@ -2009,7 +2071,12 @@ class InstanceTransform:
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
         evidence: Coverage | HeldEvidence = coverage_of(
-            plan, edits, kept_uids, self._options, self._safe_private_list
+            plan,
+            edits,
+            kept_uids,
+            self._options,
+            self._safe_private_list,
+            self.method_digest,
         )
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
@@ -2027,7 +2094,12 @@ class InstanceTransform:
             withheld = kept_uids | self._kept_descriptors(plan, edits)
             if withheld != kept_uids:
                 evidence = coverage_of(
-                    plan, edits, withheld, self._options, self._safe_private_list
+                    plan,
+                    edits,
+                    withheld,
+                    self._options,
+                    self._safe_private_list,
+                    self.method_digest,
                 )
             return Sequestered(
                 reasons,
@@ -2045,7 +2117,12 @@ class InstanceTransform:
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
             evidence = coverage_of(
-                plan, edits, retained, self._options, self._safe_private_list
+                plan,
+                edits,
+                retained,
+                self._options,
+                self._safe_private_list,
+                self.method_digest,
             )
         names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
@@ -2083,7 +2160,12 @@ class InstanceTransform:
                 withheld = retained | self._kept_descriptors(plan, edits)
                 if withheld != retained:
                     evidence = coverage_of(
-                        plan, edits, withheld, self._options, self._safe_private_list
+                        plan,
+                        edits,
+                        withheld,
+                        self._options,
+                        self._safe_private_list,
+                        self.method_digest,
                     )
                 return Sequestered(
                     (refused.reason,),
@@ -2094,7 +2176,12 @@ class InstanceTransform:
             retained |= cleaned.retained
             names = cleaned.qc
             evidence = coverage_of(
-                plan, edits, retained, self._options, self._safe_private_list
+                plan,
+                edits,
+                retained,
+                self._options,
+                self._safe_private_list,
+                self.method_digest,
             )
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
@@ -2126,6 +2213,11 @@ class InstanceTransform:
                 overlays=overlays or 0,
                 zero_beyond=chosen_dose is DoseChoice.SET_TO_ZERO,
             )
+            # Under Clean Pixel Data, an Encapsulated PDF's document is
+            # written as its pages rendered and cleaned (D-061).
+            document, document_reviewed = self._document(data, source, iod)
+            if document is not None:
+                edits = _with_document(edits, document)
             # An RT Dose with too much dose in its block: held without a
             # choice, written as received on one, or set to zero on the
             # other, and recorded for the QC pack and the release report.
@@ -2170,6 +2262,10 @@ class InstanceTransform:
                     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
             if defacing is not None and defacing.hold is not None:
                 face = HeldVisualFeatures(_HELD_SERIES[defacing.hold])
+            elif document is not None and self._face_review is not None:
+                # A document's pages can show a photograph of a face, and
+                # no face review covers them yet (D-061).
+                face = HeldVisualFeatures(VisualFeaturesReason.DOCUMENT_PAGES)
             else:
                 face = self._face_hold(data, dataset, iod, writing)
             if (
@@ -2233,7 +2329,10 @@ class InstanceTransform:
             # Under Clean Pixel Data, a redaction that no reviewer approved is
             # held for review, whether or not the finder found text; a slice
             # that is only defaced is not.
-            if redaction is not None and self._finder is not None and not reviewed:
+            if document is not None and not document_reviewed:
+                evidence = _held(evidence, HeldPixelData(document.reason))
+                qc = (*qc, _document_material(document, source, _sop_class(dataset)))
+            elif redaction is not None and self._finder is not None and not reviewed:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
                 qc = (
                     *qc,
@@ -2241,7 +2340,7 @@ class InstanceTransform:
                 )
             elif self._finder is not None:
                 # A reviewer approved the regions, or there are no pixel data
-                # to clean.
+                # or document to clean.
                 chosen.add(CLEAN_PIXEL_DATA)
             writing = with_markers(
                 writing, source, dataset, self._markers[frozenset(chosen)]
@@ -2252,7 +2351,9 @@ class InstanceTransform:
                     evidence, self._residual_review.of(hashlib.sha256(data).digest())
                 )
             return Transformed(
-                *_written(source, writing, iod, identifiers, redaction), evidence, qc
+                *_written(source, writing, iod, identifiers, redaction, document),
+                evidence,
+                qc,
             )
         except _Refused as refused:
             reasons = tuple(
@@ -2376,12 +2477,16 @@ def _written(
     iod: IOD,
     identifiers: _Identifiers,
     redaction: Redaction | None = None,
+    document: DocumentRedaction | None = None,
 ) -> tuple[PurePosixPath, bytes]:
     """Return the output's path and bytes, verified against the source and IOD.
 
     Pixel Data that the plan replaces must decode to the source's pixels, or,
     where Clean Pixel Data blacked out ``redaction``'s regions, differ from
-    the source's only as that redaction planned.
+    the source's only as that redaction planned. An Encapsulated Document is
+    written only as ``document``'s image-only PDF, which must read back as
+    its pages (:func:`~.document_cleaning.document_problem`): one that the
+    plan keeps, or replaces otherwise, refuses the instance.
     """
     path = _output_path(identifiers.names)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
@@ -2426,6 +2531,13 @@ def _written(
             raise _Refused(TransformReason.REDACTION_MISMATCH)
     elif _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
         raise _Refused(TransformReason.CUT_CHANGED_PIXELS)
+    # A document is never written as received, nor otherwise than as its
+    # reviewed rendering (D-061).
+    if ENCAPSULATED_DOCUMENT in writing.kept or (
+        ENCAPSULATED_DOCUMENT in writing.replacements
+        and (document is None or document_problem(output, document))
+    ):
+        raise _Refused(TransformReason.REDACTION_MISMATCH)
     return path, data
 
 
@@ -2787,6 +2899,48 @@ def _redaction_material(
         redaction.decoded_sha256,
         redaction.rule_boxes,
         sop_class,
+    )
+
+
+def _with_document(edits: InstanceEdits, document: DocumentRedaction) -> InstanceEdits:
+    """Return the edits with the document's D settled by its rendering.
+
+    Encapsulated Document's pending D takes the image-only PDF, and
+    Encapsulated Document Length, where an edit keeps or replaces it, that
+    PDF's length, so that the length describes the document written.
+    """
+    settled = []
+    for edit in edits.edits:
+        if edit.path == ENCAPSULATED_DOCUMENT and edit.kind is EditKind.PENDING:
+            edit = Edit(edit.path, edit.action, EditKind.REPLACE, (document.value,))
+        elif edit.path == ENCAPSULATED_DOCUMENT_LENGTH and edit.kind in (
+            EditKind.KEEP,
+            EditKind.REPLACE,
+        ):
+            edit = Edit(
+                edit.path, edit.action, EditKind.REPLACE, (len(document.value),)
+            )
+        settled.append(edit)
+    return dataclasses.replace(edits, edits=tuple(settled))
+
+
+def _document_material(
+    document: DocumentRedaction, source: SourceEvidence, sop_class: str = ""
+) -> RedactionMaterial:
+    """The QC material of what Clean Pixel Data did to a document.
+
+    The source is kept, whether or not a page has regions, since its pages
+    are shown only by rendering it again for the previews.
+    """
+    return RedactionMaterial(
+        document.reason,
+        document.layout.frames,
+        document.layout.rows,
+        document.layout.columns,
+        tuple((regions.frame, regions.boxes) for regions in document.regions),
+        source.data,
+        document.decoded_sha256,
+        sop_class_uid=sop_class,
     )
 
 
