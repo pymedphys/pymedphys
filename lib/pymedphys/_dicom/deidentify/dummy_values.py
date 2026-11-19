@@ -56,7 +56,16 @@ take the text constants; Verifying Observer Identification Code Sequence
 (0040,A088) Z, so it is emptied; and Verification DateTime (0040,A030) D,
 which Full Dates gives K and Modified Dates C, so it takes the DT constant
 or is kept or modified with the other dates. A source item without one of
-them stays without it: no value is made up.
+them stays without it: no value is made up. Operator Identification
+Sequence (0008,1072) has a rule of the same kind, but only directly in an
+item of Override Sequence (3008,0060) (:data:`REVIEWED_WITHIN`), where the
+RT Radiation Record Common Module makes it Type 1: D keeps each source
+item, with only the seventeen attributes of PS3.3 Table C.17-3b, the
+Identified Person or Device Macro, each under its own rule, so that Person
+Name (0040,A123) takes the PN constant, Person Identification Code Sequence
+(0040,1101) its dummy item, Device UID (0018,1002) its keyed replacement,
+and Institution Name (0008,0080) and Institution Code Sequence (0008,0082),
+Type 2 there, are emptied (:func:`kept_item_attributes`).
 
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
 D's dummy value, from :func:`values_for_d`, since a zero-length value would
@@ -129,14 +138,24 @@ REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
 # The sequences whose reviewed rule holds only in an item of certain
 # sequences, by the sequences whose items must hold them directly (D-021).
 # Elsewhere D on them has no rule, and sequesters. Read-only.
+OPERATOR_IDENTIFICATION_SEQUENCE = "(0008,1072)"
+OVERRIDE_SEQUENCE = "(3008,0060)"
 REVIEWED_WITHIN: Mapping[str, frozenset[str]] = types.MappingProxyType(
-    {INSTITUTION_CODE_SEQUENCE: frozenset({INTERLOCK_RESOLUTION_USER_SEQUENCE})}
+    {
+        INSTITUTION_CODE_SEQUENCE: frozenset({INTERLOCK_RESOLUTION_USER_SEQUENCE}),
+        OPERATOR_IDENTIFICATION_SEQUENCE: frozenset({OVERRIDE_SEQUENCE}),
+    }
 )
 ICC_PROFILE = "(0028,2000)"
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"
 # The sequences whose D a reviewed rule gives by keeping each source item,
 # with only these of its attributes, each under its own rule, so that each
-# takes the action that the policy gives it there (D-021). Read-only.
+# takes the action that the policy gives it there (D-021): Verifying
+# Observer Sequence's four attributes of PS3.3 Table C.17-2, and, only
+# directly in an item of Override Sequence, as REVIEWED_WITHIN gives,
+# Operator Identification Sequence's seventeen of Table C.17-3b, the
+# Identified Person or Device Macro, which the RT Radiation Record Common
+# Module includes there. Read-only.
 KEPT_ITEM_ATTRIBUTES: Mapping[str, frozenset[str]] = types.MappingProxyType(
     {
         VERIFYING_OBSERVER_SEQUENCE: frozenset(
@@ -146,7 +165,28 @@ KEPT_ITEM_ATTRIBUTES: Mapping[str, frozenset[str]] = types.MappingProxyType(
                 "(0040,A075)",  # Verifying Observer Name
                 "(0040,A088)",  # Verifying Observer Identification Code Sequence
             }
-        )
+        ),
+        OPERATOR_IDENTIFICATION_SEQUENCE: frozenset(
+            {
+                "(0008,0055)",  # Station AE Title
+                "(0008,0070)",  # Manufacturer
+                "(0008,0080)",  # Institution Name
+                "(0008,0082)",  # Institution Code Sequence
+                "(0008,1010)",  # Station Name
+                "(0008,1040)",  # Institutional Department Name
+                "(0008,1041)",  # Institutional Department Type Code Sequence
+                "(0008,1090)",  # Manufacturer's Model Name
+                "(0018,1000)",  # Device Serial Number
+                "(0018,1002)",  # Device UID
+                "(0018,1020)",  # Software Versions
+                "(0018,1204)",  # Date of Manufacture
+                "(0018,1205)",  # Date of Installation
+                "(0040,1101)",  # Person Identification Code Sequence
+                "(0040,A084)",  # Observer Type
+                "(0040,A123)",  # Person Name
+                "(0044,010A)",  # Organizational Role Code Sequence
+            }
+        ),
     }
 )
 _REFERENCED_SOP_CLASS_UID = "(0008,1150)"
@@ -386,9 +426,10 @@ def items_for_d(
 ) -> tuple[tuple[DummyElement, ...], ...]:
     """Return the items that D writes in a sequence with a reviewed rule.
 
-    Three sequences have one; the rule of Verifying Observer Sequence
-    (0040,A073) keeps its source items instead (:data:`KEPT_ITEM_ATTRIBUTES`),
-    so it gives no items here:
+    Three sequences have one; the rules of Verifying Observer Sequence
+    (0040,A073), and of Operator Identification Sequence (0008,1072) in an
+    item of Override Sequence (3008,0060), keep their source items instead
+    (:func:`kept_item_attributes`), so they give no items here:
 
     - Person Identification Code Sequence (0040,1101): one item, with Code
       Value (0008,0100) ``DEIDENTIFIED``, Coding Scheme Designator
@@ -525,6 +566,36 @@ def reviewed_within(tag: str, within: Sequence[str]) -> bool:
     """
     parents = REVIEWED_WITHIN.get(tag)
     return parents is None or (bool(within) and within[-1] in parents)
+
+
+def kept_item_attributes(tag: str, within: Sequence[str]) -> frozenset[str] | None:
+    """Return the attributes that D keeps in a sequence's items at a place.
+
+    A sequence of :data:`KEPT_ITEM_ATTRIBUTES` whose reviewed rule holds at
+    the place, as :func:`reviewed_within` says, keeps each source item under
+    D, with only these of its attributes (D-021). ``within`` holds the tags
+    of the sequences that enclose the place, outermost first.
+
+    Returns
+    -------
+    frozenset of str or None
+        The tags of the attributes kept, or ``None`` where no such rule
+        holds, so that D on the sequence has no dummy value there.
+
+    Examples
+    --------
+    >>> override = ("(300A,0731)", "(3008,0060)")
+    >>> "(0040,A123)" in kept_item_attributes("(0008,1072)", override)
+    True
+    >>> kept_item_attributes("(0008,1072)", ("(0018,9506)",)) is None
+    True
+    >>> len(kept_item_attributes("(0040,A073)", ()))
+    4
+    """
+    kept = KEPT_ITEM_ATTRIBUTES.get(tag)
+    if kept is None or not reviewed_within(tag, within):
+        return None
+    return kept
 
 
 def _procedure_step_items(

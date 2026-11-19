@@ -454,6 +454,7 @@ def test_the_person_identification_item_is_written_as_dicom():
     assert read[0].CodeMeaning == "DEIDENTIFIED^DEIDENTIFIED"
 
 
+OPERATOR_IDENTIFICATION_SEQUENCE = "(0008,1072)"
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
 # Interlock Resolution User Sequence, in the Interlock Sequence of an RT Beams
 # Treatment Record's and of an RT Ion Beams Treatment Record's beam sessions.
@@ -548,9 +549,10 @@ def test_d_on_institution_code_sequence_elsewhere_has_no_dummy_value(within):
     assert "SECRET" not in str(raised.value)
 
 
-def test_only_institution_code_sequence_has_its_rule_at_some_places():
+def test_only_two_sequences_have_their_rules_at_some_places():
     assert dict(dummy_values.REVIEWED_WITHIN) == {
-        INSTITUTION_CODE_SEQUENCE: frozenset({"(300A,0746)"})
+        INSTITUTION_CODE_SEQUENCE: frozenset({"(300A,0746)"}),
+        OPERATOR_IDENTIFICATION_SEQUENCE: frozenset({"(3008,0060)"}),
     }
     # Person Identification Code Sequence's rule holds wherever it is.
     for within in ((), *INTERLOCK_USERS, ("(0044,0110)", "(0044,0103)")):
@@ -626,9 +628,13 @@ def test_d_on_any_other_sequence_is_refused():
         # Its reviewed rule holds only where it says (D-021).
         "InstitutionCodeSequence",
     }
-    # Verifying Observer Sequence's reviewed rule keeps its source items
-    # instead of writing items of its own (D-021).
-    assert set(dummy_values.KEPT_ITEM_ATTRIBUTES) == {"(0040,A073)"}
+    # The reviewed rules of Verifying Observer Sequence, and of Operator
+    # Identification Sequence in an item of Override Sequence, keep their
+    # source items instead of writing items of their own (D-021).
+    assert set(dummy_values.KEPT_ITEM_ATTRIBUTES) == {
+        "(0040,A073)",
+        OPERATOR_IDENTIFICATION_SEQUENCE,
+    }
     for attribute in sequences:
         with pytest.raises(dummy_values.NoDummyValueError) as raised:
             dummy_values.items_for_d(attribute.tag, [{CODE_VALUE: "SECRET"}], KEY)
