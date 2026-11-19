@@ -38,8 +38,9 @@ Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
 Softcopy Presentation State IODs, of the Planar MPR and Volume Rendering
 Volumetric Presentation State IODs, with their Grayscale and Compositing
 Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
-Volume Rendering SOP Classes, and the Advanced Blending Presentation State
-IOD, and of the five Secondary Capture IODs, uncompressed or in a transfer
+Volume Rendering SOP Classes, the Advanced Blending Presentation State
+IOD, and the Waveform and Waveform Acquisition Presentation State IODs,
+and of the five Secondary Capture IODs, uncompressed or in a transfer
 syntax that encapsulates Pixel Data that pydicom's decoding plugins decode.
 Supporting an IOD or a transfer syntax does not release every instance in
 it: a compressed instance is still sequestered
@@ -59,13 +60,16 @@ table gives that sequence D, as the supplementary rules give a volumetric
 one's Volumetric Annotation Sequence (0070,1901) and Volumetric
 Presentation Input Annotation Sequence (0070,1905). Every Encapsulated PDF
 that holds its Encapsulated Document (0042,0011) is also sequestered under
-every policy: Table E.1-1 gives it D, and no reviewed rule gives a document
-a dummy value. The transform also sequesters every instance of a Secondary
-Capture IOD under a policy that does not select the Clean Pixel Data Option
+every policy without the Clean Pixel Data Option: Table E.1-1 gives it D,
+and no reviewed rule gives a document a dummy value. Under that option, the
+document is released only as the reviewed rendering of its pages
+(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). The transform also
+sequesters every instance of a Secondary Capture IOD under a policy that
+does not select the Clean Pixel Data Option
 (:data:`SECONDARY_CAPTURE_IODS`). Every other instance is sequestered:
 neither de-identified nor written, and listed in the run report by opaque
-identifiers only. That includes the other Structured Reports, the waveform
-Presentation States, and instances of Private SOP Classes.
+identifiers only. That includes the other Structured Reports and instances
+of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -154,6 +158,8 @@ SUPPORTED_IODS = frozenset(
         "Planar MPR Volumetric Presentation State",
         "Volume Rendering Volumetric Presentation State",
         "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
         "Encapsulated PDF",
         "Secondary Capture Image",
         "Multi-frame Single Bit Secondary Capture Image",
