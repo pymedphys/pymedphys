@@ -47,13 +47,14 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import dataclasses
 import functools
 import importlib.util
 import json
 import multiprocessing
 import pathlib
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 from .diagnostics import redacted_diagnostics
 from .face_validation import crash_site
@@ -70,14 +71,17 @@ from .text_evaluation_detector import (
 )
 from .text_evaluation_font_files import PINNED_FONTS, pinned_font
 from .text_evaluation_fonts import FontRefused, PillowBitmapFont
-from .text_evaluation_frames import EvaluationRefused
+from .text_evaluation_frames import EvaluationFrame, EvaluationRefused
 from .text_evaluation_injection import InjectionPlan
+from .text_evaluation_inventory import MODALITIES, OTHER
 from .text_evaluation_markdown import markdown
 from .text_evaluation_models import DetectionModel
 from .text_evaluation_sources import (
     GROUPINGS,
     RT_IMAGE_STORAGE,
     DicomCase,
+    Skipped,
+    SkippedFiles,
     TextAnnotations,
     dicom_folder_cases,
 )
@@ -242,6 +246,7 @@ def measure(arguments: argparse.Namespace) -> dict[str, str]:
         isinstance(each, DicomCase) and each.case != "not-read" for each in cases
     ):
         raise EvaluationRefused("The folder holds no DICOM file of a SOP Class read.")
+    reported = [ReportedCase(each) for each in cases]
     model = MODELS[arguments.model]
     if arguments.settings == "published":
         variant = published_variant(model)
@@ -273,7 +278,7 @@ def measure(arguments: argparse.Namespace) -> dict[str, str]:
         held_out_collections=HELD_OUT_COLLECTIONS,
     )
     run = evaluate(
-        cases,
+        reported,
         functools.partial(process_detector, variant, model),
         settings,
         workers=arguments.workers,
@@ -328,6 +333,47 @@ def process_detector(
         stack.enter_context(redacted_diagnostics())
         WORKER_REDACTION.append(stack)
     return EvaluationDetector(variant, model)
+
+
+@dataclasses.dataclass(frozen=True)
+class ReportedCase:
+    """A folder's case whose frames name their modality only by a defined
+    term of Modality (0008,0060), :data:`UNKNOWN_MODALITY` where it is
+    absent, or ``"other"``: a local file's Modality need not be a defined
+    term, and the summary, its page, and the printed page must hold no
+    value read from the files."""
+
+    source: DicomCase | SkippedFiles
+
+    @property
+    def collection(self) -> str:
+        return self.source.collection
+
+    @property
+    def case(self) -> str:
+        return self.source.case
+
+    @property
+    def subject(self) -> str | None:
+        return getattr(self.source, "subject", None)
+
+    def read(self) -> Iterator[EvaluationFrame | Skipped]:
+        for item in self.source.read():
+            if isinstance(item, EvaluationFrame):
+                item = dataclasses.replace(item, modality=reported_modality(item))
+            yield item
+
+
+# What the folder's reader names a frame's modality where Modality is absent.
+UNKNOWN_MODALITY = "unknown"
+
+
+def reported_modality(frame: EvaluationFrame) -> str:
+    """A frame's modality as the reports may name it: a defined term,
+    :data:`UNKNOWN_MODALITY`, or ``"other"``."""
+    if frame.modality in MODALITIES or frame.modality == UNKNOWN_MODALITY:
+        return frame.modality
+    return OTHER
 
 
 def _json(value: object) -> str:

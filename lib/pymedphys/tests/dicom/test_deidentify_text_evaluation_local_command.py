@@ -21,6 +21,7 @@ import logging
 import multiprocessing
 import pathlib
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import diagnostics
@@ -29,6 +30,8 @@ from pymedphys._dicom.deidentify import text_evaluation_font_files as font_files
 from pymedphys._dicom.deidentify import text_evaluation_fonts as fonts
 from pymedphys._dicom.deidentify import text_evaluation_local_command as command
 
+from . import _synthetic_references as synthetic
+from ._text_evaluation_stand_ins import SHAPE, _ct_dataset
 from .test_deidentify_text_evaluation import PATIENT_A, PATIENT_B, _clinic
 from .test_deidentify_text_evaluation_command import bright
 
@@ -194,6 +197,50 @@ def test_a_crash_is_reported_by_where_alone(tmp_path, monkeypatch, clinic):
     assert PATIENT_A not in str(raised.value)
     assert str(tmp_path) not in str(raised.value)
     assert not (tmp_path / "o").exists()
+
+
+def test_a_modality_that_is_not_a_defined_term_is_reported_as_other(
+    tmp_path, capsys, stand_in
+):
+    """A local file's Modality may hold any value; the summaries and the
+    printed page name only defined terms, unknown, or other."""
+    del stand_in
+    marker = "ZZMARKER7"
+    root = tmp_path / "read"
+    root.mkdir()
+    for number, modality in enumerate(("RTIMAGE", marker, None), start=1):
+        dataset = _ct_dataset(
+            np.full((1, *SHAPE), 24),
+            ImagePlanePixelSpacing=[0.4, 0.4],
+            PatientID=f"INVENTED^{number}",
+            SeriesInstanceUID=f"2.25.{number}0",
+            SOPInstanceUID=f"2.25.{number}1",
+            InstanceNumber=number,
+        )
+        dataset.SOPClassUID = command.RT_IMAGE_STORAGE
+        if modality is None:
+            del dataset.Modality
+        else:
+            dataset.Modality = modality
+        (root / f"{number}.dcm").write_bytes(synthetic.written(dataset))
+    out = tmp_path / "results"
+    assert (
+        command.main(
+            [str(root), "--out", str(out), "--fonts", "bitmaps", "--evaluated", "all"]
+        )
+        == 0
+    )
+    printed = capsys.readouterr().out
+    written = "".join(path.read_text() for path in out.iterdir())
+    assert marker not in written + printed
+    summary = json.loads((out / "summary.json").read_text())
+    rows = summary["points"][0]["by"]["modality"]
+    assert {row["value"]["modality"] for row in rows} == {
+        "RTIMAGE",
+        "other",
+        "unknown",
+    }
+    assert "RTIMAGE" in printed
 
 
 def _measured(arguments):

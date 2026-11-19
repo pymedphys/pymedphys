@@ -362,4 +362,5 @@ Reading the results:
 
 - The sensitivity counts are of the synthetic text alone, unless you annotated the files: each piece is fully covered, partly covered, or missed, and counted in bins of the share of its core ink covered, by font, height, contrast, style, orientation, position, and content.
 - With `--known-text unknown`, a region on a frame as read may be real text, so the counts give where regions lie, by the zones at the frame's corners, edges, and centre, without counting them as false positives.
+- Frames are counted by modality only under a defined term of Modality (0008,0060), `unknown` where it is absent, or `other`, so that a value in a local file that is not a defined term never reaches the summary or the page.
 - A projection's tissue is found from its luminance, so on an RT Image whose open field is brighter than the body, `air`, `tissue`, and `edge` positions and the tissue blacked out may refer to the open field rather than the body.
