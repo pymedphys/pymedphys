@@ -30,13 +30,14 @@ from select_checks import OUTPUTS, select_checks
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 # The lines that give each listed corpus module that runs alone a part of its
-# own, the three shares of the CT defacing runs and the second half of the
+# own, the four shares of the CT defacing runs and the second half of the
 # policies' end-to-end runs, and the other listed modules to the corpus-runs
 # part, in every job that runs in parts.
 ALONE_SELECTION = (
     "            alone=("
     '"${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_VARIANT_TEST}" '
-    '"${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")\n',
+    '"${CT_DEFACING_REVIEW_TEST}" "${CT_DEFACING_DOSE_TEST}" '
+    '"${CORPUS_END_TO_END_P_Z_TEST}")\n',
     '            for module in "${alone[@]}"; do\n',
     '              if [[ " ${listed[*]} " != *" ${module} "* ]]; then\n',
     '                echo "::error::Each module that runs alone must belong to '
@@ -47,6 +48,7 @@ ALONE_SELECTION = (
     "              ct-defacing-variants) "
     'selection=("${CT_DEFACING_VARIANT_TEST}") ;;\n',
     '              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;\n',
+    '              ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;\n',
     '                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then\n',
     '                    selection+=("${path}")\n',
     "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
@@ -442,6 +444,7 @@ class WorkflowContractTests(unittest.TestCase):
             "junit-extra-dicom-ct-defacing",
             "junit-extra-dicom-ct-defacing-variants",
             "junit-extra-dicom-ct-defacing-reviews",
+            "junit-extra-dicom-ct-defacing-doses",
             "junit-extra-dicom-corpus-runs",
             "junit-extra-dicom-corpus-end-to-end-p-z",
             "junit-extra-dicom-deidentify-a-o",
@@ -449,6 +452,7 @@ class WorkflowContractTests(unittest.TestCase):
             "junit-dependency-floors-ct-defacing",
             "junit-dependency-floors-ct-defacing-variants",
             "junit-dependency-floors-ct-defacing-reviews",
+            "junit-dependency-floors-ct-defacing-doses",
             "junit-dependency-floors-corpus-runs",
             "junit-dependency-floors-corpus-end-to-end-p-z",
             "junit-dependency-floors-deidentify-a-o",
@@ -535,12 +539,13 @@ class WorkflowContractTests(unittest.TestCase):
             test,
         )
         # Every split job reads the modules that the workflow names to run
-        # alone, the three shares of the CT defacing runs and the second half
-        # of the policies' end-to-end runs: four different listed modules.
+        # alone, the four shares of the CT defacing runs and the second half
+        # of the policies' end-to-end runs: five different listed modules.
         keys = (
             "CT_DEFACING_RUN_TEST",
             "CT_DEFACING_VARIANT_TEST",
             "CT_DEFACING_REVIEW_TEST",
+            "CT_DEFACING_DOSE_TEST",
             "CORPUS_END_TO_END_P_Z_TEST",
         )
         alone = [re.search(rf"(?m)^  {key}: (\S+)$", text)[1] for key in keys]

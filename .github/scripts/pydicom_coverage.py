@@ -40,6 +40,7 @@ PARTS: tuple[str, ...] = (
     "ct-defacing",
     "ct-defacing-variants",
     "ct-defacing-reviews",
+    "ct-defacing-doses",
     "corpus-runs",
     "corpus-end-to-end-p-z",
     "deidentify-a-o",
