@@ -791,6 +791,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
@@ -826,14 +831,16 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, "
         "Spectacle Prescription Report, Macular Grid Thickness and Volume Report, "
-        "Waveform Annotation SR, Real World Value Mapping, Grayscale Softcopy "
-        "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
-        "Softcopy Presentation State, Blending Softcopy Presentation State, "
-        "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
-        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
-        "State, Volume Rendering Volumetric Presentation State, Advanced "
-        "Blending Presentation State, Waveform Presentation State, and "
-        "Waveform Acquisition Presentation State."
+        "Waveform Annotation SR, Implantation Plan SR Document, Simplified Adult Echo "
+        "SR, Planned Imaging Agent Administration SR, Performed Imaging Agent "
+        "Administration SR, Acquisition Context SR, Real World Value Mapping, "
+        "Grayscale Softcopy Presentation State, Color Softcopy Presentation State, "
+        "Pseudo-Color Softcopy Presentation State, Blending Softcopy Presentation "
+        "State, XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, Advanced Blending Presentation "
+        "State, Waveform Presentation State, and Waveform Acquisition Presentation "
+        "State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )

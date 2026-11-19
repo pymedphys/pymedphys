@@ -58,6 +58,11 @@ STRUCTURED_REPORTS = (
     "Spectacle Prescription Report",
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
 )
 # The softcopy Presentation States, which reference the images they apply to
 # in the Presentation State Relationship Module or, for the Blending

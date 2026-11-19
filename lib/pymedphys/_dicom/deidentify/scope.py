@@ -36,27 +36,32 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, of the Parametric Map,
-Real World Value Mapping, and Encapsulated PDF IODs, of the Grayscale,
-Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-Softcopy Presentation State IODs, and of the Planar MPR and Volume Rendering
-Volumetric Presentation State IODs, with their Grayscale and Compositing
-Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
-Volume Rendering SOP Classes, the Advanced Blending Presentation State
-IOD, and the Waveform and Waveform Acquisition Presentation State IODs,
-uncompressed or in a transfer syntax that encapsulates Pixel Data that
-pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax
-does not release every instance in it: a compressed instance is still
-sequestered
-where the plugin pinned to its transfer syntax is not installed, or where
-its frames or codestreams fail the engine's checks
+Volume Report, Waveform Annotation SR, Implantation Plan SR Document,
+Simplified Adult Echo SR, Planned Imaging Agent Administration SR,
+Performed Imaging Agent Administration SR, and Acquisition Context SR IODs,
+of the Parametric Map, Real World Value Mapping, and Encapsulated PDF IODs,
+of the Grayscale, Color, Pseudo-Color, Blending, XA/XRF Grayscale, and
+Variable Modality LUT Softcopy Presentation State IODs, and of the Planar
+MPR and Volume Rendering Volumetric Presentation State IODs, with their
+Grayscale and Compositing Planar MPR, Volume Rendering, Segmented Volume
+Rendering, and Multiple Volume Rendering SOP Classes, the Advanced Blending
+Presentation State IOD, and the Waveform and Waveform Acquisition
+Presentation State IODs, uncompressed or in a transfer syntax that
+encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting
+an IOD or a transfer syntax does not release every instance in it: a
+compressed instance is still sequestered where the plugin pinned to its
+transfer syntax is not installed, or where its frames or codestreams fail
+the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
 rules still sequester some, such as every Enhanced PET Image instance that
-conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
+conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``,
 every Structured Report or Key Object Selection Document whose content
 tree the policy does not clean and keep, since the Basic Profile gives its
-Content Sequence (0040,A730) D, which a sequence has no dummy value for.
-So too every Presentation State that conforms to its IOD under
+Content Sequence (0040,A730) D, which a sequence has no dummy value for,
+and every Simplified Adult Echo SR instance under a policy with neither
+Retain Longitudinal Temporal Information option, since its Timezone Module
+requires Timezone Offset From UTC (0008,0201), which the Basic Profile
+removes. So too every Presentation State that conforms to its IOD under
 ``basic`` and ``basic-clean-descriptors``, since Table E.1-1's plain X
 removes its Type 1 Presentation Creation Date and Time, and one that holds
 a Graphic Annotation Sequence (0070,0001) under every preset, since the
@@ -72,8 +77,8 @@ reviewed rule gives a document a dummy value. Under that option, the
 document is released only as the reviewed rendering of its pages
 (:mod:`~pymedphys._dicom.deidentify.document_cleaning`). Every other
 instance is sequestered: neither de-identified nor written, and listed in
-the run report by opaque identifiers only. That includes the other
-Structured Reports and instances of Private SOP Classes.
+the run report by opaque identifiers only. That includes instances of
+Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -159,6 +164,11 @@ SUPPORTED_IODS = frozenset(
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Parametric Map",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",

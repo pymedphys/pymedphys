@@ -219,11 +219,12 @@ def test_d_writes_the_dummy_datetime_given_at_a_path_and_nothing_else_does():
     )
     evidence = source.read_source(_file(EXPLICIT, data_set))
     plan = walker.plan_instance(evidence, _rules(), _rt_plan())
-    # The run gives a Procedure Log entry's Observation DateTime its rank's
-    # dummy (content_items.log_dummy_datetimes); any path takes it under D.
+    # The run gives a Procedure Log entry's Observation DateTime, and an
+    # imaging agent's identifier, its rank's dummy (content_items); any path
+    # takes it under D.
     given = {_path("(0008,0050)"): "19000101000001", _path("(300A,0002)"): "1"}
 
-    result = edits.edit_instance(evidence, plan, KEY, dummy_datetimes=given)
+    result = edits.edit_instance(evidence, plan, KEY, ranked_values=given)
 
     found = {edit.path: edit for edit in result.edits}
     assert found[_path("(0008,0050)")].kind is EditKind.EMPTY
