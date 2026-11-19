@@ -34,7 +34,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from . import dicom_validation, midi_benchmark, run, standard
+from . import dicom_validation, midi_benchmark, midi_script_results, run, standard
 from .dicom_validators import ValidatorUnavailable
 
 # The directory of dicom-validator's DocBook source and tables, unless
@@ -113,7 +113,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.command == "midi":
         work = Path(arguments.work)
         release = work / "release"
-        mapping = work / midi_benchmark.SCRIPT_INPUTS / midi_benchmark.UID_MAPPING
+        mapping = work / midi_benchmark.SCRIPT_INPUTS / midi_script_results.UID_MAPPING
     else:
         release = Path(arguments.release)
         mapping = Path(arguments.uid_mapping)

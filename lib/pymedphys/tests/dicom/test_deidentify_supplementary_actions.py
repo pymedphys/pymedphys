@@ -207,8 +207,7 @@ SURFACE_IODS = ("Surface Segmentation",)
 # A.33.6, and A.33.8, which the maintainer's pick of 31 October 2026 brought into
 # the target coverage, whose attributes were reviewed against every IOD
 # above but Surface Segmentation, reviewed alongside them, and which the
-# first supported release now supports. The volumetric,
-# advanced blending, and waveform Presentation States are not yet supported.
+# first supported release now supports.
 PRESENTATION_STATE_IODS = (
     "Grayscale Softcopy Presentation State",
     "Color Softcopy Presentation State",
@@ -249,6 +248,28 @@ SURFACE_REVIEWED_AGAINST = RADIOGRAPH_REVIEWED_AGAINST + MAP_IODS
 # and which the first supported release now supports.
 ENCAPSULATED_PDF = "Encapsulated PDF"
 ENCAPSULATED_PDF_REVIEWED_AGAINST = SURFACE_REVIEWED_AGAINST
+# The Planar MPR and Volume Rendering Volumetric Presentation State IODs and
+# the Advanced Blending Presentation State IOD, of PS3.3 Sections A.80.1,
+# A.80.2, and A.33.7, reviewed against the IODs that the softcopy ones were
+# reviewed against and the six softcopy ones, and now supported.
+VOLUMETRIC_PRESENTATION_STATE_IODS = (
+    "Planar MPR Volumetric Presentation State",
+    "Volume Rendering Volumetric Presentation State",
+    "Advanced Blending Presentation State",
+)
+VOLUMETRIC_REVIEWED_AGAINST = (
+    PRESENTATION_STATE_REVIEWED_AGAINST + PRESENTATION_STATE_IODS
+)
+# The Waveform and Waveform Acquisition Presentation State IODs of PS3.3
+# Sections A.92.1 and A.92.2, reviewed against the IODs that the volumetric
+# ones were reviewed against and the volumetric ones, and now supported.
+WAVEFORM_PRESENTATION_STATE_IODS = (
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+)
+WAVEFORM_REVIEWED_AGAINST = (
+    VOLUMETRIC_REVIEWED_AGAINST + VOLUMETRIC_PRESENTATION_STATE_IODS
+)
 SUPPORTED_IODS = (
     PRESENTATION_STATE_REVIEWED_AGAINST
     + SURFACE_IODS
@@ -257,10 +278,12 @@ SUPPORTED_IODS = (
     + PRESENTATION_STATE_IODS
     + (ENCAPSULATED_PDF,)
     + RADIOGRAPH_IODS
+    + VOLUMETRIC_PRESENTATION_STATE_IODS
+    + WAVEFORM_PRESENTATION_STATE_IODS
 )
 # The IODs that the second-generation RT IODs were reviewed against:
-# Nuclear Medicine Image, Surface Segmentation, the softcopy Presentation
-# States and Encapsulated PDF were not supported yet. Enhanced RT Image
+# Nuclear Medicine Image, Surface Segmentation, the Presentation States,
+# and Encapsulated PDF were not supported yet. Enhanced RT Image
 # IODs were already supported.
 SECOND_GENERATION_REVIEWED_AGAINST = SURFACE_REVIEWED_AGAINST + ENHANCED_RT_IMAGE_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -536,10 +559,11 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # 4, Surface Segmentation, which adds 2, Nuclear Medicine Image, which
     # adds 3, the Computed Radiography and Digital X-Ray Image IODs, which add
     # 14, the two dose-report IODs, the three delivery instructions, which add
-    # 1, the six softcopy Presentation State IODs, which add 7, and
-    # Encapsulated PDF, which adds 8, whose supplementary rules cover 210 text
+    # 1, the six softcopy Presentation State IODs, which add 7, Encapsulated
+    # PDF, which adds 8, and the volumetric and advanced blending Presentation
+    # State IODs, which add 2, whose supplementary rules cover 212 text
     # attributes.
-    assert len(omitted) == 210
+    assert len(omitted) == 212
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -554,11 +578,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 97,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 98,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 34,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 59,
+        ("K", ()): 60,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 18,
@@ -1293,13 +1317,10 @@ def test_the_softcopy_presentation_states_are_generated_and_supported():
         if name.endswith("Presentation State") and name not in PRESENTATION_STATE_IODS
     }
     assert others == {
-        "Advanced Blending Presentation State",
-        "Planar MPR Volumetric Presentation State",
-        "Volume Rendering Volumetric Presentation State",
-        "Waveform Presentation State",
-        "Waveform Acquisition Presentation State",
+        *VOLUMETRIC_PRESENTATION_STATE_IODS,
+        *WAVEFORM_PRESENTATION_STATE_IODS,
     }
-    assert not others & scope.SUPPORTED_IODS
+    assert others <= scope.SUPPORTED_IODS
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
@@ -1796,6 +1817,286 @@ def test_the_basic_profile_sequesters_every_conforming_softcopy_presentation_sta
             for definition in iod.definitions
             if definition.tag == GRAPHIC_ANNOTATION_SEQUENCE
         } == {"1"}, name
+
+
+# The text attributes that the volumetric and advanced blending Presentation
+# State IODs use and that neither Table E.1-1 nor the IODs reviewed before
+# them use, by group, checked by hand against the 2026d PS3.3 Sections
+# C.11.32 and C.11.33.
+VOLUMETRIC_OPERATOR_TEXT = {"(0070,1A09)"}  # RGBA Transfer Function Description
+VOLUMETRIC_KEPT_TEXT = {"(006A,000E)"}  # Referenced Optical Path Identifier
+# The annotations of a volumetric Presentation State, which Table E.1-1 does
+# not list, and which take the D that it gives Graphic Annotation Sequence.
+VOLUMETRIC_ANNOTATION_SEQUENCES = {"(0070,1901)", "(0070,1905)"}
+# The attributes that these IODs use, the IODs reviewed before them do not,
+# and Table E.1-1 lists, with their Basic Profile actions.
+VOLUMETRIC_LISTED = {
+    "(0070,1101)": "U",  # Presentation Display Collection UID
+    "(0070,1102)": "U",  # Presentation Sequence Collection UID
+}
+# The UIDs that these IODs use, the IODs reviewed before them do not, and
+# Table E.1-1 omits, which the UID roles file gives the instance role.
+VOLUMETRIC_UNLISTED_UIDS = {
+    "(0070,1209)",  # Volumetric Presentation Input Set UID
+    "(0070,1904)",  # Referenced Content Item
+}
+# The others, by VR: the inputs, cropping, geometry, rendering, shading,
+# classification, compositing, animation, and blending settings.
+VOLUMETRIC_OTHER_VRS = {
+    "FD": 23,
+    "CS": 18,
+    "SQ": 18,
+    "US": 10,
+    "OD": 2,
+    "OW": 2,
+    "UL": 1,
+}
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_volumetric_presentation_states_use_has_reviewed_rules():
+    listed = _table_e1_1()
+    rules = _rules()
+    added = _used_by(VOLUMETRIC_PRESENTATION_STATE_IODS, TEXT_VRS) - _used_by(
+        VOLUMETRIC_REVIEWED_AGAINST, TEXT_VRS
+    )
+
+    assert added == VOLUMETRIC_OPERATOR_TEXT | VOLUMETRIC_KEPT_TEXT
+    for tags, action, options in (
+        (VOLUMETRIC_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+        (VOLUMETRIC_KEPT_TEXT, "K", {}),
+    ):
+        for tag in tags:
+            assert tag not in listed, tag
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+
+
+def test_every_new_attribute_of_the_volumetric_presentation_states_has_its_action():
+    listed = _table_e1_1()
+    rules = _rules()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(VOLUMETRIC_PRESENTATION_STATE_IODS, every_vr) - _used_by(
+        VOLUMETRIC_REVIEWED_AGAINST, every_vr
+    )
+    ruled = (
+        VOLUMETRIC_OPERATOR_TEXT
+        | VOLUMETRIC_KEPT_TEXT
+        | VOLUMETRIC_ANNOTATION_SEQUENCES
+    )
+
+    assert {
+        tag: listed[tag].basic_profile for tag in new if tag in listed
+    } == VOLUMETRIC_LISTED
+    assert {tag for tag in new if tag in rules} == ruled
+    uids = uid_roles.load_uid_roles()
+    for tag in VOLUMETRIC_UNLISTED_UIDS:
+        assert tag in new and tag not in listed, tag
+        assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
+    other = new - set(VOLUMETRIC_LISTED) - ruled - VOLUMETRIC_UNLISTED_UIDS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert (
+        collections.Counter(dictionary[tag].vrs[0] for tag in other)
+        == VOLUMETRIC_OTHER_VRS
+    )
+    assert not other & set(uids.rules)
+    assert not _used_by(VOLUMETRIC_PRESENTATION_STATE_IODS, TEMPORAL_VRS) - _used_by(
+        VOLUMETRIC_REVIEWED_AGAINST, TEMPORAL_VRS
+    )
+    for vrs in ({"PN"}, {"UR"}):
+        assert not _used_by(VOLUMETRIC_PRESENTATION_STATE_IODS, vrs) - _used_by(
+            VOLUMETRIC_REVIEWED_AGAINST, vrs
+        ), vrs
+    # Each other takes the default, which keeps it where its IOD defines it,
+    # under every preset, with a sequence's items handled by their own rules.
+    tables = iods.load_iod_tables()
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in VOLUMETRIC_PRESENTATION_STATE_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
+def test_a_volumetric_annotation_takes_the_graphic_annotation_sequences_action():
+    # Table E.1-1 gives Graphic Annotation Sequence D, and so the
+    # supplementary rules give the two sequences of the Volumetric Graphic
+    # Annotation Module, whose items hold text and graphics as its items do.
+    # Both are Type 1C wherever these IODs define them, so D, which a
+    # sequence has no dummy value for, sequesters an instance that holds
+    # either under every option.
+    listed = _table_e1_1()
+    rules = _rules()
+    tables = iods.load_iod_tables()
+
+    assert listed[GRAPHIC_ANNOTATION_SEQUENCE].basic_profile == "D"
+    for tag in VOLUMETRIC_ANNOTATION_SEQUENCES:
+        assert tag not in listed, tag
+        assert (rules[tag].action, dict(rules[tag].options)) == ("D", {}), tag
+        for composed in _every_policy():
+            assert composed.supplementary_actions[tag] == "D", (tag, composed)
+        for name in VOLUMETRIC_PRESENTATION_STATE_IODS[:2]:
+            iod = tables.iods[name]
+            assert compound_actions.strictest_type(iod, tag, ()) == "1", (name, tag)
+            assert {
+                (definition.type, definition.module)
+                for definition in iod.definitions
+                if definition.tag == tag
+            } == {("1C", "Volumetric Graphic Annotation")}, (name, tag)
+
+
+def test_the_basic_profile_sequesters_every_conforming_volumetric_presentation_state():
+    # Each of these IODs defines Presentation Creation Date and Time Type 1
+    # at the top level, in its Volumetric Presentation State Identification
+    # or Presentation State Identification Module, as the softcopy ones do.
+    tables = iods.load_iod_tables()
+    for name in VOLUMETRIC_PRESENTATION_STATE_IODS:
+        iod = tables.iods[name]
+        for tag in PRESENTATION_CREATION_DATES:
+            assert compound_actions.strictest_type(iod, tag, ()) == "1", (name, tag)
+            assert (
+                compound_actions.resolve_plain_x_in_iod(iod, tag, ()).extent
+                is compound_actions.RemovalExtent.SEQUESTER
+            ), (name, tag)
+
+
+# The attributes that the waveform Presentation State IODs use, the IODs
+# reviewed before them do not, and Table E.1-1 lists, with their Basic
+# Profile actions and their actions under an option: the montage's and
+# filters' descriptions, which Clean Descriptors cleans, and when an
+# annotation and a displayed segment were made, which the date options keep
+# or shift.
+WAVEFORM_LISTED = {
+    "(003A,020C)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Channel Derivation Description
+    "(003A,0329)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Waveform Filter Description
+    "(003A,032B)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Filter Lookup Table Description
+    "(0040,B034)": ("X", DATE_OPTIONS),  # Annotation DateTime
+    "(0040,B036)": ("X", DATE_OPTIONS),  # Segment Definition DateTime
+    "(0040,B03B)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Montage Name
+    "(0040,B03F)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Montage Channel Label
+}
+# The others, by VR: the montages, channels, filters, displayed segments,
+# and annotations' references, ranges, and display settings.
+WAVEFORM_OTHER_VRS = {
+    "SQ": 23,
+    "DS": 9,
+    "US": 6,
+    "FL": 5,
+    "IS": 3,
+    "CS": 2,
+    "OD": 1,
+}
+WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE = "(0040,B033)"
+TEXT_OBJECT_SEQUENCE = "(0070,0008)"
+UNFORMATTED_TEXT_VALUE = "(0070,0006)"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_every_new_attribute_of_the_waveform_presentation_states_has_its_action():
+    listed = _table_e1_1()
+    rules = _rules()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(WAVEFORM_PRESENTATION_STATE_IODS, every_vr) - _used_by(
+        WAVEFORM_REVIEWED_AGAINST, every_vr
+    )
+
+    # Every text attribute and datetime that only they use is in Table
+    # E.1-1, so none needs a rule.
+    assert {
+        tag: (listed[tag].basic_profile, dict(listed[tag].options))
+        for tag in new
+        if tag in listed
+    } == WAVEFORM_LISTED
+    assert not {tag for tag in new if tag in rules}
+    other = new - set(WAVEFORM_LISTED)
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert (
+        collections.Counter(dictionary[tag].vrs[0] for tag in other)
+        == WAVEFORM_OTHER_VRS
+    )
+    assert (
+        not _used_by(WAVEFORM_PRESENTATION_STATE_IODS, TEXT_VRS)
+        - _used_by(WAVEFORM_REVIEWED_AGAINST, TEXT_VRS)
+        - set(WAVEFORM_LISTED)
+    )
+    for vrs in ({"UI"}, {"PN"}, {"UR"}):
+        assert not _used_by(WAVEFORM_PRESENTATION_STATE_IODS, vrs) - _used_by(
+            WAVEFORM_REVIEWED_AGAINST, vrs
+        ), vrs
+    temporal = temporal_roles.load_temporal_roles()
+    for tag in ("(0040,B034)", "(0040,B036)"):
+        assert temporal.role(tag) is temporal_roles.TemporalRole.SUBJECT_EVENT, tag
+    # Each other takes the default, which keeps it where its IOD defines it,
+    # under every preset, with a sequence's items handled by their own rules.
+    tables = iods.load_iod_tables()
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in WAVEFORM_PRESENTATION_STATE_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
+def test_a_waveform_text_annotation_is_kept_with_its_text_replaced():
+    # The Waveform Textual Annotation Sequence holds text only, anchored to
+    # times or samples of a waveform, and no graphics that could spell a
+    # name, unlike Graphic Annotation Sequence; Table E.1-1 omits it, so it
+    # is kept, and the Unformatted Text Value of its Text Object Sequence,
+    # Type 1 there, takes the D that the table gives it, a dummy value under
+    # the Basic Profile. Both IODs define the sequence Type 1 in their
+    # user-optional Textual Waveform Annotation Module.
+    listed = _table_e1_1()
+    rules = _rules()
+    tables = iods.load_iod_tables()
+
+    assert WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE not in listed
+    assert WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE not in rules
+    assert listed[UNFORMATTED_TEXT_VALUE].basic_profile == "D"
+    path = (WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE, TEXT_OBJECT_SEQUENCE)
+    for name in WAVEFORM_PRESENTATION_STATE_IODS:
+        iod = tables.iods[name]
+        usage = {module.module: module.usage for module in iod.modules}
+        assert usage["Textual Waveform Annotation"] == "U", name
+        assert {
+            (definition.path, definition.type)
+            for definition in iod.definitions
+            if definition.tag == UNFORMATTED_TEXT_VALUE
+        } == {(path, "1")}, name
+        assert (
+            compound_actions.resolve_plain_in_iod(
+                iod, UNFORMATTED_TEXT_VALUE, path, "D"
+            )
+            == "D"
+        ), name
+
+
+def test_the_basic_profile_sequesters_every_conforming_waveform_presentation_state():
+    tables = iods.load_iod_tables()
+    for name in WAVEFORM_PRESENTATION_STATE_IODS:
+        iod = tables.iods[name]
+        for tag in PRESENTATION_CREATION_DATES:
+            assert compound_actions.strictest_type(iod, tag, ()) == "1", (name, tag)
+            assert (
+                compound_actions.resolve_plain_x_in_iod(iod, tag, ()).extent
+                is compound_actions.RemovalExtent.SEQUESTER
+            ), (name, tag)
 
 
 # The text attributes that the second-generation RT IODs use and that neither
@@ -2316,13 +2617,14 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
     # and the Computed Radiography and Digital X-Ray Image IODs add 20: the 14
     # text attributes that only they use and Table E.1-1 omits, eight of them
     # kept, and the six that Table E.1-1 lists, none of them kept.
-    assert len(basic) == 358
+    assert len(basic) == 365
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT
         | RT_IMAGE_KEPT_TEXT
         | ION_KEPT_TEXT
         | PRESENTATION_STATE_KEPT_TEXT
+        | VOLUMETRIC_KEPT_TEXT
         | PDF_MEDIA_TYPES
         | PDF_CAPTURE_FORMATS
         | ENHANCED_RT_IMAGE_KEPT_TEXT
@@ -2348,6 +2650,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
             | PRESENTATION_STATE_KEPT_TEXT
+            | VOLUMETRIC_KEPT_TEXT
             | PDF_MEDIA_TYPES
             | PDF_CAPTURE_FORMATS
             | ENHANCED_RT_IMAGE_KEPT_TEXT

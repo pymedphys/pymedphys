@@ -73,15 +73,18 @@ cleaning reads them: split at backslashes where the element's VR holds
 several values (SH, LO, or UC), and whole otherwise, as Derivation
 Description (0008,2111), whose VR is ST, is.
 
-Whatever removed text is found inside a value made only of technique and
-anatomy words is itself such words, so the finding reveals nothing that the
-kept value does not. A private copy reveals nothing that its descriptive
-original, already exempt, does not: its text is the same text. A value with
-any other word stays under review, as does any other kept element. The
-vocabulary, and its list of technique descriptors, are always the ones that
-PyMedPhys ships, never ones that a run gives Clean Descriptors, so each
-exemption is the same in every run, and the method digest covers them
-through the engine's files under every policy (D-024).
+What each rule checks is the complete kept value, a meaning or a
+descriptor, not the removed text found in it: that text can be just a
+substring of the value, and need not itself pass the word rules, as
+``MARY`` found in ``CT PRIMARY`` does not. The value passes them and the
+echo check, and the policy keeps it anyway, so the finding reveals nothing
+that the kept value does not. A private copy reveals nothing that its
+descriptive original, already exempt, does not: its text is the same text.
+A value with any other word stays under review, as does any other kept
+element. The vocabulary, and its list of technique descriptors, are always
+the ones that PyMedPhys ships, never ones that a run gives Clean
+Descriptors, so each exemption is the same in every run, and the method
+digest covers them through the engine's files under every policy (D-024).
 
 Only a text finding is read: a person name, UID, date, datetime, or direct
 identifier found anywhere still withholds the file. No value is reported.

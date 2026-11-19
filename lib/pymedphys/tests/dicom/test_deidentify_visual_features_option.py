@@ -789,6 +789,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
@@ -809,8 +814,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Waveform Annotation SR, Real World Value Mapping, Grayscale Softcopy "
         "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
         "Softcopy Presentation State, Blending Softcopy Presentation State, "
-        "XA/XRF Grayscale Softcopy Presentation State, and Variable Modality "
-        "LUT Softcopy Presentation State."
+        "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
+        "State, Volume Rendering Volumetric Presentation State, Advanced "
+        "Blending Presentation State, Waveform Presentation State, and "
+        "Waveform Acquisition Presentation State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -845,7 +853,8 @@ def test_with_clean_pixel_data_both_options_are_claimed_after_review():
         (
             ("clean_pixel_data",),
             "claims Clean Pixel Data only for an instance without top-level "
-            "pixel data or whose regions a reviewer approved, and Clean "
+            "pixel data or an encapsulated document, or whose regions a "
+            "reviewer approved, and Clean "
             "Recognizable Visual Features only for one that cannot show a face "
             "or whose source file a reviewer found free of one.",
         ),
@@ -1311,7 +1320,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/75"
+    assert report["format"] == "pymedphys-deid-release-report/84"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):

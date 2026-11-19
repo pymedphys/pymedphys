@@ -175,6 +175,26 @@ def test_part_of_a_vocabulary_meaning_is_released_too():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
+def test_the_complete_meaning_is_read_not_the_text_found_in_it():
+    # Removed Image Comments found inside a word of the kept meaning: the
+    # found text alone fails the word rules, but the meaning passes them.
+    vocabulary = load_technique_vocabulary()
+    written = _procedure("CT PRIMARY")
+    comments = _removed("(0020,4000)", "LT", "MARY")
+    found = _condition(written, comments)
+    echoed = _condition(written, comments, _removed("(0008,0090)", "PN", "ZQ^MARY"))
+
+    assert vocabulary.word_rejection("MARY") is Rejection.NAME
+    assert vocabulary.word_rejection("CT PRIMARY") is None
+    assert found.decision is Decision.RELEASE
+    assert _exempted(found) == [(CODE_MEANING, Exemption.VOCABULARY_MEANING)]
+    # Collected as a word of a person's name, the same text is an echo.
+    assert echoed.decision is Decision.QC_REVIEW
+    assert [reason.code for reason in echoed.reasons] == [ReasonCode.RESIDUAL_TEXT]
+    assert not echoed.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_standard_codes_meaning_keeps_its_own_exemption():
     written = _procedure(MEANING, "SCT")
     condition = _condition(written, _removed(STUDY_DESCRIPTION, "LO", MEANING))

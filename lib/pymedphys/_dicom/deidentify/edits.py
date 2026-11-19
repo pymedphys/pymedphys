@@ -106,6 +106,7 @@ from .dummy_values import (
     values_for_d,
 )
 from .elements import ElementValue, OutsideDefaultRepertoire, UndecodableElement
+from .encapsulated_documents import ENCAPSULATED_DOCUMENT
 from .file_layout import ElementPath
 from .icc_cleaning import Refusal
 from .keys import DeidKey
@@ -596,7 +597,15 @@ def _edit(
         return Edit(path, element.action, kind)
     assert value is not None  # every U and D leaf has a consumer that reads it
     if element.action == "D":
-        return _dummy(element.path, value, key, dummy_datetimes.get(path))
+        # An Encapsulated PDF's document has no dummy value: under Clean Pixel
+        # Data it takes its reviewed rendering, which the transform gives it,
+        # and otherwise the plan sequesters it, so that a document is never
+        # written unless the rendering replaces it (D-061).
+        return (
+            Edit(element.path, element.action, EditKind.PENDING)
+            if element.path == ENCAPSULATED_DOCUMENT
+            else _dummy(element.path, value, key, dummy_datetimes.get(path))
+        )
     return _uids(element.path, value, key)
 
 
@@ -748,6 +757,39 @@ class _Gathered:
         )
 
 
+# The IODs whose display module requires Color Space (0028,2002) beside an
+# ICC Profile (0028,2000) of a standard colour space (PS3.3 Tables C.11.27-1
+# and C.11.32-1).
+COLOUR_SPACE_IODS = frozenset(
+    {
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+    }
+)
+_ICC_PROFILE_PATH = ElementPath((), ICC_PROFILE)
+_COLOR_SPACE_PATH = ElementPath((), "(0028,2002)")
+
+
+def _check_colour_space(edit: Edit, colour_space_required: bool) -> None:
+    """Sequester where D's fixed sRGB profile would require Color Space.
+
+    In the display module of a Planar MPR or Volume Rendering Volumetric
+    Presentation State, Color Space is required beside an ICC Profile of a
+    standard colour space. The fixed sRGB profile that D writes in place of
+    a source profile that it cannot clean is one, so Color Space would be
+    required, and a code string has no dummy value: the instance is
+    sequestered by Color Space, as where its source holds Color Space.
+    """
+    if (
+        colour_space_required
+        and edit.path == _ICC_PROFILE_PATH
+        and edit.icc_refusal is not None
+    ):
+        raise _Sequester(
+            Sequestration(_COLOR_SPACE_PATH, "D", "CS", SequesterReason.NO_DUMMY_VALUE)
+        )
+
+
 def _record(sequestrations: list[Sequestration], raised: _Sequester) -> None:
     """Record a reason to sequester, once however many reads find it."""
     if raised.sequestration not in sequestrations:
@@ -761,6 +803,7 @@ def edit_instance(
     identity: SubjectIdentity | None = None,
     series_numberings: SeriesNumberings | None = None,
     dummy_datetimes: Mapping[ElementPath, str] | None = None,
+    colour_space_required: bool = False,
 ) -> InstanceEdits:
     """Return what each element of a planned data set becomes.
 
@@ -786,6 +829,12 @@ def edit_instance(
         entry
         (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`).
         Defaults to none.
+    colour_space_required : bool, optional
+        Whether the instance's IOD requires Color Space (0028,2002) beside
+        an ICC Profile (0028,2000) of a standard colour space at the top
+        level, as :data:`COLOUR_SPACE_IODS` do; if so, a top-level ICC
+        Profile that D replaces with the fixed sRGB profile sequesters the
+        instance. Defaults to False.
 
     Returns
     -------
@@ -826,6 +875,7 @@ def edit_instance(
                 series_numberings,
                 dummy_datetimes or {},
             )
+            _check_colour_space(edit, colour_space_required)
             if edit.kind is EditKind.KEEP and element.path in plan.renumbered:
                 # The identifier names the same item, which the items removed
                 # before it move (D-047).

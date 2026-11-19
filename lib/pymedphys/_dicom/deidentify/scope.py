@@ -33,12 +33,17 @@ Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
 Volume Report, and Waveform Annotation SR IODs, of the Parametric Map,
-Real World Value Mapping, and Encapsulated PDF IODs, and of the Grayscale,
-Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT Softcopy
-Presentation State IODs, uncompressed or in a transfer syntax that
-encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting an
-IOD or a transfer syntax does not release every instance in it: a compressed
-instance is still sequestered
+Real World Value Mapping, and Encapsulated PDF IODs, of the Grayscale,
+Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
+Softcopy Presentation State IODs, and of the Planar MPR and Volume Rendering
+Volumetric Presentation State IODs, with their Grayscale and Compositing
+Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
+Volume Rendering SOP Classes, the Advanced Blending Presentation State
+IOD, and the Waveform and Waveform Acquisition Presentation State IODs,
+uncompressed or in a transfer syntax that encapsulates Pixel Data that
+pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax
+does not release every instance in it: a compressed instance is still
+sequestered
 where the plugin pinned to its transfer syntax is not installed, or where
 its frames or codestreams fail the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
@@ -47,17 +52,21 @@ conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
 every Structured Report or Key Object Selection Document whose content
 tree the policy does not clean and keep, since the Basic Profile gives its
 Content Sequence (0040,A730) D, which a sequence has no dummy value for.
-So too every softcopy Presentation State that conforms to its IOD under
+So too every Presentation State that conforms to its IOD under
 ``basic`` and ``basic-clean-descriptors``, since Table E.1-1's plain X
 removes its Type 1 Presentation Creation Date and Time, and one that holds
 a Graphic Annotation Sequence (0070,0001) under every preset, since the
-table gives that sequence D. Every Encapsulated PDF that holds its
-Encapsulated Document (0042,0011) is also sequestered under every policy:
-Table E.1-1 gives it D, and no reviewed rule gives a document a dummy value.
-Every other instance is sequestered: neither de-identified nor written, and
-listed in the run report by opaque identifiers only. That includes the
-other Structured Reports, the volumetric, advanced blending, and waveform
-Presentation States, and instances of Private SOP Classes.
+table gives that sequence D, as the supplementary rules give a volumetric
+one's Volumetric Annotation Sequence (0070,1901) and Volumetric
+Presentation Input Annotation Sequence (0070,1905). Every Encapsulated PDF
+that holds its Encapsulated Document (0042,0011) is also sequestered under
+every policy without the Clean Pixel Data Option: Table E.1-1 gives it D,
+and no reviewed rule gives a document a dummy value. Under that option, the
+document is released only as the reviewed rendering of its pages
+(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). Every other
+instance is sequestered: neither de-identified nor written, and listed in
+the run report by opaque identifiers only. That includes the other
+Structured Reports and instances of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -143,6 +152,11 @@ SUPPORTED_IODS = frozenset(
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
         "Encapsulated PDF",
     }
 )
