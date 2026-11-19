@@ -28,7 +28,9 @@ before the first supported release.
     selects series of IDC's phantom collections alone;
 ``idc-measure``
     measures the downloaded series with a model at today's settings or its
-    publishers', and writes the counts-only summary
+    publishers', or, for a tuning run, under one of the named detector
+    variants and post-processing grids of
+    :mod:`~.text_evaluation_search` (``--variant`` and ``--grid``), and writes the counts-only summary
     (``summary.json`` and ``summary.md``), the per-case report
     (``cases.json``), and the assessment against the chosen criteria
     (``assessment.json``); with ``--converted``, it measures the classic
@@ -80,7 +82,6 @@ from .text_evaluation_cases import cases_report
 from .text_evaluation_converted import ConvertedCase
 from .text_evaluation_criteria import CHOSEN_CRITERIA, HELD_OUT_COLLECTIONS, assess
 from .text_evaluation_detector import (
-    DetectorVariant,
     EvaluationDetector,
     PostProcessing,
     published_point,
@@ -111,6 +112,7 @@ from .text_evaluation_phantom_report import (
     write_phantom_reports,
 )
 from .text_evaluation_phantoms import phantom_cases
+from .text_evaluation_search import GRIDS, VARIANTS
 from .text_evaluation_sources import DicomCase, SkippedFiles
 from .text_evaluation_archives import (
     ARCHIVES,
@@ -210,6 +212,18 @@ def _parser() -> argparse.ArgumentParser:
         command.set_defaults(run=run)
         if name in ("idc-measure", "phantom-report"):
             command.add_argument("--settings", choices=SETTINGS, default="today")
+            command.add_argument(
+                "--variant",
+                choices=sorted(VARIANTS),
+                default="today",
+                help="A named detector variant, with today's settings alone.",
+            )
+            command.add_argument(
+                "--grid",
+                choices=sorted(GRIDS),
+                default="today",
+                help="A named post-processing grid, with today's settings alone.",
+            )
             command.add_argument("--workers", type=int, default=1)
         if name == "idc-measure":
             command.add_argument(
@@ -300,14 +314,28 @@ def _detector(
     arguments: argparse.Namespace,
 ) -> tuple[functools.partial[EvaluationDetector], EvaluationSettings]:
     """The detector that a run measures, made in each worker, and its
-    settings, by the model and settings that the arguments name."""
+    settings, by the model, settings, variant, and grid that the arguments
+    name.
+
+    Raises
+    ------
+    EvaluationRefused
+        For a variant or grid other than today's with the publishers'
+        settings, which are their own variant and point.
+    """
     model = MODELS[arguments.model]
+    variant_name = getattr(arguments, "variant", "today")
+    grid_name = getattr(arguments, "grid", "today")
     if arguments.settings == "published":
+        if (variant_name, grid_name) != ("today", "today"):
+            raise EvaluationRefused(
+                "A variant or grid is measured with today's settings alone."
+            )
         variant = published_variant(model)
         points: tuple[PostProcessing, ...] = (published_point(model),)
     else:
-        variant = DetectorVariant()
-        points = (PostProcessing(),)
+        variant = VARIANTS[variant_name]
+        points = GRIDS[grid_name]
     detector = functools.partial(EvaluationDetector, variant, model)
     return detector, _settings(points, arguments.evaluated)
 
@@ -316,11 +344,12 @@ def _measure(arguments: argparse.Namespace) -> dict[str, str]:
     detector, settings = _detector(arguments)
     run = evaluate(_cases(arguments), detector, settings, workers=arguments.workers)
     summary = summarise(run)
+    assessment = assess(summary, CHOSEN_CRITERIA)
     return {
         "summary.json": _json(summary),
-        "summary.md": markdown(summary),
+        "summary.md": markdown(summary, assessment),
         "cases.json": _json(cases_report(run)),
-        "assessment.json": _json(assess(summary, CHOSEN_CRITERIA)),
+        "assessment.json": _json(assessment),
     }
 
 
