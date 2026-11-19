@@ -90,6 +90,16 @@ reason that such a finding is not a reason for review (D-032), or returns
   whose values that the search could find there equals a whole value of it
   (:func:`removed_uid`). It applies to a finding that would otherwise
   withhold the file.
+- :attr:`Exemption.VOCABULARY_MEANING`: the finding is in a Code Meaning
+  (0008,0104) of a code item, whatever its scheme, every value of which is
+  made only of words of the reviewed technique vocabulary and echoes no
+  identifier of the subject, and its source is a description, comment, or
+  technique descriptor of the examination, a contrast agent or
+  radiopharmaceutical, or an SR TEXT value, or a private data element that
+  only copies one of them
+  (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
+  The release gate tries it after every other exemption listed here, for a
+  text finding that none of them explains.
 - :attr:`Exemption.METHOD_DIGEST`: a finding of any kind in De-identification
   Method (0012,0063) of the top-level data set, every match of whose source
   there lies wholly inside a value equal to the method digest that the run
@@ -179,6 +189,8 @@ class Exemption(enum.Enum):
     UNWRITTEN_CODE_MEANING = "unwritten-code-meaning"
     UNWRITTEN_UID = "unwritten-uid"  # in a UID an option keeps, from unwritten only
     REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
+    # in a Code Meaning made only of the reviewed technique vocabulary
+    VOCABULARY_MEANING = "vocabulary-meaning"
     # a finding that would hold the file for review, which a reviewer cleared
     # in an attested QC pack of an earlier run of the same source file, in
     # the same value (residuals.ReviewedFinding)
