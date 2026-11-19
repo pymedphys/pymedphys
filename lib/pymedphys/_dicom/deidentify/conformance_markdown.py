@@ -45,9 +45,9 @@ from .conformance import (
     AttributeAction,
     ConformanceStatement,
 )
-from .conformance_values import code as _code
+from .conformance_prose import code as _code
 from .conformance_safe_private import safe_private_section
-from .conformance_values import join as _join
+from .conformance_prose import join as _join
 from .markers import PROFILE_CODE
 from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
@@ -697,7 +697,11 @@ _REVIEW_CONDITIONS = {
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
         "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, "
-        "MR Spectroscopy, Spatial "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface "
         "Segmentation, X-Ray Radiation Dose SR, Enhanced X-Ray Radiation Dose "
         "SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose SR, "
@@ -744,7 +748,12 @@ _REVIEW_CONDITIONS = {
         "Annotation, RT Radiation Set, C-Arm Photon-Electron Radiation, "
         "Tomotherapeutic Radiation, Robotic-Arm Radiation, RT Beams Delivery "
         "Instruction, RT Brachy Application Setup Delivery Instruction, RT "
-        "Radiation Set Delivery Instruction, MR Spectroscopy, Spatial "
+        "Radiation Set Delivery Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial "
         "Registration, Surface Segmentation, X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose "
