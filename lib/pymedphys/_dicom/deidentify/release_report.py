@@ -253,7 +253,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/85"
+FORMAT = "pymedphys-deid-release-report/83"
 # The modes of a redaction review, as qc_attestation.ReviewMode's values
 # name them, in the order that the report gives them (D-059).
 REVIEW_MODES = ("every-frame", "flagged-frames")
@@ -298,6 +298,7 @@ PIXEL_AND_FACE_REASONS = (
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
     ReviewReason.OTHER_GRIDS,
+    ReviewReason.OTHER_SURFACES,
 )
 ATTESTATION_REASONS = (
     *_REVIEW_REASONS,
