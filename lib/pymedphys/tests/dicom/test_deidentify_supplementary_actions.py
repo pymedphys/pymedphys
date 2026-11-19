@@ -152,7 +152,8 @@ ENHANCED_RT_IMAGE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
 # coverage on 31 October 2026, whose text, UID, and date attributes were
 # reviewed ahead of supporting them, against every IOD above, and those of
 # them that the first supported release now supports: RT Segment Annotation,
-# RT Radiation Set, the three radiation IODs, and the three delivery
+# RT Radiation Set, the three radiation IODs and their three records, RT
+# Radiation Salvage Record, RT Radiation Record Set, and the three delivery
 # instruction IODs.
 SECOND_GENERATION_RT_IODS = (
     "RT Physician Intent",
@@ -181,6 +182,11 @@ SUPPORTED_SECOND_GENERATION_RT_IODS = (
     "RT Beams Delivery Instruction",
     "RT Brachy Application Setup Delivery Instruction",
     "RT Radiation Set Delivery Instruction",
+    "RT Radiation Record Set",
+    "RT Radiation Salvage Record",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation Record",
 )
 # The Nuclear Medicine Image IOD, which the maintainer added to the target
 # coverage on 31 October 2026, and which the first supported release now
@@ -555,15 +561,16 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, the brachy and summary treatment records, which add none, the
     # Enhanced and Enhanced Continuous RT Images, which add 1, RT Segment
-    # Annotation and RT Radiation Set, which add 2, Segmentation, which adds
+    # Annotation and RT Radiation Set, which add 2, the four records of
+    # treatment tolerance violations, which add 3, Segmentation, which adds
     # 4, Surface Segmentation, which adds 2, Nuclear Medicine Image, which
     # adds 3, the Computed Radiography and Digital X-Ray Image IODs, which add
     # 14, the two dose-report IODs, the three delivery instructions, which add
     # 1, the six softcopy Presentation State IODs, which add 7, Encapsulated
     # PDF, which adds 8, and the volumetric and advanced blending Presentation
-    # State IODs, which add 2, whose supplementary rules cover 212 text
+    # State IODs, which add 2, whose supplementary rules cover 215 text
     # attributes.
-    assert len(omitted) == 212
+    assert len(omitted) == 215
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -578,11 +585,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 98,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 99,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 34,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 60,
+        ("K", ()): 62,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 18,
@@ -2118,8 +2125,9 @@ SECOND_GENERATION_KEPT_TEXT = {
     "(3010,0086)",  # Intended Start Day of Week
 }
 # Of the kept text, what the supported second-generation RT IODs use: RT
-# Radiation Set uses Intended Start Day of Week.
-SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(3010,0086)"}
+# Radiation Set uses Intended Start Day of Week, and the four records of
+# treatment tolerance violations use Selector Attribute Name and Keyword.
+SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(0082,0018)", "(0082,0019)", "(3010,0086)"}
 SECOND_GENERATION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (SECOND_GENERATION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
     (SECOND_GENERATION_KEPT_TEXT, "K", {}),
@@ -2617,7 +2625,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
     # and the Computed Radiography and Digital X-Ray Image IODs add 20: the 14
     # text attributes that only they use and Table E.1-1 omits, eight of them
     # kept, and the six that Table E.1-1 lists, none of them kept.
-    assert len(basic) == 365
+    assert len(basic) == 369
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT
