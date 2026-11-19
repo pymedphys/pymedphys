@@ -960,14 +960,14 @@ def test_a_verdict_covers_only_the_grids_that_the_pack_showed():
 
 def test_a_review_s_grids_are_digests_of_files_marked_absent():
     source = hashlib.sha256(b"source").digest()
-    with pytest.raises(QcPackError, match="contours, and grids"):
+    with pytest.raises(QcPackError, match="contours, grids, and surfaces"):
         FaceReview(
             REFERENCE,
             frozenset(),
             frozenset({source}),
             absent_grids=frozenset({(source, NO_GRIDS)}),
         )
-    with pytest.raises(QcPackError, match="contours, and grids"):
+    with pytest.raises(QcPackError, match="contours, grids, and surfaces"):
         FaceReview(
             REFERENCE,
             frozenset({source}),

@@ -421,7 +421,7 @@ def test_the_pack_shows_the_finding_with_its_values_digest(first_run):
     _, pack = first_run
     document = json.loads((pack / "qc-pack.json").read_text("utf-8"))
 
-    assert document["format"] == PACK_FORMAT == "pymedphys-deid-qc-pack/36"
+    assert document["format"] == PACK_FORMAT == "pymedphys-deid-qc-pack/37"
     (finding,) = document["residual_findings"]
     assert finding["location"]["element"] == "(0008,0080)"
     assert finding["excerpt"] is not None
