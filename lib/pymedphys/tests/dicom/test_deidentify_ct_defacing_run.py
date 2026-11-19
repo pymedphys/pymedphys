@@ -20,8 +20,9 @@ PET Image by two slices of the head, and the BINARY Segmentation by one of
 the head's body. Every UID and value here is invented."""
 
 # The runs of the head share _ct_defacing_runs.py with
-# test_deidentify_ct_defacing_variant_runs.py and
-# test_deidentify_ct_defacing_review_runs.py, which CI runs in parts of their
+# test_deidentify_ct_defacing_variant_runs.py,
+# test_deidentify_ct_defacing_review_runs.py, and
+# test_deidentify_ct_defacing_dose_runs.py, which CI runs in parts of their
 # own, so that no part reaches the time limit. Each module makes the runs
 # that its own tests review, so no run is made in two, but for the reviewed
 # and defaced runs of _ct_defacing_runs.py, which the variants' tests compare

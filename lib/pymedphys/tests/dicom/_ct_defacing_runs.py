@@ -15,8 +15,9 @@
 """The analytic head, the synthetic collection around it, and the two runs
 under Clean Recognizable Visual Features that the CT defacing run modules,
 test_deidentify_ct_defacing_run.py,
-test_deidentify_ct_defacing_variant_runs.py, and
-test_deidentify_ct_defacing_review_runs.py, review: the RT Structure Set
+test_deidentify_ct_defacing_variant_runs.py,
+test_deidentify_ct_defacing_review_runs.py, and
+test_deidentify_ct_defacing_dose_runs.py, review: the RT Structure Set
 replaced by one of the head, one RT Dose by a grid over the head, the PET
 Image by two slices of the head, and the BINARY Segmentation by one of the
 head's body. Every UID and value here is invented."""

@@ -20,8 +20,9 @@ from the globes, unconfirmed and confirmed. Every UID and value here is
 invented."""
 
 # The runs of the head share _ct_defacing_runs.py with
-# test_deidentify_ct_defacing_run.py and
-# test_deidentify_ct_defacing_review_runs.py, which CI runs in parts of their
+# test_deidentify_ct_defacing_run.py,
+# test_deidentify_ct_defacing_review_runs.py, and
+# test_deidentify_ct_defacing_dose_runs.py, which CI runs in parts of their
 # own, so that no part reaches the time limit. This module makes the runs
 # that its own tests review, and the defaced run of _ct_defacing_runs.py,
 # which its tests compare their runs with.
