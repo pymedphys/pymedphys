@@ -33,7 +33,9 @@ before the first supported release.
     :mod:`~.text_evaluation_search` (``--variant`` and ``--grid``), and writes the counts-only summary
     (``summary.json`` and ``summary.md``), the per-case report
     (``cases.json``), and the assessment against the chosen criteria
-    (``assessment.json``); with ``--converted``, it measures the classic
+    (``assessment.json``), in which, for any detector but today's, the rule
+    of no loss against today's detector is not assessed, and fails; with
+    ``--converted``, it measures the classic
     CT, MR, and PET series alone, each read as the Legacy Converted
     Enhanced instances that its images convert to;
 ``idc-parity``
@@ -340,11 +342,24 @@ def _detector(
     return detector, _settings(points, arguments.evaluated)
 
 
+def todays_detector(arguments: argparse.Namespace) -> bool:
+    """Whether the arguments name today's detector, today's model at the
+    settings that D-037 describes, whose point of today's post-processing
+    is then the baseline that the rule of no loss compares with."""
+    return (
+        arguments.model == PP_OCRV6_SMALL.name
+        and arguments.settings == "today"
+        and getattr(arguments, "variant", "today") == "today"
+    )
+
+
 def _measure(arguments: argparse.Namespace) -> dict[str, str]:
     detector, settings = _detector(arguments)
     run = evaluate(_cases(arguments), detector, settings, workers=arguments.workers)
     summary = summarise(run)
-    assessment = assess(summary, CHOSEN_CRITERIA)
+    assessment = assess(
+        summary, CHOSEN_CRITERIA, todays_baseline=todays_detector(arguments)
+    )
     return {
         "summary.json": _json(summary),
         "summary.md": markdown(summary, assessment),

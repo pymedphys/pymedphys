@@ -15,6 +15,7 @@
 """The evaluation's command on IDC, with invented rows of IDC's index, a
 synthetic series, and a stand-in network."""
 
+import argparse
 import functools
 import json
 
@@ -23,6 +24,7 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import text_evaluation as evaluation
 from pymedphys._dicom.deidentify import text_evaluation_command as command
+from pymedphys._dicom.deidentify import text_evaluation_criteria as criteria
 from pymedphys._dicom.deidentify import text_evaluation_detector as detector
 from pymedphys._dicom.deidentify import text_evaluation_idc as idc
 from pymedphys._dicom.deidentify import text_evaluation_phantoms as phantoms
@@ -102,6 +104,8 @@ def test_downloaded_series_are_measured(tmp_path, monkeypatch, stand_in):
     assert "2.25.1" not in (out / "summary.json").read_text()
     (assessed,) = json.loads((out / "assessment.json").read_text())
     assert not assessed["meets"]
+    # Today's detector is its own baseline for the rule of no loss.
+    assert criteria.NOT_TODAYS not in assessed["failures"]
 
 
 def test_published_settings_are_measured_with_their_own_point(
@@ -166,8 +170,23 @@ def test_a_tuning_run_measures_a_named_variant_and_grid(
     assert summary["detector"]["variant"]["rendering"]["noise"] == "tissue"
     assessment = json.loads((out / "assessment.json").read_text())
     assert [each["index"] for each in assessment] == list(range(len(grid)))
+    # A variant's first point is not today's detector, so no point of it can
+    # show that it loses nothing against today's.
+    for each in assessment:
+        assert criteria.NOT_TODAYS in each["failures"] and not each["meets"]
     # The page marks each point against the criteria, as the assessment does.
     assert "Meets" in (out / "summary.md").read_text()
+
+
+def test_only_todays_model_at_todays_settings_and_variant_is_todays_detector():
+    def named(**changes):
+        arguments = {"model": "PP-OCRv6 small", "settings": "today", **changes}
+        return command.todays_detector(argparse.Namespace(**arguments))
+
+    assert named() and named(variant="today")
+    assert not named(variant="noise over tissue")
+    assert not named(settings="published")
+    assert not named(model="PP-OCRv6 small (PaddlePaddle)")
 
 
 def test_a_variant_or_grid_is_refused_with_published_settings(tmp_path):

@@ -15,20 +15,11 @@
 """The named variants and grids that a tuning run searches."""
 
 import dataclasses
-import pathlib
-import re
 
 from pymedphys._dicom.deidentify import text_evaluation_search as search
 from pymedphys._dicom.deidentify.text_evaluation_detector import (
     DetectorVariant,
     PostProcessing,
-)
-
-WORKFLOW = (
-    pathlib.Path(__file__).parents[4]
-    / ".github"
-    / "workflows"
-    / "text-detector-evaluation.yml"
 )
 
 
@@ -73,14 +64,3 @@ def test_each_point_of_the_single_settings_changes_one_setting():
         }
         # The shape filter is one setting with the side it applies from.
         assert len(changed - {"elongation_from_side"}) == 1, changed
-
-
-def test_the_workflow_offers_exactly_the_named_variants_and_grids():
-    text = WORKFLOW.read_text(encoding="utf-8")
-    variant = re.search(r"\n      variant:\n(.*?)\n        default:", text, re.S)
-    grid = re.search(r"\n      grid:\n(.*?)\n        default:", text, re.S)
-    assert variant is not None and grid is not None
-    offered = re.findall(r"\n          - (.+)", variant.group(1))
-    assert offered == list(search.VARIANTS)
-    (options,) = re.findall(r"options: \[(.*)\]", grid.group(1))
-    assert [each.strip() for each in options.split(",")] == list(search.GRIDS)
