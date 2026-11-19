@@ -106,6 +106,7 @@ from .dummy_values import (
     values_for_d,
 )
 from .elements import ElementValue, OutsideDefaultRepertoire, UndecodableElement
+from .encapsulated_documents import ENCAPSULATED_DOCUMENT
 from .file_layout import ElementPath
 from .icc_cleaning import Refusal
 from .keys import DeidKey
@@ -427,11 +428,16 @@ def _text(value: ElementValue) -> str | bytes:
     return "\\".join(str(each) for each in value.values)
 
 
+def _within(path: ElementPath) -> tuple[str, ...]:
+    """Return the tags of the sequences that enclose an element, outermost first."""
+    return tuple(tag for tag, _ in path.items)
+
+
 def _kept_container(element: ElementPlan, container: bool) -> bool:
     return (
         container
         and element.removed_with is None
-        and descends(element.path.tag, element.action)
+        and descends(element.path.tag, element.action, _within(element.path))
     )
 
 
@@ -498,7 +504,9 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
     action = element.action
     if element.removed_with is not None or action == "X":
         kind = EditKind.REMOVE
-    elif action == "K" or (container and descends(element.path.tag, action)):
+    elif action == "K" or (
+        container and descends(element.path.tag, action, _within(element.path))
+    ):
         kind = EditKind.KEEP
     elif action == "C" or _takes_pseudonym(element):
         kind = EditKind.PENDING
@@ -596,7 +604,15 @@ def _edit(
         return Edit(path, element.action, kind)
     assert value is not None  # every U and D leaf has a consumer that reads it
     if element.action == "D":
-        return _dummy(element.path, value, key, dummy_datetimes.get(path))
+        # An Encapsulated PDF's document has no dummy value: under Clean Pixel
+        # Data it takes its reviewed rendering, which the transform gives it,
+        # and otherwise the plan sequesters it, so that a document is never
+        # written unless the rendering replaces it (D-061).
+        return (
+            Edit(element.path, element.action, EditKind.PENDING)
+            if element.path == ENCAPSULATED_DOCUMENT
+            else _dummy(element.path, value, key, dummy_datetimes.get(path))
+        )
     return _uids(element.path, value, key)
 
 

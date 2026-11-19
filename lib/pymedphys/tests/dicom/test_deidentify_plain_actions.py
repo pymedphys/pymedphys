@@ -84,6 +84,8 @@ PRESENTATION_STATE_IODS = (
     "Planar MPR Volumetric Presentation State",
     "Volume Rendering Volumetric Presentation State",
     "Advanced Blending Presentation State",
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
 )
 PRESENTATION_CREATION_DATES = ("(0070,0082)", "(0070,0083)")
 # The IODs that include the Overlay Plane Module as conditional, of which the
@@ -243,10 +245,10 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
     # Table E.1-1 gives RT Accessory Holder Slot ID Z, and it is Type 1 in RT
     # Accessory Holder Slot Sequence within RT Accessory Holder Definition
     # Sequence of these IODs. Of the IODs of the first supported release,
-    # only C-Arm Photon-Electron Radiation, Robotic-Arm Radiation, and RT
-    # Patient Position Acquisition Instruction have such a place, where it
-    # takes the dummy value (D-021). A new edition
-    # that changes where this happens fails here.
+    # only C-Arm Photon-Electron Radiation, Robotic-Arm Radiation, their
+    # records, and RT Patient Position Acquisition Instruction have such a
+    # place, where it takes the dummy value (D-021). A new edition that
+    # changes where this happens fails here.
     z = {
         attribute.tag
         for attribute in standard.load_table_e1_1().attributes
@@ -274,6 +276,8 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
     assert set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy} == {
         "C-Arm Photon-Electron Radiation",
         "Robotic-Arm Radiation",
+        "C-Arm Photon-Electron Radiation Record",
+        "Robotic-Arm Radiation Record",
         "RT Patient Position Acquisition Instruction",
     }
 

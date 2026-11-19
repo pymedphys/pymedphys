@@ -23,7 +23,10 @@ Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
 Treatment Record, RT Treatment Summary Record, RT Beams Delivery
 Instruction, RT Brachy Application Setup Delivery Instruction, RT Radiation
 Set Delivery Instruction, RT Physician Intent, RT Treatment Preparation, and
-RT Patient Position Acquisition Instruction IODs, of the Spatial Registration and Deformable Spatial
+RT Patient Position Acquisition Instruction IODs, of the C-Arm Photon-Electron
+Radiation Record, Tomotherapeutic Radiation Record, Robotic-Arm Radiation
+Record, RT Radiation Salvage Record, and RT Radiation Record Set IODs, of the
+Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
 and Label Map Segmentation Storage, of the Surface Segmentation IOD, of
 the Computed Radiography Image and Digital X-Ray Image IODs, of the X-Ray
@@ -39,8 +42,9 @@ Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
 Softcopy Presentation State IODs, and of the Planar MPR and Volume Rendering
 Volumetric Presentation State IODs, with their Grayscale and Compositing
 Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
-Volume Rendering SOP Classes, and the Advanced Blending Presentation State
-IOD, uncompressed or in a transfer syntax that encapsulates Pixel Data that
+Volume Rendering SOP Classes, the Advanced Blending Presentation State
+IOD, and the Waveform and Waveform Acquisition Presentation State IODs,
+uncompressed or in a transfer syntax that encapsulates Pixel Data that
 pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax
 does not release every instance in it: a compressed instance is still
 sequestered
@@ -60,11 +64,13 @@ table gives that sequence D, as the supplementary rules give a volumetric
 one's Volumetric Annotation Sequence (0070,1901) and Volumetric
 Presentation Input Annotation Sequence (0070,1905). Every Encapsulated PDF
 that holds its Encapsulated Document (0042,0011) is also sequestered under
-every policy: Table E.1-1 gives it D, and no reviewed rule gives a document
-a dummy value. Every other instance is sequestered: neither de-identified
-nor written, and listed in the run report by opaque identifiers only. That
-includes the other Structured Reports, the waveform Presentation States,
-and instances of Private SOP Classes.
+every policy without the Clean Pixel Data Option: Table E.1-1 gives it D,
+and no reviewed rule gives a document a dummy value. Under that option, the
+document is released only as the reviewed rendering of its pages
+(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). Every other
+instance is sequestered: neither de-identified nor written, and listed in
+the run report by opaque identifiers only. That includes the other
+Structured Reports and instances of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -124,6 +130,11 @@ SUPPORTED_IODS = frozenset(
         "RT Structure Set",
         "RT Treatment Preparation",
         "RT Treatment Summary Record",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "RT Radiation Record Set",
         "Segmentation",
         "Surface Segmentation",
         "Spatial Registration",
@@ -156,6 +167,8 @@ SUPPORTED_IODS = frozenset(
         "Planar MPR Volumetric Presentation State",
         "Volume Rendering Volumetric Presentation State",
         "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
         "Encapsulated PDF",
     }
 )

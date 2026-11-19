@@ -45,9 +45,9 @@ from .conformance import (
     AttributeAction,
     ConformanceStatement,
 )
-from .conformance_values import code as _code
+from .conformance_prose import code as _code
 from .conformance_safe_private import safe_private_section
-from .conformance_values import join as _join
+from .conformance_prose import join as _join
 from .markers import PROFILE_CODE
 from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
@@ -698,7 +698,12 @@ _REVIEW_CONDITIONS = {
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
         "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, "
         "RT Physician Intent, RT Treatment Preparation, RT Patient Position "
-        "Acquisition Instruction, MR Spectroscopy, Spatial "
+        "Acquisition Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface "
         "Segmentation, X-Ray Radiation Dose "
         "SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation "
@@ -712,8 +717,9 @@ _REVIEW_CONDITIONS = {
         "Presentation State, XA/XRF Grayscale Softcopy Presentation State, "
         "Variable Modality LUT Softcopy Presentation State, Planar MPR "
         "Volumetric Presentation State, Volume Rendering Volumetric "
-        "Presentation State, and Advanced Blending Presentation State. There "
-        "it is a "
+        "Presentation State, Advanced Blending Presentation State, Waveform "
+        "Presentation State, and Waveform Acquisition Presentation State. "
+        "There it is a "
         "standard attribute of a Standard Extended SOP Class (PS3.2 Section "
         "7.3), added to the top level of the data set as an attribute of the "
         "instance, where every PS3.3 module that defines it, such as the "
@@ -743,8 +749,13 @@ _REVIEW_CONDITIONS = {
         "Tomotherapeutic Radiation, Robotic-Arm Radiation, RT Beams Delivery "
         "Instruction, RT Brachy Application Setup Delivery Instruction, RT "
         "Radiation Set Delivery Instruction, RT Physician Intent, RT Treatment "
-        "Preparation, RT Patient Position Acquisition Instruction, MR "
-        "Spectroscopy, Spatial Registration, Deformable Spatial "
+        "Preparation, RT Patient Position Acquisition Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
+        "Registration, Deformable Spatial "
         "Registration, Surface Segmentation, X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose "
         "SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose "
@@ -756,9 +767,10 @@ _REVIEW_CONDITIONS = {
         "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
         "Softcopy Presentation State, Blending Softcopy Presentation State, "
         "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
-        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, "
-        "Volume Rendering Volumetric Presentation State, and Advanced Blending "
-        "Presentation State. There it is a "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
+        "State, Volume Rendering Volumetric Presentation State, Advanced "
+        "Blending Presentation State, Waveform Presentation State, and "
+        "Waveform Acquisition Presentation State. There it is a "
         "standard attribute of a "
         "Standard Extended SOP Class (PS3.2 Section 7.3), added to the top "
         "level of the data set as an attribute of the instance, where every "

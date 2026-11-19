@@ -20,8 +20,8 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of sixty-three other IODs, two of the Segmentation IOD,
-one of each of its SOP Classes, each in a series of its own, two of the
+instance of each of seventy other IODs, two of the Segmentation IOD, one
+of each of its SOP Classes, each in a series of its own, two of the
 Digital X-Ray Image IOD, one of each of its SOP Classes, each in a series
 of its own, and a second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image, PET Image, and Nuclear Medicine Image instances reference the
@@ -53,7 +53,11 @@ Instruction references the RT Radiation Set and its C-Arm Photon-Electron
 Radiation. The RT Image, a digitally reconstructed radiograph of 2 by 2
 pixels, references the RT Plan, as do the Enhanced RT Image, a digitally
 reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
-image, each of two frames of 2 by 2 pixels. The Computed Radiography image,
+image, each of two frames of 2 by 2 pixels. Each radiation record names
+the radiation of its kind that it records, the RT Radiation Salvage Record
+the C-Arm Photon-Electron Radiation, and the RT Radiation Record Set the RT
+Radiation Set and the C-Arm Photon-Electron Radiation Record, and their
+other references name the RT Structure Set. The Computed Radiography image,
 a lateral skull radiograph, references the first CT slice; of the Digital
 X-Ray images of a chest radiograph, the image for processing references
 the first CT slice, and the image for presentation the image for
@@ -90,9 +94,11 @@ ones the first CT slice, the colour one the Enhanced MR Color Image, the
 pseudo-colour one the PET Image, and the XA/XRF one the RT Image. The
 volumetric Presentation States name the CT slices in their Volumetric
 Presentation Input Set Sequence (0070,120A), and the advanced blending one
-the PET Image in its Advanced Blending Sequence (0070,1B01). It is the
-input for validating each preset end to end: once the engine has written
-the collection, the residual search
+the PET Image in its Advanced Blending Sequence (0070,1B01). The waveform
+Presentation States name the MR Image where they would name a waveform,
+since the collection holds none. It is the input for validating each
+preset end to end: once the engine has written the collection, the
+residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
 
@@ -236,7 +242,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other seventy-two check each preset's output, the reports where their
+the other seventy-nine check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -279,7 +285,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other seventy-two files stay releasable, the
+CT slice remains sequestered; the other seventy-nine files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -328,6 +334,7 @@ from .dummy_values import (
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     REFERENCED_STUDY_SEQUENCE,
+    OPERATOR_IDENTIFICATION_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
     reviewed_within,
 )
@@ -438,6 +445,8 @@ GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
 )
 ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.8"
 VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.9"
+WAVEFORM_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.9.100.1"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.9.100.2"
 PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
     {
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -449,6 +458,8 @@ PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
         GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE,
     }
 )
 RT_SEGMENT_ANNOTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.11"
@@ -462,6 +473,11 @@ RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.21"
 RT_PHYSICIAN_INTENT_STORAGE = "1.2.840.10008.5.1.4.1.1.481.10"
 RT_TREATMENT_PREPARATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.22"
 RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.25"
+RT_RADIATION_RECORD_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.16"
+RT_RADIATION_SALVAGE_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.17"
+TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.18"
+C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.19"
+ROBOTIC_ARM_RADIATION_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.20"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -567,6 +583,8 @@ VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE = "61-pr-variable-modality-lut.dcm
 PLANAR_MPR_PRESENTATION_STATE_FILE = "86-pr-planar-mpr.dcm"
 VOLUME_RENDERING_PRESENTATION_STATE_FILE = "87-pr-volume-rendering.dcm"
 ADVANCED_BLENDING_PRESENTATION_STATE_FILE = "88-pr-advanced-blending.dcm"
+WAVEFORM_PRESENTATION_STATE_FILE = "91-pr-waveform.dcm"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE_FILE = "92-pr-waveform-acquisition.dcm"
 PRESENTATION_STATE_FILES = (
     GRAYSCALE_PRESENTATION_STATE_FILE,
     COLOR_PRESENTATION_STATE_FILE,
@@ -577,6 +595,8 @@ PRESENTATION_STATE_FILES = (
     PLANAR_MPR_PRESENTATION_STATE_FILE,
     VOLUME_RENDERING_PRESENTATION_STATE_FILE,
     ADVANCED_BLENDING_PRESENTATION_STATE_FILE,
+    WAVEFORM_PRESENTATION_STATE_FILE,
+    WAVEFORM_ACQUISITION_PRESENTATION_STATE_FILE,
 )
 # The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
 # the three radiations, one of each second-generation radiation IOD, that it
@@ -598,6 +618,14 @@ RADIATION_SET_DELIVERY_INSTRUCTION_FILE = "77-rt-radiation-set-delivery-instruct
 PHYSICIAN_INTENT_FILE = "79-rt-physician-intent.dcm"
 TREATMENT_PREPARATION_FILE = "80-rt-treatment-preparation.dcm"
 POSITION_ACQUISITION_INSTRUCTION_FILE = "81-rt-position-acquisition-instruction.dcm"
+# The RT Radiation Record Set of the radiation records, a record of each
+# second-generation radiation IOD, and an RT Radiation Salvage Record,
+# numbered after the files that open pull requests add.
+RADIATION_RECORD_SET_FILE = "78-rt-radiation-record-set.dcm"
+C_ARM_RADIATION_RECORD_FILE = "82-c-arm-radiation-record.dcm"
+TOMOTHERAPEUTIC_RADIATION_RECORD_FILE = "83-tomotherapeutic-radiation-record.dcm"
+ROBOTIC_ARM_RADIATION_RECORD_FILE = "84-robotic-arm-radiation-record.dcm"
+RADIATION_SALVAGE_RECORD_FILE = "85-rt-radiation-salvage-record.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -747,12 +775,26 @@ TREATMENT_PREPARATION_SERIES = f"{LINKED_UID_ROOT}07600"
 TREATMENT_PREPARATION = f"{LINKED_UID_ROOT}07601"
 POSITION_ACQUISITION_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07700"
 POSITION_ACQUISITION_INSTRUCTION = f"{LINKED_UID_ROOT}07701"
+RADIATION_RECORD_SET_SERIES = f"{LINKED_UID_ROOT}07400"
+RADIATION_RECORD_SET = f"{LINKED_UID_ROOT}07401"
+C_ARM_RADIATION_RECORD_SERIES = f"{LINKED_UID_ROOT}07800"
+C_ARM_RADIATION_RECORD = f"{LINKED_UID_ROOT}07801"
+TOMOTHERAPEUTIC_RADIATION_RECORD_SERIES = f"{LINKED_UID_ROOT}07900"
+TOMOTHERAPEUTIC_RADIATION_RECORD = f"{LINKED_UID_ROOT}07901"
+ROBOTIC_ARM_RADIATION_RECORD_SERIES = f"{LINKED_UID_ROOT}08000"
+ROBOTIC_ARM_RADIATION_RECORD = f"{LINKED_UID_ROOT}08001"
+RADIATION_SALVAGE_RECORD_SERIES = f"{LINKED_UID_ROOT}08100"
+RADIATION_SALVAGE_RECORD = f"{LINKED_UID_ROOT}08101"
 PLANAR_MPR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08200"
 PLANAR_MPR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08201"
 VOLUME_RENDERING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08300"
 VOLUME_RENDERING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08301"
 ADVANCED_BLENDING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08400"
 ADVANCED_BLENDING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08401"
+WAVEFORM_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08700"
+WAVEFORM_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08701"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08800"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08801"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -809,11 +851,13 @@ _CONTENT_ITEM_VALUES = types.MappingProxyType(
 # The collection's own UIDs that a content tree's UIDREF items can name, and
 # that are then recorded as linked.
 _COLLECTION_UIDS = frozenset({STUDY, FRAME_OF_REFERENCE, CT_SERIES})
-# The sequences whose D a reviewed rule writes (D-021), Institution Code
-# Sequence's only where reviewed_within says.
+# The sequences whose D a reviewed rule writes or keeps (D-021), Institution
+# Code Sequence's and Operator Identification Sequence's only where
+# reviewed_within says.
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
     {
         INSTITUTION_CODE_SEQUENCE,
+        OPERATOR_IDENTIFICATION_SEQUENCE,
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
         REFERENCED_STUDY_SEQUENCE,
@@ -825,6 +869,9 @@ _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
 _REFERENCED_RT_PLAN_SEQUENCE = "(300C,0002)"
 _RT_RADIATION_SEQUENCE = "(300A,0616)"
 _REFERENCED_RT_RADIATION_SEQUENCE = "(300A,0630)"
+_REFERENCED_RT_INSTANCE_SEQUENCE = "(300A,0631)"
+_REFERENCED_RT_RADIATION_SET_SEQUENCE = "(300A,0702)"
+_REFERENCED_RT_RADIATION_RECORD_SEQUENCE = "(300A,0703)"
 _REFERENCED_TREATMENT_RECORD_SEQUENCE = "(3008,0030)"
 _RELATED_REFERENCE_RT_IMAGE_SEQUENCE = "(0074,1040)"
 # The instance a reference names, by the innermost sequence that holds it.
@@ -847,6 +894,20 @@ _RADIATIONS = frozenset(
         C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
         TOMOTHERAPEUTIC_RADIATION_STORAGE,
         ROBOTIC_ARM_RADIATION_STORAGE,
+    }
+)
+# The radiation records, whose Modality PS3.3 Sections A.86.1.9.4.1 to
+# A.86.1.12.4.1 make RTRAD, and the RT Radiation Record Set, for which PS3.3
+# names no Modality: of the Enumerated Values of its Enhanced RT Series
+# Module (Section C.36.3.1.1), RTRAD is the one for a set of radiation
+# records.
+_RADIATION_RECORDS = frozenset(
+    {
+        RT_RADIATION_RECORD_SET_STORAGE,
+        RT_RADIATION_SALVAGE_RECORD_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE,
+        C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
+        ROBOTIC_ARM_RADIATION_RECORD_STORAGE,
     }
 )
 _SOP_CLASSES = types.MappingProxyType(
@@ -933,6 +994,11 @@ _SOP_CLASSES = types.MappingProxyType(
         POSITION_ACQUISITION_INSTRUCTION: (
             RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE
         ),
+        RADIATION_RECORD_SET: RT_RADIATION_RECORD_SET_STORAGE,
+        C_ARM_RADIATION_RECORD: C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION_RECORD: TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE,
+        ROBOTIC_ARM_RADIATION_RECORD: ROBOTIC_ARM_RADIATION_RECORD_STORAGE,
+        RADIATION_SALVAGE_RECORD: RT_RADIATION_SALVAGE_RECORD_STORAGE,
         PLANAR_MPR_PRESENTATION_STATE: (
             GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE
         ),
@@ -941,6 +1007,10 @@ _SOP_CLASSES = types.MappingProxyType(
         ),
         ADVANCED_BLENDING_PRESENTATION_STATE: (
             ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE
+        ),
+        WAVEFORM_PRESENTATION_STATE: WAVEFORM_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE: (
+            WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE
         ),
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
@@ -995,17 +1065,32 @@ _FIRST_DATE = datetime.date(900, 1, 1)
 # another marker's date, which the residual search would find.
 _DATE_RUN_DAYS = 363
 _DATE_RUN_PERIOD = 4004
+# The first 2**15 - 1 dates run on from _FIRST_DATE, to before 1900; the
+# rest run back from it, in runs on the same period, to no earlier than
+# _EARLIEST_DATE, late enough that a shift back by the longest offset still
+# gives a valid date. _LAST_DATE_NUMBER is the number of the last of them.
+_FORWARD_DATES = 2**15 - 1
+_EARLIEST_DATE = datetime.date(100, 1, 1)
+_LAST_DATE_NUMBER = (
+    _FORWARD_DATES
+    + (_FIRST_DATE - _EARLIEST_DATE).days // _DATE_RUN_PERIOD * _DATE_RUN_DAYS
+)
 _SECONDS_IN_A_DAY = 86_400
 # The kinds of marker numbered apart from the others, by VR, and how many of
-# each the corpus can hold: dates and datetimes, which share their days, up
-# to the last before 1900 (_marker_date); times, up to the last second of a
-# day; and VR SS, whose markers are negated, and US, up to the limits of
-# their 16 bits.
+# each the corpus can hold: dates and datetimes, which share their days,
+# no earlier than the year 100 and before 1900 (_marker_date); times, up to
+# the last second of a day; and VR SS, whose markers are negated, and US, up
+# to the limits of their 16 bits.
 _NUMBERED_APART = types.MappingProxyType(
     {"DA": "date", "DT": "date", "TM": "time", "SS": "SS", "US": "US"}
 )
 _KIND_LIMITS = types.MappingProxyType(
-    {"date": 2**15 - 1, "time": _SECONDS_IN_A_DAY - 1, "SS": 2**15, "US": 2**16 - 1}
+    {
+        "date": _LAST_DATE_NUMBER,
+        "time": _SECONDS_IN_A_DAY - 1,
+        "SS": 2**15,
+        "US": 2**16 - 1,
+    }
 )
 
 
@@ -1905,6 +1990,24 @@ _SPECS = (
         RADIATION_SET,
         targets=((_REFERENCED_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),),
     ),
+    # Each radiation record names its radiation in Referenced RT Instance
+    # Sequence, as the radiation that it delivered, and the RT Radiation
+    # Salvage Record names the C-Arm Photon-Electron Radiation, as the record
+    # of a delivery of it that the treatment device could not record in full.
+    # The RT Radiation Record Set names the RT Radiation Set, whose radiations
+    # it records, and the C-Arm Photon-Electron Radiation Record. Each names
+    # the structure set elsewhere, as the radiations do.
+    _Spec(
+        RADIATION_RECORD_SET_FILE,
+        RT_RADIATION_RECORD_SET_STORAGE,
+        RADIATION_RECORD_SET,
+        RADIATION_RECORD_SET_SERIES,
+        STRUCTURE_SET,
+        targets=(
+            (_REFERENCED_RT_RADIATION_SET_SEQUENCE, RADIATION_SET),
+            (_REFERENCED_RT_RADIATION_RECORD_SEQUENCE, C_ARM_RADIATION_RECORD),
+        ),
+    ),
     # The RT Physician Intent names the first CT slice, the image that its
     # intent was drawn up from, and, in the Referenced Study Sequence of its
     # input instances and planning inputs, the collection's study. The RT
@@ -1932,6 +2035,48 @@ _SPECS = (
         POSITION_ACQUISITION_INSTRUCTION,
         POSITION_ACQUISITION_INSTRUCTION_SERIES,
         TREATMENT_PREPARATION,
+    ),
+    # The radiation records, numbered after the RT Patient Position
+    # Acquisition Instruction.
+    *(
+        _Spec(
+            name,
+            sop_class,
+            instance,
+            series,
+            STRUCTURE_SET,
+            targets=((_REFERENCED_RT_INSTANCE_SEQUENCE, radiation),),
+        )
+        for name, sop_class, instance, series, radiation in (
+            (
+                C_ARM_RADIATION_RECORD_FILE,
+                C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
+                C_ARM_RADIATION_RECORD,
+                C_ARM_RADIATION_RECORD_SERIES,
+                C_ARM_RADIATION,
+            ),
+            (
+                TOMOTHERAPEUTIC_RADIATION_RECORD_FILE,
+                TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE,
+                TOMOTHERAPEUTIC_RADIATION_RECORD,
+                TOMOTHERAPEUTIC_RADIATION_RECORD_SERIES,
+                TOMOTHERAPEUTIC_RADIATION,
+            ),
+            (
+                ROBOTIC_ARM_RADIATION_RECORD_FILE,
+                ROBOTIC_ARM_RADIATION_RECORD_STORAGE,
+                ROBOTIC_ARM_RADIATION_RECORD,
+                ROBOTIC_ARM_RADIATION_RECORD_SERIES,
+                ROBOTIC_ARM_RADIATION,
+            ),
+            (
+                RADIATION_SALVAGE_RECORD_FILE,
+                RT_RADIATION_SALVAGE_RECORD_STORAGE,
+                RADIATION_SALVAGE_RECORD,
+                RADIATION_SALVAGE_RECORD_SERIES,
+                C_ARM_RADIATION,
+            ),
+        )
     ),
     # The volumetric Presentation States name the CT slices, as the inputs
     # of the volume that they present, and the advanced blending one the PET
@@ -1976,6 +2121,23 @@ _SPECS = (
         ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
         PLAN,
     ),
+    # The waveform Presentation States name the MR Image where they would
+    # name a waveform, as the Waveform Annotation SR does, since the
+    # collection holds no waveform.
+    _Spec(
+        WAVEFORM_PRESENTATION_STATE_FILE,
+        WAVEFORM_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_PRESENTATION_STATE,
+        WAVEFORM_PRESENTATION_STATE_SERIES,
+        MR,
+    ),
+    _Spec(
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_FILE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_SERIES,
+        MR,
+    ),
 )
 
 
@@ -1985,7 +2147,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Seventy-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Eighty-two files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -2011,10 +2173,13 @@ def build_corpus() -> SyntheticCorpus:
         Instruction, RT Brachy Application Setup Delivery Instruction, and RT
         Radiation Set Delivery Instruction; the RT Physician Intent, RT
         Treatment Preparation, and RT Patient Position Acquisition
-        Instruction; the Grayscale Planar MPR and Volume Rendering
-        Volumetric Presentation States and the Advanced Blending
-        Presentation State; and the Enhanced RT Image and Enhanced
-        Continuous RT Image. Two builds give the same bytes and the same
+        Instruction; the RT Radiation Record Set, the C-Arm
+        Photon-Electron, Tomotherapeutic, and Robotic-Arm Radiation Records,
+        and the RT Radiation Salvage Record; the Grayscale Planar MPR and
+        Volume Rendering Volumetric Presentation States and the Advanced
+        Blending Presentation State; the Enhanced RT Image and Enhanced
+        Continuous RT Image; and the Waveform and Waveform Acquisition
+        Presentation States. Two builds give the same bytes and the same
         manifest.
     """
     markers = _Markers()
@@ -2115,10 +2280,21 @@ def _marker_date(number: int) -> datetime.date:
 
     Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
     362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
-    3,642 days, so no two are 364 to 3,640 days apart. Every date of a
-    number below 2**15 is from 900 to before 1900.
+    3,642 days, so no two are 364 to 3,640 days apart. The first
+    ``_FORWARD_DATES`` run on from ``_FIRST_DATE`` to before 1900, and the
+    rest run back from it, the runs before it on the same period, so that
+    the dates of an earlier, smaller corpus stay as they were.
+
+    >>> _marker_date(1), _marker_date(_FORWARD_DATES)
+    (datetime.date(900, 1, 2), datetime.date(1886, 11, 25))
+    >>> _marker_date(_FORWARD_DATES + 1), _marker_date(_LAST_DATE_NUMBER)
+    (datetime.date(889, 1, 14), datetime.date(111, 9, 9))
     """
-    run, day = divmod(number, _DATE_RUN_DAYS)
+    if number <= _FORWARD_DATES:
+        run, day = divmod(number, _DATE_RUN_DAYS)
+    else:
+        back, day = divmod(number - _FORWARD_DATES - 1, _DATE_RUN_DAYS)
+        run = -1 - back
     return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
 
 
@@ -2755,7 +2931,7 @@ class _Instance:
             self._add_enhanced_rt_image()
         elif self.spec.sop_class == RT_SEGMENT_ANNOTATION_STORAGE:
             put((), "(0008,0060)", ["RTSEGANN"])
-        elif self.spec.sop_class in _RADIATIONS:
+        elif self.spec.sop_class in _RADIATIONS | _RADIATION_RECORDS:
             put((), "(0008,0060)", ["RTRAD"])
         else:
             put((), "(0008,0060)", ["RTDOSE"])

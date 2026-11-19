@@ -288,10 +288,9 @@ def test_the_statement_says_a_type_1_referenced_study_sequence_keeps_its_items(
     assert (
         "D on Referenced Study Sequence (0008,1110) keeps each source item, and in "
         "it only these attributes, each under the action that the policy gives "
-        "it: Referenced Series Sequence (0008,1115), `K` as a sequence that no "
-        "rule covers, with its items' attributes under their own actions; Study "
-        "Instance UID (0020,000D), `U`; Pertinent SOP Classes in Study "
-        "(3010,0052), `U`."
+        "it there: Referenced Series Sequence (0008,1115), `K`, as an attribute "
+        "of VR SQ that no rule covers; Study Instance UID (0020,000D), `U`; "
+        "Pertinent SOP Classes in Study (3010,0052), `U`."
     ) in " ".join(text.split())
 
 

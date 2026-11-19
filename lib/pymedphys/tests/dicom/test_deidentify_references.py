@@ -71,6 +71,13 @@ PRESENTATION_STATES = (
     "Variable Modality LUT Softcopy Presentation State",
 )
 BLENDING_PRESENTATION_STATE = "Blending Softcopy Presentation State"
+# The waveform Presentation States, which reference the waveforms they apply
+# to in the Presentation State Relationship Module and include no Common
+# Instance Reference Module.
+WAVEFORM_PRESENTATION_STATES = (
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+)
 # Blending Sequence (0070,0402).
 BLENDING = "(0070,0402)"
 # An encapsulated document, which names its sources, predecessors, and
@@ -283,6 +290,7 @@ RT_REFERENCES = [
         if iod not in STRUCTURED_REPORTS
         and iod not in PRESENTATION_STATES
         and iod != BLENDING_PRESENTATION_STATE
+        and iod not in WAVEFORM_PRESENTATION_STATES
         and iod != ENCAPSULATED_PDF
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
@@ -298,6 +306,14 @@ RT_REFERENCES = [
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (iod, attribute, level)
+        for iod in WAVEFORM_PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,113A)", "(0008,1155)"), Level.INSTANCE),
         ]
     ),
     *(
@@ -369,6 +385,7 @@ STUDY_SEQUENCES = {"(0008,1110)", "(3006,0012)"}
 OTHER_SEQUENCES = {
     "(0008,1111)",  # Referenced Performed Procedure Step Sequence
     "(0008,1120)",  # Referenced Patient Sequence
+    "(0008,113A)",  # Referenced Waveform Sequence
     "(0008,1140)",  # Referenced Image Sequence
     "(0008,114A)",  # Referenced Instance Sequence
     "(0008,114B)",  # Referenced Real World Value Mapping Instance Sequence
@@ -380,7 +397,9 @@ OTHER_SEQUENCES = {
     "(0018,990D)",  # Referenced Performed Protocol Sequence
     "(0020,9172)",  # Conversion Source Attributes Sequence
     "(0038,0100)",  # Pertinent Documents Sequence
+    "(003A,020A)",  # Source Waveform Sequence
     "(0040,A390)",  # HL7 Structured Document Reference Sequence
+    "(0040,B030)",  # Structured Waveform Annotation Sequence
     "(0042,0013)",  # Source Instance Sequence
     "(0062,0012)",  # Used Segments Sequence
     "(0066,002E)",  # Segment Surface Source Instance Sequence
@@ -396,8 +415,11 @@ OTHER_SEQUENCES = {
     "(300A,0401)",  # Referenced Setup Image Sequence
     "(300A,0616)",  # RT Radiation Sequence
     "(300A,0630)",  # Referenced RT Radiation Sequence
+    "(300A,0631)",  # Referenced RT Instance Sequence
     "(300A,063B)",  # Referenced RT Physician Intent Sequence
     "(300A,0702)",  # Referenced RT Radiation Set Sequence
+    "(300A,0703)",  # Referenced RT Radiation Record Sequence
+    "(300A,0780)",  # Additional Parameter Recording Instance Sequence
     "(300A,078B)",  # Referenced RT Treatment Preparation Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
     "(300C,0002)",  # Referenced RT Plan Sequence
@@ -417,6 +439,7 @@ OTHER_SEQUENCES = {
 # first release IOD defines inside a sequence, with why it is not followed.
 NOT_FOLLOWED = {
     "(0008,010D)": "identifies the organisation that extended a context group",
+    "(0008,9123)": "identifies the software version that created an instance",
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",

@@ -764,6 +764,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Physician Intent",
         "RT Treatment Preparation",
         "RT Patient Position Acquisition Instruction",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "RT Radiation Record Set",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -795,6 +800,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Planar MPR Volumetric Presentation State",
         "Volume Rendering Volumetric Presentation State",
         "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
@@ -805,7 +812,12 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application Setup "
         "Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
         "Physician Intent, RT Treatment Preparation, RT Patient Position "
-        "Acquisition Instruction, MR Spectroscopy, Spatial "
+        "Acquisition Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface Segmentation, "
         "X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, "
@@ -817,9 +829,10 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
         "Softcopy Presentation State, Blending Softcopy Presentation State, "
         "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
-        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, "
-        "Volume Rendering Volumetric Presentation State, and Advanced Blending "
-        "Presentation State."
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
+        "State, Volume Rendering Volumetric Presentation State, Advanced "
+        "Blending Presentation State, Waveform Presentation State, and "
+        "Waveform Acquisition Presentation State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -854,7 +867,8 @@ def test_with_clean_pixel_data_both_options_are_claimed_after_review():
         (
             ("clean_pixel_data",),
             "claims Clean Pixel Data only for an instance without top-level "
-            "pixel data or whose regions a reviewer approved, and Clean "
+            "pixel data or an encapsulated document, or whose regions a "
+            "reviewer approved, and Clean "
             "Recognizable Visual Features only for one that cannot show a face "
             "or whose source file a reviewer found free of one.",
         ),
@@ -1078,9 +1092,14 @@ _FACELESS = (
     "75-rt-beams-delivery-instruction.dcm",
     "76-rt-brachy-delivery-instruction.dcm",
     "77-rt-radiation-set-delivery-instruction.dcm",
+    "78-rt-radiation-record-set.dcm",
     "79-rt-physician-intent.dcm",
     "80-rt-treatment-preparation.dcm",
     "81-rt-position-acquisition-instruction.dcm",
+    "82-c-arm-radiation-record.dcm",
+    "83-tomotherapeutic-radiation-record.dcm",
+    "84-robotic-arm-radiation-record.dcm",
+    "85-rt-radiation-salvage-record.dcm",
 )
 
 
@@ -1323,7 +1342,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/70"
+    assert report["format"] == "pymedphys-deid-release-report/79"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
