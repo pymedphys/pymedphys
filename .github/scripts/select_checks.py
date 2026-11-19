@@ -201,6 +201,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/method_digest.py",
         "lib/pymedphys/_dicom/deidentify/midi_answer_key.py",
         "lib/pymedphys/_dicom/deidentify/midi_benchmark_errors.py",
+        "lib/pymedphys/_dicom/deidentify/midi_benchmark_graphics.py",
         "lib/pymedphys/_dicom/deidentify/midi_benchmark_shards.py",
         "lib/pymedphys/_dicom/deidentify/midi_benchmark_sources.py",
         "lib/pymedphys/_dicom/deidentify/midi_benchmark_text.py",
