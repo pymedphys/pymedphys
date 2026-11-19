@@ -17,18 +17,16 @@
 Every released instance claims the option, and so has Recognizable Visual
 Features (0028,0302) set to NO, whether or not its IOD defines it. The
 deformable registration is released too, since its verdict covers the grid
-that the run writes of it unchanged, which the QC pack's grid sheets show.
-The Surface Segmentation is held, since no preview of the pack draws its
-meshes, so its verdict is of none of them.
+that the run writes of it unchanged, which the QC pack's grid sheets show,
+and so is the Surface Segmentation, since its verdict covers the meshes
+that the run writes of it unchanged, which the pack's surfaces sheet shows.
 """
 
-import types
-
-from .._corpus_run import BASIC_WITHHELD, MESH_HELD, CorpusRun, every_face_absent
+from .._corpus_run import BASIC_WITHHELD, CorpusRun, every_face_absent
 
 RUN = CorpusRun(
     "clean-recognizable-visual-features",
     options=("clean_recognizable_visual_features",),
     face_review=every_face_absent,
-    withheld=types.MappingProxyType({**BASIC_WITHHELD, **MESH_HELD}),
+    withheld=BASIC_WITHHELD,
 )
