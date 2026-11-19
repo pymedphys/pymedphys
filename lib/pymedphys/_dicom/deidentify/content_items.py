@@ -1350,6 +1350,11 @@ class ContentItemPlan(Mapping[ElementPath, str]):
         Connected Implantation Plan Component: the dummy value of the rank
         of the agent or component that it identifies or names
         (:data:`AGENT_IDENTIFIER`).
+    annotations : frozenset of ElementPath
+        The elements among ``actions`` whose action Clean Graphics gives a
+        Presentation State's graphic annotations from a reviewer's decisions
+        (:func:`~.graphic_annotations.with_annotations`, D-062), rather than
+        a content item's concept name.
     """
 
     actions: Mapping[ElementPath, str] = dataclasses.field(
@@ -1363,6 +1368,7 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     dummy_texts: Mapping[ElementPath, str] = dataclasses.field(
         default_factory=lambda: types.MappingProxyType({})
     )
+    annotations: frozenset[ElementPath] = frozenset()
 
     def __getitem__(self, path: ElementPath) -> str:
         return self.actions[path]
