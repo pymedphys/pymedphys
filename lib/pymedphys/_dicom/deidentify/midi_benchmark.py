@@ -103,10 +103,15 @@ separately for each answer-key category rather than as one score:
 Under Clean Pixel Data, the pinned text detector
 (:class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`) finds
 the text, and every instance that the option cleans is held for review,
-since no reviewer attests a benchmark's regions. Under Clean Recognizable
-Visual Features, as under ``public-release``, a run is given a face review
-with no verdicts (:data:`NO_FACE_VERDICTS`), as the first run of a
-collection is (D-050): every instance that can show a face is held, since
+since no reviewer attests a benchmark's regions. Under Clean Graphics, which
+gives each of its rows its Basic Profile action (D-041), the results count,
+by SOP Class, the instances that hold what the option removes, and the
+written files that still hold any of it
+(:mod:`~pymedphys._dicom.deidentify.midi_benchmark_graphics`), since the
+release alone cannot show whether the data set holds any. Under Clean
+Recognizable Visual Features, as under ``public-release``, a run is given a
+face review with no verdicts (:data:`NO_FACE_VERDICTS`), as the first run of
+a collection is (D-050): every instance that can show a face is held, since
 no reviewer has seen a benchmark's previews, and the results say so. HaN-Seg's
 face block check is the option's public evidence of what it removes (D-054).
 
@@ -198,6 +203,7 @@ from .midi_benchmark_errors import (
     uid_name,
 )
 from .midi_benchmark_exemptions import exemption_rows, would_release
+from .midi_benchmark_graphics import GraphicsCounter
 from .midi_benchmark_markdown import render_markdown
 from .midi_benchmark_shards import Shard, assign
 from .midi_benchmark_sources import (
@@ -232,6 +238,7 @@ from .midi_benchmark_flips import (
 )
 from .pixel_cleaning import TextFinder
 from .policy import (
+    CLEAN_GRAPHICS,
     CLEAN_PIXEL_DATA,
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
     DEFAULT_PRESET,
@@ -507,10 +514,14 @@ def run_benchmark(
     release = work / "release"
     errors = ErrorRecorder()
     text = None if finder is None else TextCounter()
+    graphics = GraphicsCounter() if CLEAN_GRAPHICS in policy.options else None
+    counted = transform if text is None else text.transform(transform)
+    if graphics is not None:
+        counted = graphics.transform(counted)
     result = run.run(
         discovery,
         release,
-        errors.transform(transform if text is None else text.transform(transform)),
+        errors.transform(counted),
         errors.gate(ReleaseGate()),
         qc_destination=work / "qc",
         reporter=transform.reporter,
@@ -539,6 +550,7 @@ def run_benchmark(
         watched=frozenset(watched),
         defacing=defacing_counts(transform),
         text_detection=None if text is None else text.counts(),
+        graphics=None if graphics is None else graphics.counts(),
         shard=shard,
         outside=outside,
     )
@@ -859,6 +871,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     watched: Collection[str] = (),
     defacing: Mapping[str, object] | None = None,
     text_detection: Mapping[str, object] | None = None,
+    graphics: Mapping[str, object] | None = None,
     shard: Shard | None = None,
     outside: Collection[str] = frozenset(),
 ) -> Benchmark:
@@ -878,9 +891,12 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     an attribute in ``watched``, such as ``(0020,0011)``, is counted by
     where it ended up. ``defacing``, under Clean Recognizable Visual
     Features, counts what the transform found to deface
-    (:func:`defacing_counts`), and ``text_detection``, under Clean Pixel
+    (:func:`defacing_counts`); ``text_detection``, under Clean Pixel
     Data, what the text detector found, by SOP Class
-    (:meth:`~pymedphys._dicom.deidentify.midi_benchmark_text.TextCounter.counts`).
+    (:meth:`~pymedphys._dicom.deidentify.midi_benchmark_text.TextCounter.counts`);
+    and ``graphics``, under Clean Graphics, the instances that hold what the
+    option removes, by SOP Class, and the written files that still hold it
+    (:meth:`~pymedphys._dicom.deidentify.midi_benchmark_graphics.GraphicsCounter.counts`).
 
     In a ``shard`` of a run, the checks of the instances in ``outside``,
     which other shards hold, are not scored, and nor, outside the first
@@ -1062,6 +1078,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             "text_detection": (
                 None if text_detection is None else dict(text_detection)
             ),
+            "graphics": None if graphics is None else dict(graphics),
             "not_released": [
                 {
                     "context": context,

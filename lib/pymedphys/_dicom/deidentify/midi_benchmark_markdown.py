@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 
+from . import midi_benchmark_graphics
 from .midi_benchmark_sources import EXPLAINED, WATCHED
 from .midi_benchmark_text import COUNTED, FRAMES_BY_REGIONS, REGION_BINS
 
@@ -92,6 +93,9 @@ def render_markdown(document: Mapping[str, object]) -> str:
     text = coverage.get("text_detection")
     if isinstance(text, Mapping):
         lines += _text_detection(text)
+    graphics = coverage.get("graphics")
+    if isinstance(graphics, Mapping):
+        lines += _graphics(graphics)
     places = coverage.get("withheld_places", [])
     if places:
         lines += [
@@ -480,6 +484,46 @@ def _text_detection(counts: Mapping[str, object]) -> list[str]:
                 for name, each in found
             ],
         ),
+        "",
+    ]
+
+
+# The headings of the graphics' counts, in the order of their fields.
+_GRAPHICS_HEADINGS = (
+    "Instances",
+    "With graphics",
+    "Curve Data",
+    "Overlay Data",
+    "Overlay Comments",
+    "Graphic Annotation Sequence",
+    "Overlay in Pixel Data",
+    "Written",
+    "Written with graphics",
+)
+
+
+def _graphics(counts: Mapping[str, object]) -> list[str]:
+    """What Clean Graphics removes, by SOP Class, with a row of all."""
+    fields = midi_benchmark_graphics.COUNTED
+    assert len(fields) == len(_GRAPHICS_HEADINGS)
+    found = [(name, each) for name, each in counts.items() if isinstance(each, Mapping)]
+    rows: list[Sequence[object]] = [
+        (name, *(each[field] for field in fields)) for name, each in found
+    ]
+    if rows:
+        rows.append(
+            ("All", *(sum(int(each[field]) for _, each in found) for field in fields))
+        )
+    return [
+        "What Clean Graphics removes, by SOP Class: the instances that the "
+        "run's transform received, those that hold any of the option's rows of "
+        "Table E.1-1 (Curve Data, Overlay Data, Overlay Comments, and Graphic "
+        "Annotation Sequence) or an overlay group without Overlay Data, whose "
+        "overlay may lie in Pixel Data, and those that hold each; and the "
+        "instances whose file the transform wrote, and those whose written file "
+        "still holds any of them:",
+        "",
+        *_rows_or_none(("SOP Class", *_GRAPHICS_HEADINGS), rows),
         "",
     ]
 
