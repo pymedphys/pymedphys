@@ -111,18 +111,18 @@ BUILD_BACKEND = textwrap.dedent(
         }
         files[f"{dist_info}/METADATA"] = metadata.encode()
         files[f"{dist_info}/WHEEL"] = (
-            b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\n"
-            b"Tag: py3-none-any\n"
+            b"Wheel-Version: 1.0\\nGenerator: test\\nRoot-Is-Purelib: true\\n"
+            b"Tag: py3-none-any\\n"
         )
         files[f"{dist_info}/entry_points.txt"] = (
-            b"[console_scripts]\npymedphys = pymedphys.__main__:main\n"
+            b"[console_scripts]\\npymedphys = pymedphys.__main__:main\\n"
         )
         record = []
         for name, data in files.items():
             digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest())
             record.append(f"{name},sha256={digest.rstrip(b'=').decode()},{len(data)}")
         record.append(f"{dist_info}/RECORD,,")
-        files[f"{dist_info}/RECORD"] = ("\n".join(record) + "\n").encode()
+        files[f"{dist_info}/RECORD"] = ("\\n".join(record) + "\\n").encode()
 
         filename = f"pymedphys-{version}-py3-none-any.whl"
         with zipfile.ZipFile(Path(wheel_directory, filename), "w") as archive:
