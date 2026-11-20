@@ -17,6 +17,8 @@
 import email.message
 import io
 import pathlib
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.error
 import urllib.request
 
@@ -214,6 +216,38 @@ def test_negative_declared_size_is_rejected_before_cache_replacement(
 
     assert destination.read_bytes() == b"old cached data"
     assert _leftovers(tmp_path, "cached.bin") == [destination]
+
+
+def test_conflicting_http_framing_is_rejected_before_caching(tmp_path: pathlib.Path):
+    # Real urllib HTTPResponse: Transfer-Encoding is authoritative even when
+    # a malicious server supplies a contradictory Content-Length.
+    class ConflictingResponse(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Length", "3")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            self.wfile.write(b"B\\r\\nhello world\\r\\n0\\r\\n\\r\\n")
+
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), ConflictingResponse)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    destination = tmp_path / "cache.bin"
+    try:
+        with pytest.raises(ValueError, match="Conflicting Content-Length"):
+            download.download_with_progress(
+                f"http://127.0.0.1:{server.server_port}/bad",
+                destination,
+            )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert _leftovers(tmp_path, "cache.bin") == []
 
 
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
