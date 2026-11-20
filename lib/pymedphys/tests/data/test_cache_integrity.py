@@ -19,6 +19,7 @@ temporary ``PYMEDPHYS_DATA_DIR``, and hashes come from a temporary copy of
 ``hashes.json``.
 """
 
+import errno
 import hashlib
 import json
 import os
@@ -960,3 +961,151 @@ def test_zenodo_downloads_require_hashes_unless_skipped(
     (path,) = download.zenodo_data_paths("review-record", check_hash=False)
     assert path.read_text(encoding="utf-8") == "contents"
     assert hashes.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.parametrize(
+    "members",
+    [
+        [("a", "file"), ("a/b", "nested")],
+        [("a/b", "nested"), ("a", "file")],
+        [("a/", ""), ("a", "file")],
+    ],
+)
+def test_zip_rejects_parent_file_conflicts_before_extraction(
+    cache, tmp_path, members
+):
+    data_dir, hashes = cache
+    source = tmp_path / "conflicting.zip"
+    with zipfile.ZipFile(source, "w") as archive:
+        for name, contents in members:
+            archive.writestr(name, contents)
+    _record(hashes, "archive.zip", source)
+
+    with pytest.raises(ValueError, match="conflicting member paths"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+    assert not (data_dir / "archive").exists()
+
+
+def test_zip_rejects_unicode_normalization_aliases(cache, tmp_path):
+    data_dir, hashes = cache
+    # The two distinct ZIP names are the same canonical Unicode filename.
+    source = _zip(
+        tmp_path / "unicode.zip",
+        {"caf\u00e9.txt": "first", "cafe\u0301.txt": "second"},
+    )
+    _record(hashes, "archive.zip", source)
+
+    with pytest.raises(ValueError, match="unsafe member path"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+    assert not (data_dir / "archive").exists()
+
+
+def test_fresh_archive_creates_nested_caller_directory(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"nested/data.txt": "contents"})
+    _record(hashes, "archive.zip", source)
+    destination = tmp_path / "missing" / "extraction"
+
+    (extracted,) = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=destination,
+    )
+    assert extracted.read_text(encoding="utf-8") == "contents"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Renaming an open ZIP on Windows differs")
+def test_marker_fingerprints_the_open_archive_after_replacement(
+    cache, tmp_path, monkeypatch
+):
+    data_dir, hashes = cache
+    original = _zip(tmp_path / "old.zip", {"data.txt": "old"})
+    replacement = _zip(tmp_path / "new.zip", {"data.txt": "new"})
+    _record(hashes, "archive.zip", original)
+
+    real_extract = download._zip_safe.extract_members
+    replaced = []
+
+    def swap_archive_after_read(archive, root, *, missing_only):
+        real_extract(archive, root, missing_only=missing_only)
+        if not replaced:
+            pending = data_dir / "pending.zip"
+            pending.write_bytes(replacement.read_bytes())
+            os.replace(pending, data_dir / "archive.zip")
+            replaced.append(True)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(download._zip_safe, "extract_members", swap_archive_after_read)
+        (first,) = download.zip_data_paths(
+            "archive.zip", url=original.as_uri(), hash_filepath=hashes
+        )
+    assert replaced and first.read_text(encoding="utf-8") == "old"
+
+    # Both member sizes match; only the archive-handle hash prevents stale
+    # extraction from being treated as a valid cache of the new archive.
+    _record(hashes, "archive.zip", replacement)
+    (updated,) = download.zip_data_paths(
+        "archive.zip", url=replacement.as_uri(), hash_filepath=hashes
+    )
+    assert updated.read_text(encoding="utf-8") == "new"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX FIFO behaviour")
+def test_fifo_cache_marker_does_not_block_recovery(cache, tmp_path):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "payload"})
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+
+    (marker,) = data_dir.glob(f"*{download.EXTRACTED_ARCHIVE_MARKER}")
+    marker.unlink()
+    os.mkfifo(marker)
+    (result,) = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert result.read_text(encoding="utf-8") == "payload"
+    assert marker.is_file()
+
+
+def test_missing_only_extraction_without_hard_links(cache, tmp_path, monkeypatch):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"config.txt": "archive"})
+    _record(hashes, "archive.zip", source)
+
+    def unavailable_link(*_args, **_kwargs):
+        raise OSError(errno.EOPNOTSUPP, "Hard links not supported")
+
+    monkeypatch.setattr(download._zip_safe.os, "link", unavailable_link)
+    destination = tmp_path / "custom"
+    (extracted,) = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=destination,
+    )
+    assert extracted.read_text(encoding="utf-8") == "archive"
+
+    extracted.write_text("user edit", encoding="utf-8")
+    (again,) = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=destination,
+    )
+    assert again.read_text(encoding="utf-8") == "user edit"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Requires Windows directory handles")
+def test_windows_pinned_parent_cannot_be_renamed(tmp_path):
+    root = tmp_path / "root"
+    with download._zip_safe._windows_pinned_directory(
+        root, ("nested",), create=True
+    ) as parent:
+        assert parent.is_dir()
+        with pytest.raises(OSError):
+            parent.rename(parent.with_name("swapped"))
