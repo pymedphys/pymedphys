@@ -263,6 +263,11 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   error or `IndexError`.
   [PR #2111](https://github.com/pymedphys/pymedphys/pull/2111)
 
+- **[Privacy]** `get_file_within_data_zip()` no longer prints matching archive
+  paths when it finds zero or multiple files. Those paths can include patient
+  identifiers.
+  [PR #2623](https://github.com/pymedphys/pymedphys/pull/2623)
+
 ### Dependency changes
 
 - The lockfile and exported requirements now use certifi 2026.10.19, which restores unaffected emSign roots removed by 2026.10.18. Refresh pinned environments to use the corrected CA bundle. [PR #2424](https://github.com/pymedphys/pymedphys/pull/2424)
