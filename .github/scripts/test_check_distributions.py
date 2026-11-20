@@ -277,6 +277,25 @@ class ContentTests(unittest.TestCase):
     def _failures(self, sdist, wheel, expected_version=None):
         return check_contents(read_sdist(sdist), read_wheel(wheel), expected_version)
 
+    def test_sdist_rejects_duplicate_file_members(self):
+        path = Path(self.directory, "pymedphys-test.tar.gz")
+        with tarfile.open(path, "w:gz") as archive:
+            for payload in (b"Version: 1\\n", b"Version: 2\\n"):
+                info = tarfile.TarInfo("pymedphys-test/PKG-INFO")
+                info.size = len(payload)
+                archive.addfile(info, io.BytesIO(payload))
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_sdist(path)
+
+    def test_wheel_rejects_duplicate_file_members(self):
+        path = Path(self.directory, "pymedphys-test.whl")
+        metadata = "pymedphys-1.0.0.dist-info/METADATA"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr(metadata, "Version: 1.0.0\\n")
+            archive.writestr(metadata, "Version: 2.0.0\\n")
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_wheel(path)
+
     def test_complete_distributions_pass(self):
         sdist = _write_sdist(self.directory)
         wheel = _write_wheel(self.directory)
