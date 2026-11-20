@@ -117,6 +117,10 @@ FORMAT = "pymedphys-deid-text-detector-evaluation/2"
 SPLITS = ("tuning", "held-out")
 EVALUATED = (*SPLITS, "all")
 SPLIT_SALT = "pymedphys-text-detector-evaluation-split/1"
+# Seeds the bootstrap's resampling, apart from FORMAT, so that a new label
+# for the summary's layout leaves every interval where it was; the label the
+# first summaries were seeded with.
+BOOTSTRAP_SALT = "pymedphys-deid-text-detector-evaluation/1"
 SPLIT_RULE = (
     "A case is held out where its collection is held out whole, or where the "
     f"first 8 bytes of the SHA-256 of '{SPLIT_SALT}', its subject's namespace "
@@ -964,7 +968,7 @@ def _intervals(
         [each.get(key, [0] * len(_CLUSTER_FIELDS)) for each in clusters],
         dtype=np.float64,
     ).reshape(-1, len(_CLUSTER_FIELDS))
-    seed = _seed(FORMAT, index, "+".join(grouping), *value)
+    seed = _seed(BOOTSTRAP_SALT, index, "+".join(grouping), *value)
     entry["sensitivity"]["bootstrap"] = _pair(
         cluster_bootstrap(rows[:, 1], rows[:, 0], replicates=replicates, seed=seed)
     )
