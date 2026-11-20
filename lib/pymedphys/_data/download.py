@@ -578,7 +578,10 @@ def _validate_zip_member_paths(
             or ".." in relative.parts
             or any(
                 (part and part not in {".", ".."} and part.rstrip(" .") != part)
-                or any(ord(character) < 32 or character in '<>:"|?*' for character in part)
+                or any(
+                    ord(character) < 32 or character in '<>:"|?*'
+                    for character in part
+                )
                 or part.split(".")[0].rstrip(" ").upper() in windows_devices
                 for part in components
             )
