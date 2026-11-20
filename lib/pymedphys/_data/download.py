@@ -522,6 +522,7 @@ def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
 
     return True
 
+
 def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     """Extract the archive again unless the cache already holds it intact."""
     archive_hash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
@@ -536,6 +537,7 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     _zip_safe.unlink_marker(marker)
     _zip_safe.extract_members(zip_file, extract_directory, missing_only=False)
     _zip_safe.write_marker(marker, archive_hash)
+
 
 def _validate_zip_member_paths(zip_file, extract_directory):
     """Reject archive paths that could access files outside the destination.
@@ -593,6 +595,7 @@ def _validate_zip_member_paths(zip_file, extract_directory):
 
     return root
 
+
 def zip_data_paths(
     filename,
     check_hash=True,
@@ -638,16 +641,16 @@ def zip_data_paths(
                 # Insert missing files only; never follow a substituted link.
                 _zip_safe.extract_members(zip_file, safe_root, missing_only=True)
 
-    resolved_filepaths = []
-    for name in namelist:
-        if name.replace("\\", "/") in {"", ".", "./"}:
-            continue
-        try:
-            current = _zip_safe.member_stat(safe_root, name)
-        except (OSError, RuntimeError, ValueError):
-            raise ValueError("ZIP archive contains a linked extraction path") from None
-        if stat.S_ISREG(current.st_mode):
-            relative = pathlib.PurePosixPath(name.replace("\\", "/"))
-            resolved_filepaths.append(safe_root.joinpath(*relative.parts))
-
-    return resolved_filepaths
+        resolved_filepaths = []
+        for name in namelist:
+            if name.replace("\\", "/") in {"", ".", "./"}:
+                continue
+            try:
+                current = _zip_safe.member_stat(safe_root, name)
+            except (OSError, RuntimeError, ValueError):
+                raise ValueError("ZIP archive contains a linked extraction path") from None
+            if stat.S_ISREG(current.st_mode):
+                relative = pathlib.PurePosixPath(name.replace("\\", "/"))
+                resolved_filepaths.append(safe_root.joinpath(*relative.parts))
+    
+        return resolved_filepaths
