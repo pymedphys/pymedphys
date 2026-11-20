@@ -184,7 +184,9 @@ def test_oversized_response_is_rejected_without_replacing_cached_file(
     monkeypatch.setattr(
         urllib.request,
         "urlopen",
-        lambda _url, **_kwargs: _FakeResponse(b"more-than-advertised", content_length=3),
+        lambda _url, **_kwargs: _FakeResponse(
+            b"more-than-advertised", content_length=3
+        ),
     )
     destination = tmp_path / "cached.bin"
     destination.write_bytes(b"previous validated contents")
