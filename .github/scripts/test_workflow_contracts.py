@@ -835,7 +835,12 @@ class WorkflowContractTests(unittest.TestCase):
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
             ["      contents: read"] * 3,
         )
-        self.assertNotIn("secrets.", text)
+        # One secret, the key of the shards' records, reaches only the step
+        # that encrypts them and the step that decrypts them.
+        self.assertEqual(
+            re.findall(r"(?m)^(.*)\$\{\{ secrets\.([A-Za-z_]+) \}\}$", text),
+            [("          SHARD_RECORD_KEY: ", "TEXT_EVALUATION_SHARD_KEY")] * 2,
+        )
         self.assertEqual(text.count("persist-credentials: false"), 3)
         # Inputs reach commands only through the environment.
         run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
@@ -882,6 +887,18 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("\n      max-parallel: 4\n", shards)
         self.assertEqual(shards.count(" idc-measure \\\n"), 2)
         self.assertEqual(shards.count('--shard "${SHARD}/${SHARDS}"'), 2)
+        # A shard's records are written outside the uploaded results, and
+        # only their encrypted copies join them, uploaded only once every
+        # record is encrypted.
+        self.assertNotIn('--out "${RUNNER_TEMP}/idc/results', shards)
+        self.assertEqual(shards.count('--out "${RUNNER_TEMP}/idc/private/records/'), 2)
+        self.assertIn("openssl enc -aes-256-cbc -pbkdf2", shards)
+        self.assertIn(
+            "if: ${{ !cancelled() && steps.encrypt.outcome == 'success' }}\n"
+            "        uses: actions/upload-artifact@",
+            shards,
+        )
+        self.assertIn("openssl enc -d -aes-256-cbc -pbkdf2", merge)
         self.assertIn(" idc-merge \\\n", merge)
         for command in ("idc-select", "idc-measure", "archive-fetch", "s5cmd"):
             self.assertNotIn(command, merge)

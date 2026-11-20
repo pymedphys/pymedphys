@@ -31,9 +31,14 @@ name: Text Detector Evaluation
 # subjects alone. Each shard's record holds no identifier, name, path, or
 # value read from a file: the counts of each case that the per-case report
 # names, by its place in the list, and of every other case only the shard's
-# totals. The merge job adds the records into the summary that one runner
-# measuring every case writes. A shard that did not finish leaves the run
-# unmerged: re-run its job, and then the merge.
+# totals, among them its subjects' counts for the bootstrap. Those counts
+# must not leave the runners, which D-056 allows the bootstrap's interval
+# ends alone, so each record is encrypted, with the repository secret
+# TEXT_EVALUATION_SHARD_KEY, before it is uploaded, and read only by the
+# merge job, which adds the records into the summary that one runner
+# measuring every case writes. Without the secret, no record leaves a
+# shard. A shard that did not finish leaves the run unmerged: re-run its
+# job, and then the merge.
 #
 # phantoms: the synthetic phantoms (T1) and series of IDC's allow-listed
 # phantom collections (T2), which show no patient, reported in full, with
@@ -249,8 +254,9 @@ jobs:
           cp "${RUNNER_TEMP}/idc/archive-selection/archives.json" "${RUNNER_TEMP}/idc/results/"
           echo "${GITHUB_SHA}" > "${RUNNER_TEMP}/idc/results/commit.txt"
 
-      # Writes this shard's record, series/shard.json. The command
-      # downloads the model's pinned weights on first use.
+      # Writes this shard's record, which stays on the runner until it is
+      # encrypted. The command downloads the model's pinned weights on first
+      # use.
       - name: Measure the series
         timeout-minutes: 240
         run: |
@@ -267,7 +273,7 @@ jobs:
             --evaluated "${EVALUATED}" \
             --workers "$(nproc)" \
             --shard "${SHARD}/${SHARDS}" \
-            --out "${RUNNER_TEMP}/idc/results/series" \
+            --out "${RUNNER_TEMP}/idc/private/records/series" \
             2> "${RUNNER_TEMP}/idc/private/measure-stderr.log"
 
       # The classic CT, MR, and PET series again, each converted in memory
@@ -292,7 +298,7 @@ jobs:
             --workers 2 \
             --converted \
             --shard "${SHARD}/${SHARDS}" \
-            --out "${RUNNER_TEMP}/idc/results/converted" \
+            --out "${RUNNER_TEMP}/idc/private/records/converted" \
             2> "${RUNNER_TEMP}/idc/private/converted-stderr.log"
 
       # At a model's publishers' settings, count what OpenCV's resize alone
@@ -313,11 +319,32 @@ jobs:
             2> "${RUNNER_TEMP}/idc/private/parity-stderr.log"
           cp "${RUNNER_TEMP}/idc/parity/parity.json" "${RUNNER_TEMP}/idc/results/"
 
-      # Each attempt of each shard uploads its record apart, and the merge
+      # Only the encrypted records join the results that are uploaded.
+      - name: Encrypt the shard's records
+        id: encrypt
+        if: ${{ !cancelled() }}
+        env:
+          SHARD_RECORD_KEY: ${{ secrets.TEXT_EVALUATION_SHARD_KEY }}
+        run: |
+          if [[ -z "${SHARD_RECORD_KEY}" ]]; then
+            echo "The repository secret TEXT_EVALUATION_SHARD_KEY is not set, so no record leaves the runner."
+            exit 1
+          fi
+          for part in series converted; do
+            record="${RUNNER_TEMP}/idc/private/records/${part}/shard.json"
+            if [[ -f "${record}" ]]; then
+              mkdir -p "${RUNNER_TEMP}/idc/results/${part}"
+              openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -salt \
+                -pass env:SHARD_RECORD_KEY \
+                -in "${record}" -out "${RUNNER_TEMP}/idc/results/${part}/shard.json.enc"
+            fi
+          done
+
+      # Each attempt of each shard uploads its records apart, and the merge
       # takes the latest of each. The records are kept for a day: the
       # merged results are kept for 90.
       - name: Upload the shard's record
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.encrypt.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: text-detector-evaluation-patients-shard-${{ env.SHARD }}-of-${{ env.SHARDS }}-attempt-${{ github.run_attempt }}
@@ -326,7 +353,8 @@ jobs:
           retention-days: 1
 
   # The patients' shards' records, merged. This job reads only the shards'
-  # artefacts, which hold counts alone, and no series.
+  # artefacts, which hold counts alone, and no series, and decrypts the
+  # records on its runner alone.
   merge:
     name: Text detector evaluation on patients' series, merged
     needs: patients
@@ -362,11 +390,18 @@ jobs:
       # the same of the series read as converted, each where every shard's
       # record of it is there.
       - name: Merge the shards' records
+        env:
+          SHARD_RECORD_KEY: ${{ secrets.TEXT_EVALUATION_SHARD_KEY }}
         run: |
           umask 077
           mkdir -p "${RUNNER_TEMP}/idc/private"
           results="${RUNNER_TEMP}/idc/merged"
           mkdir -p "${results}"
+          if [[ -z "${SHARD_RECORD_KEY}" ]]; then
+            echo "The repository secret TEXT_EVALUATION_SHARD_KEY is not set, so the records cannot be read." \
+              | tee "${results}/merge-status.txt"
+            exit 1
+          fi
           chosen=()
           missing=()
           for shard in $(seq 0 $((SHARDS - 1))); do
@@ -415,13 +450,18 @@ jobs:
           status=0
           for part in series converted; do
             records=()
-            for directory in "${chosen[@]}"; do
-              if [[ -f "${directory}/${part}/shard.json" ]]; then
-                records+=("${directory}/${part}/shard.json")
+            for index in "${!chosen[@]}"; do
+              sealed="${chosen[${index}]}/${part}/shard.json.enc"
+              record="${RUNNER_TEMP}/idc/private/records/${index}/${part}/shard.json"
+              mkdir -p "$(dirname "${record}")"
+              if [[ -f "${sealed}" ]] && openssl enc -d -aes-256-cbc -pbkdf2 \
+                -iter 600000 -md sha256 -pass env:SHARD_RECORD_KEY \
+                -in "${sealed}" -out "${record}" 2> /dev/null; then
+                records+=("${record}")
               fi
             done
             if (( ${#records[@]} != SHARDS )); then
-              echo "A shard wrote no record of the ${part} measurement, so it was not merged; the shard's log shows why." \
+              echo "A shard wrote no record of the ${part} measurement, or it could not be decrypted, so it was not merged; the shard's log shows why." \
                 | tee -a "${results}/merge-status.txt"
               status=1
               continue
