@@ -100,7 +100,10 @@ def member_stat(root: pathlib.Path, name: str) -> os.stat_result:
     # member. Never accept a multiply linked regular file as cached data.
     if (
         stat.S_ISLNK(result.st_mode)
-        or (os.name == "nt" and result.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+        or (
+            os.name == "nt"
+            and result.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        )
         or (stat.S_ISREG(result.st_mode) and result.st_nlink > 1)
     ):
         raise ValueError(_UNSAFE)
@@ -467,7 +470,10 @@ def _extract_windows(
                             if target.is_symlink() or target.is_junction():
                                 raise ValueError(_UNSAFE) from None
                             current = target.lstat()
-                            if not stat.S_ISREG(current.st_mode) or current.st_nlink > 1:
+                            if (
+                                not stat.S_ISREG(current.st_mode)
+                                or current.st_nlink > 1
+                            ):
                                 raise ValueError(_UNSAFE) from None
                 else:
                     os.replace(temp_path, target)
