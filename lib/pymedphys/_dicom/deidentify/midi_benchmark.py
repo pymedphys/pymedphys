@@ -98,7 +98,20 @@ separately for each answer-key category rather than as one score:
   (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_sources`);
 - the checks **not evaluated**: each check of a released instance that
   the harness could not score, by category, action, attribute, and why,
-  such as that the answer key gives no text to compare.
+  such as that the answer key gives no text to compare;
+- the checks **moved by removed items**. The answer key numbers the items
+  of a sequence as the test data set's file does, but under Clean
+  Structured Content the engine removes a content item of a kept Content
+  Sequence on its own (D-047), and the written file numbers the items
+  after it one lower. Each check is read where the written file holds its
+  place, from the items that the engine's own plan removed
+  (:func:`removed_items`,
+  :func:`~pymedphys._dicom.deidentify.midi_benchmark_values.written_path`),
+  and a check of a removed item, or of anything in it, finds nothing. Each
+  check whose place moved, or lay in a removed item, is counted by
+  category, action, attribute, which of the two, and outcome, since a
+  reading of the key's item numbers in the written file reads another
+  item, or none, for each.
 
 Under Clean Pixel Data, the pinned text detector
 (:class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`) finds
@@ -177,6 +190,7 @@ from pymedphys._imports import pydicom
 from pymedphys._nomenclature import tg263, tg263_published
 
 from . import run
+from .content_items import CONTENT_SEQUENCE, content_item_actions
 from .compound_actions import COMPOUND_ACTIONS, resolve_in_iod, resolve_plain_in_iod
 from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning, fallback_policy
 from .diagnostics import redacted_diagnostics
@@ -208,6 +222,7 @@ from .midi_benchmark_graphics import GraphicsCounter
 from .midi_benchmark_markdown import render_markdown
 from .midi_benchmark_shards import Shard, assign
 from .midi_benchmark_sources import (
+    MOVED,
     WATCHED,
     counted_order,
     counted_rows,
@@ -229,6 +244,7 @@ from .midi_benchmark_values import (
     is_bulk_data,
     is_engine_replacement,
     unbracketed,
+    written_path,
 )
 from .midi_script_results import uid_replacements, write_mapping_files
 from .midi_benchmark_flips import (
@@ -242,20 +258,24 @@ from .policy import (
     CLEAN_GRAPHICS,
     CLEAN_PIXEL_DATA,
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    CLEAN_STRUCTURED_CONTENT,
     DEFAULT_PRESET,
     SAFE_PRIVATE,
     Policy,
     compose_custom_policy,
     compose_policy,
 )
+from .removed_items import RemovedItems
 from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
 from .safe_private import SafePrivateList
 from .scope import classify
+from .source import SourceRefused
+from .source import read_source as read_evidence
 from .text_detection import DetectionParameters, TextDetectionError, TextDetector
 from .walker import descends
 
-FORMAT = "pymedphys-deid-midi-benchmark/4"
+FORMAT = "pymedphys-deid-midi-benchmark/5"
 RESULTS_JSON = "benchmark.json"
 RESULTS_MARKDOWN = "benchmark.md"
 SCRIPT_INPUTS = "validation-script"
@@ -936,6 +956,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     exempt: collections.Counter = collections.Counter()
     no_sop_class: collections.Counter = collections.Counter()
     watching: collections.Counter = collections.Counter()
+    moved: collections.Counter = collections.Counter()
     not_released: dict[tuple[str, str | None, str, str], list[int]] = (
         collections.defaultdict(lambda: [0, 0])
     )
@@ -969,6 +990,8 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 if "no-sop-class" in (kind[1] or "") and position < len(sources):
                     no_sop_class[no_sop_class_cause(sources[position])] += 1
             source: list[pydicom.Dataset | None] = []
+            # The items that the engine removed on their own, read once.
+            removals: list[RemovedItems | None] = []
             for check in answer.checks:
                 tally = counts[check.category]
                 described = (
@@ -984,8 +1007,29 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                     if watch:
                         watching[(*described, context.value)] += 1
                     continue
-                scored = score_check(
-                    check, dataset, mapping, rules, iod, fallback=fallback
+                removed: RemovedItems | None = RemovedItems()
+                if _moved_by_removals(check, policy):
+                    if not removals:
+                        removals.append(
+                            removed_items(
+                                None if position is None else _at(sources, position),
+                                policy,
+                                iod,
+                            )
+                        )
+                    removed = removals[0]
+                scored = (
+                    Scored(Result.NOT_EVALUATED, _UNMAPPED)
+                    if removed is None
+                    else score_check(
+                        check,
+                        dataset,
+                        mapping,
+                        rules,
+                        iod,
+                        fallback=fallback,
+                        removed=removed,
+                    )
                 )
                 if (
                     scored.result is Result.FAILED
@@ -996,7 +1040,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 ):
                     if not source:
                         source.append(read_source(sources[position]))
-                    describe_source(check, source[0], described, explained, dataset)
+                    describe_source(
+                        check, source[0], described, explained, dataset, removed
+                    )
                     if is_source_gap(check, source[0]):
                         scored = Scored(Result.FAILED, _GAP, source_gap=True)
                 outcome = _outcome(scored)
@@ -1004,6 +1050,10 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 check_outcomes += outcome_code(outcome)
                 if watch:
                     watching[(*described, outcome.replace("_", " "))] += 1
+                if removed:
+                    place = _moved_place(check, removed)
+                    if place is not None:
+                        moved[(*described, place, outcome.replace("_", " "))] += 1
                 if outcome == "deliberate":
                     differences[(*described, scored.note)] += 1
                 elif outcome == "source_gap":
@@ -1134,6 +1184,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         ],
         "failed_at_source": explained_rows(explained),
         "watched": counted_rows(watching, WATCHED),
+        "moved_checks": counted_rows(moved, MOVED),
     }
     return Benchmark(document, bytes(check_outcomes))
 
@@ -1214,7 +1265,79 @@ def _modality(modality: str | None) -> str:
     return modality.strip()
 
 
-def score_check(
+# A note for a check whose place in the written file is not known.
+_UNMAPPED = "items removed from it unknown"
+
+
+def _at(sources: Sequence[Path], position: int) -> Path | None:
+    return sources[position] if position < len(sources) else None
+
+
+def _moved_by_removals(check: Check, policy: Policy) -> bool:
+    """Whether the engine may have moved a check's place, by removing items.
+
+    Under Clean Structured Content, the engine removes items of a Content
+    Sequence on its own, and cells of a TABLE in one (D-047); a place
+    outside every Content Sequence keeps its item indexes.
+    """
+    return (
+        CLEAN_STRUCTURED_CONTENT in policy.options
+        and check.path is not None
+        and any(
+            not element.is_private and str(element) == CONTENT_SEQUENCE
+            for element in check.path.elements[:-1]
+        )
+    )
+
+
+def _moved_place(check: Check, removed: RemovedItems) -> str | None:
+    """Say how removed items moved a check's place in the written file.
+
+    ``"removed"`` where the place is in a removed item, so that the written
+    file holds nothing there; ``"moved"`` where the written file numbers an
+    item of the place lower than the answer key does; ``None`` where the
+    place is where the key gives it.
+    """
+    if check.path is None:
+        return None
+    path = written_path(check.path, removed)
+    if path is None:
+        return "removed"
+    return None if path == check.path else "moved"
+
+
+def removed_items(
+    source: Path | None, policy: Policy, iod: IOD | None
+) -> RemovedItems | None:
+    """Return the items that the engine removed on their own from an instance.
+
+    They are those that Clean Structured Content removes from its kept
+    Content Sequences, as the engine's own plan gives them
+    (:func:`~pymedphys._dicom.deidentify.content_items.content_item_actions`),
+    by their places in ``source``, the instance's input file, under the
+    run's ``policy`` and the instance's ``iod``. Under Clean Descriptors, a
+    content item's C takes the action that it takes without the option, so
+    the same items are removed either way. Clean Graphics also removes the
+    graphic annotations that a reviewed list removes, but a benchmark gives
+    it no list.
+
+    Returns
+    -------
+    RemovedItems or None
+        ``None`` where ``source`` or ``iod`` is not given, or ``source``
+        cannot be read, so that where the written file holds a place is not
+        known.
+    """
+    if source is None or iod is None:
+        return None
+    try:
+        evidence = read_evidence(source.read_bytes())
+    except (OSError, SourceRefused):
+        return None
+    return RemovedItems(content_item_actions(evidence, policy, iod).removed_items)
+
+
+def score_check(  # pylint: disable = too-many-arguments
     check: Check,
     dataset: pydicom.Dataset,
     mapping: IdentifierMapping,
@@ -1222,6 +1345,7 @@ def score_check(
     iod: IOD | None = None,
     *,
     fallback: ElementRules | None = None,
+    removed: RemovedItems | None = None,
 ) -> Scored:
     """Score one check against a released instance.
 
@@ -1256,12 +1380,19 @@ def score_check(
     Under Clean Descriptors, ``fallback`` holds the rules of the policy
     without the option: an attribute given C other than a ROI Name takes
     its action from them, as the transform takes it.
+
+    ``removed`` gives the items that the engine removed on their own from
+    the instance (:func:`removed_items`), so that each check is read where
+    the written file holds its place, which the answer key numbers as the
+    source does
+    (:func:`~pymedphys._dicom.deidentify.midi_benchmark_values.written_path`):
+    a check of a removed item, or of anything in it, finds nothing there.
     """
-    scored = _score(check, dataset, mapping)
+    scored = _score(check, dataset, mapping, removed)
     if scored.result is not Result.FAILED or check.path is None:
         return scored
     if check.action is Action.TEXT_REMOVED:
-        element = find_element(dataset, check.path)
+        element = find_element(dataset, check.path, removed=removed)
         if element is not None and is_engine_replacement(element):
             return Scored(Result.FAILED, _REPLACED, replacement_match=True)
     note = _explanation(check, check.path, dataset, rules, iod, fallback)
@@ -1376,9 +1507,16 @@ _NOT_EVALUATED_ACTIONS = {
 
 
 def _score(  # pylint: disable = too-many-return-statements, too-many-branches
-    check: Check, dataset: pydicom.Dataset, mapping: IdentifierMapping
+    check: Check,
+    dataset: pydicom.Dataset,
+    mapping: IdentifierMapping,
+    removed: RemovedItems | None = None,
 ) -> Scored:
-    """Score a check, deciding from what the file holds first, as the script does."""
+    """Score a check, deciding from what the file holds first, as the script does.
+
+    ``removed`` maps the check's place to the written file, as for
+    :func:`score_check`.
+    """
     action = check.action
     if action is None:
         return Scored(Result.NOT_EVALUATED, "unknown action")
@@ -1397,7 +1535,7 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
             Result.NOT_EVALUATED,
             "unreadable place" if check.path_unreadable else "no place",
         )
-    element = find_element(dataset, check.path)
+    element = find_element(dataset, check.path, removed=removed)
     if action is Action.TAG_RETAINED:
         return _passed(element is not None)
     if action is Action.TEXT_NOTNULL:
