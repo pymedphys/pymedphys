@@ -34,7 +34,13 @@ from pathlib import Path
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import dicom_validation, dicom_validation_command
+from pymedphys._dicom.deidentify import (
+    dicom_validation,
+    dicom_validation_command,
+    iods,
+    standard,
+    supplementary_actions,
+)
 from pymedphys._dicom.deidentify import dicom_validators as validators
 from pymedphys._dicom.deidentify.dicom_validation import (
     Category,
@@ -519,6 +525,87 @@ def test_the_known_differences_are_well_formed():
 
     assert differences
     assert all(difference.reason for difference in differences)
+
+
+UNEXPECTED = "TagUnexpected (Type Undefined)"
+DIGITAL_X_RAY = "Digital X-Ray Image"
+X_RAY_ACQUISITION_DOSE = "X-Ray Acquisition Dose"
+
+
+def _top_level_modules(iod):
+    """Each top-level attribute of an IOD, with the modules that define it."""
+    modules = collections.defaultdict(set)
+    for definition in iod.definitions:
+        if definition.path == () and not definition.functional_group:
+            modules[definition.tag].add(definition)
+    return modules
+
+
+def test_dicom_validator_shared_dx_attributes_are_those_of_ps3_3():
+    # The entry for X-Ray Acquisition Dose's shared attributes lists exactly
+    # the top-level attributes of the module that another module of the
+    # Digital X-Ray Image IOD defines too, where every module that defines
+    # it is user-optional and gives it Type 3: an output may keep any of
+    # them without the others.
+    iod = iods.load_iod_tables().iods[DIGITAL_X_RAY]
+    usage = {module.module: module.usage for module in iod.modules}
+    shared = {
+        tag: definitions
+        for tag, definitions in _top_level_modules(iod).items()
+        if len(definitions) > 1
+        and X_RAY_ACQUISITION_DOSE in {d.module for d in definitions}
+        and all(usage[d.module] == "U" for d in definitions)
+    }
+    (entry,) = [
+        difference
+        for difference in dicom_validation.read_known_differences()
+        if difference.validator == DICOM_VALIDATOR
+        and difference.message == UNEXPECTED
+        and "(0018,1110)" in difference.paths
+    ]
+
+    assert entry.category is Category.VALIDATOR
+    assert set(entry.paths) == set(shared)
+    assert len(entry.paths) == len(set(entry.paths)) == 18
+    assert {d.type for definitions in shared.values() for d in definitions} == {"3"}
+    assert {d.module for definitions in shared.values() for d in definitions} == {
+        "DX Positioning",
+        X_RAY_ACQUISITION_DOSE,
+        "X-Ray Filtration",
+        "X-Ray Generation",
+    }
+
+
+def test_the_basic_profile_removes_attributes_that_dx_modules_alone_define():
+    # What makes the validator skip the modules: the Basic Profile removes
+    # an attribute that X-Ray Acquisition Dose, X-Ray Generation, and DX
+    # Positioning each define alone, and X-Ray Filtration defines none alone.
+    iod = iods.load_iod_tables().iods[DIGITAL_X_RAY]
+    own = collections.defaultdict(set)
+    for tag, definitions in _top_level_modules(iod).items():
+        if len({d.module for d in definitions}) == 1:
+            own[next(iter(definitions)).module].add(tag)
+    listed = {
+        row.tag: row.basic_profile for row in standard.load_table_e1_1().attributes
+    }
+    rules = supplementary_actions.load_supplementary_actions().rules
+    removed = {
+        "(0040,0310)": listed["(0040,0310)"],  # Comments on Radiation Dose
+        "(0018,1005)": listed["(0018,1005)"],  # Generator ID
+        "(0018,7062)": rules["(0018,7062)"].action,  # Exposure Control Mode Description
+        "(0018,11A4)": rules["(0018,11A4)"].action,  # Paddle Description
+    }
+
+    assert not own["X-Ray Filtration"]
+    assert "(0040,0310)" in own[X_RAY_ACQUISITION_DOSE]
+    assert {"(0018,1005)", "(0018,7062)"} <= own["X-Ray Generation"]
+    assert "(0018,11A4)" in own["DX Positioning"]
+    assert removed == {
+        "(0040,0310)": "X",
+        "(0018,1005)": "X",
+        "(0018,7062)": "X/Z/D",
+        "(0018,11A4)": "X/Z/D",
+    }
 
 
 def _validation(validator, findings, *, status=Status.VALIDATED, unparsed=()):
