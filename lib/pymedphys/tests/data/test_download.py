@@ -176,6 +176,26 @@ def test_truncated_response_is_rejected(tmp_path: pathlib.Path, monkeypatch):
     assert _leftovers(tmp_path, "truncated.bin") == []
 
 
+def test_oversized_response_is_rejected_without_replacing_cached_file(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda _url, **_kwargs: _FakeResponse(b"more-than-advertised", content_length=3),
+    )
+    destination = tmp_path / "cached.bin"
+    destination.write_bytes(b"previous validated contents")
+
+    with pytest.raises(ValueError, match="exceeded the declared Content-Length"):
+        download.download_with_progress(
+            "https://example.invalid/cached.bin", destination
+        )
+
+    assert destination.read_bytes() == b"previous validated contents"
+    assert _leftovers(tmp_path, "cached.bin") == [destination]
+
+
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     override = tmp_path / "nested" / "data"
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(override))
