@@ -184,7 +184,7 @@ def test_zip_extraction_does_not_follow_external_symlink(cache, tmp_path):
             extract_directory=working,
         )
 
-    assert list(outside.iterdir()) == []
+    assert not list(outside.iterdir())
 
 
 def test_zip_extraction_rejects_preexisting_hardlinked_target(cache, tmp_path):
