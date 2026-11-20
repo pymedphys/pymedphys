@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests that the MIDI benchmark reads each check in the written file (D-018, D-047).
+"""Tests that the MIDI benchmark reads each check in the written file (D-047, D-063).
 
 An answer key names a check's place by the item indexes of the test data
 set's file. Under Clean Structured Content, the engine removes a content

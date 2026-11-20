@@ -104,7 +104,7 @@ separately for each answer-key category rather than as one score:
   Structured Content the engine removes a content item of a kept Content
   Sequence on its own (D-047), and the written file numbers the items
   after it one lower. Each check is read where the written file holds its
-  place, from the items that the engine's own plan removed
+  place (D-063), from the items that the engine's own plan removed
   (:func:`removed_items`,
   :func:`~pymedphys._dicom.deidentify.midi_benchmark_values.written_path`),
   and a check of a removed item, or of anything in it, finds nothing. Each

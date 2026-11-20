@@ -52,7 +52,7 @@ def is_bulk_data(element: pydicom.DataElement) -> bool:
 
 
 def written_path(path: AttributePath, removed: RemovedItems) -> AttributePath | None:
-    """Return where a written file holds the attribute at a source's ``path``.
+    """Return where a written file holds the attribute at a source's ``path`` (D-063).
 
     The answer key numbers a sequence's items as the test data set's file
     does. Under Clean Structured Content, the engine removes an item of a
