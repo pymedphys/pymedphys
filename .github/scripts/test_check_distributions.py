@@ -296,6 +296,40 @@ class ContentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate file members"):
             read_wheel(path)
 
+    def test_sdist_rejects_link_entry_over_regular_metadata(self):
+        path = Path(self.directory, "pymedphys-linked.tar.gz")
+        name = "pymedphys-test/PKG-INFO"
+        with tarfile.open(path, "w:gz") as archive:
+            payload = b"Version: 1.0.0\\n"
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+            link = tarfile.TarInfo(name)
+            link.type = tarfile.SYMTYPE
+            link.linkname = "other-metadata"
+            archive.addfile(link)
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_sdist(path)
+
+    def test_sdist_rejects_aliased_member_paths(self):
+        path = Path(self.directory, "pymedphys-aliased.tar.gz")
+        with tarfile.open(path, "w:gz") as archive:
+            for name in ("pymedphys-test/PKG-INFO", "pymedphys-test/./PKG-INFO"):
+                payload = b"Version: 1.0.0\\n"
+                info = tarfile.TarInfo(name)
+                info.size = len(payload)
+                archive.addfile(info, io.BytesIO(payload))
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_sdist(path)
+
+    def test_wheel_rejects_aliased_member_paths(self):
+        path = Path(self.directory, "pymedphys-aliased.whl")
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("pymedphys-1.dist-info/METADATA", "Version: 1\\n")
+            archive.writestr("pymedphys-1.dist-info/./METADATA", "Version: 2\\n")
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_wheel(path)
+
     def test_complete_distributions_pass(self):
         sdist = _write_sdist(self.directory)
         wheel = _write_wheel(self.directory)
