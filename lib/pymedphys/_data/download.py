@@ -538,29 +538,53 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
 
 
 def _validate_zip_member_paths(zip_file, extract_directory):
-    """Refuse ZIP paths that could read or write outside the extraction root.
+    """Refuse archive paths that could read or write outside the destination.
 
-    zipfile.extract() sanitises traversal on its own, but the returned paths
-    are built from original names; existing symlink directories can also make
-    an apparently relative entry escape the destination. Check all members
-    before extracting any of them, including when a cache marker is current.
+    Verify all members before extraction (or accepting cached files). Reject
+    ambiguous Windows names and existing links as well as traversal, without
+    exposing clinical member names in any validation error.
     """
-    root = pathlib.Path(extract_directory).resolve()
-    for member in zip_file.namelist():
-        # ZIP uses '/' across platforms. Treat '\\' as a separator too so a
-        # hostile Windows path cannot be misclassified on another platform.
-        name = member.replace("\\", "/")
+    try:
+        root = pathlib.Path(extract_directory).resolve()
+    except (OSError, RuntimeError):
+        raise ValueError("Cannot safely resolve ZIP extraction directory") from None
+
+    for info in zip_file.infolist():
+        # ZIP paths use '/' even on Windows. Treat backslashes as separators
+        # during checks so an archive cannot bypass validation cross-platform.
+        name = info.filename.replace("\\", "/")
+        if name in {".", "./"} and info.is_dir():
+            continue
         relative = pathlib.PurePosixPath(name)
+        components = name.split("/")
         if (
             not name
             or relative.is_absolute()
             or pathlib.PureWindowsPath(name).drive
             or ".." in relative.parts
+            or any(
+                part and part not in {".", ".."} and part.rstrip(" .") != part
+                for part in components
+            )
         ):
             raise ValueError("ZIP archive contains an unsafe member path")
-        target = root.joinpath(*relative.parts).resolve()
-        if target == root or not target.is_relative_to(root):
-            raise ValueError("ZIP archive member escapes the extraction directory")
+
+        current = root
+        for part in relative.parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError("ZIP archive contains a linked extraction path")
+
+        try:
+            target = current.resolve()
+            if target == root or not target.is_relative_to(root):
+                raise ValueError("ZIP archive member escapes the extraction directory")
+            # A hard link inside the destination may alias a file outside it.
+            # Do not overwrite either copy with archive data.
+            if target.is_file() and target.stat().st_nlink > 1:
+                raise ValueError("ZIP archive targets a multiply linked file")
+        except (OSError, RuntimeError):
+            raise ValueError("Cannot safely resolve ZIP archive member") from None
 
 
 def zip_data_paths(
