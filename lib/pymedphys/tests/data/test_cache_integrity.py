@@ -140,6 +140,44 @@ def test_every_downloadable_file_has_a_recorded_hash():
     assert sorted(set(urls) - set(hashes)) == []
 
 
+@pytest.mark.parametrize("member", ["../escape.txt", "/absolute.txt", "C:\\\\outside.txt"])
+def test_zip_extraction_rejects_unsafe_member_paths(cache, tmp_path, member):
+    _, hashes = cache
+    source = _zip(tmp_path / "unsafe.zip", {member: "should not be extracted"})
+    _record(hashes, "archive.zip", source)
+
+    with pytest.raises(ValueError, match="unsafe member path"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+
+    assert not (tmp_path / "escape.txt").exists()
+
+
+def test_zip_extraction_does_not_follow_external_symlink(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"linked/secret.txt": "should not escape"})
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+    outside = tmp_path / "outside"
+    working.mkdir()
+    outside.mkdir()
+    try:
+        (working / "linked").symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError, match="escapes the extraction directory"):
+        download.zip_data_paths(
+            "archive.zip",
+            url=source.as_uri(),
+            hash_filepath=hashes,
+            extract_directory=working,
+        )
+
+    assert list(outside.iterdir()) == []
+
+
 def test_caller_directories_keep_edited_files(cache, tmp_path):
     # The GUI demo extracts into the user's working directory, where people
     # edit the extracted configuration; those edits must survive.
