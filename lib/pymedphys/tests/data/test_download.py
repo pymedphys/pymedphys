@@ -218,6 +218,23 @@ def test_cache_path_rejects_symlink_escape(tmp_path: pathlib.Path, monkeypatch):
         download.data_path("linked/escape.bin", check_hash=False)
 
 
+def test_cache_path_refuses_in_cache_symlink_alias(tmp_path: pathlib.Path, monkeypatch):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    original = cache / "real.bin"
+    original.write_bytes(b"do not alter this cache entry")
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    try:
+        (cache / "alias.bin").symlink_to(original)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating file symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError, match="may not contain symlinks"):
+        download.data_path("alias.bin", check_hash=False)
+
+    assert original.read_bytes() == b"do not alter this cache entry"
+
+
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     override = tmp_path / "nested" / "data"
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(override))
