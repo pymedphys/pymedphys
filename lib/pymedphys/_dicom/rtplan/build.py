@@ -13,13 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from decimal import Decimal
+from typing import Any
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+# A Decimal String holds at most 16 characters (PS3.5 6.2).
+_DECIMAL_STRING_MAX_LENGTH = 16
 
-def _device_position(control_point, device_type):
+
+def _device_position(
+    control_point: "pydicom.Dataset", device_type: str
+) -> "pydicom.Dataset":
     """Return the control point's position item for a beam limiting
     device type, adding the item if the control point lacks it.
 
@@ -42,7 +50,62 @@ def _device_position(control_point, device_type):
     return item
 
 
-def add_data_to_control_point(template, data, i, final_cumulative_meterset_weight):
+def _cumulative_meterset_weight(
+    monitor_units: Sequence[float], i: int, final_cumulative_meterset_weight: float
+) -> str | float:
+    """Return the Cumulative Meterset Weight to write at control point
+    ``i`` of a beam.
+
+    The weight is the control point's share of the beam's monitor units,
+    on the scale of the beam's Final Cumulative Meterset Weight. A
+    control point's meterset is the Beam Meterset times its weight over
+    the final weight (PS3.3 C.8.8.14.1), so the weight is written to
+    within a millionth of the final weight, whatever that scale is: to
+    six decimal places, to more where the final weight is below 1, and
+    to seven significant figures where those decimal places do not fit
+    a Decimal String. That holds for a final weight of at least
+    ``sys.float_info.min``, below which a float no longer has full
+    precision and ``Delivery.to_dicom`` refuses the template.
+
+    The weight at the end of the beam equals the final weight (PS3.3
+    C.8.8.14). Where the rounded weight would differ from it there, or
+    would pass it just before, the final weight itself is returned, as
+    the template gives it.
+    """
+    final_weight = float(final_cumulative_meterset_weight)
+    fraction = monitor_units[i] / monitor_units[-1]
+    weight = final_weight * fraction
+
+    # Six decimal places, as have always been written, give a millionth
+    # of a final weight of 1 or more. A final weight below 1 needs as
+    # many more as its first significant figure lies behind the decimal
+    # point: 0.0001 needs four more.
+    decimals = 6 - min(Decimal(repr(final_weight)).adjusted(), 0)
+
+    # The digits before the decimal point that a Decimal String has room
+    # for beside those decimal places. A weight that needs more is given
+    # seven significant figures instead.
+    whole_digits = _DECIMAL_STRING_MAX_LENGTH - len(".") - decimals
+    text = f"{weight:.6E}"
+    if whole_digits >= 1 and not abs(weight) >= 10**whole_digits:
+        fixed_point = f"{np.around(weight, decimals):.{decimals}f}"
+        if len(fixed_point) <= _DECIMAL_STRING_MAX_LENGTH:
+            text = fixed_point
+
+    written = float(text)
+    at_the_end = fraction == 1 or (fraction < 1 and written > final_weight)
+    if at_the_end and written != final_weight:
+        return final_cumulative_meterset_weight
+
+    return text
+
+
+def add_data_to_control_point(
+    template: "pydicom.Dataset",
+    data: Mapping[str, Any],
+    i: int,
+    final_cumulative_meterset_weight: float,
+) -> "pydicom.Dataset":
     cp = deepcopy(template)
     cp.ControlPointIndex = str(i)
 
@@ -66,23 +129,19 @@ def add_data_to_control_point(template, data, i, final_cumulative_meterset_weigh
     _device_position(cp, "ASYMY").LeafJawPositions = data["jaw"][i]
     _device_position(cp, "MLCX").LeafJawPositions = data["mlc"][i]
 
-    # On the beam's Final Cumulative Meterset Weight scale, which the
-    # final control point's weight equals (PS3.3 C.8.8.14).
-    cp.CumulativeMetersetWeight = np.around(
-        final_cumulative_meterset_weight
-        * (data["monitor_units"][i] / data["monitor_units"][-1]),
-        decimals=6,
+    cp.CumulativeMetersetWeight = _cumulative_meterset_weight(
+        data["monitor_units"], i, final_cumulative_meterset_weight
     )
 
     return cp
 
 
 def build_control_points(
-    initial_cp_template,
-    subsequent_cp_template,
-    data,
-    final_cumulative_meterset_weight,
-):
+    initial_cp_template: "pydicom.Dataset",
+    subsequent_cp_template: "pydicom.Dataset",
+    data: Mapping[str, Any],
+    final_cumulative_meterset_weight: float,
+) -> "list[pydicom.Dataset]":
     number_of_control_points = len(data["monitor_units"])
 
     cps = []
@@ -116,15 +175,6 @@ def replace_beam_sequence(created_dicom, all_control_points, beam_index):
     beam.ControlPointSequence = all_control_points
     beam.NumberOfControlPoints = len(all_control_points)
     created_dicom.BeamSequence = [beam]
-
-
-def restore_trailing_zeros(created_dicom):
-    for beam_sequence in created_dicom.BeamSequence:
-        for control_point in beam_sequence.ControlPointSequence:
-            current_value = float(control_point.CumulativeMetersetWeight)
-            new_value = "{:.6f}".format(current_value)
-
-            control_point.CumulativeMetersetWeight = new_value
 
 
 def merge_beam_sequences(dicoms_by_gantry_angle):
