@@ -28,6 +28,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+import unicodedata
 import zipfile
 from http import HTTPStatus
 
@@ -521,19 +522,38 @@ def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
     return True
 
 
-def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
+def _hash_open_zip(zip_file: zipfile.ZipFile) -> str:
+    """Fingerprint the ZIP handle being extracted, never a substituted pathname."""
+    archive = zip_file.fp
+    if archive is None:
+        raise ValueError("Cannot hash a closed ZIP archive")
+    position = archive.tell()
+    digest = hashlib.sha1(usedforsecurity=False)
+    try:
+        archive.seek(0)
+        while block := archive.read(65536):
+            digest.update(block)
+    finally:
+        archive.seek(position)
+    return digest.hexdigest()
+
+
+def _refresh_cached_extraction(zip_file, extract_directory):
     """Extract the archive again unless the cache already holds it intact."""
-    archive_hash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
-        zip_filepath
-    )
+    archive_hash = _hash_open_zip(zip_file)
     marker = _sidecar_path(extract_directory, EXTRACTED_ARCHIVE_MARKER)
     if _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
         return
 
-    # Publish the marker only after every archive member has been installed.
-    # Atomically replacing it avoids following a swapped marker symlink.
+    # Establish the root before touching the marker, including fresh caches.
+    # The POSIX traversal creates each directory without following symlinks.
+    _zip_safe.ensure_root(extract_directory)
+    # Publish the marker only after every member has been installed from the
+    # archive whose open file descriptor was hashed.
     _zip_safe.unlink_marker(marker)
     _zip_safe.extract_members(zip_file, extract_directory, missing_only=False)
+    if _hash_open_zip(zip_file) != archive_hash:
+        raise ValueError("ZIP archive changed during extraction")
     _zip_safe.write_marker(marker, archive_hash)
 
 
@@ -560,7 +580,8 @@ def _validate_zip_member_paths(
         | {f"{prefix}{index}" for prefix in ("COM", "LPT") for index in range(1, 10)}
         | {f"{prefix}{digit}" for prefix in ("COM", "LPT") for digit in "¹²³"}
     )
-    seen_casefolded = {}
+    seen_casefolded: dict[tuple[str, ...], tuple[str, ...]] = {}
+    member_types: dict[tuple[str, ...], bool] = {}
     for info in zip_file.infolist():
         name = info.filename.replace("\\", "/")
         # An empty, zero-length root entry is harmless; do not use it as
@@ -591,10 +612,20 @@ def _validate_zip_member_paths(
         # Windows maps case variants to one path. Refuse distinct spellings
         # that would collide in staging or the caller's extraction directory.
         canonical = relative.parts
-        folded = tuple(part.casefold() for part in canonical)
+        folded = tuple(
+            unicodedata.normalize("NFC", unicodedata.normalize("NFC", part).casefold())
+            for part in canonical
+        )
         previous = seen_casefolded.setdefault(folded, canonical)
         if previous != canonical:
             raise ValueError("ZIP archive contains an unsafe member path")
+
+        # A physical path cannot be both a file and a directory, even when
+        # different archive entries use equivalent ./ aliases.
+        is_directory = info.is_dir()
+        if canonical in member_types and member_types[canonical] != is_directory:
+            raise ValueError("ZIP archive contains conflicting member paths")
+        member_types[canonical] = is_directory
 
         try:
             current = root
@@ -611,6 +642,13 @@ def _validate_zip_member_paths(
         except (OSError, RuntimeError):
             raise ValueError("Cannot safely resolve ZIP archive member") from None
 
+    # Reject file/descendant conflicts before extracting any member. Otherwise
+    # an archive containing "a" and "a/b" may leave a partially written cache.
+    for parts in member_types:
+        for length in range(1, len(parts)):
+            if member_types.get(parts[:length]) is False:
+                raise ValueError("ZIP archive contains conflicting member paths")
+
     return root
 
 
@@ -623,6 +661,42 @@ def zip_data_paths(
     extract_directory=None,
     hash_filepath=None,
 ):
+    """Download and safely extract an archive, returning its regular-file paths.
+
+    Unsafe ZIP member names, symlink or junction traversal, hard-linked target
+    files, and conflicting archive paths are rejected before extraction.
+    Cache-managed files are refreshed when the archive changes; an explicitly
+    chosen extraction directory preserves previously edited files.
+
+    Parameters
+    ----------
+    filename : str
+        Filename of the ZIP archive within the data cache.
+    check_hash : bool, optional
+        Verify the download against the supplied or packaged hash manifest.
+    redownload_on_hash_mismatch : bool, optional
+        Download the archive again when a cached download has a wrong hash.
+    delete_when_no_hash_found : bool, optional
+        Remove a cached download when no expected hash is available.
+    url : str, optional
+        Override the archive's download URL.
+    extract_directory : str or os.PathLike, optional
+        Destination for extraction. By default the managed data cache is used.
+    hash_filepath : str or os.PathLike, optional
+        Custom JSON manifest of expected downloaded-file hashes.
+
+    Returns
+    -------
+    list[pathlib.Path]
+        Paths of extracted regular files, in archive member order. Repeated
+        members may therefore produce repeated paths.
+
+    Raises
+    ------
+    ValueError
+        The archive has an unsafe member path, a conflicting member layout,
+        an unsafe destination, or changes during extraction.
+    """
     cache_directory = get_data_dir().joinpath(
         pathlib.Path(os.path.splitext(filename)[0])
     )
@@ -653,7 +727,7 @@ def zip_data_paths(
             safe_root = _validate_zip_member_paths(zip_file, extract_directory)
 
             if cache_managed:
-                _refresh_cached_extraction(zip_file, zip_filepath, safe_root)
+                _refresh_cached_extraction(zip_file, safe_root)
             else:
                 # A caller-selected working directory may contain edited files.
                 # Insert missing files only; never follow a substituted link.
