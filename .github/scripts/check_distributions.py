@@ -218,6 +218,9 @@ def _parse_metadata(text: str) -> _Metadata:
 def read_sdist(path: Path) -> Archive:
     with tarfile.open(path, "r:gz") as archive:
         names = [member.name for member in archive.getmembers() if member.isfile()]
+        # Different TAR readers can select different payloads for duplicate names.
+        if len(names) != len(set(names)):
+            raise ValueError(f"{path.name} contains duplicate file members")
         roots = {name.split("/", 1)[0] for name in names}
         if len(roots) != 1:
             raise ValueError(f"{path.name} does not have a single top directory")
@@ -240,6 +243,9 @@ def read_sdist(path: Path) -> Archive:
 def read_wheel(path: Path) -> Archive:
     with zipfile.ZipFile(path) as archive:
         names = [name for name in archive.namelist() if not name.endswith("/")]
+        # Ambiguous ZIP entries can defeat a package check if readers disagree.
+        if len(names) != len(set(names)):
+            raise ValueError(f"{path.name} contains duplicate file members")
         metadata_paths = [
             name
             for name in names
