@@ -62,6 +62,7 @@ on:
           - today
           - noise over tissue
           - top-hats to 10 deviations
+          - top-hats to 5 deviations
           - top-hats to 40 deviations
           - top-hats of 8 mm
           - window of at least 100 units
@@ -73,7 +74,7 @@ on:
           A tuning run's post-processing grid, by its name in
           text_evaluation_search; with today's settings alone.
         type: choice
-        options: [today, single settings]
+        options: [today, single settings, line extension]
         default: today
       evaluated:
         description: The part of the split to measure.
