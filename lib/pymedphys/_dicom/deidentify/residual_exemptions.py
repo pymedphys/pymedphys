@@ -99,7 +99,8 @@ reason that such a finding is not a reason for review (D-032), or returns
   only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
   The release gate tries it after every exemption listed here but
-  :attr:`Exemption.COPIED_REQUEST_CODE`, for a text finding that none of
+  :attr:`Exemption.COPIED_REQUEST_CODE` and
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, for a text finding that none of
   them explains.
 - :attr:`Exemption.METHOD_DIGEST`: a finding of any kind in De-identification
   Method (0012,0063) of the top-level data set, every match of whose source
@@ -120,8 +121,20 @@ reason that such a finding is not a reason for review (D-032), or returns
   Sequence (0040,0275), into Procedure Code Sequence (0008,1032), which it
   keeps, so the removed copy reveals nothing the kept code does not, and
   every other finding in the kept code is decided as before. The release
-  gate tries it after every other exemption listed here, for a text
-  finding that none of them explains.
+  gate tries it after every exemption listed here but
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, for a text finding that none of
+  them explains.
+- :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
+  descriptor, an attribute whose values the reviewed technique vocabulary's
+  automatic tier may keep, such as Series Description (0008,103E), at the
+  top level or in an item, every value of which is made only of words of
+  that vocabulary and echoes no identifier of the subject, and its source
+  is a description, comment, or technique descriptor of the examination, a
+  contrast agent or radiopharmaceutical, or an SR TEXT value, or a private
+  data element that only copies one of them
+  (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
+  The release gate tries it after every other exemption listed here, for a
+  text finding that none of them explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -210,6 +223,8 @@ class Exemption(enum.Enum):
     VOCABULARY_MEANING = "vocabulary-meaning"
     # equal to the same attribute of a kept code, from a removed request code
     COPIED_REQUEST_CODE = "copied-request-code"
+    # in a technique descriptor made only of the reviewed technique vocabulary
+    VOCABULARY_DESCRIPTOR = "vocabulary-descriptor"
     # a finding that would hold the file for review, which a reviewer cleared
     # in an attested QC pack of an earlier run of the same source file, in
     # the same value (residuals.ReviewedFinding)
