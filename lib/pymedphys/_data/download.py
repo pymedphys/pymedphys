@@ -201,7 +201,9 @@ def get_file_within_data_zip(zip_name, file_name):
     path_match = [path for path in dose_data_files if path.name == file_name]
 
     if len(path_match) != 1:
-        raise ValueError(f"Found {len(path_match)} matching files. Exactly 1 file is expected.")
+        raise ValueError(
+            f"Found {len(path_match)} matching files. Exactly 1 file is expected."
+        )
 
     return str(path_match[0])
 
