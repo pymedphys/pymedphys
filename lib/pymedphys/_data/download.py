@@ -504,12 +504,10 @@ def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
     except (OSError, RuntimeError, ValueError):
         return False
 
-    # Duplicates are written in order. ZipFile.getinfo() returns the final
-    # entry with a given name, matching the bytes left by extraction.
-    for name in zip_file.namelist():
-        if name.replace("\\", "/") in {"", ".", "./"}:
-            continue
-        info = zip_file.getinfo(name)
+    # Extracted aliases share the same path. Check only the final member
+    # at that path, including duplicates named data and ./data.
+    for info in _zip_safe.last_members(zip_file):
+        name = info.filename
         try:
             current = _zip_safe.member_stat(extract_directory, name)
         except (OSError, RuntimeError, ValueError):
@@ -539,7 +537,9 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     _zip_safe.write_marker(marker, archive_hash)
 
 
-def _validate_zip_member_paths(zip_file, extract_directory):
+def _validate_zip_member_paths(
+    zip_file: zipfile.ZipFile, extract_directory: os.PathLike[str] | str
+) -> pathlib.Path:
     """Reject archive paths that could access files outside the destination.
 
     Perform preflight validation before cache reuse or extraction, and return
@@ -555,10 +555,16 @@ def _validate_zip_member_paths(zip_file, extract_directory):
     except (OSError, RuntimeError):
         raise ValueError("Cannot safely resolve ZIP extraction directory") from None
 
+    windows_devices = frozenset(
+        {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+        | {f"{prefix}{index}" for prefix in ("COM", "LPT") for index in range(1, 10)}
+        | {f"{prefix}{digit}" for prefix in ("COM", "LPT") for digit in "¹²³"}
+    )
+    seen_casefolded = {}
     for info in zip_file.infolist():
         name = info.filename.replace("\\", "/")
-        # ZIP archives sometimes explicitly contain the empty extraction
-        # root. A zero-length root entry requires no filesystem action.
+        # An empty, zero-length root entry is harmless; do not use it as
+        # a file or include it in returned paths.
         if name in {"", ".", "./"}:
             if info.file_size == 0:
                 continue
@@ -572,10 +578,19 @@ def _validate_zip_member_paths(zip_file, extract_directory):
             or ".." in relative.parts
             or any(
                 (part and part not in {".", ".."} and part.rstrip(" .") != part)
-                or ":" in part
+                or any(ord(character) < 32 or character in '<>:"|?*' for character in part)
+                or part.split(".")[0].rstrip(" ").upper() in windows_devices
                 for part in components
             )
         ):
+            raise ValueError("ZIP archive contains an unsafe member path")
+
+        # Windows maps case variants to one path. Refuse distinct spellings
+        # that would collide in staging or the caller's extraction directory.
+        canonical = relative.parts
+        folded = tuple(part.casefold() for part in canonical)
+        previous = seen_casefolded.setdefault(folded, canonical)
+        if previous != canonical:
             raise ValueError("ZIP archive contains an unsafe member path")
 
         try:
