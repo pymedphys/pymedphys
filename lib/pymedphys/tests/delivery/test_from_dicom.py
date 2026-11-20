@@ -81,6 +81,54 @@ def test_static_device_listed_only_at_first_control_point(
     assert getattr(sparse, field) == (expected,) * 3
 
 
+@pytest.mark.parametrize(
+    "later_control_point, message",
+    [
+        pytest.param({}, "control point 1, counting from 0, is empty", id="empty-list"),
+        pytest.param(
+            {"ASYMX": [-30.0, 30.0]},
+            "Control point 1, counting from 0, leaves out .* does not define",
+            id="only-an-undefined-device",
+        ),
+        pytest.param(
+            {"MLCX": POSITIONS["MLCX"][1], "ASYMX": [-30.0, 30.0]},
+            "Control point 1, counting from 0, leaves out .* does not define",
+            id="leaves-and-an-undefined-device",
+        ),
+    ],
+)
+def test_control_point_that_does_not_list_the_beams_devices_raises(
+    later_control_point, message
+):
+    # Leaving a device out of a later control point says that it does not
+    # move (PS3.3 C.8.8.14). An empty list, or a list with a device that
+    # the beam does not define, does not say that, so it is not read as
+    # "nothing moved". The message names the control point, the second of
+    # the three.
+    every_device = {device: positions[0] for device, positions in POSITIONS.items()}
+    plan = _plan([every_device, later_control_point, every_device])
+
+    with pytest.raises(ValueError, match=message):
+        pymedphys.Delivery.from_dicom(plan)
+
+
+def test_other_device_beside_both_of_the_beams_devices_is_ignored():
+    # A control point that lists both of the beam's devices is read as it
+    # always was, whatever else it lists.
+    every_device = [
+        {device: positions[index] for device, positions in POSITIONS.items()}
+        for index in range(3)
+    ]
+    with_another_device = [
+        {**positions_by_device, "ASYMX": [-30.0, 30.0]}
+        for positions_by_device in every_device
+    ]
+
+    assert pymedphys.Delivery.from_dicom(
+        _plan(with_another_device)
+    ) == pymedphys.Delivery.from_dicom(_plan(every_device))
+
+
 def _plan(positions_by_control_point):
     """Return a one-beam RT Plan collimated by ASYMY jaws and MLCX leaves.
 
