@@ -176,7 +176,7 @@ def test_zip_extraction_does_not_follow_external_symlink(cache, tmp_path):
     except (NotImplementedError, OSError):
         pytest.skip("Creating directory symlinks is unavailable on this platform")
 
-    with pytest.raises(ValueError, match="escapes the extraction directory"):
+    with pytest.raises(ValueError, match="linked extraction path"):
         download.zip_data_paths(
             "archive.zip",
             url=source.as_uri(),
