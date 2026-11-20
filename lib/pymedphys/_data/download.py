@@ -648,9 +648,11 @@ def zip_data_paths(
             try:
                 current = _zip_safe.member_stat(safe_root, name)
             except (OSError, RuntimeError, ValueError):
-                raise ValueError("ZIP archive contains a linked extraction path") from None
+                raise ValueError(
+                    "ZIP archive contains a linked extraction path"
+                ) from None
             if stat.S_ISREG(current.st_mode):
                 relative = pathlib.PurePosixPath(name.replace("\\", "/"))
                 resolved_filepaths.append(safe_root.joinpath(*relative.parts))
-    
+
         return resolved_filepaths
