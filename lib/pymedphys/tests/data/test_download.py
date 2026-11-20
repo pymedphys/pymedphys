@@ -227,7 +227,7 @@ def test_conflicting_http_framing_is_rejected_before_caching(tmp_path: pathlib.P
             self.send_header("Content-Length", "3")
             self.send_header("Transfer-Encoding", "chunked")
             self.end_headers()
-            self.wfile.write(b"B\\r\\nhello world\\r\\n0\\r\\n\\r\\n")
+            self.wfile.write(b"B\r\nhello world\r\n0\r\n\r\n")
 
         def log_message(self, *_args):
             pass
