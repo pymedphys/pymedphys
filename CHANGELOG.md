@@ -151,6 +151,12 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- **[Security]** Data downloads now refuse negative `Content-Length` values and responses
+  that specify both `Content-Length` and `Transfer-Encoding`. If the transport
+  returns more bytes than declared, the excess is refused before writing it.
+  These failures leave an existing cached file unchanged.
+  [PR #2621](https://github.com/pymedphys/pymedphys/pull/2621)
+
 - The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
 
 - `pymedphys._mosaiq.sessions.cluster_sessions` no longer drops whole days and fractions of a second from its `interval`, and handles one or no treatments. `sessions_for_site` and the session offset helpers return no sessions, and a mean offset of `None`, for a site with no treatments, where they raised `IndexError`. `sessions_for_site`, `session_offsets_for_site` and `mean_session_offset_for_site` take the session interval as an argument, defaulting to the department setting from the new `session_interval_for_site`, which raises `ValueError` when a site's treatments come from departments with different settings. `session_offsets_for_site` searches for each session's offset from no earlier than the previous session's last treatment, so a session no longer takes the previous session's offset, and compares offset times to the second rather than to the minute. Session clustering no longer uses scikit-learn. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
