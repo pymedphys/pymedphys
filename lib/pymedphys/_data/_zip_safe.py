@@ -250,6 +250,34 @@ def _extract_posix(
                     pass
 
 
+def _windows_file_attributes(kernel32: object, handle: int) -> int:
+    """Read basic file attributes on FAT and NTFS without following links."""
+    import ctypes
+    from ctypes import wintypes
+
+    class _FileBasicInfo(ctypes.Structure):
+        _fields_ = [
+            ("creation_time", ctypes.c_int64),
+            ("last_access_time", ctypes.c_int64),
+            ("last_write_time", ctypes.c_int64),
+            ("change_time", ctypes.c_int64),
+            ("file_attributes", wintypes.DWORD),
+        ]
+
+    attributes = getattr(kernel32, "GetFileInformationByHandleEx")
+    attributes.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+    ]
+    attributes.restype = wintypes.BOOL
+    info = _FileBasicInfo()
+    if not attributes(handle, 0, ctypes.byref(info), ctypes.sizeof(info)):
+        raise ValueError(_UNSAFE)
+    return int(info.file_attributes)
+
+
 @contextlib.contextmanager
 def _windows_pinned_directory(
     root: pathlib.Path, children: tuple[str, ...] = (), *, create: bool = False
@@ -257,8 +285,8 @@ def _windows_pinned_directory(
     """Pin each Windows ancestor against renames and junction substitution.
 
     Handles are opened with FILE_FLAG_OPEN_REPARSE_POINT, checked as real
-    directories, and held without FILE_SHARE_DELETE until publication ends.
-    This prevents replacement of any verified parent by a junction.
+    directories with FILE_LIST_DIRECTORY access, and held without
+    FILE_SHARE_DELETE until publication ends. This blocks parent renames.
     """
     import ctypes
     from ctypes import wintypes
@@ -275,14 +303,6 @@ def _windows_pinned_directory(
         wintypes.HANDLE,
     ]
     create_file.restype = wintypes.HANDLE
-    attributes = kernel32.GetFileInformationByHandleEx
-    attributes.argtypes = [
-        wintypes.HANDLE,
-        wintypes.DWORD,
-        wintypes.LPVOID,
-        wintypes.DWORD,
-    ]
-    attributes.restype = wintypes.BOOL
     close_handle = kernel32.CloseHandle
     close_handle.argtypes = [wintypes.HANDLE]
     close_handle.restype = wintypes.BOOL
@@ -303,7 +323,7 @@ def _windows_pinned_directory(
                         pass
             handle = create_file(
                 str(current),
-                0x80,  # FILE_READ_ATTRIBUTES
+                0x81,  # FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES: rename guard
                 0x1 | 0x2,  # FILE_SHARE_READ | FILE_SHARE_WRITE (not DELETE)
                 None,
                 3,  # OPEN_EXISTING
@@ -313,10 +333,8 @@ def _windows_pinned_directory(
             if handle is None or handle == ctypes.c_void_p(-1).value:
                 raise ValueError(_UNSAFE)
             handles.append(handle)
-            info = (wintypes.DWORD * 2)()
-            if not attributes(handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
-                raise ValueError(_UNSAFE)
-            if not (info[0] & 0x10) or (info[0] & 0x400):
+            attributes = _windows_file_attributes(kernel32, handle)
+            if not (attributes & 0x10) or (attributes & 0x400):
                 # FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT
                 raise ValueError(_UNSAFE)
         yield current
@@ -345,14 +363,6 @@ def _windows_open_regular_file(path: pathlib.Path) -> int:
         wintypes.HANDLE,
     ]
     create_file.restype = wintypes.HANDLE
-    attributes = kernel32.GetFileInformationByHandleEx
-    attributes.argtypes = [
-        wintypes.HANDLE,
-        wintypes.DWORD,
-        wintypes.LPVOID,
-        wintypes.DWORD,
-    ]
-    attributes.restype = wintypes.BOOL
     close_handle = kernel32.CloseHandle
     close_handle.argtypes = [wintypes.HANDLE]
     close_handle.restype = wintypes.BOOL
@@ -369,10 +379,8 @@ def _windows_open_regular_file(path: pathlib.Path) -> int:
     if handle is None or handle == ctypes.c_void_p(-1).value:
         raise ValueError(_UNSAFE)
     try:
-        info = (wintypes.DWORD * 2)()
-        if not attributes(handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
-            raise ValueError(_UNSAFE)
-        if info[0] & (0x10 | 0x400):  # Directory or reparse point
+        attributes = _windows_file_attributes(kernel32, handle)
+        if attributes & (0x10 | 0x400):  # Directory or reparse point
             raise ValueError(_UNSAFE)
         descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
         handle = None  # The Python descriptor owns the native handle.
