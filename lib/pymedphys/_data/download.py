@@ -162,8 +162,13 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
             ):
                 received = 0
                 while chunk := response.read(_CHUNK_SIZE):
-                    temp_file.write(chunk)
                     received += len(chunk)
+                    if expected_size is not None and received > expected_size:
+                        raise ValueError(
+                            "Download exceeded the declared Content-Length; "
+                            "refusing to cache an oversized response."
+                        )
+                    temp_file.write(chunk)
                     progress.update(len(chunk))
 
             if expected_size is not None and received < expected_size:
