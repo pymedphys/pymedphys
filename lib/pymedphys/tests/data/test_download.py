@@ -231,9 +231,9 @@ def test_conflicting_http_framing_is_rejected_before_caching(tmp_path: pathlib.P
             self.end_headers()
             self.wfile.write(b"B\r\nhello world\r\n0\r\n\r\n")
 
-        def log_message(self, format: str, *args: object) -> None:
+        def log_message(self, format: str, *_args: object) -> None:  # pylint: disable = redefined-builtin
             # Suppress the test-only HTTP server's request logging.
-            return
+            pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), ConflictingResponse)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
