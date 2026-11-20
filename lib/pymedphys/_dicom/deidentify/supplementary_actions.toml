@@ -13,10 +13,10 @@
 # Treatment Record, the registrations, the four Radiation Dose SR IODs, RT Ion
 # Plan, RT Ion Beams Treatment Record, RT Brachy Treatment Record, RT
 # Treatment Summary Record, Enhanced RT Image, Enhanced Continuous RT Image,
-# Segmentation, Surface Segmentation, and the Computed Radiography and
-# Digital X-Ray Image IODs were. So does every date, time, and datetime (DA,
-# DT, or TM) attribute that Table E.1-1 omits, besides the role that the
-# temporal roles file gives it.
+# Segmentation, Surface Segmentation, the Computed Radiography and Digital
+# X-Ray Image IODs, and the Secondary Capture IODs were. So does every date,
+# time, and datetime (DA, DT, or TM) attribute that Table E.1-1 omits,
+# besides the role that the temporal roles file gives it.
 # Other attributes that the table omits have a rule only where one has been
 # reviewed, such as the two URLs below that name coding concepts and schemes.
 # A rule never covers an attribute that Table E.1-1 lists, or a UI attribute,
@@ -187,6 +187,20 @@ options = { clean_descriptors = "C" }
 note = "A description of the compression paddle, where the body part was compressed during the exposure (PS3.3 Table C.8-72). PS3.3 gives it no Defined Terms, so a person or a site's configuration can write anything in it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Compensator Description and Bolus Description."
 
 [[attribute]]
+tag = "(0018,2002)"
+keyword = "FrameLabelVector"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A descriptive label for each frame of a multi-frame Secondary Capture image (PS3.3 C.8.6.4), which the capturing program or its operator writes, such as a page's or a screen's title, and which can hold a name. It is removed by Type, which replaces it with a dummy value where the frames are indexed by it (Type 1C), and cleaned as a descriptor under Clean Descriptors. The dummy value has the fewest values that its VM allows, so it no longer gives a label for each frame, as Window Center & Width Explanation does not give one for each window."
+
+[[attribute]]
+tag = "(0018,2006)"
+keyword = "DisplayWindowLabelVector"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "For each frame of a multi-frame Secondary Capture image, a label or number of the display window of a graphical user interface from which the frame was captured (PS3.3 C.8.6.4). A window's title can name the patient or the user, so it is removed by Type, which replaces it with a dummy value where the frames are indexed by it (Type 1C), and cleaned as a descriptor under Clean Descriptors. The dummy value has the fewest values that its VM allows, as Frame Label Vector's does."
+
+[[attribute]]
 tag = "(0018,5020)"
 keyword = "ProcessingFunction"
 action = "X/Z/D"
@@ -276,6 +290,13 @@ keyword = "LUTExplanation"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A free-form explanation of a LUT or of a real world value mapping, which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0028,6022)"
+keyword = "FrameOfInterestDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of each frame of interest of a multi-frame image (PS3.3 C.7.6.9), which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0028,6190)"

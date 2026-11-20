@@ -677,6 +677,8 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Advanced Blending Presentation State",
             "Planar MPR Volumetric Presentation State",
             "Volume Rendering Volumetric Presentation State",
+            "Secondary Capture Image",
+            "Multi-frame True Color Secondary Capture Image",
         )
     }
     # Color Space is Type 1C beside ICC Profile in the display modules of the

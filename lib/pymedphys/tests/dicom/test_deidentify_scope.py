@@ -119,6 +119,11 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
     "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.7": "Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.1": "Multi-frame Single Bit Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.2": "Multi-frame Grayscale Byte Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.3": "Multi-frame Grayscale Word Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.4": "Multi-frame True Color Secondary Capture Image",
     "1.2.840.10008.5.1.4.1.1.88.70": "Implantation Plan SR Document",
     "1.2.840.10008.5.1.4.1.1.88.72": "Simplified Adult Echo SR",
     "1.2.840.10008.5.1.4.1.1.88.74": "Planned Imaging Agent Administration SR",
@@ -210,6 +215,11 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
         "Implantation Plan SR Document",
         "Simplified Adult Echo SR",
         "Planned Imaging Agent Administration SR",
@@ -230,6 +240,7 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "Waveform Acquisition Presentation State",
         "Encapsulated PDF",
     }
+    assert scope.SECONDARY_CAPTURE_IODS < scope.SUPPORTED_IODS
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
 
@@ -492,6 +503,11 @@ def test_pydicom_names_the_same_uids():
         uid.SpectaclePrescriptionReportStorage,
         uid.MacularGridThicknessAndVolumeReportStorage,
         uid.WaveformAnnotationSRStorage,
+        uid.SecondaryCaptureImageStorage,
+        uid.MultiFrameSingleBitSecondaryCaptureImageStorage,
+        uid.MultiFrameGrayscaleByteSecondaryCaptureImageStorage,
+        uid.MultiFrameGrayscaleWordSecondaryCaptureImageStorage,
+        uid.MultiFrameTrueColorSecondaryCaptureImageStorage,
         uid.ImplantationPlanSRStorage,
         uid.SimplifiedAdultEchoSRStorage,
         uid.PlannedImagingAgentAdministrationSRStorage,

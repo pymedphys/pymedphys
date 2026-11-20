@@ -272,6 +272,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "62-cr.dcm",
         "63-dx-for-processing.dcm",
         "64-dx-for-presentation.dcm",
+        "65-sc.dcm",
+        "66-sc-single-bit.dcm",
+        "67-sc-grayscale-byte.dcm",
+        "68-sc-grayscale-word.dcm",
+        "69-sc-true-color.dcm",
         "70-rt-segment-annotation.dcm",
         "71-rt-radiation-set.dcm",
         "72-c-arm-radiation.dcm",
@@ -350,6 +355,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Computed Radiography Image",
         "Digital X-Ray Image",
         "Digital X-Ray Image",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
         "RT Segment Annotation",
         "RT Radiation Set",
         "C-Arm Photon-Electron Radiation",
@@ -376,7 +386,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     ]
     # Counted from the start, so that a file added at the end moves none.
     presentation_states = (
-        corpus.files[55:61] + corpus.files[80:83] + corpus.files[85:87]
+        corpus.files[55:61] + corpus.files[85:88] + corpus.files[90:92]
     )
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
         file.name for file in corpus.files[21:31] + corpus.files[33:46]
@@ -409,34 +419,37 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     assert corpus_module.RADIOGRAPH_FILES == tuple(
         file.name for file in corpus.files[61:64]
     )
+    assert corpus_module.SECONDARY_CAPTURE_FILES == tuple(
+        file.name for file in corpus.files[64:69]
+    )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[83:85])
+    ) == tuple(file.name for file in corpus.files[88:90])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
         corpus_module.C_ARM_RADIATION_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
-    ) == tuple(file.name for file in corpus.files[64:69])
+    ) == tuple(file.name for file in corpus.files[69:74])
     assert (
         corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[69:72])
+    ) == tuple(file.name for file in corpus.files[74:77])
     assert (
         corpus_module.PHYSICIAN_INTENT_FILE,
         corpus_module.TREATMENT_PREPARATION_FILE,
         corpus_module.POSITION_ACQUISITION_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[73:76])
+    ) == tuple(file.name for file in corpus.files[78:81])
     assert (
         corpus_module.RADIATION_RECORD_SET_FILE,
         corpus_module.C_ARM_RADIATION_RECORD_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_RECORD_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_RECORD_FILE,
         corpus_module.RADIATION_SALVAGE_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[72:73] + corpus.files[76:80])
+    ) == tuple(file.name for file in corpus.files[77:78] + corpus.files[81:85])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -1405,6 +1418,35 @@ def test_markers_have_five_digits_and_their_16_bit_integers_are_distinct(corpus)
         assert all(low <= value <= high for value in values), vr
 
 
+# The corpus's private marker numbering and the limits of its kinds.
+_KIND_LIMITS = corpus_module._KIND_LIMITS  # pylint: disable = protected-access
+_MARKERS = corpus_module._Markers  # pylint: disable = protected-access
+
+
+@pytest.mark.parametrize(
+    "vr, limit",
+    [
+        ("SH", corpus_module.MAX_MARKERS - 1),
+        ("DA", _KIND_LIMITS["date"]),
+        ("DT", _KIND_LIMITS["date"]),
+        ("TM", _KIND_LIMITS["time"]),
+        ("SS", _KIND_LIMITS["SS"]),
+        ("US", _KIND_LIMITS["US"]),
+    ],
+)
+def test_markers_of_each_vr_reach_their_limit_and_stop_with_an_error(vr, limit):
+    # A marker of each VR can be given up to its own limit, whatever the
+    # others' limits are, and the next one is refused with a ValueError.
+    markers = _MARKERS()
+    values, texts = markers.values(vr, limit)
+    assert len(set(texts)) == limit
+    if vr in ("DA", "DT"):
+        assert texts[-1][:4] >= "0100"
+    with pytest.raises(ValueError, match="markers than"):
+        markers.values(vr, 1)
+    assert len(values) == limit
+
+
 def test_times_are_distinct(corpus):
     times = [
         value
@@ -1587,6 +1629,10 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
             # manufacturer and model descriptions, and a private tag.
             marker = corpus_module.MARKER_PREFIX.encode()
             assert dataset.ICCProfile.count(marker) == 5
+        elif file.manifest.iod == "Multi-frame True Color Secondary Capture Image":
+            # The IOD does not require an ICC Profile, which is left out.
+            assert dataset.PhotometricInterpretation == "RGB"
+            assert "ICCProfile" not in dataset
         else:
             assert dataset.PhotometricInterpretation == "MONOCHROME2"
             assert "ICCProfile" not in dataset
@@ -1600,8 +1646,22 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
         "RT Image",
         "Computed Radiography Image",
         "Digital X-Ray Image",
+        "Secondary Capture Image",
     }
     assert set(frames.values()) == {1, 2}
+
+
+def test_each_secondary_capture_names_its_manufacturer(corpus):
+    # The General Equipment Module is user-optional in these IODs, and its
+    # Type 2 Manufacturer, which every policy keeps, shows that it is there
+    # once the Basic Profile has removed or replaced its other attributes.
+    names = set(corpus_module.SECONDARY_CAPTURE_FILES)
+    captures = [file for file in corpus.files if file.name in names]
+    assert len(captures) == len(names)
+    for file in captures:
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
+        assert dataset.Manufacturer == corpus_module.SECONDARY_CAPTURE_MANUFACTURER
+        assert corpus_module.MARKER_PREFIX not in dataset.Manufacturer
 
 
 def test_the_spectroscopy_instance_holds_spectroscopy_data_only(corpus):

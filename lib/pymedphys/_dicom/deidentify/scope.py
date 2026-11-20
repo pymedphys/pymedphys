@@ -41,17 +41,17 @@ Simplified Adult Echo SR, Planned Imaging Agent Administration SR,
 Performed Imaging Agent Administration SR, and Acquisition Context SR IODs,
 of the Parametric Map, Real World Value Mapping, and Encapsulated PDF IODs,
 of the Grayscale, Color, Pseudo-Color, Blending, XA/XRF Grayscale, and
-Variable Modality LUT Softcopy Presentation State IODs, and of the Planar
-MPR and Volume Rendering Volumetric Presentation State IODs, with their
+Variable Modality LUT Softcopy Presentation State IODs, of the Planar MPR
+and Volume Rendering Volumetric Presentation State IODs, with their
 Grayscale and Compositing Planar MPR, Volume Rendering, Segmented Volume
 Rendering, and Multiple Volume Rendering SOP Classes, the Advanced Blending
 Presentation State IOD, and the Waveform and Waveform Acquisition
-Presentation State IODs, uncompressed or in a transfer syntax that
-encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting
-an IOD or a transfer syntax does not release every instance in it: a
-compressed instance is still sequestered where the plugin pinned to its
-transfer syntax is not installed, or where its frames or codestreams fail
-the engine's checks
+Presentation State IODs, and of the five Secondary Capture IODs,
+uncompressed or in a transfer syntax that encapsulates Pixel Data that
+pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax
+does not release every instance in it: a compressed instance is still
+sequestered where the plugin pinned to its transfer syntax is not
+installed, or where its frames or codestreams fail the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
 rules still sequester some, such as every Enhanced PET Image instance that
 conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``,
@@ -75,10 +75,12 @@ Encapsulated Document (0042,0011) is also sequestered under every policy
 without the Clean Pixel Data Option: Table E.1-1 gives it D, and no
 reviewed rule gives a document a dummy value. Under that option, the
 document is released only as the reviewed rendering of its pages
-(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). Every other
-instance is sequestered: neither de-identified nor written, and listed in
-the run report by opaque identifiers only. That includes instances of
-Private SOP Classes.
+(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). The transform also
+sequesters every instance of a Secondary Capture IOD under a policy that
+does not select the Clean Pixel Data Option
+(:data:`SECONDARY_CAPTURE_IODS`). Every other instance is sequestered:
+neither de-identified nor written, and listed in the run report by opaque
+identifiers only. That includes instances of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -183,6 +185,25 @@ SUPPORTED_IODS = frozenset(
         "Waveform Presentation State",
         "Waveform Acquisition Presentation State",
         "Encapsulated PDF",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
+    }
+)
+# The Secondary Capture IODs, by the names Table B.5-1 gives them without
+# "IOD". Their pixel data are captured from a screen, a video signal, or a
+# scanned document or film (PS3.3 Section A.8), whose burned-in text the
+# Basic Profile does not touch, so the transform sequesters each of their
+# instances under a policy that does not select Clean Pixel Data (D-060).
+SECONDARY_CAPTURE_IODS = frozenset(
+    {
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
