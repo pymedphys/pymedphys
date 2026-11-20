@@ -1,3 +1,18 @@
+# Copyright (C) 2026 Jeff (jdotc1)
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 """Race-resistant ZIP extraction for prevalidated archive members.
 
 POSIX operations use no-follow directory descriptors. Windows files are first
@@ -11,20 +26,27 @@ import secrets
 import shutil
 import stat
 import tempfile
+import zipfile
+from collections.abc import Iterator
 
 _UNSAFE = "ZIP archive contains a linked extraction path"
 
 
-def _parts(name):
+def _parts(name: str) -> tuple[str, ...]:
     return pathlib.PurePosixPath(name.replace("\\", "/")).parts
 
 
-def _root_entry(info):
+def _root_entry(info: zipfile.ZipInfo) -> bool:
     return info.filename.replace("\\", "/") in {"", ".", "./"}
 
 
 @contextlib.contextmanager
-def _directory_fd(root, children=(), *, create=False):
+def _directory_fd(
+    root: os.PathLike[str] | str,
+    children: tuple[str, ...] = (),
+    *,
+    create: bool = False,
+) -> Iterator[int]:
     """Walk canonical paths using directory handles and no-follow flags."""
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     components = (*pathlib.Path(root).parts, *children)
@@ -47,7 +69,9 @@ def _directory_fd(root, children=(), *, create=False):
         os.close(descriptor)
 
 
-def _windows_check_path(root, parts):
+def _windows_check_path(
+    root: os.PathLike[str] | str, parts: tuple[str, ...]
+) -> pathlib.Path:
     current = pathlib.Path(root)
     for component in (None, *parts):
         if component is not None:
@@ -57,7 +81,7 @@ def _windows_check_path(root, parts):
     return current
 
 
-def member_stat(root, name):
+def member_stat(root: pathlib.Path, name: str) -> os.stat_result:
     """Inspect a member without following any archive-path symlink."""
     parts = _parts(name)
     if os.name == "nt":
@@ -78,13 +102,26 @@ def member_stat(root, name):
     return result
 
 
-def _extract_posix(zip_file, root, *, missing_only):
+def last_members(zip_file: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
+    """Use the last archive member at each normalized extraction location.
+
+    Both exact duplicate names and aliases like data and ./data map to one
+    physical target. Keep the last one rather than the first.
+    """
+    latest: dict[tuple[str, ...], zipfile.ZipInfo] = {}
+    for info in zip_file.infolist():
+        if not _root_entry(info):
+            latest[_parts(info.filename)] = info
+    return list(latest.values())
+
+
+def _extract_posix(
+    zip_file: zipfile.ZipFile, root: pathlib.Path, *, missing_only: bool
+) -> None:
     with _directory_fd(root, create=True):
         pass
 
-    for info in zip_file.infolist():
-        if _root_entry(info):
-            continue
+    for info in last_members(zip_file):
         parts = _parts(info.filename)
         with _directory_fd(root, parts[:-1], create=True) as descriptor:
             leaf = parts[-1]
@@ -124,7 +161,7 @@ def _extract_posix(zip_file, root, *, missing_only):
             temp_fd = os.open(
                 temporary,
                 os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
-                0o600,
+                0o666,
                 dir_fd=descriptor,
             )
             try:
@@ -161,44 +198,64 @@ def _extract_posix(zip_file, root, *, missing_only):
                     pass
 
 
-def _extract_windows(zip_file, root, *, missing_only):
-    """Stage archive bytes; stdlib Windows lacks directory-fd operations."""
+def _extract_windows(
+    zip_file: zipfile.ZipFile, root: pathlib.Path, *, missing_only: bool
+) -> None:
+    """Stage one member at a time to bound temporary storage on Windows.
+
+    Windows Python lacks dir_fd-based file creation, so ancestor directories
+    are rechecked before publishing each entry. A concurrent junction swap
+    between the final check and replace still requires native handle APIs
+    to eliminate completely.
+    """
     root = pathlib.Path(root)
     root.mkdir(parents=True, exist_ok=True)
-    infos = [info for info in zip_file.infolist() if not _root_entry(info)]
-    with tempfile.TemporaryDirectory(
-        prefix=".pymedphys-zip-", dir=root.parent
-    ) as staged_root:
-        zip_file.extractall(path=staged_root, members=infos)
-        processed = set()
-        for info in infos:
-            parts = _parts(info.filename)
-            if parts in processed:
+    for info in last_members(zip_file):
+        parts = _parts(info.filename)
+        parent = _windows_check_path(root, parts[:-1])
+        parent.mkdir(parents=True, exist_ok=True)
+        target = _windows_check_path(root, parts)
+
+        if info.is_dir():
+            if target.exists() and not target.is_dir():
+                raise ValueError(_UNSAFE)
+            target.mkdir(exist_ok=True)
+            continue
+
+        if target.exists():
+            if not target.is_file() or target.stat().st_nlink > 1:
+                raise ValueError(_UNSAFE)
+            if missing_only:
                 continue
-            processed.add(parts)
-            parent = _windows_check_path(root, parts[:-1])
-            parent.mkdir(parents=True, exist_ok=True)
-            target = _windows_check_path(root, parts)
-            if info.is_dir():
-                target.mkdir(exist_ok=True)
-                continue
-            if target.exists():
-                if target.stat().st_nlink > 1:
-                    raise ValueError(_UNSAFE)
-                if missing_only:
-                    continue
-            staged = pathlib.Path(staged_root).joinpath(*parts)
+
+        # Keep no more than one decompressed member in temporary storage.
+        # mkstemp provides an unpredictable name and a handle opened O_EXCL.
+        descriptor, temp_name = tempfile.mkstemp(
+            dir=root.parent, prefix=".pymedphys-zip-", suffix=".part"
+        )
+        temp_path = pathlib.Path(temp_name)
+        try:
+            with os.fdopen(descriptor, "wb") as destination, zip_file.open(
+                info
+            ) as source:
+                shutil.copyfileobj(source, destination)
+
+            _windows_check_path(root, parts)
             if missing_only:
                 try:
-                    os.link(staged, target)
+                    os.link(temp_path, target)
                 except FileExistsError:
                     if target.is_symlink() or target.stat().st_nlink > 1:
                         raise ValueError(_UNSAFE) from None
             else:
-                os.replace(staged, target)
+                os.replace(temp_path, target)
+        finally:
+            temp_path.unlink(missing_ok=True)
 
 
-def extract_members(zip_file, root, *, missing_only):
+def extract_members(
+    zip_file: zipfile.ZipFile, root: pathlib.Path, *, missing_only: bool
+) -> None:
     """Extract validated members, preserving edited caller-managed files."""
     if os.name == "nt":
         _extract_windows(zip_file, root, missing_only=missing_only)
@@ -206,7 +263,7 @@ def extract_members(zip_file, root, *, missing_only):
         _extract_posix(zip_file, root, missing_only=missing_only)
 
 
-def marker_bytes(marker):
+def marker_bytes(marker: pathlib.Path) -> bytes:
     """Read the extraction marker without following a substituted link."""
     marker = pathlib.Path(marker)
     if os.name == "nt":
@@ -221,7 +278,7 @@ def marker_bytes(marker):
             return stream.read()
 
 
-def unlink_marker(marker):
+def unlink_marker(marker: pathlib.Path) -> None:
     marker = pathlib.Path(marker)
     if os.name == "nt":
         marker.unlink(missing_ok=True)
@@ -233,7 +290,7 @@ def unlink_marker(marker):
                 pass
 
 
-def write_marker(marker, content):
+def write_marker(marker: pathlib.Path, content: str) -> None:
     """Publish a complete marker atomically, without opening the old target."""
     marker = pathlib.Path(marker)
     if os.name == "nt":
