@@ -537,6 +537,32 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     marker.write_text(archive_hash, encoding="utf-8")
 
 
+def _validate_zip_member_paths(zip_file, extract_directory):
+    """Refuse ZIP paths that could read or write outside the extraction root.
+
+    zipfile.extract() sanitises traversal on its own, but the returned paths
+    are built from original names; existing symlink directories can also make
+    an apparently relative entry escape the destination. Check all members
+    before extracting any of them, including when a cache marker is current.
+    """
+    root = pathlib.Path(extract_directory).resolve()
+    for member in zip_file.namelist():
+        # ZIP uses '/' across platforms. Treat '\\' as a separator too so a
+        # hostile Windows path cannot be misclassified on another platform.
+        name = member.replace("\\", "/")
+        relative = pathlib.PurePosixPath(name)
+        if (
+            not name
+            or relative.is_absolute()
+            or pathlib.PureWindowsPath(name).drive
+            or ".." in relative.parts
+        ):
+            raise ValueError("ZIP archive contains an unsafe member path")
+        target = root.joinpath(*relative.parts).resolve()
+        if target == root or not target.is_relative_to(root):
+            raise ValueError("ZIP archive member escapes the extraction directory")
+
+
 def zip_data_paths(
     filename,
     check_hash=True,
@@ -573,6 +599,7 @@ def zip_data_paths(
 
         with zipfile.ZipFile(zip_filepath, "r") as zip_file:
             namelist = zip_file.namelist()
+            _validate_zip_member_paths(zip_file, extract_directory)
 
             if cache_managed:
                 _refresh_cached_extraction(zip_file, zip_filepath, extract_directory)
