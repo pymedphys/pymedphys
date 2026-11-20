@@ -150,6 +150,8 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
     ) as response:
         content_length = response.headers.get("Content-Length")
         expected_size = int(content_length) if content_length else None
+        if expected_size is not None and expected_size < 0:
+            raise ValueError("Negative Content-Length is invalid")
 
         file_descriptor, temp_name = tempfile.mkstemp(
             dir=filepath.parent, prefix=f".{filepath.name}.", suffix=".part"
