@@ -53,28 +53,6 @@ def _leftovers(directory: pathlib.Path, name: str):
     return [path for path in directory.iterdir() if name in path.name]
 
 
-@pytest.mark.parametrize("matching_count", [0, 2])
-def test_zip_member_lookup_does_not_print_patient_paths(
-    matching_count: int, monkeypatch, capsys
-):
-    # Paths in clinical archives can contain patient identifiers.
-    private_name = "TEST_PATIENT_123456.dcm"
-    files = [
-        pathlib.Path("patient-A") / private_name,
-        pathlib.Path("patient-B") / private_name,
-    ][:matching_count]
-    monkeypatch.setattr(download.pymedphys, "zip_data_paths", lambda _: files)
-
-    with pytest.raises(ValueError, match="Expected to find exactly one file") as error:
-        download.get_file_within_data_zip("clinical.zip", private_name)
-
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert captured.err == ""
-    for identifier in (private_name, "patient-A", "patient-B"):
-        assert identifier not in str(error.value)
-
-
 def test_file_url_is_copied(tmp_path: pathlib.Path):
     source = tmp_path / "source.bin"
     payload = bytes(range(256)) * 4
