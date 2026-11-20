@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import pathlib
+import stat
 import sys
 import tempfile
 import urllib.error
@@ -35,7 +36,7 @@ from pymedphys._imports import tqdm
 import pymedphys._utilities.filehash
 from pymedphys import _config as pmp_config
 
-from . import retry, zenodo
+from . import _zip_safe, retry, zenodo
 
 HERE = pathlib.Path(__file__).resolve().parent
 DEFAULT_HASHES_PATH = HERE.joinpath("hashes.json")
@@ -487,38 +488,39 @@ def _exclusive_lock(lock_path):
 
 
 def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
-    """Whether the directory holds a complete extraction of this archive.
+    """Whether the archive's cache still contains complete, safe member files.
 
-    The marker names the archive the files came from; each file must also still
-    have its archived size, which catches truncated or partly written files.
+    The marker identifies the archive, and no-follow directory lookups check
+    each member against the expected final archived size.
     """
     try:
         if (
-            not extract_directory.is_dir()
-            or marker.read_bytes().strip() != archive_hash.encode("ascii")
+            not stat.S_ISDIR(
+                _zip_safe.member_stat(extract_directory, ".").st_mode
+            )
+            or _zip_safe.marker_bytes(marker).strip() != archive_hash.encode("ascii")
         ):
             return False
-    except OSError:
+    except (OSError, RuntimeError, ValueError):
         return False
 
-    # extractall() resolves names to their final ZipInfo entry when an archive
-    # contains duplicates, so check the same entries that it actually writes.
+    # Duplicates are written in order. ZipFile.getinfo() returns the final
+    # entry with a given name, matching the bytes left by extraction.
     for name in zip_file.namelist():
-        info = zip_file.getinfo(name)
-        path = extract_directory.joinpath(name)
-        if info.is_dir():
-            if not path.is_dir():
-                return False
+        if name.replace("\\", "/") in {"", ".", "./"}:
             continue
+        info = zip_file.getinfo(name)
         try:
-            size = path.stat().st_size
-        except OSError:
+            current = _zip_safe.member_stat(extract_directory, name)
+        except (OSError, RuntimeError, ValueError):
             return False
-        if size != info.file_size:
+        if info.is_dir():
+            if not stat.S_ISDIR(current.st_mode):
+                return False
+        elif not stat.S_ISREG(current.st_mode) or current.st_size != info.file_size:
             return False
 
     return True
-
 
 def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     """Extract the archive again unless the cache already holds it intact."""
@@ -529,63 +531,67 @@ def _refresh_cached_extraction(zip_file, zip_filepath, extract_directory):
     if _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
         return
 
-    # Record the archive only once every member has been written, so an
-    # interrupted extraction is repeated in full next time.
-    marker.unlink(missing_ok=True)
-    extract_directory.mkdir(parents=True, exist_ok=True)
-    zip_file.extractall(path=extract_directory)
-    marker.write_text(archive_hash, encoding="utf-8")
-
+    # Publish the marker only after every archive member has been installed.
+    # Atomically replacing it avoids following a swapped marker symlink.
+    _zip_safe.unlink_marker(marker)
+    _zip_safe.extract_members(zip_file, extract_directory, missing_only=False)
+    _zip_safe.write_marker(marker, archive_hash)
 
 def _validate_zip_member_paths(zip_file, extract_directory):
-    """Refuse archive paths that could read or write outside the destination.
+    """Reject archive paths that could access files outside the destination.
 
-    Verify all members before extraction (or accepting cached files). Reject
-    ambiguous Windows names and existing links as well as traversal, without
-    exposing clinical member names in any validation error.
+    Perform preflight validation before cache reuse or extraction, and return
+    the canonical extraction root. Subsequent operations use that canonical
+    root rather than resolving a potentially substituted caller-provided path.
+    Validation errors do not contain archive member names.
     """
     try:
-        root = pathlib.Path(extract_directory).resolve()
+        candidate = pathlib.Path(extract_directory)
+        if candidate.is_symlink() or candidate.is_junction():
+            raise ValueError("Cannot safely resolve ZIP extraction directory")
+        root = candidate.resolve()
     except (OSError, RuntimeError):
         raise ValueError("Cannot safely resolve ZIP extraction directory") from None
 
     for info in zip_file.infolist():
-        # ZIP paths use '/' even on Windows. Treat backslashes as separators
-        # during checks so an archive cannot bypass validation cross-platform.
         name = info.filename.replace("\\", "/")
-        if name in {".", "./"} and info.is_dir():
-            continue
+        # ZIP archives sometimes explicitly contain the empty extraction
+        # root. A zero-length root entry requires no filesystem action.
+        if name in {"", ".", "./"}:
+            if info.file_size == 0:
+                continue
+            raise ValueError("ZIP archive contains an unsafe member path")
+
         relative = pathlib.PurePosixPath(name)
         components = name.split("/")
         if (
-            not name
-            or relative.is_absolute()
+            relative.is_absolute()
             or pathlib.PureWindowsPath(name).drive
             or ".." in relative.parts
             or any(
-                part and part not in {".", ".."} and part.rstrip(" .") != part
+                (part and part not in {".", ".."} and part.rstrip(" .") != part)
+                or ":" in part
                 for part in components
             )
         ):
             raise ValueError("ZIP archive contains an unsafe member path")
 
-        current = root
-        for part in relative.parts:
-            current = current / part
-            if current.is_symlink():
-                raise ValueError("ZIP archive contains a linked extraction path")
-
         try:
+            current = root
+            for part in relative.parts:
+                current = current / part
+                if current.is_symlink() or current.is_junction():
+                    raise ValueError("ZIP archive contains a linked extraction path")
+
             target = current.resolve()
             if target == root or not target.is_relative_to(root):
                 raise ValueError("ZIP archive member escapes the extraction directory")
-            # A hard link inside the destination may alias a file outside it.
-            # Do not overwrite either copy with archive data.
             if target.is_file() and target.stat().st_nlink > 1:
                 raise ValueError("ZIP archive targets a multiply linked file")
         except (OSError, RuntimeError):
             raise ValueError("Cannot safely resolve ZIP archive member") from None
 
+    return root
 
 def zip_data_paths(
     filename,
@@ -623,23 +629,25 @@ def zip_data_paths(
 
         with zipfile.ZipFile(zip_filepath, "r") as zip_file:
             namelist = zip_file.namelist()
-            _validate_zip_member_paths(zip_file, extract_directory)
+            safe_root = _validate_zip_member_paths(zip_file, extract_directory)
 
             if cache_managed:
-                _refresh_cached_extraction(zip_file, zip_filepath, extract_directory)
+                _refresh_cached_extraction(zip_file, zip_filepath, safe_root)
             else:
-                # A caller-chosen directory, such as the GUI demo's working
-                # directory, may hold files the user has edited: only add the
-                # files that are missing.
-                for zipped_filename in namelist:
-                    if not extract_directory.joinpath(zipped_filename).exists():
-                        zip_file.extract(zipped_filename, path=extract_directory)
+                # A caller-selected working directory may contain edited files.
+                # Insert missing files only; never follow a substituted link.
+                _zip_safe.extract_members(zip_file, safe_root, missing_only=True)
 
-    resolved_paths = [
-        extract_directory.joinpath(zipped_filename).resolve()
-        for zipped_filename in namelist
-    ]
-
-    resolved_filepaths = [path for path in resolved_paths if path.is_file()]
+    resolved_filepaths = []
+    for name in namelist:
+        if name.replace("\\", "/") in {"", ".", "./"}:
+            continue
+        try:
+            current = _zip_safe.member_stat(safe_root, name)
+        except (OSError, RuntimeError, ValueError):
+            raise ValueError("ZIP archive contains a linked extraction path") from None
+        if stat.S_ISREG(current.st_mode):
+            relative = pathlib.PurePosixPath(name.replace("\\", "/"))
+            resolved_filepaths.append(safe_root.joinpath(*relative.parts))
 
     return resolved_filepaths
