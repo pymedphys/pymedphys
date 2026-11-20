@@ -54,7 +54,7 @@ from .text_evaluation_injection import inject
 from .text_evaluation_models import DetectionModel
 from .text_evaluation_sources import CaseSource, Skipped
 
-FORMAT = "pymedphys-deid-text-detector-resize-parity/1"
+FORMAT = "pymedphys-deid-text-detector-resize-parity/2"
 _FIELDS = (
     "frames",
     "regions_first",
