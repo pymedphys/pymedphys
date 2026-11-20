@@ -439,7 +439,8 @@ def test_a_run_measured_in_shards_merges_to_the_run_measured_whole(
         assert sorted(each.name for each in record.parent.iterdir()) == ["shard.json"]
         text = record.read_text()
         assert not any(name in text for name in ("INVENTED", *subjects))
-        held.append(len(json.loads(text)["results"]))
+        found = json.loads(text)
+        held.append(len(found["named"]) + found["withheld"])
     # Four subjects in three shards, numbered in the series' order: the
     # patient's two series stay together.
     numbers = {name: index for index, name in enumerate(dict.fromkeys(subjects))}

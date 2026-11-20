@@ -68,32 +68,42 @@ def _texts(count, contrast):
     )
 
 
-def _cases():
-    """Cases of several subjects, some sharing one, across two namespaces,
-    in both parts of the split, with a case that raises and one skipped."""
-    public = {
+def _public(index):
+    return {
         "collection_id": _OPEN,
-        "series_instance_uid": "1.2.826.0.1.3680043.2.1125.1",
+        "series_instance_uid": f"1.2.826.0.1.3680043.2.1125.{index}",
         "licence": _LICENCE,
         "doi": "10.1234/invented",
     }
-    found = []
-    for index in range(14):
-        subject = f"{SUBJECT}/{index % 5}" if index % 3 else None
-        frames = (
-            _frame(case=f"{SECRET}/{index}", texts=_texts(index % 4, f"{index} sigma")),
-            _frame(case=f"{SECRET}/{index}"),
+
+
+def _case(index, *, subject=None, public=None):
+    frames = (
+        _frame(case=f"{SECRET}/{index}", texts=_texts(index % 4, f"{index} sigma")),
+        _frame(case=f"{SECRET}/{index}"),
+    )
+    return Case(
+        "first" if index % 2 else "second",
+        f"{SECRET}/{index}",
+        frames,
+        subject=subject,
+        subject_namespace="shared" if subject else None,
+        public=public,
+    )
+
+
+def _cases():
+    """Cases of several subjects, some sharing one, across two namespaces,
+    in both parts of the split, some named by public identifiers, with a
+    case that raises and one skipped."""
+    found = [
+        _case(
+            index,
+            subject=f"{SUBJECT}/{index % 5}" if index % 3 else None,
+            public=_public(index) if index % 4 == 1 else None,
         )
-        found.append(
-            Case(
-                "first" if index % 2 else "second",
-                f"{SECRET}/{index}",
-                frames,
-                subject=subject,
-                subject_namespace="shared" if subject else None,
-                public=public if index == 4 else None,
-            )
-        )
+        for index in range(14)
+    ]
     found.insert(6, Raising(case=f"{SECRET}/raising"))
     found.insert(9, SkippedFiles("first", f"{SECRET}/skipped", "not-asked-for", 3))
     return found
@@ -111,7 +121,9 @@ def _sharded(cases, settings, count):
         run = evaluation.evaluate(
             [cases[place] for place in positions], box_detector, settings
         )
-        record = shards.shard_record(run, positions, groups, shard=shard, shards=count)
+        record = shards.shard_record(
+            run, positions, len(cases), shard=shard, shards=count
+        )
         # Each record reaches the merge as JSON, as a runner's artefact.
         records.append(json.loads(json.dumps(record)))
     return records
@@ -125,9 +137,13 @@ def test_a_run_in_shards_merges_to_the_run_on_one_runner(evaluated, count):
     whole = evaluation.evaluate(cases, box_detector, settings)
     merged = shards.merged(_sharded(cases, settings, count), settings)
     expected = evaluation.summarise(whole, replicates=200)
-    found = evaluation.summarise(merged, replicates=200)
+    found = evaluation.summary_of(
+        merged.settings, merged.detector, merged.totals, replicates=200
+    )
     assert json.dumps(found) == json.dumps(expected)
-    assert json.dumps(cases_report(merged)) == json.dumps(cases_report(whole))
+    report = cases_report(merged.named, withheld=merged.withheld)
+    assert json.dumps(report) == json.dumps(cases_report(whole))
+    assert len(report["cases"]) == 4
     assert assess(found, CHOSEN_CRITERIA) == assess(expected, CHOSEN_CRITERIA)
 
 
@@ -138,6 +154,24 @@ def test_a_shards_record_names_no_subject_or_case():
     assert SECRET not in text
     assert SUBJECT not in text
     assert "shared" not in text
+
+
+def test_a_record_gives_nothing_by_a_withheld_cases_place_or_subject():
+    # Cases that the report withholds, moved among their places, which
+    # renumbers their subjects, leave the record as it was. (Their subjects'
+    # names choose their part of the split, which the summary counts.)
+    cases = _cases()
+    settings = _settings(points=_points())
+    withheld = [
+        place
+        for place, each in enumerate(cases)
+        if getattr(each, "public", None) is None
+    ]
+    moved = list(cases)
+    for place, source in zip(withheld, [*withheld[3:], *withheld[:3]]):
+        moved[place] = cases[source]
+    assert shards.case_groups(moved) != shards.case_groups(cases)
+    assert _sharded(moved, settings, 1) == _sharded(cases, settings, 1)
 
 
 def test_a_subjects_cases_are_numbered_by_order_alone_and_kept_in_one_shard():
@@ -190,8 +224,8 @@ def test_a_merge_refuses_records_of_another_run_or_settings():
     for key, value in (
         ("detector", {"network": "other"}),
         ("shards", 4),
+        ("cases", 99),
         ("run", {"variant": "other"}),
-        ("groups", [0]),
         ("settings", {}),
     ):
         changed = [dict(records[0], **{key: value}), *records[1:]]
@@ -205,32 +239,23 @@ def test_a_merge_refuses_records_of_another_run_or_settings():
         shards.merged(labelled, settings)
     with pytest.raises(EvaluationRefused, match="shard's record"):
         shards.merged([{"format": shards.SHARD_FORMAT}, *records[1:]], settings)
+    broken = dict(records[0], totals={"tally": {}})
     with pytest.raises(EvaluationRefused, match="shard's record"):
-        shards.merged([dict(each, shards=0) for each in records], settings)
-
-
-def test_a_merge_refuses_a_record_of_another_shards_cases():
-    records, settings = _records()
-    swapped = [
-        dict(records[0], results=records[1]["results"]),
-        dict(records[1], results=records[0]["results"]),
-        records[2],
-    ]
-    with pytest.raises(EvaluationRefused, match="its own cases"):
-        shards.merged(swapped, settings)
+        shards.merged([broken, *records[1:]], settings)
 
 
 def test_a_merge_refuses_a_case_missing_or_held_twice():
     records, settings = _records()
-    dropped = [dict(records[0], results=records[0]["results"][1:]), *records[1:]]
-    with pytest.raises(EvaluationRefused, match="each case"):
-        shards.merged(dropped, settings)
-    doubled = [
-        dict(records[0], results=[*records[0]["results"], records[0]["results"][0]]),
-        *records[1:],
-    ]
-    with pytest.raises(EvaluationRefused, match="each case"):
-        shards.merged(doubled, settings)
+    named = next(each for each in records if each["named"])
+    others = [each for each in records if each is not named]
+    for changed in (
+        dict(named, named=named["named"][1:]),
+        dict(named, named=[*named["named"], named["named"][0]]),
+        dict(named, withheld=named["withheld"] + 1),
+        dict(named, named=[dict(named["named"][0], place=99)]),
+    ):
+        with pytest.raises(EvaluationRefused, match="each case"):
+            shards.merged([changed, *others], settings)
 
 
 def test_a_record_needs_each_cases_place():
@@ -238,4 +263,4 @@ def test_a_record_needs_each_cases_place():
     settings = _settings(points=_points())
     run = evaluation.evaluate(cases[:2], box_detector, settings)
     with pytest.raises(EvaluationRefused, match="place"):
-        shards.shard_record(run, [0], shards.case_groups(cases), shard=0, shards=1)
+        shards.shard_record(run, [0], len(cases), shard=0, shards=1)

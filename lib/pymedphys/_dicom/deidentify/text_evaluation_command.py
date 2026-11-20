@@ -80,13 +80,13 @@ from types import MappingProxyType
 from .text_detection import TextDetectionError
 from .text_evaluation import (
     EVALUATED,
-    Evaluation,
     EvaluationSettings,
     evaluate,
     namespace_of,
     split_of,
     subject_of,
     summarise,
+    summary_of,
 )
 from .text_evaluation_cases import cases_report
 from .text_evaluation_converted import ConvertedCase
@@ -405,12 +405,11 @@ def _measure(arguments: argparse.Namespace) -> dict[str, str]:
         )
         named = {key: getattr(arguments, key) for key in _RUN}
         record = shard_record(
-            run, positions, groups, shard=shard, shards=shards, run=named
+            run, positions, len(cases), shard=shard, shards=shards, run=named
         )
         return {"shard.json": _json(record)}
-    return _written(
-        evaluate(cases, detector, settings, workers=arguments.workers), arguments
-    )
+    run = evaluate(cases, detector, settings, workers=arguments.workers)
+    return _written(summarise(run), cases_report(run), arguments)
 
 
 def _merge(arguments: argparse.Namespace) -> dict[str, str]:
@@ -434,19 +433,25 @@ def _merge(arguments: argparse.Namespace) -> dict[str, str]:
         raise EvaluationRefused("Each record must be a shard's record.")
     run_arguments = argparse.Namespace(**named)
     _, settings = _detector(run_arguments)
-    return _written(merged(records, settings), run_arguments)
+    found = merged(records, settings)
+    summary = summary_of(found.settings, found.detector, found.totals)
+    report = cases_report(found.named, withheld=found.withheld)
+    return _written(summary, report, run_arguments)
 
 
-def _written(run: Evaluation, arguments: argparse.Namespace) -> dict[str, str]:
+def _written(
+    summary: dict[str, object],
+    report: dict[str, object],
+    arguments: argparse.Namespace,
+) -> dict[str, str]:
     """What idc-measure writes of a run measured whole."""
-    summary = summarise(run)
     assessment = assess(
         summary, CHOSEN_CRITERIA, todays_baseline=todays_detector(arguments)
     )
     return {
         "summary.json": _json(summary),
         "summary.md": markdown(summary, assessment),
-        "cases.json": _json(cases_report(run)),
+        "cases.json": _json(report),
         "assessment.json": _json(assessment),
     }
 

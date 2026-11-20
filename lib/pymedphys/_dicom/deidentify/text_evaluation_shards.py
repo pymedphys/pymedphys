@@ -24,40 +24,69 @@ the cases whose subject's number leaves ``k`` when divided by ``n``
 resamples together, are all in one shard.
 
 A shard's record (:func:`shard_record`, labelled :data:`SHARD_FORMAT`)
-holds every case's subject's number, in the order of the list, and, for
-each case it measured, the case's place in the list and its counts:
-everything that
-:func:`~.text_evaluation.summarise` and
+holds what :func:`~.text_evaluation.summary_of` and
 :func:`~.text_evaluation_cases.cases_report` read, and no subject, name,
-path, or value read from a file. The numbers come from the order of the
-list alone, so a record, which a public repository's runs publish, is
-derived from no identifier. :func:`merged` checks that the records are of
-one run and hold every case once, and returns the evaluation, with the
-cases in their order and each subject named by its number, whose summary
-is the one that measuring every case on one runner gives.
+path, or value read from a file. Of the cases that the per-case report
+names (:func:`~.text_evaluation_cases.reported`), it gives each one's
+place in the list and its counts, as the report does. Of every other
+case, which the report only counts as withheld, it gives nothing case by
+case: only the shard's totals (:class:`~.text_evaluation.Totals`), its
+subjects' clusters among them, each table in the order of its own keys and
+the clusters in the order of their own counts, and the number withheld; so
+nothing in it follows from such a case's place in the list or its
+subject, and reordering or renaming those cases leaves the record as it
+is. The bootstrap takes no order from its clusters, so the summary of the
+merged totals is the one that measuring every case on one runner gives.
+:func:`merged` checks that the records are of one run and hold every case
+once.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from .text_evaluation import (
+    SPLITS,
     CaseResult,
     Evaluation,
     EvaluationSettings,
     Tally,
+    Totals,
     namespace_of,
     subject_of,
+    totals,
 )
+from .text_evaluation_cases import reported
 from .text_evaluation_frames import EvaluationRefused
 
 SHARD_FORMAT = "pymedphys-deid-text-detector-shard/1"
 
-# The namespace of every merged case's subject, which its number alone
-# then names.
-_GROUPS = "groups"
+
+@dataclasses.dataclass
+class Merged:
+    """A run measured in shards, merged.
+
+    Attributes
+    ----------
+    settings : EvaluationSettings
+    detector : mapping
+        The detector's method.
+    totals : Totals
+        Of every case.
+    named : Evaluation
+        Of the cases that the per-case report names, in their order.
+    withheld : int
+        The other cases.
+    """
+
+    settings: EvaluationSettings
+    detector: Mapping[str, object]
+    totals: Totals
+    named: Evaluation
+    withheld: int
 
 
 def case_groups(cases: Sequence[object]) -> tuple[int, ...]:
@@ -81,7 +110,7 @@ def shard_positions(groups: Sequence[int], shard: int, shards: int) -> list[int]
 def shard_record(
     evaluation: Evaluation,
     positions: Sequence[int],
-    groups: Sequence[int],
+    cases: int,
     *,
     shard: int,
     shards: int,
@@ -96,9 +125,8 @@ def shard_record(
         Of the shard's cases, in the order of ``positions``.
     positions : sequence of int
         Each case's place in the run's list (:func:`shard_positions`).
-    groups : sequence of int
-        Every case's subject's number (:func:`case_groups`), of the whole
-        list.
+    cases : int
+        The cases in the run's list.
     shard, shards : int
     run : mapping, optional
         What else names the run, such as the arguments that chose its
@@ -106,74 +134,91 @@ def shard_record(
     """
     if len(positions) != len(evaluation.results):
         raise EvaluationRefused("A shard's record needs each case's place.")
+    named = [
+        (place, result)
+        for place, result in zip(positions, evaluation.results)
+        if reported(result.public) is not None
+    ]
     return {
         "format": SHARD_FORMAT,
         "shard": shard,
         "shards": shards,
+        "cases": cases,
         "run": _plain(run or {}),
-        "groups": list(groups),
         "detector": _plain(evaluation.detector),
         "settings": _settings_of(evaluation.settings),
-        "results": [
-            _result_out(result, place, groups[place])
-            for place, result in zip(positions, evaluation.results)
-        ],
+        "totals": _totals_out(totals(evaluation.results)),
+        "named": [_named_out(result, place) for place, result in named],
+        "withheld": len(evaluation.results) - len(named),
     }
 
 
 def merged(
     records: Sequence[Mapping[str, Any]], settings: EvaluationSettings
-) -> Evaluation:
-    """The evaluation of every case of a run measured in shards, as the
-    module describes.
+) -> Merged:
+    """Every shard's record of a run, merged, as the module describes.
 
     Raises
     ------
     EvaluationRefused
         Unless the records are one of each shard of one run, of the
-        settings given, each holds its own shard's cases, and together
-        they hold every case of the run once.
+        settings given, and together hold every case of it once.
     """
     if not records:
         raise EvaluationRefused("A sharded run needs its shards' records.")
     try:
         return _merged(records, settings)
-    except (KeyError, TypeError, ValueError, IndexError, ZeroDivisionError):
+    except (KeyError, TypeError, ValueError, IndexError, AttributeError):
         raise EvaluationRefused("Each record must be a shard's record.") from None
 
 
 def _merged(
     records: Sequence[Mapping[str, Any]], settings: EvaluationSettings
-) -> Evaluation:
+) -> Merged:
     first = records[0]
     for record in records:
         if record.get("format") != SHARD_FORMAT:
             raise EvaluationRefused("Each record must be a shard's record.")
-        for key in ("shards", "run", "groups", "detector", "settings"):
+        for key in ("shards", "cases", "run", "detector", "settings"):
             if record[key] != first[key]:
                 raise EvaluationRefused("The records must be of one run.")
-    if any(
-        each["group"] % record["shards"] != record["shard"]
-        for record in records
-        for each in record["results"]
-    ):
-        raise EvaluationRefused("A shard's record must hold its own cases.")
     if first["settings"] != _settings_of(settings):
         raise EvaluationRefused("The records must be of the settings given.")
     if sorted(record["shard"] for record in records) != list(range(first["shards"])):
         raise EvaluationRefused("A sharded run needs one record of each shard.")
     entries = sorted(
-        (each for record in records for each in record["results"]),
+        (each for record in records for each in record["named"]),
         key=lambda each: each["place"],
     )
-    groups = first["groups"]
-    if [each["place"] for each in entries] != list(range(len(groups))):
+    places = [each["place"] for each in entries]
+    withheld = sum(int(record["withheld"]) for record in records)
+    if (
+        len(set(places)) != len(places)
+        or not all(0 <= place < first["cases"] for place in places)
+        or len(places) + withheld != first["cases"]
+    ):
         raise EvaluationRefused("The records must hold each case of the run once.")
-    if any(each["group"] != groups[each["place"]] for each in entries):
-        raise EvaluationRefused("The records must be of one run.")
-    return Evaluation(
-        settings, dict(first["detector"]), [_result_in(each) for each in entries]
-    )
+    found = Totals(Tally(), [], {}, dict.fromkeys(SPLITS, 0))
+    for record in records:
+        _add(found, _totals_in(record["totals"]))
+    detector = dict(first["detector"])
+    named = Evaluation(settings, detector, [_named_in(each) for each in entries])
+    return Merged(settings, detector, found, named, withheld)
+
+
+def _add(found: Totals, other: Totals) -> None:
+    found.tally.add(other.tally)
+    found.clusters += other.clusters
+    for name, entry in other.collections.items():
+        mine = found.collections.setdefault(
+            name, {"cases": 0, "evaluated": 0, "crashed": {}}
+        )
+        mine["cases"] += entry["cases"]
+        mine["evaluated"] += entry["evaluated"]
+        for site, count in entry["crashed"].items():
+            mine["crashed"][site] = mine["crashed"].get(site, 0) + count
+    for part, count in other.parts.items():
+        found.parts[part] = found.parts.get(part, 0) + count
 
 
 def _settings_of(settings: EvaluationSettings) -> dict[str, Any]:
@@ -191,51 +236,92 @@ def _settings_of(settings: EvaluationSettings) -> dict[str, Any]:
     )
 
 
-def _result_out(result: CaseResult, place: int, group: int) -> dict[str, Any]:
+def _totals_out(found: Totals) -> dict[str, Any]:
+    clusters = [_table_out(each) for each in found.clusters]
+    return {
+        "tally": _tally_out(found.tally),
+        "clusters": sorted(clusters, key=_canonical),
+        "collections": {
+            name: {
+                "cases": entry["cases"],
+                "evaluated": entry["evaluated"],
+                "crashed": dict(sorted(entry["crashed"].items())),
+            }
+            for name, entry in sorted(found.collections.items())
+        },
+        "parts": {part: found.parts.get(part, 0) for part in SPLITS},
+    }
+
+
+def _totals_in(entry: Mapping[str, Any]) -> Totals:
+    return Totals(
+        _tally_in(entry["tally"]),
+        [_table_in(each, list) for each in entry["clusters"]],
+        {
+            str(name): {
+                "cases": int(each["cases"]),
+                "evaluated": int(each["evaluated"]),
+                "crashed": {str(site): int(n) for site, n in each["crashed"].items()},
+            }
+            for name, each in entry["collections"].items()
+        },
+        {str(part): int(count) for part, count in entry["parts"].items()},
+    )
+
+
+def _named_out(result: CaseResult, place: int) -> dict[str, Any]:
     return {
         "place": place,
-        "group": group,
         "collection": result.collection,
         "split": result.split,
         "evaluated": result.evaluated,
         "crashed": result.crashed,
         "public": result.public,
-        "tally": {
-            "texts": _table_out(result.tally.texts),
-            "frames": _table_out(result.tally.frames),
-            "zones": _table_out(result.tally.zones),
-            "counts": _table_out(result.tally.counts),
-        },
-        "clusters": _table_out(result.clusters),
+        "tally": _tally_out(result.tally),
     }
 
 
-def _result_in(entry: Mapping[str, Any]) -> CaseResult:
-    tally = entry["tally"]
+def _named_in(entry: Mapping[str, Any]) -> CaseResult:
     return CaseResult(
         collection=entry["collection"],
         split=entry["split"],
         evaluated=entry["evaluated"],
-        tally=Tally(
-            texts=_table_in(tally["texts"], list),
-            frames=_table_in(tally["frames"], list),
-            zones=_table_in(tally["zones"], int),
-            counts=_table_in(tally["counts"], int),
-        ),
-        clusters=_table_in(entry["clusters"], list),
+        tally=_tally_in(entry["tally"]),
         crashed=entry["crashed"],
-        public=entry["public"],
-        subject=f"group/{entry['group']}",
-        namespace=_GROUPS,
+        public=dict(entry["public"]),
+    )
+
+
+def _tally_out(tally: Tally) -> dict[str, Any]:
+    return {
+        "texts": _table_out(tally.texts),
+        "frames": _table_out(tally.frames),
+        "zones": _table_out(tally.zones),
+        "counts": _table_out(tally.counts),
+    }
+
+
+def _tally_in(entry: Mapping[str, Any]) -> Tally:
+    return Tally(
+        texts=_table_in(entry["texts"], list),
+        frames=_table_in(entry["frames"], list),
+        zones=_table_in(entry["zones"], int),
+        counts=_table_in(entry["counts"], int),
     )
 
 
 def _table_out(table: Mapping[tuple, Any]) -> list[list[Any]]:
-    return [[_plain(key), _plain(value)] for key, value in table.items()]
+    """A table's rows, in the order of their keys alone."""
+    rows = [[_plain(key), _plain(value)] for key, value in table.items()]
+    return sorted(rows, key=lambda row: _canonical(row[0]))
 
 
 def _table_in(rows: Sequence[Sequence[Any]], kind: type) -> dict[tuple, Any]:
     return {_tuple(key): kind(value) for key, value in rows}
+
+
+def _canonical(value: object) -> str:
+    return json.dumps(value, sort_keys=True)
 
 
 def _tuple(value: Any) -> Any:

@@ -113,7 +113,7 @@ from .text_evaluation_benchmarks import tier_of
 from .text_evaluation_models import BoxPoint
 from .text_evaluation_sources import CaseSource, Skipped
 
-FORMAT = "pymedphys-deid-text-detector-evaluation/2"
+FORMAT = "pymedphys-deid-text-detector-evaluation/3"
 SPLITS = ("tuning", "held-out")
 EVALUATED = (*SPLITS, "all")
 SPLIT_SALT = "pymedphys-text-detector-evaluation-split/1"
@@ -730,37 +730,74 @@ def summarise(evaluation: Evaluation, *, replicates: int = 2000) -> dict[str, An
     replicates : int
         The bootstrap's replicates.
     """
-    settings = evaluation.settings
-    points = settings.points
+    return summary_of(
+        evaluation.settings,
+        evaluation.detector,
+        totals(evaluation.results),
+        replicates=replicates,
+    )
+
+
+@dataclasses.dataclass
+class Totals:
+    """What a summary takes from the cases, none of it by their order: the
+    evaluated cases' tally; the bootstrap's clusters (:func:`_by_subject`),
+    in any order; each collection's cases, those evaluated, and those that
+    raised, by where; and the cases in each part of the split."""
+
+    tally: Tally
+    clusters: list[dict[tuple, list[int]]]
+    collections: dict[str, dict[str, Any]]
+    parts: dict[str, int]
+
+
+def totals(results: Sequence[CaseResult]) -> Totals:
+    """The totals of the cases' results."""
     tally = Tally()
-    evaluated = [each for each in evaluation.results if each.evaluated]
+    evaluated = [each for each in results if each.evaluated]
     for each in evaluated:
         tally.add(each.tally)
-    clusters = _by_subject(each for each in evaluated if each.crashed is None)
+    return Totals(
+        tally,
+        _by_subject(each for each in evaluated if each.crashed is None),
+        _collections(results),
+        {part: sum(each.split == part for each in results) for part in SPLITS},
+    )
+
+
+def summary_of(
+    settings: EvaluationSettings,
+    detector: Mapping[str, object],
+    found: Totals,
+    *,
+    replicates: int = 2000,
+) -> dict[str, Any]:
+    """The summary (:func:`summarise`) of the cases whose totals are given."""
+    tally = found.tally
     return {
         "format": FORMAT,
         "software": _software(),
-        "detector": _plain(evaluation.detector),
-        "tier": tier_of(evaluation.detector),
+        "detector": _plain(detector),
+        "tier": tier_of(detector),
         "plan": None if settings.plan is None else settings.plan.described(),
         "negatives": settings.negatives,
         "split": {
             "rule": SPLIT_RULE,
             "evaluated": settings.evaluated,
             "held_out_collections": sorted(settings.held_out_collections),
-            "cases": {
-                part: sum(each.split == part for each in evaluation.results)
-                for part in SPLITS
-            },
+            "cases": {part: found.parts.get(part, 0) for part in SPLITS},
         },
-        "collections": _collections(evaluation.results),
+        "collections": {
+            name: {**entry, "crashed": dict(sorted(entry["crashed"].items()))}
+            for name, entry in sorted(found.collections.items())
+        },
         "frames": _counted(tally, "frames"),
         "skipped": _counted(tally, "skipped"),
         "not_placed": _counted(tally, "not-placed"),
         "not_injected": _counted(tally, "not-injected"),
         "points": [
-            _point(index, point, tally, clusters, settings, replicates)
-            for index, point in enumerate(points)
+            _point(index, point, tally, found.clusters, settings, replicates)
+            for index, point in enumerate(settings.points)
         ],
     }
 

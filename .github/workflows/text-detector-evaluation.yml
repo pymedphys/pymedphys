@@ -28,11 +28,12 @@ name: Text Detector Evaluation
 # own (text_evaluation_shards): every shard selects and downloads the same
 # series and folders, numbers each case's subject by where it first appears
 # in the run's fixed list of cases, and measures the cases of its own
-# subjects alone. Each shard's record holds those cases' counts, each by its
-# place in the list and its subject's number, and no identifier, name, or
-# value read from a file; the merge job adds the records into the summary
-# that one runner measuring every case writes. A shard that did not finish
-# leaves the run unmerged: re-run its job, and then the merge.
+# subjects alone. Each shard's record holds no identifier, name, path, or
+# value read from a file: the counts of each case that the per-case report
+# names, by its place in the list, and of every other case only the shard's
+# totals. The merge job adds the records into the summary that one runner
+# measuring every case writes. A shard that did not finish leaves the run
+# unmerged: re-run its job, and then the merge.
 #
 # phantoms: the synthetic phantoms (T1) and series of IDC's allow-listed
 # phantom collections (T2), which show no patient, reported in full, with
