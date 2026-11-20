@@ -20,6 +20,7 @@ extracted to a private staging directory and installed with link/replace.
 """
 
 import contextlib
+import errno
 import os
 import pathlib
 import secrets
@@ -115,6 +116,63 @@ def last_members(zip_file: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
     return list(latest.values())
 
 
+def _existing_regular_file(descriptor: int, leaf: str) -> None:
+    """Only a local, singly linked regular file may win a creation race."""
+    try:
+        current = os.stat(leaf, dir_fd=descriptor, follow_symlinks=False)
+    except OSError:
+        raise ValueError(_UNSAFE) from None
+    if not stat.S_ISREG(current.st_mode) or current.st_nlink > 1:
+        raise ValueError(_UNSAFE)
+
+
+def _install_missing_posix(temporary: str, leaf: str, descriptor: int) -> None:
+    """Atomically link a staged file; copy exclusively if links are unsupported."""
+    try:
+        os.link(
+            temporary,
+            leaf,
+            src_dir_fd=descriptor,
+            dst_dir_fd=descriptor,
+            follow_symlinks=False,
+        )
+    except FileExistsError:
+        _existing_regular_file(descriptor, leaf)
+    except OSError as error:
+        if error.errno not in {
+            errno.ENOSYS,
+            errno.EOPNOTSUPP,
+            errno.EPERM,
+            errno.EACCES,
+            errno.EXDEV,
+        }:
+            raise
+        # O_EXCL and the pinned parent FD prevent a pre-existing user file
+        # from being overwritten, without relying on hard-link support.
+        try:
+            output = os.open(
+                leaf,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o666,
+                dir_fd=descriptor,
+            )
+        except FileExistsError:
+            _existing_regular_file(descriptor, leaf)
+            return
+        try:
+            with (
+                os.fdopen(output, "wb") as destination,
+                os.fdopen(
+                    os.open(temporary, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptor),
+                    "rb",
+                ) as source,
+            ):
+                shutil.copyfileobj(source, destination)
+        except BaseException:
+            os.unlink(leaf, dir_fd=descriptor)
+            raise
+
+
 def _extract_posix(
     zip_file: zipfile.ZipFile, root: pathlib.Path, *, missing_only: bool
 ) -> None:
@@ -170,20 +228,7 @@ def _extract_posix(
                 ) as source:
                     shutil.copyfileobj(source, destination)
                 if missing_only:
-                    try:
-                        os.link(
-                            temporary,
-                            leaf,
-                            src_dir_fd=descriptor,
-                            dst_dir_fd=descriptor,
-                            follow_symlinks=False,
-                        )
-                    except FileExistsError:
-                        updated = os.stat(
-                            leaf, dir_fd=descriptor, follow_symlinks=False
-                        )
-                        if not stat.S_ISREG(updated.st_mode) or updated.st_nlink > 1:
-                            raise ValueError(_UNSAFE) from None
+                    _install_missing_posix(temporary, leaf, descriptor)
                 else:
                     os.replace(
                         temporary,
@@ -198,60 +243,173 @@ def _extract_posix(
                     pass
 
 
+@contextlib.contextmanager
+def _windows_pinned_directory(
+    root: pathlib.Path, children: tuple[str, ...] = (), *, create: bool = False
+) -> Iterator[pathlib.Path]:
+    """Pin each Windows ancestor against renames and junction substitution.
+
+    Handles are opened with FILE_FLAG_OPEN_REPARSE_POINT, checked as real
+    directories, and held without FILE_SHARE_DELETE until publication ends.
+    This prevents replacement of any verified parent by a junction.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+    attributes = kernel32.GetFileInformationByHandleEx
+    attributes.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+    ]
+    attributes.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [wintypes.HANDLE]
+    close_handle.restype = wintypes.BOOL
+
+    path = pathlib.Path(root).absolute()
+    if not path.anchor:
+        raise ValueError(_UNSAFE)
+    current = pathlib.Path(path.anchor)
+    handles = []
+    try:
+        for part in (None, *path.parts[1:], *children):
+            if part is not None:
+                current /= part
+                if create:
+                    try:
+                        current.mkdir()
+                    except FileExistsError:
+                        pass
+            handle = create_file(
+                str(current),
+                0x80,  # FILE_READ_ATTRIBUTES
+                0x1 | 0x2,  # FILE_SHARE_READ | FILE_SHARE_WRITE (not DELETE)
+                None,
+                3,  # OPEN_EXISTING
+                0x02000000 | 0x00200000,  # BACKUP_SEMANTICS | OPEN_REPARSE_POINT
+                None,
+            )
+            if handle is None or handle == ctypes.c_void_p(-1).value:
+                raise ValueError(_UNSAFE)
+            handles.append(handle)
+            info = (wintypes.DWORD * 2)()
+            if not attributes(handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
+                raise ValueError(_UNSAFE)
+            if not (info[0] & 0x10) or (info[0] & 0x400):
+                # FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT
+                raise ValueError(_UNSAFE)
+        yield current
+    except (OSError, RuntimeError):
+        raise ValueError(_UNSAFE) from None
+    finally:
+        for handle in reversed(handles):
+            close_handle(handle)
+
+
+def ensure_root(root: pathlib.Path) -> None:
+    """Create a missing extraction root using no-follow directory traversal."""
+    if os.name == "nt":
+        with _windows_pinned_directory(root, create=True):
+            pass
+    else:
+        with _directory_fd(root, create=True):
+            pass
+
+
 def _extract_windows(
     zip_file: zipfile.ZipFile, root: pathlib.Path, *, missing_only: bool
 ) -> None:
-    """Stage one member at a time to bound temporary storage on Windows.
-
-    Windows Python lacks dir_fd-based file creation, so ancestor directories
-    are rechecked before publishing each entry. A concurrent junction swap
-    between the final check and replace still requires native handle APIs
-    to eliminate completely.
-    """
+    """Install one member at a time under pinned, no-junction Windows parents."""
     root = pathlib.Path(root)
-    root.mkdir(parents=True, exist_ok=True)
+    ensure_root(root)
     for info in last_members(zip_file):
         parts = _parts(info.filename)
-        parent = _windows_check_path(root, parts[:-1])
-        parent.mkdir(parents=True, exist_ok=True)
-        target = _windows_check_path(root, parts)
-
-        if info.is_dir():
-            if target.exists() and not target.is_dir():
+        with _windows_pinned_directory(root, parts[:-1], create=True) as parent:
+            target = parent / parts[-1]
+            if target.is_symlink() or target.is_junction():
                 raise ValueError(_UNSAFE)
-            target.mkdir(exist_ok=True)
-            continue
-
-        if target.exists():
-            if not target.is_file() or target.stat().st_nlink > 1:
-                raise ValueError(_UNSAFE)
-            if missing_only:
+            try:
+                existing = target.lstat()
+            except FileNotFoundError:
+                existing = None
+            if info.is_dir():
+                if existing is not None:
+                    if not stat.S_ISDIR(existing.st_mode):
+                        raise ValueError(_UNSAFE)
+                else:
+                    try:
+                        target.mkdir()
+                    except FileExistsError:
+                        if target.is_symlink() or target.is_junction():
+                            raise ValueError(_UNSAFE) from None
+                        if not target.is_dir():
+                            raise ValueError(_UNSAFE) from None
                 continue
+            if existing is not None:
+                if not stat.S_ISREG(existing.st_mode) or existing.st_nlink > 1:
+                    raise ValueError(_UNSAFE)
+                if missing_only:
+                    continue
 
-        # Keep no more than one decompressed member in temporary storage.
-        # mkstemp provides an unpredictable name and a handle opened O_EXCL.
-        descriptor, temp_name = tempfile.mkstemp(
-            dir=root.parent, prefix=".pymedphys-zip-", suffix=".part"
-        )
-        temp_path = pathlib.Path(temp_name)
-        try:
-            with os.fdopen(descriptor, "wb") as destination, zip_file.open(
-                info
-            ) as source:
-                shutil.copyfileobj(source, destination)
+            # Stage only one member at a time on the same filesystem.
+            descriptor, temp_name = tempfile.mkstemp(
+                dir=root.parent, prefix=".pymedphys-zip-", suffix=".part"
+            )
+            temp_path = pathlib.Path(temp_name)
+            try:
+                with os.fdopen(descriptor, "wb") as destination, zip_file.open(
+                    info
+                ) as source:
+                    shutil.copyfileobj(source, destination)
 
-            _windows_check_path(root, parts)
-            if missing_only:
-                try:
-                    os.link(temp_path, target)
-                except FileExistsError:
-                    if target.is_symlink() or target.stat().st_nlink > 1:
-                        raise ValueError(_UNSAFE) from None
-            else:
-                os.replace(temp_path, target)
-        finally:
-            temp_path.unlink(missing_ok=True)
-
+                # All ancestor handles remain open without SHARE_DELETE until
+                # the replacement finishes, so a parent cannot be junction-swapped.
+                if missing_only:
+                    try:
+                        os.link(temp_path, target)
+                    except FileExistsError:
+                        if target.is_symlink() or target.is_junction():
+                            raise ValueError(_UNSAFE) from None
+                        current = target.lstat()
+                        if not stat.S_ISREG(current.st_mode) or current.st_nlink > 1:
+                            raise ValueError(_UNSAFE) from None
+                    except OSError as error:
+                        if error.errno not in {
+                            errno.ENOSYS,
+                            errno.EOPNOTSUPP,
+                            errno.EPERM,
+                            errno.EACCES,
+                            errno.EXDEV,
+                        }:
+                            raise
+                        # Unlike POSIX, Windows os.rename refuses to overwrite
+                        # an existing target, preserving caller edits atomically.
+                        try:
+                            os.rename(temp_path, target)
+                        except FileExistsError:
+                            if target.is_symlink() or target.is_junction():
+                                raise ValueError(_UNSAFE) from None
+                            current = target.lstat()
+                            if not stat.S_ISREG(current.st_mode) or current.st_nlink > 1:
+                                raise ValueError(_UNSAFE) from None
+                else:
+                    os.replace(temp_path, target)
+            finally:
+                temp_path.unlink(missing_ok=True)
 
 def extract_members(
     zip_file: zipfile.ZipFile, root: pathlib.Path, *, missing_only: bool
@@ -267,21 +425,27 @@ def marker_bytes(marker: pathlib.Path) -> bytes:
     """Read the extraction marker without following a substituted link."""
     marker = pathlib.Path(marker)
     if os.name == "nt":
-        if marker.is_symlink() or marker.is_junction():
-            raise ValueError(_UNSAFE)
-        return marker.read_bytes()
+        with _windows_pinned_directory(marker.parent):
+            if marker.is_symlink() or marker.is_junction():
+                raise ValueError(_UNSAFE)
+            return marker.read_bytes()
     with _directory_fd(marker.parent) as descriptor:
         handle = os.open(
-            marker.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptor
+            marker.name,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+            dir_fd=descriptor,
         )
         with os.fdopen(handle, "rb") as stream:
-            return stream.read()
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError(_UNSAFE)
+            return stream.read(128)
 
 
 def unlink_marker(marker: pathlib.Path) -> None:
     marker = pathlib.Path(marker)
     if os.name == "nt":
-        marker.unlink(missing_ok=True)
+        with _windows_pinned_directory(marker.parent):
+            marker.unlink(missing_ok=True)
     else:
         with _directory_fd(marker.parent) as descriptor:
             try:
@@ -294,19 +458,20 @@ def write_marker(marker: pathlib.Path, content: str) -> None:
     """Publish a complete marker atomically, without opening the old target."""
     marker = pathlib.Path(marker)
     if os.name == "nt":
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=marker.parent,
-            prefix=".pymedphys-marker-",
-            delete=False,
-        ) as stream:
-            staged = pathlib.Path(stream.name)
-            stream.write(content)
-        try:
-            os.replace(staged, marker)
-        finally:
-            staged.unlink(missing_ok=True)
+        with _windows_pinned_directory(marker.parent):
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=marker.parent,
+                prefix=".pymedphys-marker-",
+                delete=False,
+            ) as stream:
+                staged = pathlib.Path(stream.name)
+                stream.write(content)
+            try:
+                os.replace(staged, marker)
+            finally:
+                staged.unlink(missing_ok=True)
     else:
         with _directory_fd(marker.parent) as descriptor:
             temporary = f".pymedphys-marker-{secrets.token_hex(12)}.part"
