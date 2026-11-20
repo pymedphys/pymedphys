@@ -287,6 +287,12 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** The distribution verifier rejects TAR and wheel
+  archives with duplicate or aliased member paths before reading metadata,
+  including duplicate TAR entries involving links. This avoids accepting
+  archives whose contents depend on which entry a reader selects.
+  [PR #2624](https://github.com/pymedphys/pymedphys/pull/2624)
+
 - **[Contributor facing only]** The locked pre-commit environment now uses virtualenv 21.14.13, fixing shell-prompt command execution in generated activation scripts. Recreate affected environments with the updated tool to receive the corrected scripts. [PR #2445](https://github.com/pymedphys/pymedphys/pull/2445)
 - **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [PR #2411](https://github.com/pymedphys/pymedphys/pull/2411)
 - **[Contributor facing only]** The de-identification tests, including the
