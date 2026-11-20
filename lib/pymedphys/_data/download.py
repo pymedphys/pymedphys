@@ -495,12 +495,9 @@ def _extraction_is_current(zip_file, extract_directory, archive_hash, marker):
     each member against the expected final archived size.
     """
     try:
-        if (
-            not stat.S_ISDIR(
-                _zip_safe.member_stat(extract_directory, ".").st_mode
-            )
-            or _zip_safe.marker_bytes(marker).strip() != archive_hash.encode("ascii")
-        ):
+        if not stat.S_ISDIR(
+            _zip_safe.member_stat(extract_directory, ".").st_mode
+        ) or _zip_safe.marker_bytes(marker).strip() != archive_hash.encode("ascii"):
             return False
     except (OSError, RuntimeError, ValueError):
         return False
@@ -604,8 +601,7 @@ def _validate_zip_member_paths(
             or any(
                 (part and part not in {".", ".."} and part.rstrip(" .") != part)
                 or any(
-                    ord(character) < 32 or character in '<>:"|?*'
-                    for character in part
+                    ord(character) < 32 or character in '<>:"|?*' for character in part
                 )
                 or part.split(".")[0].rstrip(" ").upper() in windows_devices
                 for part in components

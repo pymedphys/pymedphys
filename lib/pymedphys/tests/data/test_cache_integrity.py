@@ -249,9 +249,12 @@ def test_zip_root_directory_entries_are_ignored(cache, tmp_path):
     assert [path.read_text(encoding="utf-8") for path in paths] == ["payload"]
 
     # Cache reuse must also accept the harmless root entries.
-    assert download.zip_data_paths(
-        "archive.zip", url=source.as_uri(), hash_filepath=hashes
-    ) == paths
+    assert (
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+        == paths
+    )
 
 
 def test_zip_symlink_substituted_after_preflight_is_rejected(
@@ -308,9 +311,7 @@ def test_zip_cache_rejects_symlink_substitution_during_reuse(
         return real_check(archive, root, archive_hash, marker)
 
     with monkeypatch.context() as patch:
-        patch.setattr(
-            download, "_extraction_is_current", substitute_before_cache_check
-        )
+        patch.setattr(download, "_extraction_is_current", substitute_before_cache_check)
         with pytest.raises(ValueError, match="linked extraction path"):
             download.zip_data_paths(
                 "archive.zip", url=source.as_uri(), hash_filepath=hashes
@@ -339,9 +340,7 @@ def test_zip_cache_rejects_hardlink_substitution_after_preflight(
         return real_check(archive, root, archive_hash, marker)
 
     with monkeypatch.context() as patch:
-        patch.setattr(
-            download, "_extraction_is_current", substitute_before_cache_check
-        )
+        patch.setattr(download, "_extraction_is_current", substitute_before_cache_check)
         with pytest.raises(ValueError, match="linked extraction path"):
             download.zip_data_paths(
                 "archive.zip", url=source.as_uri(), hash_filepath=hashes
@@ -473,9 +472,7 @@ def test_interrupted_refresh_is_retried(cache, tmp_path, monkeypatch):
         raise OSError("Interrupted extraction")
 
     with monkeypatch.context() as patch:
-        patch.setattr(
-            download._zip_safe, "extract_members", interrupted_extraction
-        )
+        patch.setattr(download._zip_safe, "extract_members", interrupted_extraction)
         with pytest.raises(OSError, match="Interrupted extraction"):
             download.zip_data_paths(
                 "archive.zip", url=source.as_uri(), hash_filepath=hashes
@@ -510,9 +507,12 @@ def test_zip_member_aliases_keep_final_contents_and_cache_is_current(
         pytest.fail("An alias of an earlier member must not invalidate the cache")
 
     monkeypatch.setattr(download._zip_safe, "extract_members", unexpected_extraction)
-    assert download.zip_data_paths(
-        "archive.zip", url=source.as_uri(), hash_filepath=hashes
-    ) == results
+    assert (
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+        == results
+    )
 
 
 def test_caller_managed_duplicate_uses_final_member(cache, tmp_path):
@@ -971,9 +971,7 @@ def test_zenodo_downloads_require_hashes_unless_skipped(
         [("a/", ""), ("a", "file")],
     ],
 )
-def test_zip_rejects_parent_file_conflicts_before_extraction(
-    cache, tmp_path, members
-):
+def test_zip_rejects_parent_file_conflicts_before_extraction(cache, tmp_path, members):
     data_dir, hashes = cache
     source = tmp_path / "conflicting.zip"
     with zipfile.ZipFile(source, "w") as archive:

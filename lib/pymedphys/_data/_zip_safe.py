@@ -215,9 +215,7 @@ def _extract_posix(
                 try:
                     os.mkdir(leaf, dir_fd=descriptor)
                 except FileExistsError:
-                    updated = os.stat(
-                        leaf, dir_fd=descriptor, follow_symlinks=False
-                    )
+                    updated = os.stat(leaf, dir_fd=descriptor, follow_symlinks=False)
                     if not stat.S_ISDIR(updated.st_mode):
                         raise ValueError(_UNSAFE)
                 continue
@@ -230,9 +228,10 @@ def _extract_posix(
                 dir_fd=descriptor,
             )
             try:
-                with os.fdopen(temp_fd, "wb") as destination, zip_file.open(
-                    info
-                ) as source:
+                with (
+                    os.fdopen(temp_fd, "wb") as destination,
+                    zip_file.open(info) as source,
+                ):
                     shutil.copyfileobj(source, destination)
                 if missing_only:
                     _install_missing_posix(temporary, leaf, descriptor)
@@ -445,9 +444,10 @@ def _extract_windows(
             )
             temp_path = pathlib.Path(temp_name)
             try:
-                with os.fdopen(descriptor, "wb") as destination, zip_file.open(
-                    info
-                ) as source:
+                with (
+                    os.fdopen(descriptor, "wb") as destination,
+                    zip_file.open(info) as source,
+                ):
                     shutil.copyfileobj(source, destination)
 
                 # All ancestor handles remain open without SHARE_DELETE until
@@ -487,6 +487,7 @@ def _extract_windows(
                     os.replace(temp_path, target)
             finally:
                 temp_path.unlink(missing_ok=True)
+
 
 def extract_members(
     zip_file: zipfile.ZipFile, root: pathlib.Path, *, missing_only: bool
