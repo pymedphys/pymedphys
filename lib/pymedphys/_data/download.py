@@ -152,6 +152,11 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
         expected_size = int(content_length) if content_length else None
         if expected_size is not None and expected_size < 0:
             raise ValueError("Negative Content-Length is invalid")
+        if expected_size is not None and response.headers.get("Transfer-Encoding"):
+            # RFC 9112 forbids using both response framing methods together.
+            # A chunked response can otherwise supply more bytes than the
+            # advertised Content-Length and different clients may disagree.
+            raise ValueError("Conflicting Content-Length and Transfer-Encoding headers")
 
         file_descriptor, temp_name = tempfile.mkstemp(
             dir=filepath.parent, prefix=f".{filepath.name}.", suffix=".part"
