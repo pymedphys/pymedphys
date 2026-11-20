@@ -71,7 +71,8 @@ def test_zip_member_lookup_does_not_print_patient_paths(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
-    assert private_name not in str(error.value)
+    for identifier in (private_name, "patient-A", "patient-B"):
+        assert identifier not in str(error.value)
 
 
 def test_file_url_is_copied(tmp_path: pathlib.Path):
