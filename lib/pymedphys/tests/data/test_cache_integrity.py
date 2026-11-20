@@ -227,6 +227,84 @@ def test_zip_extraction_errors_do_not_expose_patient_member_name(cache, tmp_path
     assert private_name not in str(raised.value)
 
 
+def test_zip_root_directory_entries_are_ignored(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(
+        tmp_path / "source.zip",
+        {"./": "", ".": "", "files/": "", "files/data.txt": "payload"},
+    )
+    _record(hashes, "archive.zip", source)
+
+    paths = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert [path.read_text(encoding="utf-8") for path in paths] == ["payload"]
+
+    # Cache reuse must also accept the harmless root entries.
+    assert download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    ) == paths
+
+
+def test_zip_symlink_substituted_after_preflight_is_rejected(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"linked/record.txt": "untrusted"})
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+    outside = tmp_path / "outside"
+    working.mkdir()
+    outside.mkdir()
+    real_extract = download._zip_safe.extract_members
+
+    def substitute_before_extraction(archive, root, *, missing_only):
+        (root / "linked").symlink_to(outside, target_is_directory=True)
+        return real_extract(archive, root, missing_only=missing_only)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            download._zip_safe, "extract_members", substitute_before_extraction
+        )
+        with pytest.raises(ValueError, match="linked extraction path"):
+            download.zip_data_paths(
+                "archive.zip",
+                url=source.as_uri(),
+                hash_filepath=hashes,
+                extract_directory=working,
+            )
+
+    assert not list(outside.iterdir())
+
+
+def test_zip_cache_rejects_symlink_substitution_during_reuse(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"linked/data.txt": "cached"})
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    real_check = download._extraction_is_current
+
+    def substitute_before_cache_check(archive, root, archive_hash, marker):
+        (root / "linked").rename(root / "former_linked")
+        (root / "linked").symlink_to(outside, target_is_directory=True)
+        return real_check(archive, root, archive_hash, marker)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            download, "_extraction_is_current", substitute_before_cache_check
+        )
+        with pytest.raises(ValueError, match="linked extraction path"):
+            download.zip_data_paths(
+                "archive.zip", url=source.as_uri(), hash_filepath=hashes
+            )
+
+    assert not list(outside.iterdir())
+
+
 def test_caller_directories_keep_edited_files(cache, tmp_path):
     # The GUI demo extracts into the user's working directory, where people
     # edit the extracted configuration; those edits must survive.
@@ -318,7 +396,7 @@ def test_complete_extraction_is_reused(cache, tmp_path, monkeypatch):
     def unexpected_extraction(*_args, **_kwargs):
         pytest.fail("A complete, unchanged archive should not be extracted again")
 
-    monkeypatch.setattr(zipfile.ZipFile, "extractall", unexpected_extraction)
+    monkeypatch.setattr(download._zip_safe, "extract_members", unexpected_extraction)
 
     assert (
         download.zip_data_paths(
@@ -336,12 +414,16 @@ def test_interrupted_refresh_is_retried(cache, tmp_path, monkeypatch):
     download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
     (data_dir / "archive/b.txt").write_text("truncated", encoding="utf-8")
 
-    def interrupted_extraction(archive, path):
-        archive.extract("a.txt", path=path)
+    original_extract = download._zip_safe.extract_members
+
+    def interrupted_extraction(archive, path, *, missing_only):
+        original_extract(archive, path, missing_only=missing_only)
         raise OSError("Interrupted extraction")
 
     with monkeypatch.context() as patch:
-        patch.setattr(zipfile.ZipFile, "extractall", interrupted_extraction)
+        patch.setattr(
+            download._zip_safe, "extract_members", interrupted_extraction
+        )
         with pytest.raises(OSError, match="Interrupted extraction"):
             download.zip_data_paths(
                 "archive.zip", url=source.as_uri(), hash_filepath=hashes
@@ -405,7 +487,7 @@ def test_duplicate_zip_members_reuse_the_final_entry(cache, tmp_path, monkeypatc
     def unexpected_extraction(*_args, **_kwargs):
         pytest.fail("Repeated member names should not invalidate a complete extraction")
 
-    monkeypatch.setattr(zipfile.ZipFile, "extractall", unexpected_extraction)
+    monkeypatch.setattr(download._zip_safe, "extract_members", unexpected_extraction)
     assert (
         download.zip_data_paths(
             "archive.zip", url=source.as_uri(), hash_filepath=hashes
