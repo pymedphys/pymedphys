@@ -203,9 +203,20 @@ def _cache_path(filename):
     existing symlink directories before any directory is created or file opened.
     """
     root = get_data_dir().resolve()
-    candidate = (root / filename).resolve()
+    requested = root / filename
+    if ".." in pathlib.Path(filename).parts:
+        raise ValueError("Data cache path must stay within the data directory")
+    candidate = requested.resolve()
     if candidate == root or not candidate.is_relative_to(root):
         raise ValueError("Data cache path must stay within the data directory")
+
+    # A symlink that stays inside the cache is still unsafe: repairing the
+    # alias could unlink or replace the original cached file.
+    current = root
+    for part in requested.relative_to(root).parts:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError("Data cache paths may not contain symlinks")
     return candidate
 
 
