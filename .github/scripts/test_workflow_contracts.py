@@ -830,13 +830,13 @@ class WorkflowContractTests(unittest.TestCase):
             re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
         )
         self.assertIn("\npermissions:\n  contents: read\n", text)
-        # Each of its two jobs can only read.
+        # Each of its three jobs can only read.
         self.assertEqual(
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
-            ["      contents: read"] * 2,
+            ["      contents: read"] * 3,
         )
         self.assertNotIn("secrets.", text)
-        self.assertEqual(text.count("persist-credentials: false"), 2)
+        self.assertEqual(text.count("persist-credentials: false"), 3)
         # Inputs reach commands only through the environment.
         run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
         self.assertTrue(run_blocks)
@@ -849,19 +849,42 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertIn("sha256sum --check --strict -", text)
         # Only the results leave the runner; never the data or the selection's
-        # series.
+        # series. Each patients' shard's record is kept for a day, and the
+        # merged results, as the phantoms', for 90.
         self.assertEqual(
-            re.findall(r"(?m)^          path: (.*)$", text),
-            ["${{ runner.temp }}/idc/results/", "${{ runner.temp }}/phantoms/results/"],
+            re.findall(
+                r"upload-artifact@.*\n        with:\n(?:          .*\n)*?"
+                r"          path: (.*)\n",
+                text,
+            ),
+            [
+                "${{ runner.temp }}/idc/results/",
+                "${{ runner.temp }}/idc/merged/",
+                "${{ runner.temp }}/phantoms/results/",
+            ],
         )
-        # Two jobs: the phantoms' full reports and crops come only from a
-        # selection of phantom collections, on a runner of their own, and
-        # the patients' job never runs the phantom report.
+        self.assertEqual(
+            re.findall(r"(?m)^          retention-days: (\d+)$", text),
+            ["1", "90", "90"],
+        )
+        # The phantoms' full reports and crops come only from a selection of
+        # phantom collections, on a runner of their own, and the patients'
+        # jobs never run the phantom report.
         jobs = text.split("\njobs:\n", 1)[1]
         patients, phantoms = jobs.split("\n  phantoms:\n", 1)
         self.assertTrue(patients.startswith("  patients:\n"))
         self.assertNotIn("phantom-report", patients)
         self.assertNotIn("--phantoms", patients)
+        # The patients' shards run no more than four at once, and every
+        # shard measures with --shard, so the merge reads every case's
+        # counts; the merge job reads only the shards' records.
+        shards, merge = patients.split("\n  merge:\n", 1)
+        self.assertIn("\n      max-parallel: 4\n", shards)
+        self.assertEqual(shards.count(" idc-measure \\\n"), 2)
+        self.assertEqual(shards.count('--shard "${SHARD}/${SHARDS}"'), 2)
+        self.assertIn(" idc-merge \\\n", merge)
+        for command in ("idc-select", "idc-measure", "archive-fetch", "s5cmd"):
+            self.assertNotIn(command, merge)
         self.assertEqual(phantoms.count(" idc-select \\\n"), 1)
         self.assertIn("            --phantoms \\\n", phantoms)
         self.assertIn(" phantom-report \\\n", phantoms)

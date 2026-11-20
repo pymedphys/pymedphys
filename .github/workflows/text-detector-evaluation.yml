@@ -1,8 +1,9 @@
 name: Text Detector Evaluation
 
 # On demand, measure the text detector of the Clean Pixel Data Option, or a
-# candidate model, on every corpus of D-056 that CI's runners may read, in
-# two jobs that share nothing but the model and its settings.
+# candidate model, on every corpus of D-056 that CI's runners may read: the
+# patients' jobs and the phantoms' job share nothing but the model and its
+# settings.
 #
 # patients: openly licensed series of real patients in NCI's Imaging Data
 # Commons (tier T3), among them the seven collections that D-056 takes from
@@ -22,6 +23,16 @@ name: Text Detector Evaluation
 # runner; a crash is reported by .github/scripts/run_redacted.py as its type
 # and code locations alone; and no image, crop, or pixel value is written.
 # The series are never cached, uploaded, or kept.
+#
+# The patients' cases can be measured in shards, each on a runner of its
+# own (text_evaluation_shards): every shard selects and downloads the same
+# series and folders, numbers each case's subject by where it first appears
+# in the run's fixed list of cases, and measures the cases of its own
+# subjects alone. Each shard's record holds those cases' counts, each by its
+# place in the list and its subject's number, and no identifier, name, or
+# value read from a file; the merge job adds the records into the summary
+# that one runner measuring every case writes. A shard that did not finish
+# leaves the run unmerged: re-run its job, and then the merge.
 #
 # phantoms: the synthetic phantoms (T1) and series of IDC's allow-listed
 # phantom collections (T2), which show no patient, reported in full, with
@@ -76,6 +87,13 @@ on:
         type: choice
         options: [today, single settings, line extension]
         default: today
+      shards:
+        description: >-
+          The patients' runners, each measuring a shard of the cases, whose
+          records one job merges.
+        type: choice
+        options: ['1', '2', '3', '4', '6', '8']
+        default: '1'
       evaluated:
         description: The part of the split to measure.
         type: choice
@@ -117,13 +135,30 @@ concurrency:
 
 jobs:
   patients:
-    name: Text detector evaluation on patients' series
+    name: >-
+      Text detector evaluation on patients' series, shard ${{ matrix.shard }}
+      of ${{ inputs.shards || '1' }}
     if: ${{ inputs.corpora != 'phantoms' }}
+    strategy:
+      fail-fast: false
+      # No more than four runners at once, so that other workflows still
+      # get theirs.
+      max-parallel: 4
+      matrix:
+        shard: >-
+          ${{ fromJSON(inputs.shards == '8' && '[0, 1, 2, 3, 4, 5, 6, 7]'
+          || inputs.shards == '6' && '[0, 1, 2, 3, 4, 5]'
+          || inputs.shards == '4' && '[0, 1, 2, 3]'
+          || inputs.shards == '3' && '[0, 1, 2]'
+          || inputs.shards == '2' && '[0, 1]'
+          || '[0]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 355
     permissions:
       contents: read
     env:
+      SHARD: ${{ matrix.shard }}
+      SHARDS: ${{ inputs.shards || '1' }}
       MODEL: ${{ inputs.model || 'PP-OCRv6 small' }}
       SETTINGS: ${{ inputs.settings || 'today' }}
       VARIANT: ${{ inputs.variant || 'today' }}
@@ -137,10 +172,6 @@ jobs:
       # text_evaluation_idc pins it.
       INDEX_URL: https://files.pythonhosted.org/packages/bd/10/c6391b44d1b2f6c744e1cb4018250cb1a5d80947d47ed945172d9165a3b4/idc_index_data-25.0.5-py3-none-any.whl
       INDEX_SHA256: 1ea4ec812688759b71798249b6488eb2bce7178aabb3dccb00366b7a555de25c
-      # A re-run's artefact is named apart from the first attempt's.
-      ATTEMPT_SUFFIX: >-
-        ${{ github.run_attempt != '1'
-        && format('-attempt-{0}', github.run_attempt) || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -208,7 +239,17 @@ jobs:
             2> "${RUNNER_TEMP}/idc/private/archive-stderr.log"
           df -h /
 
-      # The command downloads the model's pinned weights on first use.
+      # Beside the shard's records, so that the merge can check that every
+      # shard selected the same series and folders, of the same commit.
+      - name: Keep the selections with the records
+        run: |
+          mkdir -p "${RUNNER_TEMP}/idc/results"
+          cp "${RUNNER_TEMP}/idc/selection/selection.json" "${RUNNER_TEMP}/idc/results/"
+          cp "${RUNNER_TEMP}/idc/archive-selection/archives.json" "${RUNNER_TEMP}/idc/results/"
+          echo "${GITHUB_SHA}" > "${RUNNER_TEMP}/idc/results/commit.txt"
+
+      # Writes this shard's record, series/shard.json. The command
+      # downloads the model's pinned weights on first use.
       - name: Measure the series
         timeout-minutes: 240
         run: |
@@ -224,11 +265,9 @@ jobs:
             --grid "${GRID}" \
             --evaluated "${EVALUATED}" \
             --workers "$(nproc)" \
-            --out "${RUNNER_TEMP}/idc/results" \
+            --shard "${SHARD}/${SHARDS}" \
+            --out "${RUNNER_TEMP}/idc/results/series" \
             2> "${RUNNER_TEMP}/idc/private/measure-stderr.log"
-          cp "${RUNNER_TEMP}/idc/selection/selection.json" "${RUNNER_TEMP}/idc/results/"
-          cp "${RUNNER_TEMP}/idc/archive-selection/archives.json" "${RUNNER_TEMP}/idc/results/"
-          echo "${GITHUB_SHA}" > "${RUNNER_TEMP}/idc/results/commit.txt"
 
       # The classic CT, MR, and PET series again, each converted in memory
       # to Legacy Converted Enhanced instances, whose frames hold the same
@@ -251,13 +290,14 @@ jobs:
             --evaluated "${EVALUATED}" \
             --workers 2 \
             --converted \
+            --shard "${SHARD}/${SHARDS}" \
             --out "${RUNNER_TEMP}/idc/results/converted" \
             2> "${RUNNER_TEMP}/idc/private/converted-stderr.log"
 
       # At a model's publishers' settings, count what OpenCV's resize alone
-      # changes beside the harness's own.
+      # changes beside the harness's own, on every case, in the first shard.
       - name: Measure the resize's parity
-        if: ${{ env.SETTINGS == 'published' }}
+        if: ${{ env.SETTINGS == 'published' && matrix.shard == 0 }}
         timeout-minutes: 120
         run: |
           uv run --no-sync python .github/scripts/run_redacted.py \
@@ -272,15 +312,147 @@ jobs:
             2> "${RUNNER_TEMP}/idc/private/parity-stderr.log"
           cp "${RUNNER_TEMP}/idc/parity/parity.json" "${RUNNER_TEMP}/idc/results/"
 
+      # Each attempt of each shard uploads its record apart, and the merge
+      # takes the latest of each. The records are kept for a day: the
+      # merged results are kept for 90.
+      - name: Upload the shard's record
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: text-detector-evaluation-patients-shard-${{ env.SHARD }}-of-${{ env.SHARDS }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/idc/results/
+          if-no-files-found: warn
+          retention-days: 1
+
+  # The patients' shards' records, merged. This job reads only the shards'
+  # artefacts, which hold counts alone, and no series.
+  merge:
+    name: Text detector evaluation on patients' series, merged
+    needs: patients
+    if: ${{ !cancelled() && inputs.corpora != 'phantoms' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      SHARDS: ${{ inputs.shards || '1' }}
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user text-detection'
+
+      # Every attempt's record of each shard: the latest of each is taken.
+      - name: Download the shards' records
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: text-detector-evaluation-patients-shard-*
+          path: ${{ runner.temp }}/idc/shards/
+
+      # Writes what one runner measuring every case writes: summary.json,
+      # summary.md, cases.json, and assessment.json, and under converted/
+      # the same of the series read as converted, each where every shard's
+      # record of it is there.
+      - name: Merge the shards' records
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/idc/private"
+          results="${RUNNER_TEMP}/idc/merged"
+          mkdir -p "${results}"
+          chosen=()
+          missing=()
+          for shard in $(seq 0 $((SHARDS - 1))); do
+            base="${RUNNER_TEMP}/idc/shards/text-detector-evaluation-patients-shard-${shard}-of-${SHARDS}-attempt-"
+            found=""
+            latest=0
+            for directory in "${base}"*; do
+              [[ -d "${directory}" ]] || continue
+              attempt="${directory#"${base}"}"
+              [[ "${attempt}" =~ ^[0-9]+$ ]] || continue
+              if (( attempt > latest )); then
+                latest=${attempt}
+                found="${directory}"
+              fi
+            done
+            if [[ -z "${found}" ]]; then
+              missing+=("${shard}")
+            else
+              echo "Shard ${shard}: attempt ${latest}."
+              chosen+=("${found}")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            echo "Shards ${missing[*]} of ${SHARDS} left no record, so the run was not merged. Re-run their jobs, and then this one." \
+              | tee "${results}/merge-status.txt"
+            exit 1
+          fi
+          # Every shard must have selected the same series and folders, of
+          # the same commit.
+          for file in selection.json archives.json commit.txt; do
+            for directory in "${chosen[@]}"; do
+              if ! cmp -s "${chosen[0]}/${file}" "${directory}/${file}"; then
+                echo "The shards differ in ${file}, so the run was not merged." \
+                  | tee "${results}/merge-status.txt"
+                exit 1
+              fi
+            done
+            cp "${chosen[0]}/${file}" "${results}/"
+          done
+          if [[ -f "${chosen[0]}/parity.json" ]]; then
+            cp "${chosen[0]}/parity.json" "${results}/"
+          fi
+          # The series measured as they are go to the top of the results, as
+          # one runner's measurement writes them, and those read as
+          # converted to converted/.
+          status=0
+          for part in series converted; do
+            records=()
+            for directory in "${chosen[@]}"; do
+              if [[ -f "${directory}/${part}/shard.json" ]]; then
+                records+=("${directory}/${part}/shard.json")
+              fi
+            done
+            if (( ${#records[@]} != SHARDS )); then
+              echo "A shard wrote no record of the ${part} measurement, so it was not merged; the shard's log shows why." \
+                | tee -a "${results}/merge-status.txt"
+              status=1
+              continue
+            fi
+            if uv run --no-sync python .github/scripts/run_redacted.py \
+              --private-stdout "${RUNNER_TEMP}/idc/private/merge-${part}-stdout.log" \
+              pymedphys._dicom.deidentify.text_evaluation_command idc-merge \
+              "${records[@]}" \
+              --out "${RUNNER_TEMP}/idc/merging/${part}" \
+              2> "${RUNNER_TEMP}/idc/private/merge-${part}-stderr.log"; then
+              if [[ "${part}" == series ]]; then
+                cp -R "${RUNNER_TEMP}/idc/merging/series/." "${results}/"
+              else
+                cp -R "${RUNNER_TEMP}/idc/merging/converted" "${results}/"
+              fi
+            else
+              echo "The records of the ${part} measurement could not be merged." \
+                | tee -a "${results}/merge-status.txt"
+              status=1
+            fi
+          done
+          exit "${status}"
+
       - name: Show the results
         if: ${{ !cancelled() }}
         run: |
-          for page in "${RUNNER_TEMP}/idc/results/summary.md" \
-            "${RUNNER_TEMP}/idc/results/converted/summary.md"; do
+          for page in "${RUNNER_TEMP}/idc/merged/summary.md" \
+            "${RUNNER_TEMP}/idc/merged/converted/summary.md"; do
             if [[ -f "${page}" ]]; then
               tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
             else
-              echo "A measurement wrote no results; the log shows why." \
+              echo "A measurement was not merged; the logs show why." \
                 | tee -a "${GITHUB_STEP_SUMMARY}"
             fi
           done
@@ -290,7 +462,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: text-detector-evaluation-patients${{ env.ATTEMPT_SUFFIX }}
-          path: ${{ runner.temp }}/idc/results/
+          path: ${{ runner.temp }}/idc/merged/
           if-no-files-found: warn
           retention-days: 90
 
