@@ -196,6 +196,26 @@ def test_oversized_response_is_rejected_without_replacing_cached_file(
     assert _leftovers(tmp_path, "cached.bin") == [destination]
 
 
+def test_negative_declared_size_is_rejected_before_cache_replacement(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda _url, **_kwargs: _FakeResponse(b"", content_length=-1),
+    )
+    destination = tmp_path / "cached.bin"
+    destination.write_bytes(b"old cached data")
+
+    with pytest.raises(ValueError, match="Negative Content-Length"):
+        download.download_with_progress(
+            "https://example.invalid/cached.bin", destination
+        )
+
+    assert destination.read_bytes() == b"old cached data"
+    assert _leftovers(tmp_path, "cached.bin") == [destination]
+
+
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     override = tmp_path / "nested" / "data"
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(override))
