@@ -21,8 +21,9 @@ the RT Structure Set, RT Plan, RT
 Dose, RT Image, Enhanced RT Image, Enhanced Continuous RT Image, RT Beams
 Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
 Treatment Record, RT Treatment Summary Record, RT Beams Delivery
-Instruction, RT Brachy Application Setup Delivery Instruction, and RT
-Radiation Set Delivery Instruction IODs, of the C-Arm Photon-Electron
+Instruction, RT Brachy Application Setup Delivery Instruction, RT Radiation
+Set Delivery Instruction, RT Physician Intent, RT Treatment Preparation, and
+RT Patient Position Acquisition Instruction IODs, of the C-Arm Photon-Electron
 Radiation Record, Tomotherapeutic Radiation Record, Robotic-Arm Radiation
 Record, RT Radiation Salvage Record, and RT Radiation Record Set IODs, of the
 Spatial Registration and Deformable Spatial
@@ -35,41 +36,51 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, of the Parametric Map,
-Real World Value Mapping, and Encapsulated PDF IODs, of the Grayscale,
-Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-Softcopy Presentation State IODs, and of the Planar MPR and Volume Rendering
-Volumetric Presentation State IODs, with their Grayscale and Compositing
-Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
-Volume Rendering SOP Classes, the Advanced Blending Presentation State
-IOD, and the Waveform and Waveform Acquisition Presentation State IODs,
+Volume Report, Waveform Annotation SR, Implantation Plan SR Document,
+Simplified Adult Echo SR, Planned Imaging Agent Administration SR,
+Performed Imaging Agent Administration SR, and Acquisition Context SR IODs,
+of the Parametric Map, Real World Value Mapping, and Encapsulated PDF IODs,
+of the Grayscale, Color, Pseudo-Color, Blending, XA/XRF Grayscale, and
+Variable Modality LUT Softcopy Presentation State IODs, of the Planar MPR
+and Volume Rendering Volumetric Presentation State IODs, with their
+Grayscale and Compositing Planar MPR, Volume Rendering, Segmented Volume
+Rendering, and Multiple Volume Rendering SOP Classes, the Advanced Blending
+Presentation State IOD, and the Waveform and Waveform Acquisition
+Presentation State IODs, and of the five Secondary Capture IODs,
 uncompressed or in a transfer syntax that encapsulates Pixel Data that
 pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax
 does not release every instance in it: a compressed instance is still
-sequestered
-where the plugin pinned to its transfer syntax is not installed, or where
-its frames or codestreams fail the engine's checks
+sequestered where the plugin pinned to its transfer syntax is not
+installed, or where its frames or codestreams fail the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
 rules still sequester some, such as every Enhanced PET Image instance that
-conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
+conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``,
 every Structured Report or Key Object Selection Document whose content
 tree the policy does not clean and keep, since the Basic Profile gives its
-Content Sequence (0040,A730) D, which a sequence has no dummy value for.
-So too every Presentation State that conforms to its IOD under
+Content Sequence (0040,A730) D, which a sequence has no dummy value for,
+and every Simplified Adult Echo SR instance under a policy with neither
+Retain Longitudinal Temporal Information option, since its Timezone Module
+requires Timezone Offset From UTC (0008,0201), which the Basic Profile
+removes. So too every Presentation State that conforms to its IOD under
 ``basic`` and ``basic-clean-descriptors``, since Table E.1-1's plain X
 removes its Type 1 Presentation Creation Date and Time, and one that holds
 a Graphic Annotation Sequence (0070,0001) under every preset, since the
 table gives that sequence D, as the supplementary rules give a volumetric
 one's Volumetric Annotation Sequence (0070,1901) and Volumetric
-Presentation Input Annotation Sequence (0070,1905). Every Encapsulated PDF
-that holds its Encapsulated Document (0042,0011) is also sequestered under
-every policy without the Clean Pixel Data Option: Table E.1-1 gives it D,
-and no reviewed rule gives a document a dummy value. Under that option, the
+Presentation Input Annotation Sequence (0070,1905), unless, for a
+Graphic Annotation Sequence, a run under the Clean Graphics Option is given
+a reviewed annotations list, which keeps or removes each annotation as a
+reviewer decides (D-062). Every Encapsulated PDF that holds its
+Encapsulated Document (0042,0011) is also sequestered under every policy
+without the Clean Pixel Data Option: Table E.1-1 gives it D, and no
+reviewed rule gives a document a dummy value. Under that option, the
 document is released only as the reviewed rendering of its pages
-(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). Every other
-instance is sequestered: neither de-identified nor written, and listed in
-the run report by opaque identifiers only. That includes the other
-Structured Reports and instances of Private SOP Classes.
+(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). The transform also
+sequesters every instance of a Secondary Capture IOD under a policy that
+does not select the Clean Pixel Data Option
+(:data:`SECONDARY_CAPTURE_IODS`). Every other instance is sequestered:
+neither de-identified nor written, and listed in the run report by opaque
+identifiers only. That includes instances of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -122,9 +133,12 @@ SUPPORTED_IODS = frozenset(
         "Robotic-Arm Radiation",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
+        "RT Patient Position Acquisition Instruction",
+        "RT Physician Intent",
         "RT Plan",
         "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
+        "RT Treatment Preparation",
         "RT Treatment Summary Record",
         "C-Arm Photon-Electron Radiation Record",
         "Tomotherapeutic Radiation Record",
@@ -152,6 +166,11 @@ SUPPORTED_IODS = frozenset(
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Parametric Map",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
@@ -166,6 +185,25 @@ SUPPORTED_IODS = frozenset(
         "Waveform Presentation State",
         "Waveform Acquisition Presentation State",
         "Encapsulated PDF",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
+    }
+)
+# The Secondary Capture IODs, by the names Table B.5-1 gives them without
+# "IOD". Their pixel data are captured from a screen, a video signal, or a
+# scanned document or film (PS3.3 Section A.8), whose burned-in text the
+# Basic Profile does not touch, so the transform sequesters each of their
+# instances under a policy that does not select Clean Pixel Data (D-060).
+SECONDARY_CAPTURE_IODS = frozenset(
+    {
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little

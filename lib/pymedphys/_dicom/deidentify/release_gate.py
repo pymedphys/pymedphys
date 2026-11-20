@@ -72,7 +72,11 @@ made only of words of the reviewed technique vocabulary, which echoes no
 identifier of the subject, from a source that describes the examination,
 such as Study Description, or a private copy of one
 (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`,
-:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
+:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`),
+or it is a removed requested procedure code's Code Value, Coding Scheme
+Designator, or Code Meaning equal to the same attribute of a kept code item,
+as where equipment copied the request's code into the procedure's
+(:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
 A date or datetime equal to a whole date, time, or datetime that an option
 keeps, a datetime whose date equals a whole date that an option keeps, or a
 date, or a datetime's date, that begins a whole datetime that an option
@@ -134,6 +138,7 @@ import re
 
 from .file_layout import ElementPath, Location, Region
 from .option_kept import kept_text
+from .residual_copies import copied_request_code
 from .residual_exemptions import (
     DEIDENTIFICATION_METHOD,
     Exemption,
@@ -334,7 +339,10 @@ class Coverage:
         A private UID found from such values alone, equal to a whole UID
         that an option keeps, can be explained where a replaced one could
         not
-        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`).
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`),
+        and a requested procedure code's value found from such values alone,
+        equal to the same attribute of a kept code item, can be explained
+        (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
     safe_private_list : SafePrivateList or None, optional
         The safe private list that the run chose under the Retain Safe
         Private Option, whose kept private creators can explain a text
@@ -766,17 +774,17 @@ def release_condition(
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
             if reason.code is ReasonCode.RESIDUAL_TEXT:
-                why = exemption(
-                    each,
-                    kept,
-                    sources,
-                    coverage.options,
-                    coverage.unwritten & coverage.coded,
-                    coverage.safe_private_list,
-                )
                 why = (
-                    why
+                    exemption(
+                        each,
+                        kept,
+                        sources,
+                        coverage.options,
+                        coverage.unwritten & coverage.coded,
+                        coverage.safe_private_list,
+                    )
                     or vocabulary_meaning(each, kept, sources)
+                    or copied_request_code(each, kept, sources, coverage.removed)
                     or vocabulary_descriptor(each, kept, sources)
                 )
             elif reason.code is ReasonCode.RESIDUAL_UID:

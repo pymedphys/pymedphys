@@ -546,6 +546,17 @@ def _is_roi_name(path: ElementPath) -> bool:
     )
 
 
+def identifiers_of(edits: InstanceEdits) -> list[str]:
+    """Return the identifiers that kept text is checked for echoes of.
+
+    Each person name and patient identifier that the edits collected, as
+    :func:`clean_descriptors` checks a kept descriptor value against them;
+    the Clean Graphics Option checks a kept annotation's text against them
+    too (D-062).
+    """
+    return _identifiers(edits)
+
+
 def _identifiers(edits: InstanceEdits) -> list[str]:
     """Return the identifiers that cleaned values are checked for echoes of.
 

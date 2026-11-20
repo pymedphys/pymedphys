@@ -44,6 +44,9 @@ MANDATORY = {
     "Robotic-Arm Radiation",
     "RT Brachy Application Setup Delivery Instruction",
     "RT Radiation Set Delivery Instruction",
+    "RT Physician Intent",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
     "C-Arm Photon-Electron Radiation Record",
     "Tomotherapeutic Radiation Record",
     "Robotic-Arm Radiation Record",
@@ -87,6 +90,11 @@ WITHOUT = {
     "Spectacle Prescription Report",
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
     "Encapsulated PDF",
 }
 # The supported IODs without the module whose Presentation State

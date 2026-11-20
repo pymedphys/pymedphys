@@ -44,16 +44,19 @@ not run them, so a cited test would read as not run.
 """
 
 import dataclasses
+import io
 import json
 import os
 import shutil
 import tempfile
 from pathlib import Path
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    api,
     dicom_validation,
+    policy,
     run,
     standard,
 )
@@ -102,6 +105,10 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
             corpus_module.COLON_CAD_SR_STORAGE,
             corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
             corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
+            corpus_module.IMPLANTATION_PLAN_SR_STORAGE,
+            corpus_module.SIMPLIFIED_ADULT_ECHO_SR_STORAGE,
+            corpus_module.PLANNED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
+            corpus_module.PERFORMED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
             corpus_module.ENHANCED_RT_IMAGE_STORAGE,
             corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
             corpus_module.XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -116,6 +123,9 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
             corpus_module.RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
             corpus_module.RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE,
             corpus_module.RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
+            corpus_module.RT_PHYSICIAN_INTENT_STORAGE,
+            corpus_module.RT_TREATMENT_PREPARATION_STORAGE,
+            corpus_module.RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE,
             corpus_module.RT_RADIATION_RECORD_SET_STORAGE,
             corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
             corpus_module.TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE,
@@ -309,3 +319,75 @@ def test_the_results_hold_no_marker(comparison):
     for text in (comparison.json(), comparison.markdown()):
         for signature in MARKER_SIGNATURES:
             assert signature not in text
+
+
+# The attributes that the DX Positioning and X-Ray Acquisition Dose Modules
+# share, and the X-Ray Filtration Module's, which X-Ray Acquisition Dose
+# defines too (PS3.3 Tables C.8-72, C.8-33, and C.8-35).
+DX_SHARED = {
+    "DistanceSourceToDetector": ("(0018,1110)", "1800"),
+    "DistanceSourceToPatient": ("(0018,1111)", "1700"),
+    "FilterType": ("(0018,1160)", "NONE"),
+    "FilterMaterial": ("(0018,7050)", "ALUMINUM"),
+    "FilterThicknessMinimum": ("(0018,7052)", "1.0"),
+    "FilterThicknessMaximum": ("(0018,7054)", "1.0"),
+}
+# The DX Positioning Module's attributes that no other module of the
+# Digital X-Ray Image IOD defines, which the corpus's instance holds.
+DX_POSITIONING_OWN = (
+    "ViewPosition",
+    "ProjectionEponymousNameCodeSequence",
+    "ViewCodeSequence",
+    "PatientOrientationCodeSequence",
+    "PatientGantryRelationshipCodeSequence",
+)
+
+
+def test_a_dx_output_explains_the_attributes_whose_modules_dicom_validator_skips(
+    toolset, tmp_path, monkeypatch
+):
+    # A DX For Presentation image whose only attribute of X-Ray Acquisition
+    # Dose's own is Comments on Radiation Dose, which the Basic Profile
+    # removes, and which holds no attribute of DX Positioning's own. The
+    # input validates without these findings; the output, which keeps every
+    # shared attribute, gives each as unexpected, and the known differences
+    # explain each.
+    corpus = corpus_module.build_corpus()
+    (file,) = [
+        file
+        for file in corpus.files
+        if file.name == corpus_module.DIGITAL_X_RAY_FOR_PRESENTATION_FILE
+    ]
+    dataset = pydicom.dcmread(io.BytesIO(file.data))
+    for keyword in DX_POSITIONING_OWN:
+        assert keyword in dataset
+        delattr(dataset, keyword)
+    assert "CommentsOnRadiationDose" in dataset
+    for keyword, (_, value) in DX_SHARED.items():
+        setattr(dataset, keyword, value)
+    source = tmp_path / "source"
+    source.mkdir()
+    dataset.save_as(source / "dx.dcm", enforce_file_format=True)
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    api.deidentify(
+        source, tmp_path / "release", qc_pack=tmp_path / "qc", preset="basic"
+    )
+    (output,) = [
+        path
+        for path in (tmp_path / "release").rglob("*")
+        if path.is_file() and pydicom.misc.is_dicom(path)
+    ]
+    assert "CommentsOnRadiationDose" not in pydicom.dcmread(output)
+
+    comparison = dicom_validation.compare(
+        [dicom_validation.Pair(source / "dx.dcm", output)], toolset
+    )
+    introduced = {
+        i.finding.path: i.outcome
+        for i in comparison.introduced
+        if i.finding.validator == DICOM_VALIDATOR
+    }
+
+    assert introduced == dict.fromkeys(
+        (tag for tag, _ in DX_SHARED.values()), dicom_validation.Outcome.EXPLAINED
+    )

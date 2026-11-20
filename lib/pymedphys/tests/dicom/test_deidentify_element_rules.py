@@ -677,6 +677,8 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Advanced Blending Presentation State",
             "Planar MPR Volumetric Presentation State",
             "Volume Rendering Volumetric Presentation State",
+            "Secondary Capture Image",
+            "Multi-frame True Color Secondary Capture Image",
         )
     }
     # Color Space is Type 1C beside ICC Profile in the display modules of the
@@ -773,7 +775,15 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("Spectacle Prescription Report", ()),
         ("Macular Grid Thickness and Volume Report", ()),
         ("Waveform Annotation SR", ()),
+        ("Implantation Plan SR Document", ()),
+        ("Simplified Adult Echo SR", ()),
+        ("Planned Imaging Agent Administration SR", ()),
+        ("Performed Imaging Agent Administration SR", ()),
+        ("Acquisition Context SR", ()),
         ("Encapsulated PDF", ()),
+        ("RT Physician Intent", ()),
+        ("RT Treatment Preparation", ()),
+        ("RT Patient Position Acquisition Instruction", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 

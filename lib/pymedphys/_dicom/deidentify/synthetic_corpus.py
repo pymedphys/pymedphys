@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of sixty-seven other IODs, two of the Segmentation IOD,
+instance of each of eighty other IODs, two of the Segmentation IOD,
 one of each of its SOP Classes, each in a series of its own, two of the
 Digital X-Ray Image IOD, one of each of its SOP Classes, each in a series
 of its own, and a second X-Ray Radiation Dose SR, of a CT scan.
@@ -61,7 +61,14 @@ other references name the RT Structure Set. The Computed Radiography image,
 a lateral skull radiograph, references the first CT slice; of the Digital
 X-Ray images of a chest radiograph, the image for processing references
 the first CT slice, and the image for presentation the image for
-processing. The X-Ray Radiation Dose SRs and the Enhanced
+processing. The RT Physician Intent references the first
+CT slice, and the collection's study and CT series in the Referenced Study
+Sequence (0008,1110) of its input instances and planning inputs; the RT
+Treatment Preparation references the RT Physician Intent and, in its
+Referenced RT Plan Sequence, the RT Plan; and the RT Patient Position
+Acquisition Instruction references the RT Treatment Preparation and, in the
+Referenced Study Sequence of its position reference instances, the
+collection's study. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -79,8 +86,12 @@ Thickness and Volume Report, and Waveform Annotation SR reference the MR
 Image. The Parametric Map, an apparent diffusion coefficient map of 16-bit
 integers whose two frames lie in the planes of the first two CT slices,
 references the MR Image, and the Real World Value Mapping maps the PET
-Image's stored values to a standardised uptake value and names it. Each
-softcopy Presentation State names, in its Referenced Series Sequence
+Image's stored values to a standardised uptake value and names it. The
+Implantation Plan SR Document and the Planned and Performed Imaging Agent
+Administration SRs reference the first CT slice, and the Performed Imaging
+Agent Administration SR's tree the plan that it followed, while the
+Simplified Adult Echo SR and Acquisition Context SR reference the MR Image.
+Each softcopy Presentation State names, in its Referenced Series Sequence
 (0008,1115), or the blending one in its Blending Sequence (0070,0402), the
 image that it presents: the grayscale, blending, and Variable Modality LUT
 ones the first CT slice, the colour one the Enhanced MR Color Image, the
@@ -89,9 +100,11 @@ volumetric Presentation States name the CT slices in their Volumetric
 Presentation Input Set Sequence (0070,120A), and the advanced blending one
 the PET Image in its Advanced Blending Sequence (0070,1B01). The waveform
 Presentation States name the MR Image where they would name a waveform,
-since the collection holds none. It is the input for validating each
-preset end to end: once the engine has written the collection, the
-residual search
+since the collection holds none. The instance of each Secondary Capture IOD,
+a capture of a planning system's screen of 2 by 2 pixels whose Burned In
+Annotation (0028,0301) is YES, references the first CT slice. It is the
+input for validating each preset end to end: once the engine has written
+the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
 
@@ -187,10 +200,12 @@ attribute that the pinned dictionary gives no single VR, and a tag whose element
 are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
 holds only a few synthetic samples: 2 by 2 pixels, in two frames in a
-multi-frame IOD but one in the RT Image, and 4 by 4 in the BINARY
-Segmentation, whose 1-bit frames then each fill whole bytes, monochrome but for the Enhanced MR
-Color instance, whose RGB pixels come with the ICC Profile (0028,2000) its
-IOD requires: :data:`SOURCE_ICC_PROFILE`, an sRGB profile
+multi-frame IOD but one in the RT Image and the Secondary Capture Image, and
+4 by 4 in the BINARY Segmentation and the Multi-frame Single Bit Secondary
+Capture Image, whose 1-bit frames then each fill whole bytes, monochrome but
+for the Multi-frame True Color Secondary Capture Image, whose IOD does not
+require an ICC Profile, and the Enhanced MR Color instance, whose RGB pixels
+come with the ICC Profile (0028,2000) its IOD requires: :data:`SOURCE_ICC_PROFILE`, an sRGB profile
 (:mod:`~pymedphys._dicom.deidentify.icc_profiles`) whose description,
 copyright, device manufacturer and model descriptions, and a private tag
 hold :data:`SOURCE_ICC_DESCRIPTION`, which begins with the marker prefix, so
@@ -235,8 +250,9 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other seventy-six check each preset's output, the reports where their
-trees are cleaned. Radiopharmaceutical Start
+the other eighty-nine check each preset's output, the reports where their
+trees are cleaned and the Secondary Capture images where Clean Pixel Data
+is selected. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
 and its other markers are checked. So is each Presentation State: CT Image
@@ -245,8 +261,13 @@ and defines Overlay Data in a user-optional module, whose group the Basic
 Profile removes, so these are planted in no file either. An Enhanced PET
 Image instance that conforms to the IOD is sequestered under ``basic`` and
 ``basic-clean-descriptors``, as is a Presentation State that does.
-Nor does CT Image define the Encapsulated PDF's document or Content Sequence,
-which are planted in no file either,
+Timezone Offset From UTC (0008,0201), which Table E.1-1 gives X, and which
+the Simplified Adult Echo SR IOD alone requires, is planted in no file
+either: :data:`TIMEZONE_REPORT_FILE` lacks it, as a Type 1 attribute, and is
+released where its tree is cleaned, while a conforming echo report is
+sequestered unless a Retain Longitudinal Temporal Information option keeps
+or modifies the offset. Nor does CT Image define the Encapsulated PDF's
+document or Content Sequence, which are planted in no file either,
 so that the Encapsulated PDF is released and its header's markers are
 checked; one that holds its document is sequestered under every preset.
 
@@ -278,8 +299,9 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other seventy-six files stay releasable, the
-reports where their trees are cleaned.
+CT slice remains sequestered; the other eighty-nine files stay releasable, the
+reports where their trees are cleaned and the Secondary Capture images under
+Clean Pixel Data, on a reviewer's verdict.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
 placement: its element path, VR, values, kind, the Table E.1-1 row it
@@ -326,6 +348,7 @@ from .dummy_values import (
     INSTITUTION_CODE_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    REFERENCED_STUDY_SEQUENCE,
     OPERATOR_IDENTIFICATION_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
     reviewed_within,
@@ -353,18 +376,23 @@ from .synthetic_content_trees import (
     CHEST_CAD_SR_STORAGE,
     COLON_CAD_SR_STORAGE,
     COMPREHENSIVE_3D_SR_STORAGE,
+    ACQUISITION_CONTEXT_SR_STORAGE,
     COMPREHENSIVE_SR_STORAGE,
     CT_RADIATION_DOSE_TEMPLATE,
     ENHANCED_SR_STORAGE,
     ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE,
     EXTENSIBLE_SR_STORAGE,
+    IMPLANTATION_PLAN_SR_STORAGE,
     KEY_OBJECT_SELECTION_DOCUMENT_STORAGE,
     MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
     MAMMOGRAPHY_CAD_SR_STORAGE,
     PATIENT_RADIATION_DOSE_SR_STORAGE,
+    PERFORMED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
+    PLANNED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
     PROCEDURE_LOG_STORAGE,
     RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
     ROOT_TEMPLATES,
+    SIMPLIFIED_ADULT_ECHO_SR_STORAGE,
     SPECTACLE_PRESCRIPTION_REPORT_STORAGE,
     WAVEFORM_ANNOTATION_SR_STORAGE,
     X_RAY_RADIATION_DOSE_SR_STORAGE,
@@ -384,6 +412,13 @@ from .synthetic_content_trees import (
     spectacle_prescription_tree,
     waveform_annotation_tree,
     x_ray_dose_tree,
+)
+from .synthetic_procedure_trees import (
+    acquisition_context_tree,
+    echo_tree,
+    implantation_plan_tree,
+    performed_administration_tree,
+    planned_administration_tree,
 )
 from .values import values_problem
 
@@ -420,6 +455,11 @@ DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION = "1.2.840.10008.5.1.4.1.1.1.1"
 DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.1.1.1"
 PARAMETRIC_MAP_STORAGE = "1.2.840.10008.5.1.4.1.1.30"
 REAL_WORLD_VALUE_MAPPING_STORAGE = "1.2.840.10008.5.1.4.1.1.67"
+SECONDARY_CAPTURE_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.7"
+MULTI_FRAME_SINGLE_BIT_SC_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.7.1"
+MULTI_FRAME_GRAYSCALE_BYTE_SC_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.7.2"
+MULTI_FRAME_GRAYSCALE_WORD_SC_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.7.3"
+MULTI_FRAME_TRUE_COLOR_SC_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.7.4"
 NM_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.20"
 ENCAPSULATED_PDF_STORAGE = "1.2.840.10008.5.1.4.1.1.104.1"
 ENHANCED_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.23"
@@ -462,6 +502,9 @@ ROBOTIC_ARM_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.15"
 RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.7"
 RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.10"
 RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.21"
+RT_PHYSICIAN_INTENT_STORAGE = "1.2.840.10008.5.1.4.1.1.481.10"
+RT_TREATMENT_PREPARATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.22"
+RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.25"
 RT_RADIATION_RECORD_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.16"
 RT_RADIATION_SALVAGE_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.17"
 TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.18"
@@ -517,9 +560,25 @@ TEMPLATE_REPORT_FILES = (
     "40-sr-macular-grid.dcm",
     "41-sr-waveform-annotation.dcm",
 )
-STRUCTURED_REPORT_FILES = tuple(
-    sorted(DOSE_REPORT_FILES + GENERAL_REPORT_FILES + TEMPLATE_REPORT_FILES)
+PROCEDURE_REPORT_FILES = (
+    "42-sr-implantation-plan.dcm",
+    "43-sr-echo.dcm",
+    "44-sr-imaging-agent-planned.dcm",
+    "45-sr-imaging-agent-performed.dcm",
+    "46-sr-acquisition-context.dcm",
 )
+STRUCTURED_REPORT_FILES = tuple(
+    sorted(
+        DOSE_REPORT_FILES
+        + GENERAL_REPORT_FILES
+        + TEMPLATE_REPORT_FILES
+        + PROCEDURE_REPORT_FILES
+    )
+)
+# The Simplified Adult Echo SR, whose IOD requires Timezone Offset From UTC
+# (0008,0201), which sequesters a conforming instance without a temporal
+# option (D-020); the file lacks it.
+TIMEZONE_REPORT_FILE = "43-sr-echo.dcm"
 # The Segmentations, of Segmentation Storage and Label Map Segmentation
 # Storage.
 SEGMENTATION_FILES = ("32-seg.dcm", "33-seg-label-map.dcm")
@@ -555,6 +614,15 @@ RADIOGRAPH_FILES = (
     COMPUTED_RADIOGRAPH_FILE,
     DIGITAL_X_RAY_FOR_PROCESSING_FILE,
     DIGITAL_X_RAY_FOR_PRESENTATION_FILE,
+)
+# An instance of each Secondary Capture IOD, which every policy without Clean
+# Pixel Data sequesters, numbered after the files that open pull requests add.
+SECONDARY_CAPTURE_FILES = (
+    "65-sc.dcm",
+    "66-sc-single-bit.dcm",
+    "67-sc-grayscale-byte.dcm",
+    "68-sc-grayscale-word.dcm",
+    "69-sc-true-color.dcm",
 )
 # The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
 # Plan's beam, numbered after the files that open pull requests add.
@@ -601,6 +669,12 @@ ROBOTIC_ARM_RADIATION_FILE = "74-robotic-arm-radiation.dcm"
 BEAMS_DELIVERY_INSTRUCTION_FILE = "75-rt-beams-delivery-instruction.dcm"
 BRACHY_DELIVERY_INSTRUCTION_FILE = "76-rt-brachy-delivery-instruction.dcm"
 RADIATION_SET_DELIVERY_INSTRUCTION_FILE = "77-rt-radiation-set-delivery-instruction.dcm"
+# The RT Physician Intent of the course, the RT Treatment Preparation that
+# carries it out, and the RT Patient Position Acquisition Instruction for
+# the preparation, numbered after the files that open pull requests add.
+PHYSICIAN_INTENT_FILE = "79-rt-physician-intent.dcm"
+TREATMENT_PREPARATION_FILE = "80-rt-treatment-preparation.dcm"
+POSITION_ACQUISITION_INSTRUCTION_FILE = "81-rt-position-acquisition-instruction.dcm"
 # The RT Radiation Record Set of the radiation records, a record of each
 # second-generation radiation IOD, and an RT Radiation Salvage Record,
 # numbered after the files that open pull requests add.
@@ -693,6 +767,20 @@ MACULAR_GRID_REPORT_SERIES = f"{LINKED_UID_ROOT}03700"
 MACULAR_GRID_REPORT = f"{LINKED_UID_ROOT}03701"
 WAVEFORM_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}03800"
 WAVEFORM_ANNOTATION = f"{LINKED_UID_ROOT}03801"
+IMPLANTATION_PLAN_SERIES = f"{LINKED_UID_ROOT}03900"
+IMPLANTATION_PLAN = f"{LINKED_UID_ROOT}03901"
+# The implant templates that the plan references, which belong to no
+# patient, study, or series, and which the collection does not hold.
+SELECTED_IMPLANT_TEMPLATE = f"{LINKED_UID_ROOT}03902"
+MANUFACTURER_IMPLANT_TEMPLATE = f"{LINKED_UID_ROOT}03903"
+ECHO_REPORT_SERIES = f"{LINKED_UID_ROOT}04000"
+ECHO_REPORT = f"{LINKED_UID_ROOT}04001"
+PLANNED_ADMINISTRATION_SERIES = f"{LINKED_UID_ROOT}04100"
+PLANNED_ADMINISTRATION = f"{LINKED_UID_ROOT}04101"
+PERFORMED_ADMINISTRATION_SERIES = f"{LINKED_UID_ROOT}04200"
+PERFORMED_ADMINISTRATION = f"{LINKED_UID_ROOT}04201"
+ACQUISITION_CONTEXT_SERIES = f"{LINKED_UID_ROOT}04300"
+ACQUISITION_CONTEXT = f"{LINKED_UID_ROOT}04301"
 ION_PLAN_SERIES = f"{LINKED_UID_ROOT}04400"
 ION_PLAN = f"{LINKED_UID_ROOT}04401"
 ION_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04500"
@@ -720,6 +808,16 @@ DIGITAL_X_RAY_SERIES = f"{LINKED_UID_ROOT}06000"
 DIGITAL_X_RAY_FOR_PROCESSING = f"{LINKED_UID_ROOT}06001"
 DIGITAL_X_RAY_FOR_PRESENTATION = f"{LINKED_UID_ROOT}06002"
 DIGITAL_X_RAY_FOR_PRESENTATION_SERIES = f"{LINKED_UID_ROOT}06003"
+SECONDARY_CAPTURE_SERIES = f"{LINKED_UID_ROOT}06100"
+SECONDARY_CAPTURE = f"{LINKED_UID_ROOT}06101"
+SINGLE_BIT_SC_SERIES = f"{LINKED_UID_ROOT}06200"
+SINGLE_BIT_SC = f"{LINKED_UID_ROOT}06201"
+GRAYSCALE_BYTE_SC_SERIES = f"{LINKED_UID_ROOT}06300"
+GRAYSCALE_BYTE_SC = f"{LINKED_UID_ROOT}06301"
+GRAYSCALE_WORD_SC_SERIES = f"{LINKED_UID_ROOT}06400"
+GRAYSCALE_WORD_SC = f"{LINKED_UID_ROOT}06401"
+TRUE_COLOR_SC_SERIES = f"{LINKED_UID_ROOT}06500"
+TRUE_COLOR_SC = f"{LINKED_UID_ROOT}06501"
 ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08500"
 ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}08501"
 ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08600"
@@ -752,6 +850,12 @@ BRACHY_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07200"
 BRACHY_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07201"
 RADIATION_SET_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07300"
 RADIATION_SET_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07301"
+PHYSICIAN_INTENT_SERIES = f"{LINKED_UID_ROOT}07500"
+PHYSICIAN_INTENT = f"{LINKED_UID_ROOT}07501"
+TREATMENT_PREPARATION_SERIES = f"{LINKED_UID_ROOT}07600"
+TREATMENT_PREPARATION = f"{LINKED_UID_ROOT}07601"
+POSITION_ACQUISITION_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07700"
+POSITION_ACQUISITION_INSTRUCTION = f"{LINKED_UID_ROOT}07701"
 RADIATION_RECORD_SET_SERIES = f"{LINKED_UID_ROOT}07400"
 RADIATION_RECORD_SET = f"{LINKED_UID_ROOT}07401"
 C_ARM_RADIATION_RECORD_SERIES = f"{LINKED_UID_ROOT}07800"
@@ -837,6 +941,7 @@ _REVIEWED_DUMMY_SEQUENCES = frozenset(
         OPERATOR_IDENTIFICATION_SEQUENCE,
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+        REFERENCED_STUDY_SEQUENCE,
         VERIFYING_OBSERVER_SEQUENCE,
     }
 )
@@ -927,6 +1032,11 @@ _SOP_CLASSES = types.MappingProxyType(
         SPECTACLE_PRESCRIPTION: SPECTACLE_PRESCRIPTION_REPORT_STORAGE,
         MACULAR_GRID_REPORT: MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
         WAVEFORM_ANNOTATION: WAVEFORM_ANNOTATION_SR_STORAGE,
+        IMPLANTATION_PLAN: IMPLANTATION_PLAN_SR_STORAGE,
+        ECHO_REPORT: SIMPLIFIED_ADULT_ECHO_SR_STORAGE,
+        PLANNED_ADMINISTRATION: PLANNED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
+        PERFORMED_ADMINISTRATION: PERFORMED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
+        ACQUISITION_CONTEXT: ACQUISITION_CONTEXT_SR_STORAGE,
         ION_PLAN: RT_ION_PLAN_STORAGE,
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
@@ -939,6 +1049,11 @@ _SOP_CLASSES = types.MappingProxyType(
         COMPUTED_RADIOGRAPH: COMPUTED_RADIOGRAPHY_IMAGE_STORAGE,
         DIGITAL_X_RAY_FOR_PROCESSING: DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PROCESSING,
         DIGITAL_X_RAY_FOR_PRESENTATION: DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+        SECONDARY_CAPTURE: SECONDARY_CAPTURE_IMAGE_STORAGE,
+        SINGLE_BIT_SC: MULTI_FRAME_SINGLE_BIT_SC_IMAGE_STORAGE,
+        GRAYSCALE_BYTE_SC: MULTI_FRAME_GRAYSCALE_BYTE_SC_IMAGE_STORAGE,
+        GRAYSCALE_WORD_SC: MULTI_FRAME_GRAYSCALE_WORD_SC_IMAGE_STORAGE,
+        TRUE_COLOR_SC: MULTI_FRAME_TRUE_COLOR_SC_IMAGE_STORAGE,
         ENHANCED_RT_IMAGE: ENHANCED_RT_IMAGE_STORAGE,
         ENHANCED_CONTINUOUS_RT_IMAGE: ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         GRAYSCALE_PRESENTATION_STATE: GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -964,6 +1079,11 @@ _SOP_CLASSES = types.MappingProxyType(
         ),
         RADIATION_SET_DELIVERY_INSTRUCTION: (
             RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE
+        ),
+        PHYSICIAN_INTENT: RT_PHYSICIAN_INTENT_STORAGE,
+        TREATMENT_PREPARATION: RT_TREATMENT_PREPARATION_STORAGE,
+        POSITION_ACQUISITION_INSTRUCTION: (
+            RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE
         ),
         RADIATION_RECORD_SET: RT_RADIATION_RECORD_SET_STORAGE,
         C_ARM_RADIATION_RECORD: C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
@@ -1329,6 +1449,21 @@ _IMAGES = types.MappingProxyType(
         LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE: _Image("PT", 2),
     }
 )
+# The Secondary Capture image of each SOP Class, by its Bits Allocated and
+# whether it is RGB, in the order of SECONDARY_CAPTURE_FILES; the
+# single-frame one has one frame, and the others two.
+_SECONDARY_CAPTURES = types.MappingProxyType(
+    {
+        SECONDARY_CAPTURE_IMAGE_STORAGE: (8, False),
+        MULTI_FRAME_SINGLE_BIT_SC_IMAGE_STORAGE: (1, False),
+        MULTI_FRAME_GRAYSCALE_BYTE_SC_IMAGE_STORAGE: (8, False),
+        MULTI_FRAME_GRAYSCALE_WORD_SC_IMAGE_STORAGE: (16, False),
+        MULTI_FRAME_TRUE_COLOR_SC_IMAGE_STORAGE: (8, True),
+    }
+)
+# The Manufacturer (0008,0070) of each Secondary Capture, which every
+# policy keeps.
+SECONDARY_CAPTURE_MANUFACTURER = "SYNTHETIC WORKSTATION"
 # The text of the Enhanced MR Color instance's ICC profile, which D cleans
 # away, so that the search for the markers' signatures finds it if kept.
 SOURCE_ICC_DESCRIPTION = f"{MARKER_PREFIX} SOURCE ICC PROFILE"
@@ -1712,6 +1847,50 @@ _SPECS = (
             ),
         )
     ),
+    # The planning, procedure, and acquisition context reports. The
+    # implantation plan and the imaging agent administrations, for a contrast
+    # CT, reference the first CT slice, and the echo and the preclinical
+    # acquisition context the MR Image, as the general reports do.
+    *(
+        _Spec(name, sop_class, instance, series, target)
+        for name, sop_class, instance, series, target in (
+            (
+                PROCEDURE_REPORT_FILES[0],
+                IMPLANTATION_PLAN_SR_STORAGE,
+                IMPLANTATION_PLAN,
+                IMPLANTATION_PLAN_SERIES,
+                CT_SLICES[0],
+            ),
+            (
+                PROCEDURE_REPORT_FILES[1],
+                SIMPLIFIED_ADULT_ECHO_SR_STORAGE,
+                ECHO_REPORT,
+                ECHO_REPORT_SERIES,
+                MR,
+            ),
+            (
+                PROCEDURE_REPORT_FILES[2],
+                PLANNED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
+                PLANNED_ADMINISTRATION,
+                PLANNED_ADMINISTRATION_SERIES,
+                CT_SLICES[0],
+            ),
+            (
+                PROCEDURE_REPORT_FILES[3],
+                PERFORMED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
+                PERFORMED_ADMINISTRATION,
+                PERFORMED_ADMINISTRATION_SERIES,
+                CT_SLICES[0],
+            ),
+            (
+                PROCEDURE_REPORT_FILES[4],
+                ACQUISITION_CONTEXT_SR_STORAGE,
+                ACQUISITION_CONTEXT,
+                ACQUISITION_CONTEXT_SERIES,
+                MR,
+            ),
+        )
+    ),
     # The RT Ion Plan references what the RT Plan does: the structure set,
     # the RT Dose, and the RT Plan, which it names as a related plan. The RT
     # Ion Beams Treatment Record references the RT Ion Plan, as the RT Beams
@@ -1875,6 +2054,31 @@ _SPECS = (
         DIGITAL_X_RAY_FOR_PRESENTATION_SERIES,
         DIGITAL_X_RAY_FOR_PROCESSING,
     ),
+    # An instance of each Secondary Capture IOD, each a capture of the
+    # planning system's screen showing the first CT slice, which its
+    # references name.
+    *(
+        _Spec(name, sop_class, instance, series, CT_SLICES[0])
+        for name, sop_class, instance, series in zip(
+            SECONDARY_CAPTURE_FILES,
+            _SECONDARY_CAPTURES,
+            (
+                SECONDARY_CAPTURE,
+                SINGLE_BIT_SC,
+                GRAYSCALE_BYTE_SC,
+                GRAYSCALE_WORD_SC,
+                TRUE_COLOR_SC,
+            ),
+            (
+                SECONDARY_CAPTURE_SERIES,
+                SINGLE_BIT_SC_SERIES,
+                GRAYSCALE_BYTE_SC_SERIES,
+                GRAYSCALE_WORD_SC_SERIES,
+                TRUE_COLOR_SC_SERIES,
+            ),
+            strict=True,
+        )
+    ),
     # The RT Segment Annotation annotates the BINARY Segmentation's segments.
     # The RT Radiation Set gathers the C-Arm Photon-Electron Radiation, which
     # its RT Radiation Sequence and Referenced RT Radiation Sequences name;
@@ -1979,6 +2183,36 @@ _SPECS = (
             (_REFERENCED_RT_RADIATION_RECORD_SEQUENCE, C_ARM_RADIATION_RECORD),
         ),
     ),
+    # The RT Physician Intent names the first CT slice, the image that its
+    # intent was drawn up from, and, in the Referenced Study Sequence of its
+    # input instances and planning inputs, the collection's study. The RT
+    # Treatment Preparation names the RT Physician Intent that it carries
+    # out, and the RT Plan in its Referenced RT Plan Sequence; the RT Patient
+    # Position Acquisition Instruction names the RT Treatment Preparation, and
+    # the collection's study in its position reference instances.
+    _Spec(
+        PHYSICIAN_INTENT_FILE,
+        RT_PHYSICIAN_INTENT_STORAGE,
+        PHYSICIAN_INTENT,
+        PHYSICIAN_INTENT_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        TREATMENT_PREPARATION_FILE,
+        RT_TREATMENT_PREPARATION_STORAGE,
+        TREATMENT_PREPARATION,
+        TREATMENT_PREPARATION_SERIES,
+        PHYSICIAN_INTENT,
+    ),
+    _Spec(
+        POSITION_ACQUISITION_INSTRUCTION_FILE,
+        RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE,
+        POSITION_ACQUISITION_INSTRUCTION,
+        POSITION_ACQUISITION_INSTRUCTION_SERIES,
+        TREATMENT_PREPARATION,
+    ),
+    # The radiation records, numbered after the RT Patient Position
+    # Acquisition Instruction.
     *(
         _Spec(
             name,
@@ -2088,7 +2322,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Seventy-nine files: three CT slices; the RT Structure Set, RT Plan, RT
+        Ninety-two files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -2102,20 +2336,27 @@ def build_corpus() -> SyntheticCorpus:
         Dose SR, of a CT scan; the Segmentation and label map Segmentation;
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
-        Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
-        Record and RT Treatment Summary Record; the Parametric Map and Real
-        World Value Mapping; the Nuclear Medicine Image; the Encapsulated PDF; the Surface Segmentation;
-        the Grayscale, Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
+        Grid Thickness and Volume Report, and Waveform Annotation SR; the
+        Implantation Plan SR Document, Simplified Adult Echo SR, Planned and
+        Performed Imaging Agent Administration SRs, and Acquisition Context SR;
+        the RT Ion Plan and RT Ion Beams Treatment Record; the RT Brachy
+        Treatment Record and RT Treatment Summary Record; the Parametric Map
+        and Real World Value Mapping; the Nuclear Medicine Image; the
+        Encapsulated PDF; the Surface Segmentation; the Grayscale, Color,
+        Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
         Softcopy Presentation States; the Computed Radiography image and the
-        Digital X-Ray images for processing and for presentation; the RT
+        Digital X-Ray images for processing and for presentation; the
+        Secondary Capture Image and the Multi-frame Single Bit, Grayscale
+        Byte, Grayscale Word, and True Color Secondary Capture Images; the RT
         Segment Annotation, RT Radiation Set, and C-Arm Photon-Electron,
         Tomotherapeutic, and Robotic-Arm Radiations; the RT Beams Delivery
         Instruction, RT Brachy Application Setup Delivery Instruction, and RT
-        Radiation Set Delivery Instruction; the RT Radiation Record Set, the
-        C-Arm Photon-Electron, Tomotherapeutic, and Robotic-Arm Radiation
-        Records, and the RT Radiation Salvage Record; the Grayscale Planar MPR
-        and Volume Rendering Volumetric Presentation States and the Advanced
+        Radiation Set Delivery Instruction; the RT Physician Intent, RT
+        Treatment Preparation, and RT Patient Position Acquisition
+        Instruction; the RT Radiation Record Set, the C-Arm
+        Photon-Electron, Tomotherapeutic, and Robotic-Arm Radiation Records,
+        and the RT Radiation Salvage Record; the Grayscale Planar MPR and
+        Volume Rendering Volumetric Presentation States and the Advanced
         Blending Presentation State; the Enhanced RT Image and Enhanced
         Continuous RT Image; and the Waveform and Waveform Acquisition
         Presentation States. Two builds give the same bytes and the same
@@ -2246,22 +2487,25 @@ def _marker(vr: str, number: int, latin_1: bool, own: int) -> object:
     text = f"{MARKER_PREFIX}-{number:05d}"
     if vr in _WORD_BYTES:
         return _padded(text, vr)
-    day = _marker_date(own)
-    # strftime does not pad a year before 1000 to four digits on every platform.
-    date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
-    seconds = own % _SECONDS_IN_A_DAY
-    time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
-    time += _TIME_SIGNATURE
+    # A date or a time is made only for its own VRs, whose limits keep ``own``
+    # in range; a marker of any other VR may be numbered past them.
+    if vr in ("DA", "DT"):
+        day = _marker_date(own)
+        # strftime does not pad a year before 1000 to four digits on every
+        # platform.
+        date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
+        return date + _NOON if vr == "DT" else date
+    if vr == "TM":
+        seconds = own % _SECONDS_IN_A_DAY
+        time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
+        return time + _TIME_SIGNATURE
     given = "MÄRKER" if latin_1 else "MARKER"
     formats: dict[str, object] = {
         "AE": text,
         "CS": f"{MARKER_PREFIX}_{number:05d}",
-        "DA": date,
         "DS": f"8{number:05d}.5",
-        "DT": date + _NOON,
         "IS": f"7{number:05d}",
         "PN": f"{MARKER_PREFIX}{number:05d}^{given}{number:05d}",
-        "TM": time,
         "UI": f"{MARKER_UID_ROOT}{number:05d}",
         "UR": f"https://synmk.invalid/{text}",
         "AT": 0x7FFF0000 + number,
@@ -2809,6 +3053,15 @@ class _Instance:
         ):
             # PS3.3 Sections A.64.4.1, A.79.4.1, and A.86.1.13.4.1.
             put((), "(0008,0060)", ["PLAN"])
+        elif self.spec.sop_class == RT_PHYSICIAN_INTENT_STORAGE:
+            # PS3.3 Section A.86.1.2.4.1.
+            put((), "(0008,0060)", ["RTINTENT"])
+        elif self.spec.sop_class in (
+            RT_TREATMENT_PREPARATION_STORAGE,
+            RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE,
+        ):
+            # PS3.3 Sections A.86.1.14.4.1 and A.86.1.17.4.1.
+            put((), "(0008,0060)", ["PLAN"])
         elif self.spec.sop_class == MR_SPECTROSCOPY_STORAGE:
             put((), "(0008,0060)", ["MR"])
             put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SPECTROSCOPY", "NONE"])
@@ -2847,6 +3100,8 @@ class _Instance:
             self._add_surface_segmentation()
         elif self.spec.sop_class in _RADIOGRAPHS:
             self._add_radiograph()
+        elif self.spec.sop_class in _SECONDARY_CAPTURES:
+            self._add_secondary_capture(*_SECONDARY_CAPTURES[self.spec.sop_class])
         elif self.spec.sop_class in PRESENTATION_STATE_STORAGE_CLASSES:
             put((), "(0008,0060)", ["PR"])
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
@@ -3151,18 +3406,20 @@ class _Instance:
         The content tree's identifying values, of its UIDREF, DATE, TIME,
         DATETIME, PNAME, and TEXT items, are markers, but the UIDs that name
         the collection's study, series, or Frame of Reference, such as the
-        study that an X-ray report's scope of accumulation names, which are
-        the collection's, and the fixed text of an algorithm's name or a
-        patient orientation, which is not recorded; each marker is recorded
-        with its item's concept name. A measurement report's volumetric
-        region is in the collection's Frame of Reference, an IMAGE item
-        references the instance that the report's header references, and
-        the report that a patient dose estimate used is the collection's CT
-        dose report, each recorded as linked. A report is VERIFIED, so its
+        study that an X-ray report's scope of accumulation names, which are the
+        collection's, and the fixed text of an algorithm's name or a patient
+        orientation, which is not recorded; each marker is recorded with its
+        item's concept name. A measurement report's volumetric region is in the
+        collection's Frame of Reference, an IMAGE item references the instance
+        that the report's header references, and the report that a patient dose
+        estimate used is the collection's CT dose report, each recorded as
+        linked, as a COMPOSITE item references an implant template or the plan
+        that a performed administration followed. A report is VERIFIED, so its
         Verifying Observer Sequence, whose markers are planted as any
         attribute's, is one that its IOD requires; a Key Object Selection
-        Document has no Verification Flag. A Procedure Log has the
-        Synchronization Module that its IOD requires.
+        Document has no Verification Flag. A Procedure Log and a Performed
+        Imaging Agent Administration SR have the Synchronization Module that
+        their IODs require.
         """
         put = self._set
         template = self.spec.template or ROOT_TEMPLATES[self.spec.sop_class]
@@ -3172,7 +3429,7 @@ class _Instance:
             put((), "(0008,0060)", ["SR"])
             put((), "(0040,A491)", ["COMPLETE"])  # Completion Flag
             put((), "(0040,A493)", ["VERIFIED"])  # Verification Flag
-        if template == "3001":
+        if template in ("3001", "11020"):
             put((), "(0018,106A)", ["NO TRIGGER"])  # Synchronization Trigger
             put((), "(0018,1800)", ["N"])  # Acquisition Time Synchronized
         content_template = _items(["(0040,A504)"])  # Content Template Sequence
@@ -3207,6 +3464,19 @@ class _Instance:
             "2020": spectacle_prescription_tree,
             "2100": lambda: macular_grid_tree(values),
             "3750": lambda: waveform_annotation_tree(values),
+            "7000": lambda: implantation_plan_tree(
+                values, SELECTED_IMPLANT_TEMPLATE, MANUFACTURER_IMPLANT_TEMPLATE
+            ),
+            "5300": lambda: echo_tree(values),
+            "11001": lambda: planned_administration_tree(values),
+            "11020": lambda: performed_administration_tree(
+                values,
+                (
+                    PLANNED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE,
+                    PLANNED_ADMINISTRATION,
+                ),
+            ),
+            "8101": lambda: acquisition_context_tree(values),
         }
         root = trees[template]()
         for element in root:
@@ -3299,6 +3569,55 @@ class _Instance:
                 int(image.modality == "CT"),
                 struct.pack(f"<{4 * frames}H", *samples),
             )
+
+    def _add_secondary_capture(self, bits: int, colour: bool) -> None:
+        """Add the attributes that make the instance a capture of a screen.
+
+        Each is a capture of a workstation's screen, whose Burned In
+        Annotation (0028,0301) is YES. A multi-frame one has two frames,
+        numbered by Page Number Vector (0018,2001), to which its Frame
+        Increment Pointer (0028,0009) points, and a grayscale one an
+        identity rescale and Presentation LUT Shape (2050,0020) (PS3.3
+        Section C.8.6.3).
+
+        It carries Manufacturer (0008,0070), Type 2 in the General
+        Equipment Module, which Table E.1-1 does not list. The module is
+        user-optional in these IODs, and the Basic Profile removes its
+        other attributes but Device UID (0018,1002) and Manufacturer's
+        Device Class UID (0018,100B), so without it a validator could not
+        tell that the module is there and would find those two outside the
+        IOD.
+        """
+        put = self._set
+        put((), "(0008,0070)", [SECONDARY_CAPTURE_MANUFACTURER])
+        put((), "(0008,0060)", ["OT"])
+        put((), "(0008,0008)", ["DERIVED", "SECONDARY"])
+        put((), "(0008,0064)", ["WSD"])  # Conversion Type: workstation
+        put((), "(0028,0301)", ["YES"])
+        if self.spec.sop_class == SECONDARY_CAPTURE_IMAGE_STORAGE:
+            self._add_pixels(bits, 0, bytes((0, 85, 170, 255)))
+            return
+        put((), "(0028,0008)", ["2"])
+        put((), "(0028,0009)", [0x00182001])
+        put((), "(0018,2001)", ["1", "2"])
+        if colour:
+            self._add_pixels(bits, 0, bytes(range(24)), colour=True)
+            return
+        put((), "(2050,0020)", ["IDENTITY"])
+        if bits > 1:
+            put((), "(0028,1052)", ["0"])
+            put((), "(0028,1053)", ["1"])
+            put((), "(0028,1054)", ["US"])
+        if bits == 1:
+            # Two frames of 4 by 4 bits, so that each fills two bytes.
+            self._add_pixels(bits, 0, bytes((0x5A, 0xA5, 0x0F, 0xF0)), size=4)
+            return
+        # Two frames of 2 by 2 samples, of a byte or a word.
+        data = {
+            8: bytes(range(0, 256, 32)),
+            16: struct.pack("<8H", *range(0, 8000, 1000)),
+        }[bits]
+        self._add_pixels(bits, 0, data)
 
     def _add_nm_image(self) -> None:
         """Add the attributes that make the instance a Nuclear Medicine image:

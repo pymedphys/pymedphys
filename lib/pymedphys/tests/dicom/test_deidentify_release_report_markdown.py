@@ -253,6 +253,7 @@ def test_the_sections_follow_the_documents_order():
         "## Instances held for review",
         "## ROI names",
         "## Descriptors",
+        "## Graphic annotations",
         "## ICC profiles",
         "## Reference findings",
         "## Pixel data risks",
@@ -350,7 +351,7 @@ def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 14
+    assert markdown.count("None.") == 16
     assert "Cleaned source profiles: `0`." in markdown
     run = markdown.split("## QC review", 1)[1].split("## Structural checks", 1)[0]
     assert "|" not in run

@@ -83,6 +83,7 @@ _METHOD = {
     "technique_vocabulary_digest": "Technique vocabulary digest",
     "text_finder_digest": "Text finder digest",
     "pixel_region_rules": "Pixel region rules digest",
+    "reviewed_annotations": "Reviewed annotations digest",
     "safe_private_list": "Safe private list",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
@@ -97,6 +98,7 @@ _OPTIONAL_METHOD = frozenset(
         "technique_vocabulary_digest",
         "text_finder_digest",
         "pixel_region_rules",
+        "reviewed_annotations",
         "safe_private_list",
     }
 )
@@ -128,6 +130,7 @@ _SECTIONS = (
     "held_for_review",
     "roi_names",
     "descriptors",
+    "annotations",
     "icc_profiles",
     "reference_findings",
     "pixel_risks",
@@ -201,6 +204,7 @@ def to_markdown(report: str) -> str:
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
         *_descriptors(document["descriptors"]),
+        *_annotations(document["annotations"]),
         *_icc_profiles(document["icc_profiles"]),
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
@@ -803,6 +807,25 @@ def _descriptors(section: object) -> list[Block]:
     ]
 
 
+def _annotations(section: object) -> list[Block]:
+    section = _fields("annotations", section, ("outcomes", "held"))
+    tables = _code_tables("annotations", section, "annotations")
+    return [
+        ["## Graphic annotations"],
+        [
+            "The outcome of each graphic annotation of the Presentation States "
+            "whose annotations the reviewed annotations list decided on under "
+            "Clean Graphics, every annotation counted, and how many distinct "
+            "annotations it held for review for each reason. Only the "
+            "confidential QC pack shows the annotations."
+        ],
+        ["### Outcome of each annotation"],
+        tables[0],
+        ["### Distinct annotations held for review"],
+        tables[1],
+    ]
+
+
 def _icc_profiles(section: object) -> list[Block]:
     section = _fields("icc_profiles", section, ("cleaned", "replaced"))
     rows = []
@@ -942,8 +965,10 @@ def _exempted(section: object) -> list[Block]:
             "or a standard code's meaning, or a UID that a selected option "
             "keeps, that only instances the run did not write held, a kept code "
             "meaning or technique descriptor made only of the reviewed technique "
-            "vocabulary, or a finding that a reviewer cleared in an earlier run's "
-            "QC pack. Each is "
+            "vocabulary, a removed requested procedure's code equal to the whole "
+            "value of the same attribute of a kept code, as where equipment "
+            "copied the request's code into the procedure's, or a finding that a "
+            "reviewer cleared in an earlier run's QC pack. Each is "
             "counted by why it was exempted, the attribute that "
             "held the source value, and the attribute it was found in, each "
             "instance once for each. The QC pack lists each finding by instance "

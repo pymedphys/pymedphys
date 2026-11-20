@@ -762,6 +762,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "C-Arm Photon-Electron Radiation Record",
         "Tomotherapeutic Radiation Record",
         "Robotic-Arm Radiation Record",
@@ -788,6 +791,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
@@ -808,7 +816,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Enhanced Continuous RT Image, RT Segment Annotation, RT Radiation Set, "
         "C-Arm Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application Setup "
-        "Delivery Instruction, RT Radiation Set Delivery Instruction, "
+        "Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
+        "Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, "
         "C-Arm Photon-Electron Radiation Record, "
         "Tomotherapeutic Radiation Record, "
         "Robotic-Arm Radiation Record, "
@@ -821,14 +831,16 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, "
         "Spectacle Prescription Report, Macular Grid Thickness and Volume Report, "
-        "Waveform Annotation SR, Real World Value Mapping, Grayscale Softcopy "
-        "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
-        "Softcopy Presentation State, Blending Softcopy Presentation State, "
-        "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
-        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
-        "State, Volume Rendering Volumetric Presentation State, Advanced "
-        "Blending Presentation State, Waveform Presentation State, and "
-        "Waveform Acquisition Presentation State."
+        "Waveform Annotation SR, Implantation Plan SR Document, Simplified Adult Echo "
+        "SR, Planned Imaging Agent Administration SR, Performed Imaging Agent "
+        "Administration SR, Acquisition Context SR, Real World Value Mapping, "
+        "Grayscale Softcopy Presentation State, Color Softcopy Presentation State, "
+        "Pseudo-Color Softcopy Presentation State, Blending Softcopy Presentation "
+        "State, XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, Advanced Blending Presentation "
+        "State, Waveform Presentation State, and Waveform Acquisition Presentation "
+        "State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -1089,6 +1101,9 @@ _FACELESS = (
     "76-rt-brachy-delivery-instruction.dcm",
     "77-rt-radiation-set-delivery-instruction.dcm",
     "78-rt-radiation-record-set.dcm",
+    "79-rt-physician-intent.dcm",
+    "80-rt-treatment-preparation.dcm",
+    "81-rt-position-acquisition-instruction.dcm",
     "82-c-arm-radiation-record.dcm",
     "83-tomotherapeutic-radiation-record.dcm",
     "84-robotic-arm-radiation-record.dcm",
@@ -1236,12 +1251,17 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
         and name != corpus_module.SEQUESTERED_FILE
         and name not in _FACELESS
         and name not in corpus_module.STRUCTURED_REPORT_FILES
+        and name not in corpus_module.SECONDARY_CAPTURE_FILES
     }
 
     assert can_show >= set(_DOSE)
     # The reports cannot show a face, and their Content Sequence sequesters
     # them, as it does without the option (D-021).
     for name in corpus_module.STRUCTURED_REPORT_FILES:
+        assert outcomes[name] == ("sequestered", None), name
+    # The Secondary Captures can, but without Clean Pixel Data their
+    # burned-in text sequesters them first.
+    for name in corpus_module.SECONDARY_CAPTURE_FILES:
         assert outcomes[name] == ("sequestered", None), name
     for name in can_show:
         assert outcomes[name] == ("held-for-review", None), name

@@ -64,6 +64,11 @@ from pymedphys._dicom.deidentify.uids import replacement_uid
 
 from . import _synthetic_references as synthetic
 from .corpus_runs.clean_pixel_data import RUN as CLEAN_PIXEL_DATA_RUN
+from .test_deidentify_midi_benchmark_graphics import (
+    add_curve,
+    add_graphic_annotation,
+    add_overlay,
+)
 from .test_deidentify_midi_benchmark import (
     _answer_key,
     _benchmark_key,
@@ -465,6 +470,65 @@ def test_without_clean_pixel_data_nothing_is_searched(sources):
     _, document = _run(sources, "basic")
 
     assert document["coverage"]["text_detection"] is None
+
+
+def _graphics_source(tmp_path):
+    """Write :func:`_source`'s instances, the CT slices with graphics: an
+    overlay with comments, a curve, and a Graphic Annotation Sequence."""
+    source = _source(tmp_path)
+    for position, add in enumerate(
+        (
+            lambda dataset: add_overlay(dataset, comments=True),
+            add_curve,
+            add_graphic_annotation,
+        )
+    ):
+        path = source / f"{position}.dcm"
+        dataset = pydicom.dcmread(path)
+        assert dataset.SOPClassUID == synthetic.CT_IMAGE_STORAGE
+        add(dataset)
+        path.write_bytes(synthetic.written(dataset))
+    return source
+
+
+def test_clean_graphics_counts_what_it_removes(sources):
+    work = sources / "option"
+    document = benchmark.run_benchmark(
+        _graphics_source(sources / "option-source"),
+        _benchmark_key(sources / "option-source"),
+        work,
+        options=["clean_graphics"],
+    ).document
+
+    counts = document["coverage"]["graphics"]
+    # The engine removes each graphic (D-041), so no written file holds one.
+    assert counts["CT Image Storage"] == {
+        "instances": 3,
+        "instances_with_graphics": 3,
+        "curve_data": 1,
+        "overlay_data": 1,
+        "overlay_comments": 1,
+        "graphic_annotation_sequence": 1,
+        "overlay_in_pixel_data": 0,
+        "written": 3,
+        "written_with_graphics_before": 3,
+        "written_with_graphics_after": 0,
+    }
+    assert all(
+        each["instances_with_graphics"] == each["written_with_graphics_after"] == 0
+        for name, each in counts.items()
+        if name != "CT Image Storage"
+    )
+    assert list(counts) == sorted(counts)
+    markdown = (work / "benchmark.md").read_text()
+    assert "| CT Image Storage | 3 | 3 | 1 | 1 | 1 | 1 | 0 | 3 | 3 | 0 |" in markdown
+    assert "| All | " in markdown
+
+
+def test_without_clean_graphics_nothing_is_counted(sources):
+    _, document = _run(sources, "basic")
+
+    assert document["coverage"]["graphics"] is None
 
 
 def test_an_unloadable_text_detector_is_refused(tmp_path, monkeypatch):

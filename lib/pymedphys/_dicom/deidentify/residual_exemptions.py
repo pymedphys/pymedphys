@@ -98,9 +98,32 @@ reason that such a finding is not a reason for review (D-032), or returns
   radiopharmaceutical, or an SR TEXT value, or a private data element that
   only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
-  The release gate tries it, and then the vocabulary descriptor, after
-  every other exemption listed here, for a text finding that none of them
-  explains.
+  The release gate tries it after every exemption listed here but
+  :attr:`Exemption.COPIED_REQUEST_CODE` and
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, for a text finding that none of
+  them explains.
+- :attr:`Exemption.METHOD_DIGEST`: a finding of any kind in De-identification
+  Method (0012,0063) of the top-level data set, every match of whose source
+  there lies wholly inside a value equal to the method digest that the run
+  writes (:func:`in_method_digest`). The digest is a SHA-256 of the policy
+  and the engine, never of a source value, so a value found in its digits
+  is there by chance.
+- :attr:`Exemption.COPIED_REQUEST_CODE`: the finding's source is the Code
+  Value, Coding Scheme Designator, or Code Meaning of a code item directly
+  in Requested Procedure Code Sequence (0032,1064), at any depth, every
+  value of which collected for the subject is one that the instance's output
+  does not hold, and it is found in the same attribute of a kept code item,
+  each of whose source values that the search could find there equals a
+  whole value of it
+  (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
+  Equipment copies the
+  request's code, which the Basic Profile removes with Request Attributes
+  Sequence (0040,0275), into Procedure Code Sequence (0008,1032), which it
+  keeps, so the removed copy reveals nothing the kept code does not, and
+  every other finding in the kept code is decided as before. The release
+  gate tries it after every exemption listed here but
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, for a text finding that none of
+  them explains.
 - :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
   descriptor, an attribute whose values the reviewed technique vocabulary's
   automatic tier may keep, such as Series Description (0008,103E), at the
@@ -110,12 +133,8 @@ reason that such a finding is not a reason for review (D-032), or returns
   contrast agent or radiopharmaceutical, or an SR TEXT value, or a private
   data element that only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
-- :attr:`Exemption.METHOD_DIGEST`: a finding of any kind in De-identification
-  Method (0012,0063) of the top-level data set, every match of whose source
-  there lies wholly inside a value equal to the method digest that the run
-  writes (:func:`in_method_digest`). The digest is a SHA-256 of the policy
-  and the engine, never of a source value, so a value found in its digits
-  is there by chance.
+  The release gate tries it after every other exemption listed here, for a
+  text finding that none of them explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -125,7 +144,8 @@ vendor's, a date only if each of them that could be in the element equals a
 whole kept value, a Code Meaning or a UID from unwritten instances only
 if no written instance collected any of them, and a removed private UID
 only if no written instance holds any of them replaced and each that could
-be in the element equals a whole kept value. A finding in an element that
+be in the element equals a whole kept value, and likewise a removed request
+code. A finding in an element that
 holds a byte outside ISO 646's printable characters, a finding of any other
 kind, and a finding outside the data set are never exempt. Kept values are read from the
 written file's bytes, as text in ISO 646, never decoded by pydicom, and none
@@ -201,6 +221,8 @@ class Exemption(enum.Enum):
     REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
     # in a Code Meaning made only of the reviewed technique vocabulary
     VOCABULARY_MEANING = "vocabulary-meaning"
+    # equal to the same attribute of a kept code, from a removed request code
+    COPIED_REQUEST_CODE = "copied-request-code"
     # in a technique descriptor made only of the reviewed technique vocabulary
     VOCABULARY_DESCRIPTOR = "vocabulary-descriptor"
     # a finding that would hold the file for review, which a reviewer cleared

@@ -58,6 +58,11 @@ STRUCTURED_REPORTS = (
     "Spectacle Prescription Report",
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
 )
 # The softcopy Presentation States, which reference the images they apply to
 # in the Presentation State Relationship Module or, for the Blending
@@ -431,6 +436,9 @@ OTHER_SEQUENCES = {
     "(3010,0009)",  # Equivalent Conceptual Volume Instance Reference Sequence
     "(3010,0044)",  # Instance-Level Referenced Performed Procedure Step Sequence
     "(3010,004A)",  # Referenced Direct Segment Instance Sequence
+    "(3010,0055)",  # RT Physician Intent Predecessor Sequence
+    "(3010,0062)",  # Prior Treatment Reference Sequence
+    "(3002,011E)",  # Referenced Baseline Parameters RT Radiation Instance Sequence
 }
 # Every other UI attribute that uid_roles.toml marks "instance" and that a
 # first release IOD defines inside a sequence, with why it is not followed.
@@ -468,6 +476,10 @@ NOT_FOLLOWED = {
     "(3010,0015)": "refers to a conceptual volume, not an instance",
     "(0040,A171)": "identifies an observation, not an instance",
     "(3010,0031)": "refers to a fiducial within an instance",
+    "(3010,003B)": "identifies a treatment phase, not an instance",
+    "(3010,006E)": "identifies a dosimetric objective, not an instance",
+    "(3010,006F)": "refers to a dosimetric objective, not an instance",
+    "(0072,007F)": "is the value that a parameter's constraint compares",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",
     "(0064,0003)": "refers to a frame of reference",
