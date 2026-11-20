@@ -1054,7 +1054,9 @@ def test_the_statement_gives_the_code_only_after_review():
         "Continuous RT Image, RT Segment Annotation, RT Radiation Set, C-Arm "
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
-        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, "
+        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
+        "Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, "
         "C-Arm Photon-Electron Radiation Record, "
         "Tomotherapeutic Radiation Record, "
         "Robotic-Arm Radiation Record, "
@@ -1067,14 +1069,16 @@ def test_the_statement_gives_the_code_only_after_review():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
         "Prescription Report, Macular Grid Thickness and Volume Report, Waveform "
-        "Annotation SR, Real World Value Mapping, Grayscale Softcopy "
-        "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
-        "Softcopy Presentation State, Blending Softcopy Presentation State, "
-        "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
-        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
-        "State, Volume Rendering Volumetric Presentation State, Advanced "
-        "Blending Presentation State, Waveform Presentation State, and "
-        "Waveform Acquisition Presentation State."
+        "Annotation SR, Implantation Plan SR Document, Simplified Adult Echo SR, "
+        "Planned Imaging Agent Administration SR, Performed Imaging Agent "
+        "Administration SR, Acquisition Context SR, Real World Value Mapping, "
+        "Grayscale Softcopy Presentation State, Color Softcopy Presentation State, "
+        "Pseudo-Color Softcopy Presentation State, Blending Softcopy Presentation "
+        "State, XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, Advanced Blending Presentation "
+        "State, Waveform Presentation State, and Waveform Acquisition Presentation "
+        "State."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -1112,6 +1116,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "C-Arm Photon-Electron Radiation Record",
         "Tomotherapeutic Radiation Record",
         "Robotic-Arm Radiation Record",
@@ -1138,6 +1145,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",

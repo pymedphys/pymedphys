@@ -131,6 +131,7 @@ from typing import TypeAlias
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .annotation_drawing import undrawn_objects
 from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
 from .clean_graphics import CLEAN_GRAPHICS, overlay_in_pixel_data
 from .content_items import content_item_actions, log_dummy_datetimes
@@ -144,6 +145,7 @@ from .descriptor_cleaning import (
     clean_descriptors,
     entity_descriptors,
     fallback_policy,
+    identifiers_of,
     kept_descriptors,
 )
 from .dummy_values import ICC_PROFILE
@@ -187,6 +189,13 @@ from .face_review import (
     registration_frames,
 )
 from .file_layout import ElementPath
+from .graphic_annotations import (
+    AnnotationMaterial,
+    AnnotationPlan,
+    annotation_plan,
+    kept_as_one,
+    with_annotations,
+)
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
@@ -206,6 +215,7 @@ from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import (
     DoseChoice,
+    HeldAnnotation,
     HeldDescriptor,
     HeldPixelData,
     HeldVisualFeatures,
@@ -229,6 +239,12 @@ from .residual_review import ResidualReview
 from .readiness import ReadinessReview
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
+from .reviewed_annotations import (
+    AnnotationReviewQueue,
+    ReviewedAnnotations,
+    review_annotation,
+)
+from .reviewed_annotations import Outcome as AnnotationOutcome
 from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
     Coverage,
@@ -312,7 +328,7 @@ from .run_qc import (
 )
 from .release_report import PUBLIC_RELEASE
 from .run_report import ReleaseReporter
-from .scope import Classification, classify
+from .scope import SECONDARY_CAPTURE_IODS, Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome, normalise_uid
 from .values import value_problem
@@ -511,7 +527,7 @@ class HeldEvidence:
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, or HeldVisualFeatures
+    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, HeldVisualFeatures, or HeldAnnotation
         Each ROI Name held, by path and reason, then each value of another
         option's attribute held, by element and reason, then why its visual
         features hold it, if they do, and why a pixel option holds it, if
@@ -523,7 +539,14 @@ class HeldEvidence:
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName | HeldDescriptor | HeldPixelData | HeldVisualFeatures, ...]
+    held: tuple[
+        HeldRoiName
+        | HeldDescriptor
+        | HeldPixelData
+        | HeldVisualFeatures
+        | HeldAnnotation,
+        ...,
+    ]
     reviewed: frozenset[ReviewedFinding] = frozenset()
 
 
@@ -947,6 +970,14 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.redaction_review.read_redaction_review`,
         which only a policy selecting Clean Pixel Data takes; without one,
         no instance with Pixel Data satisfies that option.
+    reviewed_annotations : ReviewedAnnotations, optional
+        The reviewed annotations list, whose decisions Clean Graphics
+        applies to the graphic annotations of softcopy Presentation States
+        (:mod:`~pymedphys._dicom.deidentify.graphic_annotations`, D-062),
+        which only a policy selecting Clean Graphics takes. The transform
+        applies the list as it stands when it is made. Without one, Graphic
+        Annotation Sequence takes its Basic Profile action, D, which
+        sequesters a Presentation State that holds it (D-041).
     residual_review : ResidualReview, optional
         The clearings of residual findings in an earlier run's attested QC
         pack, from
@@ -1023,6 +1054,9 @@ class InstanceTransform:
     review_queue : ReviewQueue
         The distinct ROI Names that the run's instances held for review,
         for the confidential QC material; empty without ``cleaning``.
+    annotation_queue : AnnotationReviewQueue
+        The graphic annotations of the run's instances, and the distinct
+        ones held for review; empty without ``reviewed_annotations``.
     reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
         The release report of a run with this transform, under its policy
         and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
@@ -1091,7 +1125,10 @@ class InstanceTransform:
     without top-level pixel data has nothing for the option to clean, so it
     satisfies it. Each instance that satisfies the option is marked with its
     code and Burned In Annotation (0028,0301) set to NO, which PS3.15 E.3.1
-    adds whether or not its IOD defines the attribute.
+    adds whether or not its IOD defines the attribute. Under a policy
+    without the option, an instance of a Secondary Capture IOD, whose pixel
+    data commonly carry text, is sequestered
+    (:attr:`~.reasons.TransformReason.SECONDARY_CAPTURE_NOT_CLEANED`).
 
     Under Clean Recognizable Visual Features, :meth:`prepare` finds the face
     block of each series of CT Image, Enhanced CT Image, and Legacy
@@ -1198,6 +1235,7 @@ class InstanceTransform:
         redaction_review: RedactionReview | None = None,
         residual_review: ResidualReview | None = None,
         pixel_region_rules: PixelRegionRules | None = None,
+        reviewed_annotations: ReviewedAnnotations | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         profiles: ProfileStore | None = None,
         readiness_review: ReadinessReview | None = None,
@@ -1246,6 +1284,19 @@ class InstanceTransform:
         region_rules = (
             None if self._region_rules is None else self._region_rules.keyed_digest(key)
         )
+        if reviewed_annotations is not None and CLEAN_GRAPHICS not in policy.options:
+            raise PolicyError(
+                "a reviewed annotations list is given only when the policy "
+                "selects Clean Graphics"
+            )
+        # One version of the list, for both its decisions and its digest.
+        self._annotations = (
+            None if reviewed_annotations is None else reviewed_annotations.snapshot()
+        )
+        annotations_digest = (
+            None if self._annotations is None else self._annotations.keyed_digest(key)
+        )
+        self.annotation_queue = AnnotationReviewQueue()
         if readiness_review is not None and policy.preset != PUBLIC_RELEASE:
             raise PolicyError(
                 "a readiness review is given only under the public-release preset"
@@ -1317,6 +1368,7 @@ class InstanceTransform:
             technique_vocabulary=technique,
             text_finder=finder_method,
             pixel_region_rules=region_rules,
+            reviewed_annotations=annotations_digest,
             safe_private_list=safe_private_list,
         )
         self.method_digest = digest
@@ -1346,6 +1398,7 @@ class InstanceTransform:
             technique_vocabulary=technique,
             text_finder=finder_method,
             pixel_region_rules=region_rules,
+            reviewed_annotations=annotations_digest,
             face_review=None if face_review is None else face_review.reference,
             redaction_review=(
                 None if redaction_review is None else redaction_review.reference
@@ -1373,6 +1426,7 @@ class InstanceTransform:
                 None if cleaning is None else cleaning.reviewed,
                 None if cleaning is None else cleaning.reviewed_descriptors,
                 self._region_rules,
+                self._annotations,
             ),
         )
 
@@ -1475,7 +1529,12 @@ class InstanceTransform:
                 source,
                 self._rules,
                 iod,
-                content_item_actions(source, self._policy, iod),
+                with_annotations(
+                    content_item_actions(source, self._policy, iod),
+                    annotation_plan(
+                        source, dataset, self._policy, iod, self._annotations
+                    ),
+                ),
             )
             edits = edit_instance(
                 source,
@@ -2016,6 +2075,47 @@ class InstanceTransform:
             return None
         return redaction
 
+    def _reviewed_annotations(
+        self, plan: AnnotationPlan, edits: InstanceEdits
+    ) -> tuple[AnnotationMaterial, ...]:
+        """Return each annotation's material, once checked for echoes.
+
+        The plan kept each annotation that the list keeps, alone and with
+        the others; one whose text echoes one of the identifiers that the
+        edits collected is held, so that its instance is not released, and
+        the annotations are decided on together again (D-062). The material
+        of each set of annotations shown together, if any, is last.
+        """
+        assert self._annotations is not None
+        identifiers = identifiers_of(edits)
+        each = [material for material in plan.material if not material.together]
+        results = [
+            review_annotation(
+                material.digest,
+                material.texts,
+                self._annotations,
+                identifiers,
+                drawn=undrawn_objects(material.item) == 0,
+            )
+            if material.result.outcome is AnnotationOutcome.KEPT
+            else material.result
+            for material in each
+        ]
+        results, as_one = kept_as_one(
+            [material.item for material in each],
+            [material.digest for material in each],
+            [material.texts for material in each],
+            results,
+            self._annotations,
+            plan.layers,
+            plan.images,
+        )
+        found = tuple(
+            dataclasses.replace(material, result=result)
+            for material, result in zip(each, results)
+        )
+        return (*found, *as_one)
+
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
     ) -> frozenset[ElementPath]:
@@ -2069,14 +2169,22 @@ class InstanceTransform:
             else 0
         )
         content_items = content_item_actions(source, self._policy, iod)
-        plan = plan_instance(source, self._rules, iod, content_items)
+        annotations = annotation_plan(
+            source, dataset, self._policy, iod, self._annotations
+        )
+        plan = plan_instance(
+            source, self._rules, iod, with_annotations(content_items, annotations)
+        )
         edits = edit_instance(
             source,
             plan,
             self._key,
             record.patient,
             record.series_numberings,
-            log_dummy_datetimes(source, self._policy, iod, content_items),
+            {
+                **log_dummy_datetimes(source, self._policy, iod, content_items),
+                **content_items.dummy_texts,
+            },
             colour_space_required=iod.name in COLOUR_SPACE_IODS,
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
@@ -2096,6 +2204,7 @@ class InstanceTransform:
                 edits.sequestrations
                 or (() if undecoded is None else (undecoded,))
                 or overlay_in_pixel_data(self._rules.policy, overlays)
+                or _uncleaned_secondary_capture(iod.name, self._policy)
                 or self._birth_date_conflict(record)
             )
         if reasons:
@@ -2142,11 +2251,16 @@ class InstanceTransform:
                 actions = content_item_actions(source, fallback.policy, iod)
                 return edit_instance(
                     source,
-                    plan_instance(source, fallback, iod, actions),
+                    plan_instance(
+                        source, fallback, iod, with_annotations(actions, annotations)
+                    ),
                     self._key,
                     record.patient,
                     record.series_numberings,
-                    log_dummy_datetimes(source, fallback.policy, iod, actions),
+                    {
+                        **log_dummy_datetimes(source, fallback.policy, iod, actions),
+                        **actions.dummy_texts,
+                    },
                     colour_space_required=iod.name in COLOUR_SPACE_IODS,
                 )
 
@@ -2192,6 +2306,22 @@ class InstanceTransform:
             )
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
+        if annotations.material:
+            reviewed = self._reviewed_annotations(annotations, edits)
+            each = [material for material in reviewed if not material.together]
+            held = tuple(
+                HeldAnnotation(material.path, material.result.held_because)
+                for material in each
+                if material.result.held_because is not None
+            )
+            if held:
+                evidence = _held_all(evidence, held)
+            self.annotation_queue.add(
+                [material.digest for material in each],
+                [material.texts for material in each],
+                [material.result for material in each],
+            )
+            names = (*names, *reviewed)
         if self._birth_dates is not None:
             edits = with_birth_date(edits, self._birth_dates.value(record.patient))
         defacing = self._defacing(iod, record)
@@ -2385,6 +2515,35 @@ def _pixel_risk(
         *((PixelRiskMaterial(assessment),) if assessment.findings else ()),
         SeriesEvidence(record.series, series_evidence(dataset)),
     )
+
+
+def _uncleaned_secondary_capture(
+    iod: str, policy: Policy
+) -> tuple[TransformReason, ...]:
+    """Why a Secondary Capture instance is sequestered under ``policy``, if it is.
+
+    A Secondary Capture image is captured from a screen, a video signal, or
+    a scanned document or film, such as a planning system's dose screen or a
+    scanned request form, so its pixel data commonly carry burned-in text,
+    such as the patient's name, which the Basic Profile and every option but
+    Clean Pixel Data leave in place. Under a policy that does not select
+    Clean Pixel Data, each instance of a Secondary Capture IOD is
+    sequestered, whatever its Burned In Annotation (0028,0301) says, since a
+    received NO is not evidence of safety (D-015). Under Clean Pixel Data it
+    is cleaned and held for review as any other image is, and released only
+    on a reviewer's verdict (D-037, D-048).
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify.policy import compose_policy
+    >>> _uncleaned_secondary_capture("Secondary Capture Image", compose_policy("basic"))
+    (<TransformReason.SECONDARY_CAPTURE_NOT_CLEANED: 'secondary-capture-not-cleaned'>,)
+    >>> _uncleaned_secondary_capture("CT Image", compose_policy("basic"))
+    ()
+    """
+    if iod in SECONDARY_CAPTURE_IODS and CLEAN_PIXEL_DATA not in policy.options:
+        return (TransformReason.SECONDARY_CAPTURE_NOT_CLEANED,)
+    return ()
 
 
 def transform_for(
@@ -2966,6 +3125,15 @@ def _redaction_material(
         redaction.rule_boxes,
         sop_class,
     )
+
+
+def _held_all(
+    evidence: Coverage | HeldEvidence, held: tuple[HeldAnnotation, ...]
+) -> HeldEvidence:
+    """Return the evidence of an instance that review holds, with each of ``held``."""
+    if isinstance(evidence, HeldEvidence):
+        return dataclasses.replace(evidence, held=(*evidence.held, *held))
+    return HeldEvidence(evidence, held)
 
 
 def _with_document(edits: InstanceEdits, document: DocumentRedaction) -> InstanceEdits:

@@ -28,8 +28,11 @@ to which the policy gives C that action
 Overlay Data removes every attribute of its overlay group where the IOD's
 Overlay Plane Module is user-optional, as under the Basic Profile (D-020),
 and a plain D on Graphic Annotation Sequence removes it from every supported
-IOD, since only the Presentation State IODs define it, and they are out of
-scope (Note 13 after Table E.1-1a; D-010). The
+IOD but the Presentation States, the only IODs that define it (Note 13
+after Table E.1-1a), which make it Type 1, so one that holds it is
+sequestered (D-010, D-021), unless the run is given a reviewed annotations
+list, with which each annotation is kept, removed, or held as a reviewer
+decides (:mod:`~pymedphys._dicom.deidentify.graphic_annotations`, D-062). The
 instance still meets the option, since E.3.3 specifies what the option
 removes, and Table E.1-1 gives the minimum actions, as for Clean Descriptors
 (D-009).

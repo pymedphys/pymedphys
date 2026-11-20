@@ -91,8 +91,12 @@ every reason is known.
 
 A plain X removes its attribute (D-020), but for Requested Procedure ID
 (0040,1001) in a Structured Report's Referenced Request Sequence (0040,A370),
-and Source Manufacturer (300A,0216) in an RT Brachy Treatment Record's
-Recorded Source Sequence (3008,0100), which it empties
+Source Manufacturer (300A,0216) in an RT Brachy Treatment Record's
+Recorded Source Sequence (3008,0100), Patient Treatment Preparation Procedure
+Parameter Description (300A,078E) in an RT Treatment Preparation's Patient
+Treatment Preparation Procedure Sequence (300A,0790), and Prior Treatment Dose
+Description (3010,0061) in an RT Physician Intent's RT Prescription Sequence
+(3010,006B), which it empties
 (:data:`~pymedphys._dicom.deidentify.compound_actions.EMPTIED_PLAIN_X`).
 Where the IOD requires the attribute at its place,
 :func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
@@ -280,6 +284,10 @@ class SequesterReason(enum.Enum):
     # a plain X on an attribute that the IOD requires there, with no enclosing
     # sequence that is Type 3 at its own place to remove with it (D-020)
     REQUIRED_BY_IOD = "required-by-iod"
+    # a dummy value with fewer values than its source, on an attribute that
+    # Frame Increment Pointer (0028,0009) indexes the frames by, so that it
+    # would no longer give a value for each frame (PS3.3 Section C.7.6.6.1.1)
+    FRAME_INDEX = "frame-index"
 
 
 _EXPLANATIONS = {
@@ -300,6 +308,10 @@ _EXPLANATIONS = {
         "{action} on {path} removes an attribute that the IOD requires there, "
         "and no enclosing sequence that the IOD makes Type 3 can be removed "
         "with it"
+    ),
+    SequesterReason.FRAME_INDEX: (
+        "{action} on {path} writes fewer values than its source holds, and "
+        "Frame Increment Pointer indexes the frames by it"
     ),
 }
 
@@ -629,7 +641,12 @@ def _plan(
         rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
         if path in content_items:
             rule = ElementRule(
-                path.tag, RuleSource.CONTENT_ITEM, content_items[path], path.tag
+                path.tag,
+                RuleSource.ANNOTATION
+                if path in content_items.annotations
+                else RuleSource.CONTENT_ITEM,
+                content_items[path],
+                path.tag,
             )
         elif path in content_items.emptied:
             rule = ElementRule(path.tag, RuleSource.CONTENT_ITEM, _REMOVED, path.tag)

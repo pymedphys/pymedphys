@@ -75,6 +75,8 @@ REVIEWED_DUMMY_ATTRIBUTES = {
     "(0008,1111)",
     "(0028,2000)",
     "(0040,A073)",
+    # Referenced Study Sequence, which keeps its items (D-021).
+    "(0008,1110)",
 }
 # Institution Code Sequence has a reviewed rule only directly in an item of
 # Interlock Resolution User Sequence (D-021).
@@ -278,6 +280,9 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
     ):
         assert found[(name, AUTHOR_IDENTIFICATION)] == "Z", name
     assert (
@@ -301,9 +306,11 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     assert row.endswith(
         "| Z within Author Identification Sequence (3010,0019) in C-Arm "
         "Photon-Electron Radiation, C-Arm Photon-Electron Radiation Record, "
-        "Enhanced Continuous RT Image, Enhanced RT Image, RT Radiation Record "
+        "Enhanced Continuous RT Image, Enhanced RT Image, RT Patient Position "
+        "Acquisition Instruction, RT Physician Intent, RT Radiation Record "
         "Set, RT Radiation Salvage Record, RT Radiation Set, RT Radiation Set "
-        "Delivery Instruction, RT Segment Annotation, Robotic-Arm Radiation, "
+        "Delivery Instruction, RT Segment Annotation, RT Treatment "
+        "Preparation, Robotic-Arm Radiation, "
         "Robotic-Arm Radiation Record, Tomotherapeutic Radiation, and "
         "Tomotherapeutic Radiation Record; within Treatment Tolerance "
         "Violation Sequence (300A,0731) > Override Sequence (3008,0060) > "

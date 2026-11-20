@@ -257,20 +257,26 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-Every cell of the unit-test matrix runs in seven parts on seven runners, since
+Every cell of the unit-test matrix runs in eight parts on eight runners, since
 a slow runner could take the 30-minute limit (60 minutes on Windows and for
 `corpus-runs`) to run the
 whole suite at once, the corpus modules together, or the rest of the suite. The workflow's
 `CORPUS_RUN_TESTS` lists the modules that run the synthetic collection through
 the engine, which take about half the suite's time, and `CT_DEFACING_RUN_TEST`,
-`CT_DEFACING_VARIANT_TEST`, `CT_DEFACING_REVIEW_TEST`, and
-`CORPUS_END_TO_END_P_Z_TEST` name the four of them that each run alone. The
-first three share the CT defacing runs, and their helpers in
+`CT_DEFACING_VARIANT_TEST`, `CT_DEFACING_REVIEW_TEST`, `CT_DEFACING_DOSE_TEST`, and
+`CORPUS_END_TO_END_P_Z_TEST` name the five of them that each run alone. The
+first four share the CT defacing runs, and their helpers in
 `tests/dicom/_ct_defacing_runs.py`: the variants module runs the head CT's
 variants (two defaced series in one Frame of Reference, two time points, a
 multi-frame series, and eyes drawn away from the globes), and compares each
 with the defaced run that the first module also reviews, so both make that
-run. The fourth is the second half of the policies' end-to-end runs:
+run; the review module runs a target in the face block, Clean Pixel Data
+reviewed with the option, and an RT Dose that a block whose eyes disagree with
+the ROIs drawn cleaned; and the dose
+module runs an RT Dose with too much dose in the face block to set to zero,
+the reviewer's choice for it, and the RT Doses that cannot be placed or hold
+no grid. Each CT defacing run writes the whole synthetic collection beside the
+head, so each corpus file that is added lengthens all four parts. The fifth is the second half of the policies' end-to-end runs:
 `test_deidentify_corpus_end_to_end.py` runs each policy in
 `tests/dicom/corpus_runs` whose name begins with a letter from `a` to `o`
 through every check of a policy's run, and
@@ -281,7 +287,8 @@ both, and a test there fails when a check of the first module has no
 counterpart in the second. The `ct-defacing` part runs
 `test_deidentify_ct_defacing_run.py`, the `ct-defacing-variants` part runs
 `test_deidentify_ct_defacing_variant_runs.py`, the `ct-defacing-reviews` part runs
-`test_deidentify_ct_defacing_review_runs.py`, the `corpus-end-to-end-p-z` part
+`test_deidentify_ct_defacing_review_runs.py`, the `ct-defacing-doses` part runs
+`test_deidentify_ct_defacing_dose_runs.py`, the `corpus-end-to-end-p-z` part
 runs `test_deidentify_corpus_end_to_end_p_z.py`, the `corpus-runs` part runs the
 other listed modules, with the first half of the policies' runs, the `deidentify-a-o` part runs every other
 `tests/dicom/test_deidentify_*.py` module whose name goes on with a letter from
@@ -290,7 +297,7 @@ of the other parts to `--ignore`. One glob, `test_deidentify_[abcdefghijklmno]*.
 gives `deidentify-a-o` its modules and `others` its ignores, so a new
 de-identification module runs in the part its name gives it, any other new
 module runs in `others` until it is listed, and every test runs in exactly one
-of the seven parts. The letters are listed rather than written as a range, which
+of the eight parts. The letters are listed rather than written as a range, which
 can match capitals under some locales. The cut at `p` halved the remaining
 time: on 7 November 2026, locally, the remaining modules' summed test time was
 1,133 seconds in `deidentify-a-o` and 1,167 seconds in `others`. A listed
@@ -323,11 +330,11 @@ the `--durations` reports show `corpus-runs` and `corpus-end-to-end-p-z`
 drifting apart. The same cut halves the policies' runs in the `DICOM
 validation of de-identified output` job.
 
-The run at the dependency floors runs in the same seven parts. Each part
+The run at the dependency floors runs in the same eight parts. Each part
 retains its job limit (60 minutes for `corpus-runs`, 30 for the others), two
 pytest workers and the 900-second
-per-test limit. Only `others` uses the data cache. All seven JUnit reports must
-arrive and all seven parts must pass; the required summary continues to depend
+per-test limit. Only `others` uses the data cache. All eight JUnit reports must
+arrive and all eight parts must pass; the required summary continues to depend
 on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
@@ -338,7 +345,7 @@ job combines each cell's parts into `junit-<os>-<python>`, such as
 `junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
 reads for that environment. It writes no report for a cell if one of its
 parts' reports is missing or a test case ran in two parts. Since every cell
-runs seven jobs, a full-matrix run starts twenty-one macOS unit-test jobs, and GitHub
+runs eight jobs, a full-matrix run starts twenty-four macOS unit-test jobs, and GitHub
 runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
 parts may queue for a runner; the queue does not count towards a job's time
 limit.
@@ -362,9 +369,9 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision: each of its seven parts records the pydicom and
+versions and checkout revision: each of its eight parts records the pydicom and
 Python versions it imported, and the `combined-report` job records the
-combined evidence only when all seven parts passed on the checked-out commit and
+combined evidence only when all eight parts passed on the checked-out commit and
 imported the same pydicom, which must match the lock, under Python 3.14. The
 parts may run different 3.14 patch releases, since each runner image carries
 its own while GitHub rolls out a new one, and the evidence records each part's.
@@ -386,7 +393,7 @@ For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
 another feature skip themselves when its packages are missing. The `dicom`
-extra's tests run in the same seven parts as the unit-test matrix, on seven
+extra's tests run in the same eight parts as the unit-test matrix, on eight
 runners, since together they can reach the time limit on a slow runner;
 `corpus-runs` has 60 minutes and the other parts 30. Its `others` part holds
 only `tests/dicom`, but the de-identification modules alone bring it near the
@@ -500,7 +507,7 @@ Publishes to PyPI behind quality gates.
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
   environment in the unit-test matrix; each environment reports through its
-  seven parts' combined report. It fails when a traced test failed, was
+  eight parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to

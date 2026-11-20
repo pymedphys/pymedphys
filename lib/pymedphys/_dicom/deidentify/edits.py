@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module gives every planned element its edit, so it is long.
+
 """Work out what each planned element of a data set becomes.
 
 The walker's second step takes an instance's plan
@@ -55,7 +58,11 @@ emptied under Z and given D's dummy value under D, and without any
 numberings its edit is pending. The Observation DateTime (0040,A032) of a
 Procedure Log's entries takes, under D, the dummy datetime of its rank, which
 the run gives
-(:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`). C
+(:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`), and
+the Text Value (0040,A160) of an Imaging Agent Identifier or an implant
+Component ID, or of a reference to one, the dummy value of its agent's or
+component's rank
+(:attr:`~pymedphys._dicom.deidentify.content_items.ContentItemPlan.dummy_texts`). C
 cleans the value (D-009), so its edit is pending, for a later step to give.
 
 It also collects, for the residual search
@@ -130,6 +137,7 @@ from .walker import (
 # The attributes that take the subject's pseudonyms under Z and D (D-005).
 PSEUDONYM_TAGS = frozenset({"(0010,0010)", "(0010,0020)"})
 _CHARACTER_SET = "(0008,0005)"
+_FRAME_INCREMENT_POINTER = ElementPath((), "(0028,0009)")
 # The consumers that need the value itself, rather than only collecting it.
 _NEEDS_VALUE = frozenset(
     {Consumer.UID_REPLACEMENT, Consumer.DUMMY_COMPARISON, Consumer.CLEANING}
@@ -520,7 +528,7 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
 def _dummy(
     path: ElementPath, value: ElementValue, key: DeidKey, given: str | None = None
 ) -> Edit:
-    """Return D's edit, which writes ``given``, the run's ranked datetime, if any."""
+    """Return D's edit, which writes ``given``, the run's ranked value, if any."""
     if given is not None:
         return Edit(path, "D", EditKind.REPLACE, (given,))
     attribute = dictionary_attribute(path.tag)
@@ -584,7 +592,7 @@ def _edit(
     key: DeidKey,
     identity: SubjectIdentity | None,
     numberings: SeriesNumberings | None,
-    dummy_datetimes: Mapping[ElementPath, str],
+    ranked_values: Mapping[ElementPath, str],
 ) -> Edit:
     """Return the edit of an element whose needed value, if any, is read."""
     kind = _kind(element, container)
@@ -611,9 +619,58 @@ def _edit(
         return (
             Edit(element.path, element.action, EditKind.PENDING)
             if element.path == ENCAPSULATED_DOCUMENT
-            else _dummy(element.path, value, key, dummy_datetimes.get(path))
+            else _dummy(element.path, value, key, ranked_values.get(path))
         )
     return _uids(element.path, value, key)
+
+
+def _frame_pointers(reader: _Reader, source: SourceEvidence) -> frozenset[str]:
+    """Return the tags that Frame Increment Pointer (0028,0009) points to.
+
+    Where it cannot be read, every tag is taken as pointed to, by a set
+    holding the empty string, which :func:`_check_frame_index` reads so.
+    """
+    if _FRAME_INCREMENT_POINTER not in source:
+        return frozenset()
+    try:
+        value = reader.read(_FRAME_INCREMENT_POINTER)
+    except (UndecodableElement, _Sequester):
+        return frozenset({""})
+    if not all(isinstance(each, int) for each in value.values):
+        return frozenset({""})
+    return frozenset(f"({each >> 16:04X},{each & 0xFFFF:04X})" for each in value.values)
+
+
+def _check_frame_index(
+    edit: Edit, value: ElementValue | None, pointers: frozenset[str]
+) -> None:
+    """Sequester the instance where D's dummy value would no longer index
+    the frames.
+
+    An attribute that Frame Increment Pointer points to gives a value for
+    each frame (PS3.3 Section C.7.6.6.1.1), as Frame Label Vector
+    (0018,2002) does in a multi-frame Secondary Capture (Section C.8.6.4).
+    D writes the fewest values the VM allows (D-021), which there would be
+    fewer than the frames, so the instance is sequestered instead.
+
+    >>> path = ElementPath((), "(0018,2002)")
+    >>> source = ElementValue(path, "SH", ("FIRST", "SECOND"))
+    >>> edit = Edit(path, "D", EditKind.REPLACE, ("DEIDENTIFIED",))
+    >>> _check_frame_index(edit, source, frozenset({"(0018,2001)"}))
+    >>> try:
+    ...     _check_frame_index(edit, source, frozenset({"(0018,2002)"}))
+    ... except _Sequester as raised:
+    ...     print(raised.sequestration.reason.value)
+    frame-index
+    """
+    if edit.action != "D" or edit.kind is not EditKind.REPLACE or edit.path.items:
+        return
+    if value is None or len(edit.values) >= len(value.values):
+        return
+    if edit.path.tag in pointers or "" in pointers:
+        raise _Sequester(
+            Sequestration(edit.path, "D", value.vr, SequesterReason.FRAME_INDEX)
+        )
 
 
 def _compared_text(element: ElementPlan, value: ElementValue) -> str:
@@ -809,7 +866,7 @@ def edit_instance(
     key: DeidKey,
     identity: SubjectIdentity | None = None,
     series_numberings: SeriesNumberings | None = None,
-    dummy_datetimes: Mapping[ElementPath, str] | None = None,
+    ranked_values: Mapping[ElementPath, str] | None = None,
     colour_space_required: bool = False,
 ) -> InstanceEdits:
     """Return what each element of a planned data set becomes.
@@ -830,11 +887,13 @@ def edit_instance(
         The numbering of each of the instance's Series Numbers, as the run
         gives it, for the ranks that replace them. Without them, the edits
         of the Series Numbers that Z or D applies to are pending.
-    dummy_datetimes : Mapping of ElementPath to str, optional
-        The value that D writes, in place of its dummy value, at each path,
-        which is the Observation DateTime (0040,A032) of a Procedure Log's
-        entry
-        (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`).
+    ranked_values : Mapping of ElementPath to str, optional
+        The value that D writes, in place of its dummy value, at each path:
+        the Observation DateTime (0040,A032) of a Procedure Log's entry
+        (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`),
+        and the Text Value (0040,A160) of an Imaging Agent Identifier,
+        Referenced Imaging Agent Identifier, or implant Component ID
+        (:attr:`~pymedphys._dicom.deidentify.content_items.ContentItemPlan.dummy_texts`).
         Defaults to none.
     colour_space_required : bool, optional
         Whether the instance's IOD requires Color Space (0028,2002) beside
@@ -856,6 +915,9 @@ def edit_instance(
     # its number of source items.
     reviewed: dict[ElementPath, tuple[int, int]] = {}
     reader = _Reader(source, plan)
+    # The tags that Frame Increment Pointer points to, read where first
+    # needed.
+    pointers: frozenset[str] | None = None
     try:
         reader.check_character_set()
     except _Sequester as raised:
@@ -880,7 +942,7 @@ def edit_instance(
                 key,
                 identity,
                 series_numberings,
-                dummy_datetimes or {},
+                ranked_values or {},
             )
             _check_colour_space(edit, colour_space_required)
             if edit.kind is EditKind.KEEP and element.path in plan.renumbered:
@@ -892,6 +954,10 @@ def edit_instance(
                     EditKind.REPLACE,
                     plan.renumbered[element.path],
                 )
+            if not container and edit.kind is EditKind.REPLACE:
+                if pointers is None:
+                    pointers = _frame_pointers(reader, source)
+                _check_frame_index(edit, value, pointers)
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)
