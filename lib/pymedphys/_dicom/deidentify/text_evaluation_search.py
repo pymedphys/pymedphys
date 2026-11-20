@@ -76,6 +76,10 @@ VARIANTS: Mapping[str, DetectorVariant] = MappingProxyType(
                     parameters=_parameters(hat_noise_multiple=10.0),
                 ),
                 _variant(
+                    "top-hats to 5 deviations",
+                    parameters=_parameters(hat_noise_multiple=5.0),
+                ),
+                _variant(
                     "top-hats to 40 deviations",
                     parameters=_parameters(hat_noise_multiple=40.0),
                 ),
@@ -130,9 +134,22 @@ def _singles() -> tuple[PostProcessing, ...]:
     return tuple(points)
 
 
+def _line_extension() -> tuple[PostProcessing, ...]:
+    # Regions extended along their lines, which covers the rest of a line
+    # whose ends the network scores lower, with the settings that most cut
+    # false positives on the first tuning runs, each alone and together.
+    return (PostProcessing(),) + post_processing_grid(
+        line_extension=(1.0, 2.0, 3.0),
+        box_threshold=(0.5, 0.6, 0.7),
+        min_fill=(0.3, 0.5),
+        short_side_pixels=(24, 48),
+    )
+
+
 GRIDS: Mapping[str, tuple[PostProcessing, ...]] = MappingProxyType(
     {
         "today": (PostProcessing(),),
         "single settings": _singles(),
+        "line extension": _line_extension(),
     }
 )
