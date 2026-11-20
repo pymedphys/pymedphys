@@ -61,15 +61,19 @@ def member_stat(root, name):
     """Inspect a member without following any archive-path symlink."""
     parts = _parts(name)
     if os.name == "nt":
-        return _windows_check_path(root, parts).lstat()
-
-    with _directory_fd(root, parts[:-1]) as descriptor:
-        result = (
-            os.stat(parts[-1], dir_fd=descriptor, follow_symlinks=False)
-            if parts
-            else os.fstat(descriptor)
-        )
-    if stat.S_ISLNK(result.st_mode):
+        result = _windows_check_path(root, parts).lstat()
+    else:
+        with _directory_fd(root, parts[:-1]) as descriptor:
+            result = (
+                os.stat(parts[-1], dir_fd=descriptor, follow_symlinks=False)
+                if parts
+                else os.fstat(descriptor)
+            )
+    # A hard link can be introduced after preflight and impersonate a cache
+    # member. Never accept a multiply linked regular file as cached data.
+    if stat.S_ISLNK(result.st_mode) or (
+        stat.S_ISREG(result.st_mode) and result.st_nlink > 1
+    ):
         raise ValueError(_UNSAFE)
     return result
 
