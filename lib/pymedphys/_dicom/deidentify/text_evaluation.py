@@ -113,7 +113,7 @@ from .text_evaluation_benchmarks import tier_of
 from .text_evaluation_models import BoxPoint
 from .text_evaluation_sources import CaseSource, Skipped
 
-FORMAT = "pymedphys-deid-text-detector-evaluation/1"
+FORMAT = "pymedphys-deid-text-detector-evaluation/2"
 SPLITS = ("tuning", "held-out")
 EVALUATED = (*SPLITS, "all")
 SPLIT_SALT = "pymedphys-text-detector-evaluation-split/1"
