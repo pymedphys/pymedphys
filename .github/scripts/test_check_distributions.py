@@ -111,18 +111,18 @@ BUILD_BACKEND = textwrap.dedent(
         }
         files[f"{dist_info}/METADATA"] = metadata.encode()
         files[f"{dist_info}/WHEEL"] = (
-            b"Wheel-Version: 1.0\\nGenerator: test\\nRoot-Is-Purelib: true\\n"
-            b"Tag: py3-none-any\\n"
+            b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\n"
+            b"Tag: py3-none-any\n"
         )
         files[f"{dist_info}/entry_points.txt"] = (
-            b"[console_scripts]\\npymedphys = pymedphys.__main__:main\\n"
+            b"[console_scripts]\npymedphys = pymedphys.__main__:main\n"
         )
         record = []
         for name, data in files.items():
             digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest())
             record.append(f"{name},sha256={digest.rstrip(b'=').decode()},{len(data)}")
         record.append(f"{dist_info}/RECORD,,")
-        files[f"{dist_info}/RECORD"] = ("\\n".join(record) + "\\n").encode()
+        files[f"{dist_info}/RECORD"] = ("\n".join(record) + "\n").encode()
 
         filename = f"pymedphys-{version}-py3-none-any.whl"
         with zipfile.ZipFile(Path(wheel_directory, filename), "w") as archive:
@@ -280,7 +280,7 @@ class ContentTests(unittest.TestCase):
     def test_sdist_rejects_duplicate_file_members(self):
         path = Path(self.directory, "pymedphys-test.tar.gz")
         with tarfile.open(path, "w:gz") as archive:
-            for payload in (b"Version: 1\\n", b"Version: 2\\n"):
+            for payload in (b"Version: 1\n", b"Version: 2\n"):
                 info = tarfile.TarInfo("pymedphys-test/PKG-INFO")
                 info.size = len(payload)
                 archive.addfile(info, io.BytesIO(payload))
@@ -291,8 +291,8 @@ class ContentTests(unittest.TestCase):
         path = Path(self.directory, "pymedphys-test.whl")
         metadata = "pymedphys-1.0.0.dist-info/METADATA"
         with zipfile.ZipFile(path, "w") as archive:
-            archive.writestr(metadata, "Version: 1.0.0\\n")
-            archive.writestr(metadata, "Version: 2.0.0\\n")
+            archive.writestr(metadata, "Version: 1.0.0\n")
+            archive.writestr(metadata, "Version: 2.0.0\n")
         with self.assertRaisesRegex(ValueError, "duplicate file members"):
             read_wheel(path)
 
@@ -300,7 +300,7 @@ class ContentTests(unittest.TestCase):
         path = Path(self.directory, "pymedphys-linked.tar.gz")
         name = "pymedphys-test/PKG-INFO"
         with tarfile.open(path, "w:gz") as archive:
-            payload = b"Version: 1.0.0\\n"
+            payload = b"Version: 1.0.0\n"
             info = tarfile.TarInfo(name)
             info.size = len(payload)
             archive.addfile(info, io.BytesIO(payload))
@@ -315,7 +315,7 @@ class ContentTests(unittest.TestCase):
         path = Path(self.directory, "pymedphys-aliased.tar.gz")
         with tarfile.open(path, "w:gz") as archive:
             for name in ("pymedphys-test/PKG-INFO", "pymedphys-test/./PKG-INFO"):
-                payload = b"Version: 1.0.0\\n"
+                payload = b"Version: 1.0.0\n"
                 info = tarfile.TarInfo(name)
                 info.size = len(payload)
                 archive.addfile(info, io.BytesIO(payload))
@@ -325,8 +325,8 @@ class ContentTests(unittest.TestCase):
     def test_wheel_rejects_aliased_member_paths(self):
         path = Path(self.directory, "pymedphys-aliased.whl")
         with zipfile.ZipFile(path, "w") as archive:
-            archive.writestr("pymedphys-1.dist-info/METADATA", "Version: 1\\n")
-            archive.writestr("pymedphys-1.dist-info/./METADATA", "Version: 2\\n")
+            archive.writestr("pymedphys-1.dist-info/METADATA", "Version: 1\n")
+            archive.writestr("pymedphys-1.dist-info/./METADATA", "Version: 2\n")
         with self.assertRaisesRegex(ValueError, "duplicate file members"):
             read_wheel(path)
 
