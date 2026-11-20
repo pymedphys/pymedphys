@@ -571,7 +571,11 @@ def _validate_zip_member_paths(
         candidate = pathlib.Path(extract_directory)
         if candidate.is_symlink() or candidate.is_junction():
             raise ValueError("Cannot safely resolve ZIP extraction directory")
-        root = candidate.resolve()
+        # On Windows, preserve the lexical destination for the pinned-handle
+        # walk. Resolving it here could follow a junction swapped in after the
+        # initial check, silently turning an external directory into the root.
+        # On POSIX, preserve support for established symlinked temp parents.
+        root = candidate.absolute() if os.name == "nt" else candidate.resolve()
     except (OSError, RuntimeError):
         raise ValueError("Cannot safely resolve ZIP extraction directory") from None
 
