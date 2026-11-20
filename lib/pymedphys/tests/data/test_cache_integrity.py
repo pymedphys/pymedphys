@@ -141,7 +141,7 @@ def test_every_downloadable_file_has_a_recorded_hash():
 
 
 @pytest.mark.parametrize(
-    "member", ["../escape.txt", "/absolute.txt", "C:\\\\outside.txt"]
+    "member", ["../escape.txt", ".. /escape.txt", "folder./data.txt", "/absolute.txt", "C:\\\\outside.txt"]
 )
 def test_zip_extraction_rejects_unsafe_member_paths(cache, tmp_path, member):
     _, hashes = cache
@@ -178,6 +178,46 @@ def test_zip_extraction_does_not_follow_external_symlink(cache, tmp_path):
         )
 
     assert list(outside.iterdir()) == []
+
+
+def test_zip_extraction_rejects_preexisting_hardlinked_target(cache, tmp_path):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "untrusted replacement"})
+    _record(hashes, "archive.zip", source)
+    outside = tmp_path / "outside.txt"
+    outside.write_text("protected contents", encoding="utf-8")
+    extracted = data_dir / "archive"
+    extracted.mkdir(parents=True)
+    os.link(outside, extracted / "data.txt")
+
+    with pytest.raises(ValueError, match="multiply linked file"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+
+    assert outside.read_text(encoding="utf-8") == "protected contents"
+
+
+def test_zip_extraction_errors_do_not_expose_patient_member_name(cache, tmp_path):
+    _, hashes = cache
+    private_name = "PATIENT_SAMPLE_918273.dcm"
+    source = _zip(tmp_path / "source.zip", {f"linked/{private_name}": "secret"})
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+    working.mkdir()
+    try:
+        (working / "linked").symlink_to("linked", target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError) as raised:
+        download.zip_data_paths(
+            "archive.zip",
+            url=source.as_uri(),
+            hash_filepath=hashes,
+            extract_directory=working,
+        )
+    assert private_name not in str(raised.value)
 
 
 def test_caller_directories_keep_edited_files(cache, tmp_path):
