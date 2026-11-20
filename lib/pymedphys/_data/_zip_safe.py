@@ -86,7 +86,9 @@ def member_stat(root: pathlib.Path, name: str) -> os.stat_result:
     """Inspect a member without following any archive-path symlink."""
     parts = _parts(name)
     if os.name == "nt":
-        result = _windows_check_path(root, parts).lstat()
+        with _windows_pinned_directory(root, parts[:-1]) as parent:
+            target = parent / parts[-1] if parts else parent
+            result = target.lstat()
     else:
         with _directory_fd(root, parts[:-1]) as descriptor:
             result = (
@@ -96,8 +98,10 @@ def member_stat(root: pathlib.Path, name: str) -> os.stat_result:
             )
     # A hard link can be introduced after preflight and impersonate a cache
     # member. Never accept a multiply linked regular file as cached data.
-    if stat.S_ISLNK(result.st_mode) or (
-        stat.S_ISREG(result.st_mode) and result.st_nlink > 1
+    if (
+        stat.S_ISLNK(result.st_mode)
+        or (os.name == "nt" and result.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+        or (stat.S_ISREG(result.st_mode) and result.st_nlink > 1)
     ):
         raise ValueError(_UNSAFE)
     return result
@@ -320,6 +324,61 @@ def _windows_pinned_directory(
             close_handle(handle)
 
 
+def _windows_open_regular_file(path: pathlib.Path) -> int:
+    """Open an existing Windows file without dereferencing a reparse point."""
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+    attributes = kernel32.GetFileInformationByHandleEx
+    attributes.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+    ]
+    attributes.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [wintypes.HANDLE]
+    close_handle.restype = wintypes.BOOL
+
+    handle = create_file(
+        str(path),
+        0x80000000,  # GENERIC_READ
+        0x1 | 0x2,  # Share reads/writes but not deletion
+        None,
+        3,  # OPEN_EXISTING
+        0x00200000,  # FILE_FLAG_OPEN_REPARSE_POINT
+        None,
+    )
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        raise ValueError(_UNSAFE)
+    try:
+        info = (wintypes.DWORD * 2)()
+        if not attributes(handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
+            raise ValueError(_UNSAFE)
+        if info[0] & (0x10 | 0x400):  # Directory or reparse point
+            raise ValueError(_UNSAFE)
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+        handle = None  # The Python descriptor owns the native handle.
+        return descriptor
+    finally:
+        if handle is not None:
+            close_handle(handle)
+
+
 def ensure_root(root: pathlib.Path) -> None:
     """Create a missing extraction root using no-follow directory traversal."""
     if os.name == "nt":
@@ -346,6 +405,10 @@ def _extract_windows(
                 existing = target.lstat()
             except FileNotFoundError:
                 existing = None
+            if existing is not None and (
+                existing.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+            ):
+                raise ValueError(_UNSAFE)
             if info.is_dir():
                 if existing is not None:
                     if not stat.S_ISDIR(existing.st_mode):
@@ -426,9 +489,11 @@ def marker_bytes(marker: pathlib.Path) -> bytes:
     marker = pathlib.Path(marker)
     if os.name == "nt":
         with _windows_pinned_directory(marker.parent):
-            if marker.is_symlink() or marker.is_junction():
-                raise ValueError(_UNSAFE)
-            return marker.read_bytes()
+            with os.fdopen(_windows_open_regular_file(marker), "rb") as stream:
+                current = os.fstat(stream.fileno())
+                if not stat.S_ISREG(current.st_mode) or current.st_nlink > 1:
+                    raise ValueError(_UNSAFE)
+                return stream.read(128)
     with _directory_fd(marker.parent) as descriptor:
         handle = os.open(
             marker.name,
