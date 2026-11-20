@@ -176,7 +176,9 @@ def test_truncated_response_is_rejected(tmp_path: pathlib.Path, monkeypatch):
     assert _leftovers(tmp_path, "truncated.bin") == []
 
 
-@pytest.mark.parametrize("name", ["../outside.bin", "../../outside.bin", "/tmp/outside.bin"])
+@pytest.mark.parametrize(
+    "name", ["../outside.bin", "../../outside.bin", "/tmp/outside.bin"]
+)
 def test_data_path_rejects_outside_cache_names_before_writing(
     name: str, tmp_path: pathlib.Path, monkeypatch
 ):
@@ -193,7 +195,9 @@ def test_data_path_rejects_outside_cache_names_before_writing(
     assert outside.read_bytes() == b"important existing data"
 
 
-def test_zip_cache_path_rejects_directory_traversal(tmp_path: pathlib.Path, monkeypatch):
+def test_zip_cache_path_rejects_directory_traversal(
+    tmp_path: pathlib.Path, monkeypatch
+):
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(tmp_path / "cache"))
     with pytest.raises(ValueError, match="within the data directory"):
         download.zip_data_paths("../archive.zip", check_hash=False)
