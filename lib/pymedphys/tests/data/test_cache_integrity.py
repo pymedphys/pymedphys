@@ -311,6 +311,37 @@ def test_zip_cache_rejects_symlink_substitution_during_reuse(
     assert not list(outside.iterdir())
 
 
+def test_zip_cache_rejects_hardlink_substitution_after_preflight(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "cached"})
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    real_check = download._extraction_is_current
+
+    def substitute_before_cache_check(archive, root, archive_hash, marker):
+        (root / "data.txt").rename(root / "former_data.txt")
+        try:
+            os.link(outside, root / "data.txt")
+        except OSError:
+            pytest.skip("Creating hard links is unavailable on this platform")
+        return real_check(archive, root, archive_hash, marker)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            download, "_extraction_is_current", substitute_before_cache_check
+        )
+        with pytest.raises(ValueError, match="linked extraction path"):
+            download.zip_data_paths(
+                "archive.zip", url=source.as_uri(), hash_filepath=hashes
+            )
+
+    assert outside.read_text(encoding="utf-8") == "secret"
+
+
 def test_caller_directories_keep_edited_files(cache, tmp_path):
     # The GUI demo extracts into the user's working directory, where people
     # edit the extracted configuration; those edits must survive.
