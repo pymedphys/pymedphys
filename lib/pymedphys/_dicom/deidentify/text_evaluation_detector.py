@@ -732,6 +732,12 @@ class PostProcessing:
         letters smaller than that side. 1 keeps every region.
     elongation_from_side : float
         See ``min_elongation``.
+    line_extension : float
+        Each region is extended along its longer side, at each end, by this
+        many times its shorter side, in frame pixels, within the frame, so
+        that the rest of a line of text whose ends the network scores lower
+        is covered too; a square region is extended along both sides. 0
+        extends none.
     """
 
     threshold: float = DetectionParameters.threshold
@@ -745,6 +751,7 @@ class PostProcessing:
     renderings: tuple[str, ...] = RENDERINGS
     min_elongation: float = 1.0
     elongation_from_side: float = 0.0
+    line_extension: float = 0.0
 
     def __post_init__(self):
         if not self.renderings or not set(self.renderings) <= set(RENDERINGS):
@@ -879,6 +886,15 @@ def _scored(
     bottom = np.ceil((regions.bottom + offset) * row_scale + point.margin)
     left = np.floor((regions.left - offset) * column_scale - point.margin)
     right = np.ceil((regions.right + offset) * column_scale + point.margin)
+    if point.line_extension > 0:
+        # Along a line of text, each end by that many of its heights; a
+        # square region along both sides, as its line's direction is unknown.
+        box_height, box_width = bottom - top, right - left
+        reach = point.line_extension * np.minimum(box_height, box_width)
+        across = np.where(box_width >= box_height, reach, 0.0)
+        down = np.where(box_height >= box_width, reach, 0.0)
+        top, bottom = np.floor(top - down), np.ceil(bottom + down)
+        left, right = np.floor(left - across), np.ceil(right + across)
     return [
         (
             TextBox(
