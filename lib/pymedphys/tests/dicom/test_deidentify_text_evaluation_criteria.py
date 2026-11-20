@@ -382,6 +382,39 @@ def test_a_stratum_counted_at_only_one_point_fails_the_loss_rule():
     assert set(second["review"].values()) == {criteria.EVERY_FRAME}
 
 
+def test_no_point_meets_the_no_loss_rule_unless_todays_detector_is_its_baseline():
+    # Today's detector covers 990 of a style's 1,000 texts and a variant 900:
+    # a loss of 9 points in a stratum that no absolute limit judges.
+    def styled(index, full):
+        point = _passing(index)
+        point["by"]["style"] = [
+            {"value": {"style": "bold"}, "sensitivity": _sensitivity(1000, full)}
+        ]
+        return point
+
+    today = {"points": [styled(0, 990), styled(1, 900)]}
+    (_, second) = criteria.assess(today, criteria.CHOSEN_CRITERIA)
+    assert second["failures"] == ["loss: style bold: sensitivity 0.900 from 0.990"]
+    # Measured alone, the variant's own first point hides that loss, so no
+    # point of it may meet the rule, and every IOD's frames are reviewed.
+    variant = {"points": [styled(0, 900), styled(1, 900)]}
+    assert all(
+        each["meets"] for each in criteria.assess(variant, criteria.CHOSEN_CRITERIA)
+    )
+    for each in criteria.assess(
+        variant, criteria.CHOSEN_CRITERIA, todays_baseline=False
+    ):
+        assert each["failures"] == [criteria.NOT_TODAYS]
+        assert not each["meets"] and not each["adoptable"]
+        assert set(each["review"].values()) == {criteria.EVERY_FRAME}
+    # Without the rule, there is nothing to assess.
+    unruled = dataclasses.replace(criteria.CHOSEN_CRITERIA, max_loss=None)
+    assert all(
+        each["meets"]
+        for each in criteria.assess(variant, unruled, todays_baseline=False)
+    )
+
+
 def test_only_a_criterion_of_every_iod_can_leave_some_out():
     with pytest.raises(EvaluationRefused):
         criteria.FalsePositiveCriterion(iod=(CT,), other_than=(RT,))

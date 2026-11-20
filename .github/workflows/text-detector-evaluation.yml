@@ -29,6 +29,13 @@ name: Text Detector Evaluation
 # and their collections' attribution. The job selects phantom collections
 # alone, and the report reads only files whose TCIA project block names an
 # allow-listed phantom collection, so no patient's frame is drawn.
+#
+# A tuning run (D-056, step 3) names one detector variant and one
+# post-processing grid, each by its name in text_evaluation_search, in both
+# jobs: the variant needs a pass of the network of its own, and one pass
+# measures every point of the grid. Runs of different variants and grids
+# can run side by side. Only the tuning part is measured until a candidate
+# is chosen.
 on:
   workflow_dispatch:
     inputs:
@@ -45,6 +52,28 @@ on:
         description: Today's settings, or the model's publishers'.
         type: choice
         options: [today, published]
+        default: today
+      variant:
+        description: >-
+          A tuning run's detector variant, by its name in
+          text_evaluation_search; with today's settings alone.
+        type: choice
+        options:
+          - today
+          - noise over tissue
+          - top-hats to 10 deviations
+          - top-hats to 40 deviations
+          - top-hats of 8 mm
+          - window of at least 100 units
+          - input of at least 1024
+          - input at 0.5 mm
+        default: today
+      grid:
+        description: >-
+          A tuning run's post-processing grid, by its name in
+          text_evaluation_search; with today's settings alone.
+        type: choice
+        options: [today, single settings]
         default: today
       evaluated:
         description: The part of the split to measure.
@@ -79,8 +108,10 @@ on:
 permissions:
   contents: read
 
+# Runs of different variants and grids search side by side; a second run of
+# the same ones waits for the first.
 concurrency:
-  group: text-detector-evaluation-${{ github.ref }}
+  group: text-detector-evaluation-${{ github.ref }}-${{ inputs.variant }}-${{ inputs.grid }}
   cancel-in-progress: false
 
 jobs:
@@ -94,6 +125,8 @@ jobs:
     env:
       MODEL: ${{ inputs.model || 'PP-OCRv6 small' }}
       SETTINGS: ${{ inputs.settings || 'today' }}
+      VARIANT: ${{ inputs.variant || 'today' }}
+      GRID: ${{ inputs.grid || 'today' }}
       EVALUATED: ${{ inputs.evaluated || 'tuning' }}
       PER_COLLECTION: ${{ inputs.per_collection || '2' }}
       MAX_MB: ${{ inputs.max_mb || '1500' }}
@@ -186,6 +219,8 @@ jobs:
             --archives "${RUNNER_TEMP}/idc/archives" \
             --model "${MODEL}" \
             --settings "${SETTINGS}" \
+            --variant "${VARIANT}" \
+            --grid "${GRID}" \
             --evaluated "${EVALUATED}" \
             --workers "$(nproc)" \
             --out "${RUNNER_TEMP}/idc/results" \
@@ -210,6 +245,8 @@ jobs:
             --archives "${RUNNER_TEMP}/idc/archives" \
             --model "${MODEL}" \
             --settings "${SETTINGS}" \
+            --variant "${VARIANT}" \
+            --grid "${GRID}" \
             --evaluated "${EVALUATED}" \
             --workers 2 \
             --converted \
@@ -266,6 +303,8 @@ jobs:
     env:
       MODEL: ${{ inputs.model || 'PP-OCRv6 small' }}
       SETTINGS: ${{ inputs.settings || 'today' }}
+      VARIANT: ${{ inputs.variant || 'today' }}
+      GRID: ${{ inputs.grid || 'today' }}
       EVALUATED: ${{ inputs.evaluated || 'tuning' }}
       PER_COLLECTION: ${{ inputs.phantom_per_collection || '4' }}
       MAX_MB: ${{ inputs.phantom_max_mb || '2000' }}
@@ -340,6 +379,8 @@ jobs:
             "${RUNNER_TEMP}/phantoms/data" \
             --model "${MODEL}" \
             --settings "${SETTINGS}" \
+            --variant "${VARIANT}" \
+            --grid "${GRID}" \
             --evaluated "${EVALUATED}" \
             --workers "$(nproc)" \
             --out "${RUNNER_TEMP}/phantoms/results" \

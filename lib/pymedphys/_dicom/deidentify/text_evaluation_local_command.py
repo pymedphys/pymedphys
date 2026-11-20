@@ -60,7 +60,7 @@ from .diagnostics import redacted_diagnostics
 from .face_validation import crash_site
 from .text_detection import TextDetectionError
 from .text_evaluation import EVALUATED, EvaluationSettings, evaluate, summarise
-from .text_evaluation_command import MODELS, SETTINGS
+from .text_evaluation_command import MODELS, SETTINGS, todays_detector
 from .text_evaluation_criteria import CHOSEN_CRITERIA, HELD_OUT_COLLECTIONS, assess
 from .text_evaluation_detector import (
     DetectorVariant,
@@ -285,7 +285,9 @@ def measure(arguments: argparse.Namespace) -> dict[str, str]:
     )
     summary = summarise(run)
     return {
-        "assessment.json": _json(assess(summary, CHOSEN_CRITERIA)),
+        "assessment.json": _json(
+            assess(summary, CHOSEN_CRITERIA, todays_baseline=todays_detector(arguments))
+        ),
         "summary.json": _json(summary),
         "summary.md": markdown(summary),
     }
