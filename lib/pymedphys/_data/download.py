@@ -196,6 +196,19 @@ def get_data_dir():
     return data_dir
 
 
+def _cache_path(filename):
+    """Resolve a cache name without allowing it to escape the data directory.
+
+    Reject traversal, absolute paths outside the cache, and paths through
+    existing symlink directories before any directory is created or file opened.
+    """
+    root = get_data_dir().resolve()
+    candidate = (root / filename).resolve()
+    if candidate == root or not candidate.is_relative_to(root):
+        raise ValueError("Data cache path must stay within the data directory")
+    return candidate
+
+
 def get_file_within_data_zip(zip_name, file_name):
     dose_data_files = pymedphys.zip_data_paths(zip_name)
     path_match = [path for path in dose_data_files if path.name == file_name]
@@ -245,7 +258,7 @@ def data_path(
     hash_filepath=None,
 ):
     filename = str(filename).replace(os.sep, "/")
-    filepath = get_data_dir().joinpath(filename)
+    filepath = _cache_path(filename)
 
     containing_directory = pathlib.Path(filepath).parent
     containing_directory.mkdir(exist_ok=True, parents=True)
@@ -349,7 +362,7 @@ def data_file_hash_check(filename, hash_filepath=None):
 
     filename = str(filename).replace(os.sep, "/")
 
-    filepath = get_data_dir().joinpath(filename)
+    filepath = _cache_path(filename)
     calculated_filehash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
         filepath
     )
@@ -376,8 +389,8 @@ def zenodo_data_paths(
 
     logging.debug("File URLS are %s", file_urls)
 
-    record_directory = get_data_dir().joinpath(record_name)
-    record_directory.mkdir(exist_ok=True)
+    record_directory = _cache_path(record_name)
+    record_directory.mkdir(exist_ok=True, parents=True)
 
     relative_record_path = pathlib.Path(record_name)
 
@@ -546,9 +559,7 @@ def zip_data_paths(
     extract_directory=None,
     hash_filepath=None,
 ):
-    cache_directory = get_data_dir().joinpath(
-        pathlib.Path(os.path.splitext(filename)[0])
-    )
+    cache_directory = _cache_path(pathlib.Path(os.path.splitext(filename)[0]))
     if extract_directory is None:
         extract_directory = cache_directory
         cache_managed = True
