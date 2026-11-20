@@ -18,9 +18,9 @@ import email.message
 import io
 import pathlib
 import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.error
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from pymedphys._imports import pytest
 
