@@ -147,6 +147,13 @@ def test_every_downloadable_file_has_a_recorded_hash():
         ".. /escape.txt",
         "folder./data.txt",
         "/absolute.txt",
+        "NUL.txt",
+        "COM1",
+        "LPT1.log",
+        "file?.txt",
+        "data<secret>.txt",
+        "folder/name|other.txt",
+        "CONIN$",
         "C:\\\\outside.txt",
     ],
 )
@@ -454,7 +461,14 @@ def test_interrupted_refresh_is_retried(cache, tmp_path, monkeypatch):
     original_extract = download._zip_safe.extract_members
 
     def interrupted_extraction(archive, path, *, missing_only):
-        original_extract(archive, path, missing_only=missing_only)
+        class PartialArchive:
+            def infolist(self):
+                return archive.infolist()[:1]
+
+            def open(self, info):
+                return archive.open(info)
+
+        original_extract(PartialArchive(), path, missing_only=missing_only)
         raise OSError("Interrupted extraction")
 
     with monkeypatch.context() as patch:
@@ -467,11 +481,91 @@ def test_interrupted_refresh_is_retried(cache, tmp_path, monkeypatch):
             )
 
     assert not list(data_dir.rglob(f"*{download.EXTRACTED_ARCHIVE_MARKER}"))
+    assert (data_dir / "archive/b.txt").read_text(encoding="utf-8") == "truncated"
 
     paths = download.zip_data_paths(
         "archive.zip", url=source.as_uri(), hash_filepath=hashes
     )
     assert {path.name: path.read_text(encoding="utf-8") for path in paths} == members
+
+
+def test_zip_member_aliases_keep_final_contents_and_cache_is_current(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"a.txt": "short"})
+    with zipfile.ZipFile(source, "a") as archive:
+        archive.writestr("./a.txt", "longer final contents")
+    _record(hashes, "archive.zip", source)
+
+    results = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert {path.read_text(encoding="utf-8") for path in results} == {
+        "longer final contents"
+    }
+
+    def unexpected_extraction(*_args, **_kwargs):
+        pytest.fail("An alias of an earlier member must not invalidate the cache")
+
+    monkeypatch.setattr(download._zip_safe, "extract_members", unexpected_extraction)
+    assert download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    ) == results
+
+
+def test_caller_managed_duplicate_uses_final_member(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "first"})
+    with zipfile.ZipFile(source, "a") as archive:
+        with pytest.warns(UserWarning, match="Duplicate name"):
+            archive.writestr("data.txt", "last")
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+
+    results = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=working,
+    )
+    assert [path.read_text(encoding="utf-8") for path in results] == [
+        "last",
+        "last",
+    ]
+    (working / "data.txt").write_text("user edit", encoding="utf-8")
+    again = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=working,
+    )
+    assert all(path.read_text(encoding="utf-8") == "user edit" for path in again)
+
+
+def test_zip_rejects_case_colliding_members(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"A.txt": "first", "a.txt": "second"})
+    _record(hashes, "archive.zip", source)
+    with pytest.raises(ValueError, match="unsafe member path"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+
+
+def test_zip_uses_normal_file_permissions(cache, tmp_path):
+    if os.name == "nt":
+        pytest.skip("POSIX file permission semantics")
+    _, hashes = cache
+    reference = tmp_path / "reference"
+    reference.write_text("contents", encoding="utf-8")
+    source = _zip(tmp_path / "source.zip", {"data.txt": "payload"})
+    _record(hashes, "archive.zip", source)
+
+    (extracted,) = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert (extracted.stat().st_mode & 0o777) == (reference.stat().st_mode & 0o777)
 
 
 def test_archives_sharing_an_extraction_directory_refresh_each_other(cache, tmp_path):
