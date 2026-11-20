@@ -141,7 +141,14 @@ def test_every_downloadable_file_has_a_recorded_hash():
 
 
 @pytest.mark.parametrize(
-    "member", ["../escape.txt", ".. /escape.txt", "folder./data.txt", "/absolute.txt", "C:\\\\outside.txt"]
+    "member",
+    [
+        "../escape.txt",
+        ".. /escape.txt",
+        "folder./data.txt",
+        "/absolute.txt",
+        "C:\\\\outside.txt",
+    ],
 )
 def test_zip_extraction_rejects_unsafe_member_paths(cache, tmp_path, member):
     _, hashes = cache
