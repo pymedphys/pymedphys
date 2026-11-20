@@ -263,7 +263,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 - **[Privacy]** `get_file_within_data_zip()` no longer prints matching archive
   paths when it finds zero or multiple files. Those paths can include patient
-  identifiers; the error message remains unchanged and does not include paths.
+  identifiers.
   [PR #2623](https://github.com/pymedphys/pymedphys/pull/2623)
 
 ### Dependency changes
