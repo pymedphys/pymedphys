@@ -25,10 +25,10 @@ import pathlib
 import stat
 import sys
 import tempfile
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-import unicodedata
 import zipfile
 from http import HTTPStatus
 
