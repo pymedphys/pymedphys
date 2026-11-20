@@ -56,7 +56,7 @@ import urllib.request
 import venv
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 # Relative to the package root: ``pymedphys/`` in the wheel and
 # ``lib/pymedphys/`` in the sdist.
@@ -215,12 +215,36 @@ def _parse_metadata(text: str) -> _Metadata:
     )
 
 
+def _validate_archive_member_names(names: Sequence[str], source: Path) -> None:
+    """Reject unsafe or colliding archive paths before reading any payload."""
+    seen: set[str] = set()
+    for name in names:
+        # Normalise harmless './' segments; different archive readers may not
+        # agree which of two aliased entries should be installed.
+        member = PurePosixPath(name)
+        if (
+            not name
+            or member.is_absolute()
+            or ".." in member.parts
+            or "\\" in name
+            or PureWindowsPath(name).drive
+        ):
+            raise ValueError(f"{source.name} contains unsafe archive member paths")
+        canonical = member.as_posix()
+        if canonical in seen:
+            raise ValueError(f"{source.name} contains duplicate file members")
+        seen.add(canonical)
+
+
 def read_sdist(path: Path) -> Archive:
     with tarfile.open(path, "r:gz") as archive:
-        names = [member.name for member in archive.getmembers() if member.isfile()]
-        # Different TAR readers can select different payloads for duplicate names.
-        if len(names) != len(set(names)):
-            raise ValueError(f"{path.name} contains duplicate file members")
+        members = archive.getmembers()
+        # Include links and special entries in collision checks: another TAR
+        # reader could follow a link or overwrite a verified regular file.
+        _validate_archive_member_names(
+            [member.name for member in members if not member.isdir()], path
+        )
+        names = [member.name for member in members if member.isfile()]
         roots = {name.split("/", 1)[0] for name in names}
         if len(roots) != 1:
             raise ValueError(f"{path.name} does not have a single top directory")
@@ -243,9 +267,7 @@ def read_sdist(path: Path) -> Archive:
 def read_wheel(path: Path) -> Archive:
     with zipfile.ZipFile(path) as archive:
         names = [name for name in archive.namelist() if not name.endswith("/")]
-        # Ambiguous ZIP entries can defeat a package check if readers disagree.
-        if len(names) != len(set(names)):
-            raise ValueError(f"{path.name} contains duplicate file members")
+        _validate_archive_member_names(names, path)
         metadata_paths = [
             name
             for name in names
