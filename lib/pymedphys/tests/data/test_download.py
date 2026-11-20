@@ -176,6 +176,44 @@ def test_truncated_response_is_rejected(tmp_path: pathlib.Path, monkeypatch):
     assert _leftovers(tmp_path, "truncated.bin") == []
 
 
+@pytest.mark.parametrize("name", ["../outside.bin", "../../outside.bin", "/tmp/outside.bin"])
+def test_data_path_rejects_outside_cache_names_before_writing(
+    name: str, tmp_path: pathlib.Path, monkeypatch
+):
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    source = tmp_path / "source.bin"
+    source.write_bytes(b"untrusted archive data")
+    outside = tmp_path / "outside.bin"
+    outside.write_bytes(b"important existing data")
+
+    with pytest.raises(ValueError, match="within the data directory"):
+        download.data_path(name, check_hash=False, url=source.as_uri())
+
+    assert outside.read_bytes() == b"important existing data"
+
+
+def test_zip_cache_path_rejects_directory_traversal(tmp_path: pathlib.Path, monkeypatch):
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(tmp_path / "cache"))
+    with pytest.raises(ValueError, match="within the data directory"):
+        download.zip_data_paths("../archive.zip", check_hash=False)
+
+
+def test_cache_path_rejects_symlink_escape(tmp_path: pathlib.Path, monkeypatch):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    try:
+        (cache / "linked").symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError, match="within the data directory"):
+        download.data_path("linked/escape.bin", check_hash=False)
+
+
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     override = tmp_path / "nested" / "data"
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(override))
