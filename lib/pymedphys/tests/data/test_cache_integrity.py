@@ -259,7 +259,10 @@ def test_zip_symlink_substituted_after_preflight_is_rejected(
     real_extract = download._zip_safe.extract_members
 
     def substitute_before_extraction(archive, root, *, missing_only):
-        (root / "linked").symlink_to(outside, target_is_directory=True)
+        try:
+            (root / "linked").symlink_to(outside, target_is_directory=True)
+        except (NotImplementedError, OSError):
+            pytest.skip("Creating directory symlinks is unavailable on this platform")
         return real_extract(archive, root, missing_only=missing_only)
 
     with monkeypatch.context() as patch:
@@ -290,7 +293,10 @@ def test_zip_cache_rejects_symlink_substitution_during_reuse(
 
     def substitute_before_cache_check(archive, root, archive_hash, marker):
         (root / "linked").rename(root / "former_linked")
-        (root / "linked").symlink_to(outside, target_is_directory=True)
+        try:
+            (root / "linked").symlink_to(outside, target_is_directory=True)
+        except (NotImplementedError, OSError):
+            pytest.skip("Creating directory symlinks is unavailable on this platform")
         return real_check(archive, root, archive_hash, marker)
 
     with monkeypatch.context() as patch:
