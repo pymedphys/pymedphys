@@ -39,7 +39,7 @@ def start_mssql_docker_image_with_bak_restore(
             "-e",
             f"MSSQL_SA_PASSWORD={sa_password}",
             "-p",
-            "1433:1433",
+            "127.0.0.1:1433:1433",
             "-d",
             "mcr.microsoft.com/mssql/server:2017-latest",
         ]
