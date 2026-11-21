@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Retry diagnostics do not reveal secrets from exceptions
+
+Retries of failed data downloads now log the exception type and numeric HTTP
+status (when available), rather than the exception message. HTTP exceptions
+can contain a signed download URL, access token or
+patient identifier; retry diagnostics no longer copy those values to terminal
+output or an application logger. Raised exceptions retain their original
+contents for callers that handle them directly. [PR #2635](https://github.com/pymedphys/pymedphys/pull/2635)
+
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
