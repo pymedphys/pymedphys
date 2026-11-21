@@ -220,14 +220,36 @@ def test_negative_declared_size_is_rejected_before_cache_replacement(
     assert _leftovers(tmp_path, "cached.bin") == [destination]
 
 
-def test_conflicting_http_framing_is_rejected_before_caching(tmp_path: pathlib.Path):
-    # Real urllib HTTPResponse: Transfer-Encoding is authoritative even when
-    # a malicious server supplies a contradictory Content-Length.
-    class ConflictingResponse(BaseHTTPRequestHandler):
+@pytest.mark.parametrize(
+    ("content_lengths", "transfer_encodings", "error_message"),
+    [
+        (("3",), ("chunked",), "Conflicting Content-Length"),
+        (("",), ("chunked",), "Conflicting Content-Length"),
+        (("3",), ("",), "Conflicting Content-Length"),
+        (("3", "7"), (), "Multiple Content-Length"),
+        (("3, 7",), (), "Invalid Content-Length"),
+        (("",), (), "Invalid Content-Length"),
+    ],
+)
+def test_invalid_http_framing_is_rejected_before_caching(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    content_lengths: tuple[str, ...],
+    transfer_encodings: tuple[str, ...],
+    error_message: str,
+):
+    # The real urllib HTTPResponse preserves blank and repeated header lines.
+    # Disable proxies so system or CI proxy settings cannot intercept loopback.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    monkeypatch.setattr(urllib.request, "urlopen", opener.open)
+
+    class InvalidResponse(BaseHTTPRequestHandler):
         def do_GET(self):
             self.send_response(200)
-            self.send_header("Content-Length", "3")
-            self.send_header("Transfer-Encoding", "chunked")
+            for content_length in content_lengths:
+                self.send_header("Content-Length", content_length)
+            for transfer_encoding in transfer_encodings:
+                self.send_header("Transfer-Encoding", transfer_encoding)
             self.end_headers()
             self.wfile.write(b"B\r\nhello world\r\n0\r\n\r\n")
 
@@ -235,12 +257,13 @@ def test_conflicting_http_framing_is_rejected_before_caching(tmp_path: pathlib.P
             # Suppress the test-only HTTP server's request logging.
             pass
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), ConflictingResponse)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), InvalidResponse)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     destination = tmp_path / "cache.bin"
+    destination.write_bytes(b"previously cached content")
     try:
-        with pytest.raises(ValueError, match="Conflicting Content-Length"):
+        with pytest.raises(ValueError, match=error_message):
             download.download_with_progress(
                 f"http://127.0.0.1:{server.server_port}/bad",
                 destination,
@@ -250,8 +273,8 @@ def test_conflicting_http_framing_is_rejected_before_caching(tmp_path: pathlib.P
         server.server_close()
         thread.join(timeout=5)
 
-    assert _leftovers(tmp_path, "cache.bin") == []
-
+    assert destination.read_bytes() == b"previously cached content"
+    assert _leftovers(tmp_path, "cache.bin") == [destination]
 
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     override = tmp_path / "nested" / "data"
