@@ -19,6 +19,7 @@ from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from functools import wraps
 from typing import Any
+from xml.sax.saxutils import quoteattr
 
 import trio
 from anthropic import AsyncAnthropic
@@ -37,6 +38,95 @@ FROM INFORMATION_SCHEMA.COLUMNS
 DATABASE_EXECUTION_LOCK = trio.Lock()
 
 
+def _quote_xml_schema_attribute(value: str) -> str:
+    """Quote schema metadata without emitting invalid XML 1.0 characters."""
+    identifier = str(value)
+    for character in identifier:
+        codepoint = ord(character)
+        if not (
+            codepoint in (0x9, 0xA, 0xD)
+            or 0x20 <= codepoint <= 0xD7FF
+            or 0xE000 <= codepoint <= 0xFFFD
+            or 0x10000 <= codepoint <= 0x10FFFF
+        ):
+            raise ValueError("SQL schema contains an XML 1.0-forbidden character")
+
+    # quoteattr also encodes tabs, newlines and CRs as XML character references.
+    return quoteattr(identifier)
+
+
+_SQL_MUTATING_WORDS = frozenset(
+    {
+        "ALTER", "BACKUP", "BULK", "CREATE", "DBCC", "DELETE", "DENY",
+        "DROP", "EXEC", "EXECUTE", "GO", "GRANT", "INSERT", "INTO", "KILL",
+        "MERGE", "OPENQUERY", "OPENROWSET", "OPENDATASOURCE", "RECEIVE",
+        "RECONFIGURE", "RESTORE", "REVOKE", "SET", "SHUTDOWN", "TRUNCATE",
+        "UPDATE", "USE", "WAITFOR", "WRITETEXT", "UPDATETEXT",
+    }
+)
+
+
+def _require_read_only_sql(query: str) -> None:
+    """Fail closed on model-generated SQL outside a single read-only query.
+
+    This lexical gate is defense in depth, not a SQL permission boundary.
+    Connections must use a least-privileged, SELECT-only database principal.
+    """
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("SQL agent requires a nonempty read-only query")
+
+    words = []
+    i = 0
+    while i < len(query):
+        character = query[i]
+
+        if character in ("'", '"', "["):
+            closing = "]" if character == "[" else character
+            i += 1
+            while i < len(query):
+                if query[i] == closing:
+                    if i + 1 < len(query) and query[i + 1] == closing:
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            else:
+                raise ValueError("Unterminated SQL string or identifier")
+            continue
+
+        if query.startswith(("--", "/*"), i):
+            raise ValueError("SQL comments are not allowed in agent queries")
+
+        if character == ";":
+            if query[i + 1 :].strip():
+                raise ValueError("SQL agent queries must contain one statement")
+            break
+
+        if character.isalpha() or character == "_":
+            end = i + 1
+            while end < len(query) and (
+                query[end].isalnum() or query[end] in "_@$#"
+            ):
+                end += 1
+            words.append(query[i:end].upper())
+            i = end
+        else:
+            if ord(character) < 32 and character not in "\t\r\n":
+                raise ValueError("SQL contains an invalid control character")
+            i += 1
+
+    if not words or words[0] not in {"SELECT", "WITH"}:
+        raise ValueError("SQL agent only permits read-only SELECT queries")
+    if any(word in _SQL_MUTATING_WORDS for word in words):
+        raise ValueError("SQL agent query contains a prohibited operation")
+    if any(
+        words[index : index + 3] == ["NEXT", "VALUE", "FOR"]
+        for index in range(len(words) - 2)
+    ):
+        raise ValueError("SQL agent query contains a sequence modification")
+
+
 async def get_schema_formatted_for_prompt(
     connection: pymedphys.mosaiq.Connection,
     include_columns: bool = True,
@@ -53,13 +143,14 @@ async def get_schema_formatted_for_prompt(
 
     table_strings = ""
     for table, columns in exported_schema.items():
-        table_strings += f'  <table name="{table}">\n'
+        table_strings += f"  <table name={_quote_xml_schema_attribute(table)}>\n"
 
         if include_columns:
             columns_string = ""
             for column_name, data_type in columns:
                 columns_string += (
-                    f'    <column name="{column_name}" type="{data_type}" />\n'
+                    f"    <column name={_quote_xml_schema_attribute(column_name)} "
+                    f"type={_quote_xml_schema_attribute(data_type)} />\n"
                 )
 
             table_strings += columns_string
@@ -91,6 +182,7 @@ async def _get_columns_by_table_name(connection):
 
 
 async def execute_query(connection: pymedphys.mosaiq.Connection, query: str):
+    _require_read_only_sql(query)
     async with DATABASE_EXECUTION_LOCK:
         result = await trio.to_thread.run_sync(
             pymedphys.mosaiq.execute, connection, query
