@@ -12,6 +12,18 @@ This project adheres to
 
 ## Unreleased
 
+### MOSAIQ SQL agent schema and query safeguards
+
+The optional MOSAIQ SQL agent now XML-quotes database-sourced table, column,
+and data-type identifiers, rejects XML 1.0-forbidden characters, and decodes
+selected table names without losing XML entities or whitespace. Agent-generated
+queries must be a single read-only SELECT or SELECT-based CTE; other operations,
+SQL comments, and multiple statements are rejected before database execution.
+This validation is defense in depth, not an authorization boundary: deploy the
+agent using a dedicated SQL Server principal with SELECT permission only on
+approved tables or views and no write, administrative, or procedure-execution
+permissions. [PR #2653](https://github.com/pymedphys/pymedphys/pull/2653)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group

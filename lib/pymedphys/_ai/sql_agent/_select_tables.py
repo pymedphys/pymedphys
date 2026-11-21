@@ -15,6 +15,7 @@
 
 import json
 import re
+import xml.etree.ElementTree as ET
 from typing import Any
 
 from anthropic import AsyncAnthropic
@@ -121,14 +122,20 @@ async def get_selected_table_names(
     )
 
     table_names = []
-    for line in raw_table_names.split("\n"):
-        if not line.startswith('<table name="'):
+    for match in re.finditer(r"<table\b[^<>]*>", raw_table_names):
+        # The selector emits opening tags, not a complete XML document.
+        # Parse each opening tag as an element to handle both quote styles,
+        # XML entities, and whitespace character references faithfully.
+        tag = match.group()
+        if not tag.endswith("/>"):
+            tag = tag[:-1] + " />"
+        try:
+            element = ET.fromstring(tag)
+        except ET.ParseError:
             continue
-
-        match = re.search(r'<table name="(.*)">', line)
-        if match is None:
-            continue
-        table_names.append(match.group(1))
+        name = element.get("name")
+        if name is not None:
+            table_names.append(name)
 
     return tuple(table_names)
 
