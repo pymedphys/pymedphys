@@ -111,6 +111,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   HTTP statuses (408, 425, 429, and 5xx) are retried; other HTTP errors such as
   404 are raised at once instead of after 21 seconds of retries.
   [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
+- **[Privacy]** Set `PYMEDPHYS_REDACT_TRF_PATHS=1` to suppress patient-bearing paths, TRF headers, and exception text in TRF indexing progress output when forwarding logs. Default local diagnostics remain unchanged for clinical operators. [PR #2643](https://github.com/pymedphys/pymedphys/pull/2643)
 - The `PYMEDPHYS_DATA_DIR` environment variable overrides the location of the
   downloaded data cache, which defaults to `~/.pymedphys/data`.
   [PR #2042](https://github.com/pymedphys/pymedphys/pull/2042)
