@@ -135,9 +135,7 @@ def test_authenticated_zenodo_redirects_are_rejected(zenodo, method, status_code
     # Even if a caller tries to enable redirects, credential-bearing requests
     # must never follow a 3xx response to an unvalidated destination.
     with pytest.raises(ValueError, match="must not redirect"):
-        upload.zenodo_api_with_helpful_fallback(
-            URL, method, allow_redirects=True
-        )
+        upload.zenodo_api_with_helpful_fallback(URL, method, allow_redirects=True)
 
     (call,) = fake_requests.calls
     assert call["allow_redirects"] is False
