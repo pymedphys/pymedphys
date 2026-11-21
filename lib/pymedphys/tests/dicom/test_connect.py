@@ -237,6 +237,31 @@ def test_dicom_sender_cli_omits_patient_bearing_file_paths(
     assert "private patient identifier" not in caplog.text
 
 
+def test_dicom_sender_cli_omits_paths_when_send_fails(monkeypatch, caplog):
+    """Failures after CLI validation must not print identifying paths."""
+    sensitive_path = "synthetic-patient-123456-RTPLAN.dcm"
+    monkeypatch.setattr(DicomSender, "verify", lambda self: True)
+    monkeypatch.setattr(pydicom, "dcmread", lambda _path: pydicom.Dataset())
+
+    def unreadable(_self, _paths):
+        raise OSError(f"cannot read {sensitive_path}")
+
+    monkeypatch.setattr(DicomSender, "send", unreadable)
+    args = types.SimpleNamespace(
+        host="127.0.0.1", port=8888, aetitle="TEST", dcmfiles=[sensitive_path]
+    )
+    with caplog.at_level("ERROR"):
+        assert send_cli(args) is None
+
+    own_messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "pymedphys._dicom.connect.send"
+    ]
+    assert own_messages == ["DICOM send failed; file paths and error details omitted"]
+    assert sensitive_path not in caplog.text
+
+
 @pytest.mark.pydicom
 def test_dicom_listener_echo(listener):
     """Test to ensure that running dicom listener responds to C-ECHO"""
