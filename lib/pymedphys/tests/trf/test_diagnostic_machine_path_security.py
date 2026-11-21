@@ -1,4 +1,5 @@
 """Regression coverage for traversal-safe machine diagnostic directories."""
+
 import pytest
 
 from pymedphys._trf.manage import diagnostics_zips
@@ -26,8 +27,18 @@ def test_machine_diagnostic_paths_use_normal_subdirectories(tmp_path, monkeypatc
 
 @pytest.mark.parametrize(
     "machine",
-    ["", ".", "..", "../escape", "nested/machine", "/tmp/escape",
-     r"..\escape", r"C:\escape", "bad\nmachine", "bad\x00name"],
+    [
+        "",
+        ".",
+        "..",
+        "../escape",
+        "nested/machine",
+        "/tmp/escape",
+        r"..\escape",
+        r"C:\escape",
+        "bad\nmachine",
+        "bad\x00name",
+    ],
 )
 def test_machine_id_cannot_select_another_directory(tmp_path, monkeypatch, machine):
     monkeypatch.setattr(

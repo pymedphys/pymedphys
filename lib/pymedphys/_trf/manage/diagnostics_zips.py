@@ -100,10 +100,9 @@ def fetch_system_diagnostics_multi_linac(
         archived_root = pathlib.Path(storage_directory, already_indexed).resolve()
         machine_storage_path = pending_root / machine_name
         archived_machine_path = archived_root / machine_name
-        if (
-            not machine_storage_path.resolve().is_relative_to(pending_root)
-            or not archived_machine_path.resolve().is_relative_to(archived_root)
-        ):
+        if not machine_storage_path.resolve().is_relative_to(
+            pending_root
+        ) or not archived_machine_path.resolve().is_relative_to(archived_root):
             raise ValueError("Machine directory escapes the diagnostics root.")
 
         print("\nFetching diagnostic zip files from {} @ {}".format(machine, ip))
