@@ -266,7 +266,9 @@ def test_cache_path_rejects_junction_to_another_cache_entry(
     source = tmp_path / "replacement.bin"
     source.write_bytes(b"would overwrite the original")
     hashes = tmp_path / "hashes.json"
-    hashes.write_text(json.dumps({"alias/protected.bin": "invalid-hash"}), encoding="utf-8")
+    hashes.write_text(
+        json.dumps({"alias/protected.bin": "invalid-hash"}), encoding="utf-8"
+    )
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
 
     alias = cache / "alias"
@@ -318,7 +320,10 @@ def test_explicit_zip_extraction_ignores_unused_symlinked_cache_directory(
     )
 
     assert result == [(destination / "member.txt").resolve()]
-    assert (destination / "member.txt").read_text(encoding="utf-8") == "expected extracted data"
+    assert (
+        (destination / "member.txt").read_text(encoding="utf-8")
+        == "expected extracted data"
+    )
     assert not (outside / "member.txt").exists()
     assert legacy_directory.is_symlink()
 
