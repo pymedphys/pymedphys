@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import pathlib
+import tempfile
 from typing import Any, Dict, Literal, Optional, Tuple, cast
 
 from pymedphys._imports import streamlit as st
@@ -177,10 +179,28 @@ def save_mosaiq_config_to_file(
         }
         config["site"].append(new_site)
 
-    # Write the updated config back to file
+    # A failed serialisation or interrupted write must not truncate the
+    # existing configuration, which can contain connection and site details.
+    # NamedTemporaryFile defaults to owner-only permissions on POSIX systems.
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_path, "w") as f:
-        toml.dump(config, f)
+    staged_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=config_path.parent,
+            prefix=f".{config_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as staged:
+            staged_path = pathlib.Path(staged.name)
+            toml.dump(config, staged)
+            staged.flush()
+            os.fsync(staged.fileno())
+        os.replace(staged_path, config_path)
+    finally:
+        if staged_path is not None:
+            staged_path.unlink(missing_ok=True)
 
     # get_config is memoised, so without this the app keeps reading the
     # config from before the save.
