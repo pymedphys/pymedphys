@@ -91,8 +91,9 @@ def encode_file_name(value: object) -> str:
     Characters that could make the name refer to another folder, or that
     Windows does not allow in names, and the whole names ``.`` and ``..``, are
     replaced by ``%`` and their two-digit hexadecimal code, so ``../x``
-    becomes ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Windows device basenames (such as ``CON`` or ``LPT1.txt``) are also escaped.
-    Different values give different names, and ordinary names are unchanged.
+    becomes ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Windows device
+    basenames (such as ``CON`` or ``LPT1.txt``) are also escaped. Different
+    values give different names, and ordinary names are unchanged.
 
     Parameters
     ----------
