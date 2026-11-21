@@ -1,6 +1,4 @@
 """Regression coverage for traversal-safe machine diagnostic directories."""
-from pathlib import Path
-
 import pytest
 
 from pymedphys._trf.manage import diagnostics_zips
