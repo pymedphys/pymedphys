@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import os
 import re
 from collections import namedtuple
 
@@ -108,7 +109,8 @@ def _header_match(contents):
     match = re.match(regex_trf, contents)
 
     if match is None:
-        print(contents)
+        if os.environ.get("PYMEDPHYS_REDACT_TRF_PATHS") != "1":
+            print(contents)
         raise ValueError("TRF header not in an expected form.")
 
     return match

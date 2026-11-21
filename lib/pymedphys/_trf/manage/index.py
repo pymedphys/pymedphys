@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeffrey D. Cooney
 # Copyright (C) 2018 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -185,9 +186,11 @@ def file_ready_to_be_indexed(
             mosaiq_string_time, path_string_time = date_convert(
                 header.date, centre_details[centre]["timezone"]
             )
-        except Exception:  # pylint: disable = broad-except
+        except Exception as error:  # pylint: disable = broad-except
             if _redact_progress_paths():
-                print("Logfile header could not be processed")
+                print(
+                    f"Logfile header could not be processed ({type(error).__name__})"
+                )
             else:
                 traceback.print_exc()
             new_filepath = os.path.join(unknown_error_in_logfile, logfile_basename)
@@ -285,6 +288,18 @@ def _separate_server_port_string(sql_server_and_port):
 
 
 def index_logfiles(centre_map, machine_map, logfile_data_directory):
+    """Index logfiles, shielding fatal exception details when redaction is enabled."""
+    try:
+        return _index_logfiles(centre_map, machine_map, logfile_data_directory)
+    except Exception as error:  # pylint: disable = broad-except
+        if not _redact_progress_paths():
+            raise
+        raise RuntimeError(
+            f"TRF indexing failed ({type(error).__name__})"
+        ) from None
+
+
+def _index_logfiles(centre_map, machine_map, logfile_data_directory):
     data_directory = logfile_data_directory
     index_filepath = os.path.abspath(os.path.join(data_directory, "index.json"))
     to_be_indexed_directory = os.path.abspath(
