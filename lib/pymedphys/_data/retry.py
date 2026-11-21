@@ -49,7 +49,10 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None, giveup=Non
                 except ExceptionToCheck as e:
                     if giveup is not None and giveup(e):
                         raise
-                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    # Exceptions from HTTP libraries may contain signed URLs,
+                    # credentials or patient identifiers. Retain the error type
+                    # for diagnostics without copying exception text to output.
+                    msg = "%s, Retrying in %d seconds..." % (type(e).__name__, mdelay)
                     if logger:
                         logger.warning(msg)
                     else:
