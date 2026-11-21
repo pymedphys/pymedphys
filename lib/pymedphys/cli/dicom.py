@@ -253,10 +253,13 @@ def listen(dicom_subparsers):
     )
     parser.add_argument(
         "--host",
-        # A DICOM listener binds all interfaces by design.
-        default="0.0.0.0",  # nosec B104
+        default="127.0.0.1",
         type=str,
-        help="The host/IP to bind to",
+        help=(
+            "Host/IP to bind to (default: 127.0.0.1, local computer only). "
+            "To accept associations from other computers on a trusted network, "
+            "explicitly specify --host 0.0.0.0 or a network interface address."
+        ),
     )
     parser.add_argument(
         "-d",
