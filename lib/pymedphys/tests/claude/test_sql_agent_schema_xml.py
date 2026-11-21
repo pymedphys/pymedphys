@@ -60,7 +60,6 @@ def test_plain_schema_prompt_remains_compatible(monkeypatch):
     assert '<column name="Pat_ID1" type="int" />' in output
 
 
-
 def test_schema_prompt_preserves_attribute_whitespace(monkeypatch):
     table_name = "Patient\tRecords"
     column_name = "Line\nBreak"
@@ -103,7 +102,7 @@ def test_schema_prompt_rejects_xml_forbidden_characters(
     [
         'Patient" & <Records>',
         "It's a > difficult & name",
-        "One' \"two\" & three",
+        'One\' "two" & three',
         "Patient\tDetails\ncontinued",
     ],
 )
@@ -112,12 +111,8 @@ def test_table_selection_decodes_xml_attributes(monkeypatch, table_name):
         attribute = _utilities._quote_xml_schema_attribute(table_name)
         return f"<selection>\n<table name={attribute}>\n</selection>"
 
-    monkeypatch.setattr(
-        _select_tables, "_get_raw_selected_table_names", fake_selected
-    )
-    result = asyncio.run(
-        _select_tables.get_selected_table_names(None, None, [], "")
-    )
+    monkeypatch.setattr(_select_tables, "_get_raw_selected_table_names", fake_selected)
+    result = asyncio.run(_select_tables.get_selected_table_names(None, None, [], ""))
     assert result == (table_name,)
 
 

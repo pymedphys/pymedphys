@@ -57,11 +57,37 @@ def _quote_xml_schema_attribute(value: str) -> str:
 
 _SQL_MUTATING_WORDS = frozenset(
     {
-        "ALTER", "BACKUP", "BULK", "CREATE", "DBCC", "DELETE", "DENY",
-        "DROP", "EXEC", "EXECUTE", "GO", "GRANT", "INSERT", "INTO", "KILL",
-        "MERGE", "OPENQUERY", "OPENROWSET", "OPENDATASOURCE", "RECEIVE",
-        "RECONFIGURE", "RESTORE", "REVOKE", "SET", "SHUTDOWN", "TRUNCATE",
-        "UPDATE", "USE", "WAITFOR", "WRITETEXT", "UPDATETEXT",
+        "ALTER",
+        "BACKUP",
+        "BULK",
+        "CREATE",
+        "DBCC",
+        "DELETE",
+        "DENY",
+        "DROP",
+        "EXEC",
+        "EXECUTE",
+        "GO",
+        "GRANT",
+        "INSERT",
+        "INTO",
+        "KILL",
+        "MERGE",
+        "OPENQUERY",
+        "OPENROWSET",
+        "OPENDATASOURCE",
+        "RECEIVE",
+        "RECONFIGURE",
+        "RESTORE",
+        "REVOKE",
+        "SET",
+        "SHUTDOWN",
+        "TRUNCATE",
+        "UPDATE",
+        "USE",
+        "WAITFOR",
+        "WRITETEXT",
+        "UPDATETEXT",
     }
 )
 
@@ -105,9 +131,7 @@ def _require_read_only_sql(query: str) -> None:
 
         if character.isalpha() or character == "_":
             end = i + 1
-            while end < len(query) and (
-                query[end].isalnum() or query[end] in "_@$#"
-            ):
+            while end < len(query) and (query[end].isalnum() or query[end] in "_@$#"):
                 end += 1
             words.append(query[i:end].upper())
             i = end
