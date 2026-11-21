@@ -4,13 +4,14 @@
 
 import importlib
 import logging
+from pathlib import Path
 
 trf2csv_module = importlib.import_module("pymedphys._trf.decode.trf2csv")
 
 
 class _FakeFrame:
     def to_csv(self, filepath):
-        filepath.write_text("synthetic\n")
+        Path(filepath).write_text("synthetic\n")
 
 
 def test_trf_to_csv_does_not_log_patient_bearing_paths(tmp_path, caplog, monkeypatch):
@@ -32,7 +33,9 @@ def test_trf_to_csv_does_not_log_patient_bearing_paths(tmp_path, caplog, monkeyp
     assert "Converting TRF file" in caplog.text
 
 
-def test_directory_conversion_does_not_print_patient_paths(tmp_path, capsys, monkeypatch):
+def test_directory_conversion_does_not_print_patient_paths(
+    tmp_path, capsys, monkeypatch
+):
     input_dir = tmp_path / "input"
     output_dir = tmp_path / "output"
     input_dir.mkdir()
