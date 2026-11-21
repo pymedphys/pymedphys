@@ -183,6 +183,7 @@ def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     assert download.get_data_dir() == override
     assert override.is_dir()
 
+
 @pytest.mark.usefixtures("no_sleep")
 def test_retry_diagnostics_do_not_disclose_exception_details(capsys):
     """Sensitive URL query parameters from failed downloads never reach stdout."""
@@ -221,8 +222,5 @@ def test_retry_logger_receives_only_safe_exception_metadata():
         return "ok"
 
     assert fail_once() == "ok"
-    logger.warning.assert_called_once_with(
-        "ConnectionError, Retrying in 0 seconds..."
-    )
+    logger.warning.assert_called_once_with("ConnectionError, Retrying in 0 seconds...")
     assert secret not in str(logger.warning.call_args)
-
