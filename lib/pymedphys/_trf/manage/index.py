@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeffrey D. Cooney
 # Copyright (C) 2018 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +31,11 @@ from pymedphys._utilities.filehash import hash_file
 from pymedphys._utilities.filesystem import make_a_valid_directory_name
 
 from .identify import date_convert
+
+
+def _redact_progress_paths():
+    """Opt in when indexing logs may leave a clinical workstation."""
+    return os.environ.get("PYMEDPHYS_REDACT_TRF_PATHS") == "1"
 
 
 def create_logfile_directory_name(
@@ -112,7 +118,10 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
         os.rename(old_filepath, new_filepath)
     except FileExistsError:
         files_hashes_match = hash_file(old_filepath) == hash_file(new_filepath)
-        print("    File already exists at {}".format(new_filepath))
+        if _redact_progress_paths():
+            print("Destination logfile already exists")
+        else:
+            print("    File already exists at {}".format(new_filepath))
         if files_hashes_match:
             os.remove(old_filepath)
         else:
@@ -161,7 +170,10 @@ def file_ready_to_be_indexed(
 
         try:
             header = decode_header_from_file(to_be_indexed_dict[filehash])
-            print("\n{}".format(header))
+            if _redact_progress_paths():
+                print("\nDecoded logfile header")
+            else:
+                print("\n{}".format(header))
             if header.field_label == "":
                 print("No field label in logfile")
                 new_filepath = os.path.join(no_field_label_in_logfile, logfile_basename)
@@ -174,8 +186,13 @@ def file_ready_to_be_indexed(
             mosaiq_string_time, path_string_time = date_convert(
                 header.date, centre_details[centre]["timezone"]
             )
-        except Exception:  # pylint: disable = broad-except
-            traceback.print_exc()
+        except Exception as error:  # pylint: disable = broad-except
+            if _redact_progress_paths():
+                print(
+                    f"Logfile header could not be processed ({type(error).__name__})"
+                )
+            else:
+                traceback.print_exc()
             new_filepath = os.path.join(unknown_error_in_logfile, logfile_basename)
             rename_and_handle_fileexists(to_be_indexed_dict[filehash], new_filepath)
             continue
@@ -189,8 +206,11 @@ def file_ready_to_be_indexed(
                 header.field_name,
                 buffer=240,
             )
-        except NoMosaiqEntries as e:
-            print(e)
+        except NoMosaiqEntries as error:
+            if _redact_progress_paths():
+                print("No matching Mosaiq record found")
+            else:
+                print(error)
             new_filepath = os.path.join(no_mosaiq_record_found, logfile_basename)
             rename_and_handle_fileexists(to_be_indexed_dict[filehash], new_filepath)
             continue
@@ -227,11 +247,14 @@ def file_ready_to_be_indexed(
 
         os.rename(to_be_indexed_dict[filehash], abs_new_filepath)
 
-        print(
-            "Indexed logfile:\n    {} -->\n    {}".format(
-                to_be_indexed_dict[filehash], abs_new_filepath
+        if _redact_progress_paths():
+            print("Indexed logfile")
+        else:
+            print(
+                "Indexed logfile:\n    {} -->\n    {}".format(
+                    to_be_indexed_dict[filehash], abs_new_filepath
+                )
             )
-        )
 
 
 def _separate_server_port_string(sql_server_and_port):
@@ -265,6 +288,16 @@ def _separate_server_port_string(sql_server_and_port):
 
 
 def index_logfiles(centre_map, machine_map, logfile_data_directory):
+    """Index logfiles, shielding fatal exception details when redaction is enabled."""
+    try:
+        return _index_logfiles(centre_map, machine_map, logfile_data_directory)
+    except Exception as error:  # pylint: disable = broad-except
+        if not _redact_progress_paths():
+            raise
+        raise RuntimeError(f"TRF indexing failed ({type(error).__name__})") from None
+
+
+def _index_logfiles(centre_map, machine_map, logfile_data_directory):
     data_directory = logfile_data_directory
     index_filepath = os.path.abspath(os.path.join(data_directory, "index.json"))
     to_be_indexed_directory = os.path.abspath(
