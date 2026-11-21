@@ -16,6 +16,9 @@
 
 # pylint: disable=redefined-outer-name, no-member
 
+import io
+import logging
+import warnings
 import pathlib
 import re
 import shutil
@@ -31,6 +34,7 @@ from pymedphys._imports import psutil, pydicom, pynetdicom, pytest
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.connect.listen import (
     DicomListener,
+    _redacted_cli_diagnostics,
     hierarchical_dicom_storage_directory,
 )
 from pymedphys._dicom.connect.send import DicomSender
@@ -306,6 +310,178 @@ def test_listen_help_describes_stored_names(capsys, monkeypatch):
     assert "written as % and their two-digit hexadecimal code" in help_text
     assert "as %2E and %2E%2E." in help_text
 
+
+@pytest.mark.pydicom
+def test_listener_logs_do_not_expose_patient_identifiers(
+    tmp_path, test_dataset, caplog
+):
+    """The storage path contains PatientID and UIDs, which logs must not expose."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+    with caplog.at_level(logging.INFO):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0x0000
+    assert "DICOM object received and stored successfully" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert test_dataset.SOPInstanceUID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_listener_failure_logs_omit_storage_path(
+    tmp_path, test_dataset, caplog, monkeypatch
+):
+    """Failed writes must not emit patient-identifying archive locations."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+
+    def reject_write(_self, *_args, **_kwargs):
+        raise OSError("synthetic error mentioning patient name and source path")
+
+    monkeypatch.setattr(pydicom.dataset.FileDataset, "save_as", reject_write)
+    with caplog.at_level(logging.ERROR):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0xA700
+    assert "Could not write file" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+    assert "synthetic error" not in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("failure", ["directory", "existing_read", "orphan_directory"])
+def test_listener_prewrite_io_failures_do_not_expose_identifiers(
+    tmp_path, test_dataset, caplog, monkeypatch, failure
+):
+    """Directory and existing-file failures return a safe storage error."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+    series_dir = hierarchical_dicom_storage_directory(tmp_path, test_dataset)
+    filepath = _build_hierarchical_path_to_plan(tmp_path, test_dataset)
+
+    if failure != "directory":
+        series_dir.mkdir(parents=True)
+        filepath.touch()
+
+    original_mkdir = pathlib.Path.mkdir
+
+    if failure == "directory":
+
+        def fail_directory(self, *args, **kwargs):
+            if self == series_dir:
+                raise OSError(f"cannot make {self}")
+            return original_mkdir(self, *args, **kwargs)
+
+        monkeypatch.setattr(pathlib.Path, "mkdir", fail_directory)
+
+    elif failure == "existing_read":
+
+        def fail_read(_filepath):
+            raise OSError(f"cannot read {filepath}")
+
+        monkeypatch.setattr(pydicom, "dcmread", fail_read)
+
+    else:
+        monkeypatch.setattr(pydicom, "dcmread", lambda _filepath: pydicom.Dataset())
+
+        def fail_orphan(self, *args, **kwargs):
+            if self.name == "orphan":
+                raise OSError(f"cannot make {self}")
+            return original_mkdir(self, *args, **kwargs)
+
+        monkeypatch.setattr(pathlib.Path, "mkdir", fail_orphan)
+
+    with caplog.at_level(logging.ERROR):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0xA700
+    assert status.ErrorComment == "SCP internal error - Unable to write file"
+    assert "Could not write file" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert test_dataset.StudyInstanceUID not in caplog.text
+    assert test_dataset.SeriesInstanceUID not in caplog.text
+    assert test_dataset.SOPInstanceUID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+    assert "cannot" not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_listener_redacts_pydicom_warnings_during_dataset_access(
+    tmp_path, test_dataset, caplog
+):
+    """Warnings and log records from deferred dataset reads omit DICOM values."""
+    sentinel = "ZZPATIENT-IDENTIFIERZZ"
+
+    class DeferredEvent:
+        context = types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        )
+
+        @property
+        def dataset(self):
+            pydicom.misc.warn_and_log(f"Invalid value for VR PN: '{sentinel}'")
+            return test_dataset
+
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with caplog.at_level(logging.WARNING, logger="pydicom"):
+            status = dicom_listener.on_c_store(DeferredEvent())
+
+    assert status.Status == 0x0000
+    assert caught
+    assert sentinel not in caplog.text
+    assert all(sentinel not in str(w.message) for w in caught)
+
+
+@pytest.mark.pydicom
+def test_listener_cli_redacts_prehandler_dependency_logs_and_warnings(caplog):
+    """Redact early, debug and exception records, including direct log handlers."""
+    sentinel = "ZZPATIENT-IDENTIFIERZZ"
+    direct_stream = io.StringIO()
+    direct_handler = logging.StreamHandler(direct_stream)
+    dependency_logger = logging.getLogger("pynetdicom")
+    dependency_logger.addHandler(direct_handler)
+    try:
+        with caplog.at_level(logging.DEBUG):
+            with caplog.at_level(logging.DEBUG, logger="pynetdicom"):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("always")
+                    with _redacted_cli_diagnostics():
+                        dependency_logger.debug("Incoming SOP Instance UID: %s", sentinel)
+                        try:
+                            raise OSError(f"patient archive path /{sentinel}")
+                        except OSError:
+                            dependency_logger.exception("Failed for %s", sentinel)
+                        logging.getLogger("pydicom.pixels.decoders.base").warning(
+                            "Invalid value: %s", sentinel
+                        )
+                        pydicom.misc.warn_and_log(
+                            f"Invalid value for VR PN: '{sentinel}'"
+                        )
+    finally:
+        dependency_logger.removeHandler(direct_handler)
+
+    assert sentinel not in caplog.text
+    assert sentinel not in direct_stream.getvalue()
+    assert "DICOM dependency diagnostic details suppressed" in caplog.text
 
 @pytest.mark.pydicom
 def test_dicom_listener_stores_inside_storage_directory(tmp_path, test_dataset):

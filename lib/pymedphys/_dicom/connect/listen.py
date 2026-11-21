@@ -14,18 +14,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import logging
 import pathlib
 import signal
 import sys
 import tempfile
 import uuid
+import warnings
 
 from pymedphys._imports import pydicom, pynetdicom
 
 from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
+from pymedphys._dicom.deidentify.diagnostics import redacted_diagnostics
 from pymedphys._utilities.filesystem import encode_file_name
+
+
+# DICOM library diagnostics may contain received patient identifiers and paths.
+# Sanitise at record creation, not at the EVT_C_STORE callback: pynetdicom logs
+# incoming SOP Instance UIDs before calling our handler, including at DEBUG.
+_DICOM_DIAGNOSTIC_SUMMARY = (
+    "DICOM dependency diagnostic details suppressed (may contain patient data)"
+)
+
+
+@contextlib.contextmanager
+def _redacted_cli_diagnostics():
+    """Sanitise DICOM dependency logs and warnings for the CLI's lifetime.
+
+    This covers configured Python logging handlers, including a dependency's
+    own handlers, and warnings captured through Python's warnings machinery.
+    It does not sanitise arbitrary prints, application-specific callbacks or
+    handlers installed outside the CLI by users of :class:`DicomListener`.
+    """
+    previous_factory = logging.getLogRecordFactory()
+    previous_showwarning = warnings.showwarning
+
+    def redacting_factory(*args, **kwargs):
+        record = previous_factory(*args, **kwargs)
+        name = record.name
+        if name in ("pydicom", "pynetdicom", "py.warnings") or name.startswith(
+            ("pydicom.", "pynetdicom.")
+        ):
+            record.msg = _DICOM_DIAGNOSTIC_SUMMARY
+            record.args = ()
+            record.exc_info = None
+            record.exc_text = None
+            record.stack_info = None
+        return record
+
+    logging.setLogRecordFactory(redacting_factory)
+    logging.captureWarnings(True)
+    try:
+        yield
+    finally:
+        logging.setLogRecordFactory(previous_factory)
+        if warnings.showwarning is not previous_showwarning:
+            logging.captureWarnings(False)
 
 
 def hierarchical_dicom_storage_directory(
@@ -80,7 +126,7 @@ class DicomListener(DicomConnectBase):
         # The application entity
         self.ae = None
 
-        logging.debug("Will store files received in: %s", self.storage_directory)
+        logging.debug("DICOM listener storage directory configured")
 
     def start(self):
         """Start the listener.
@@ -138,6 +184,22 @@ class DicomListener(DicomConnectBase):
             self.on_released_callback(self.association_directory)
 
     def on_c_store(self, event):
+        """Handle C-STORE, including filesystem failures during archive preparation."""
+        with redacted_diagnostics():
+            try:
+                return self._store_c_store(event)
+            except OSError:
+                # Paths and exception messages can contain Patient IDs and UIDs.
+                logging.error("Could not write file to specified directory:")
+                logging.error(
+                    "Directory may not exist or you may not have write permission"
+                )
+                status_ds = pydicom.Dataset()
+                status_ds.ErrorComment = "SCP internal error - Unable to write file"
+                status_ds.Status = 0xA700  # Failed - Out of Resources - IOError
+                return status_ds
+
+    def _store_c_store(self, event):
         dataset = event.dataset
 
         try:
@@ -200,29 +262,21 @@ class DicomListener(DicomConnectBase):
         )
         file_ds.update(dataset)
 
-        try:
-            # `enforce_file_format` ensures that a compliant File Meta
-            # Information Header is written
-            file_ds.save_as(filepath, enforce_file_format=True)
-            status_ds.Status = 0x0000  # Success
-
-            logging.info("DICOM object received: %s", filepath)
-        except OSError:
-            logging.error("Could not write file to specified directory:")
-            logging.error("    %s", filepath)
-            logging.error(
-                "Directory may not exist or you may not have write permission"
-            )
-
-            status_ds.ErrorComment = "SCP internal error - Unable to write file"
-            status_ds.Status = 0xA700  # Failed - Out of Resources - IOError
-
+        # `enforce_file_format` ensures that a compliant File Meta
+        # Information Header is written.
+        file_ds.save_as(filepath, enforce_file_format=True)
+        status_ds.Status = 0x0000  # Success
+        logging.info("DICOM object received and stored successfully")
         return status_ds
 
 
 def listen_cli(args):
-    """Start a DICOM listener from the command line interface"""
+    """Start a DICOM listener with a redacted CLI diagnostic stream."""
+    with _redacted_cli_diagnostics():
+        _run_listener_cli(args)
 
+
+def _run_listener_cli(args):
     # Start the listener
     dicom_listener = DicomListener(
         host=args.host,
