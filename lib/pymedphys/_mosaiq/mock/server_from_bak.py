@@ -137,7 +137,11 @@ def _stop_previous_restore_containers(docker_command, bak_filepath):
                 for mount in container["Mounts"]
             )
         except (
-            OSError, subprocess.CalledProcessError, ValueError, TypeError, KeyError
+            OSError,
+            subprocess.CalledProcessError,
+            ValueError,
+            TypeError,
+            KeyError,
         ) as exc:
             raise RuntimeError(
                 "Cannot verify the owner of Docker port 1433; refusing to restore."
