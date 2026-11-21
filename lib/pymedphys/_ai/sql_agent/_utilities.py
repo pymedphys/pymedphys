@@ -58,7 +58,7 @@ def _quote_xml_schema_attribute(value: str) -> str:
 _SQL_MUTATING_WORDS = frozenset(
     {
         "ALTER", "BACKUP", "BULK", "CREATE", "DBCC", "DELETE", "DENY",
-        "DROP", "EXEC", "EXECUTE", "GRANT", "INSERT", "INTO", "KILL",
+        "DROP", "EXEC", "EXECUTE", "GO", "GRANT", "INSERT", "INTO", "KILL",
         "MERGE", "OPENQUERY", "OPENROWSET", "OPENDATASOURCE", "RECEIVE",
         "RECONFIGURE", "RESTORE", "REVOKE", "SET", "SHUTDOWN", "TRUNCATE",
         "UPDATE", "USE", "WAITFOR", "WRITETEXT", "UPDATETEXT",
