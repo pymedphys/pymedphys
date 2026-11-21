@@ -15,6 +15,7 @@
 
 import json
 import os
+from pathlib import Path
 
 
 def get_gantry_tolerance(index, file_hash, config):
@@ -86,6 +87,12 @@ def get_sql_servers_list(config):
 def get_filepath(index, config, filehash):
     data_directory = get_data_directory(config)
     relative_path = index[filehash]["filepath"]
-    filepath = os.path.abspath(os.path.join(data_directory, "indexed", relative_path))
+    indexed_root = os.path.abspath(os.path.join(data_directory, "indexed"))
+    filepath = os.path.abspath(os.path.join(indexed_root, relative_path))
+
+    # Index JSON is file-backed metadata. Do not allow absolute paths, '..',
+    # or symlinks to redirect a logfile read outside the indexed directory.
+    if not Path(filepath).resolve().is_relative_to(Path(indexed_root).resolve()):
+        raise ValueError("Indexed logfile path escapes the indexed directory.")
 
     return filepath
