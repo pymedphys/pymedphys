@@ -16,6 +16,7 @@
 
 # pylint: disable=redefined-outer-name, no-member
 
+import io
 import logging
 import warnings
 import pathlib
@@ -359,7 +360,6 @@ def test_listener_failure_logs_omit_storage_path(
     assert "synthetic error" not in caplog.text
 
 
-
 @pytest.mark.pydicom
 @pytest.mark.parametrize("failure", ["directory", "existing_read", "orphan_directory"])
 def test_listener_prewrite_io_failures_do_not_expose_identifiers(
@@ -383,6 +383,7 @@ def test_listener_prewrite_io_failures_do_not_expose_identifiers(
     original_mkdir = pathlib.Path.mkdir
 
     if failure == "directory":
+
         def fail_directory(self, *args, **kwargs):
             if self == series_dir:
                 raise OSError(f"cannot make {self}")
@@ -391,6 +392,7 @@ def test_listener_prewrite_io_failures_do_not_expose_identifiers(
         monkeypatch.setattr(pathlib.Path, "mkdir", fail_directory)
 
     elif failure == "existing_read":
+
         def fail_read(_filepath):
             raise OSError(f"cannot read {filepath}")
 
@@ -451,22 +453,35 @@ def test_listener_redacts_pydicom_warnings_during_dataset_access(
 
 @pytest.mark.pydicom
 def test_listener_cli_redacts_prehandler_dependency_logs_and_warnings(caplog):
-    """The CLI redacts even diagnostics emitted before EVT_C_STORE is invoked."""
+    """Redact early, debug and exception records, including direct log handlers."""
     sentinel = "ZZPATIENT-IDENTIFIERZZ"
-    with caplog.at_level(logging.DEBUG):
-        with warnings.catch_warnings():
-            warnings.simplefilter("always")
-            with _redacted_cli_diagnostics():
-                logging.getLogger("pynetdicom").error(
-                    "Incoming SOP Instance UID: %s", sentinel
-                )
-                logging.getLogger("pydicom.pixels.decoders.base").warning(
-                    "Invalid value: %s", sentinel
-                )
-                pydicom.misc.warn_and_log(f"Invalid value for VR PN: '{sentinel}'")
-    assert sentinel not in caplog.text
-    assert "DICOM dependency diagnostic details suppressed" in caplog.text
+    direct_stream = io.StringIO()
+    direct_handler = logging.StreamHandler(direct_stream)
+    dependency_logger = logging.getLogger("pynetdicom")
+    dependency_logger.addHandler(direct_handler)
+    try:
+        with caplog.at_level(logging.DEBUG):
+            with caplog.at_level(logging.DEBUG, logger="pynetdicom"):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("always")
+                    with _redacted_cli_diagnostics():
+                        dependency_logger.debug("Incoming SOP Instance UID: %s", sentinel)
+                        try:
+                            raise OSError(f"patient archive path /{sentinel}")
+                        except OSError:
+                            dependency_logger.exception("Failed for %s", sentinel)
+                        logging.getLogger("pydicom.pixels.decoders.base").warning(
+                            "Invalid value: %s", sentinel
+                        )
+                        pydicom.misc.warn_and_log(
+                            f"Invalid value for VR PN: '{sentinel}'"
+                        )
+    finally:
+        dependency_logger.removeHandler(direct_handler)
 
+    assert sentinel not in caplog.text
+    assert sentinel not in direct_stream.getvalue()
+    assert "DICOM dependency diagnostic details suppressed" in caplog.text
 
 @pytest.mark.pydicom
 def test_dicom_listener_stores_inside_storage_directory(tmp_path, test_dataset):
