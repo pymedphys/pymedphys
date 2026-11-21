@@ -33,7 +33,7 @@ from pymedphys._dicom.connect.listen import (
     DicomListener,
     hierarchical_dicom_storage_directory,
 )
-from pymedphys._dicom.connect.send import DicomSender
+from pymedphys._dicom.connect.send import DicomSender, send_cli
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys.cli import define_parser
 
@@ -150,6 +150,58 @@ def listener():
     yield dicom_listener
 
     dicom_listener.stop()
+
+
+@pytest.mark.pydicom
+def test_dicom_sender_does_not_log_identifying_uids(test_dataset, monkeypatch, caplog):
+    """The C-STORE debug log must not contain SOP Instance UIDs."""
+    class FakeAssociation:
+        is_established = True
+
+        def send_c_store(self, _dataset):
+            return 0x0000
+
+        def release(self):
+            pass
+
+    class FakeAE:
+        def add_requested_context(self, *_args):
+            pass
+
+        def associate(self, *_args, **_kwargs):
+            return FakeAssociation()
+
+    monkeypatch.setattr(pynetdicom, "AE", FakeAE)
+    with caplog.at_level("DEBUG"):
+        assert DicomSender().send([test_dataset]) == [0x0000]
+
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.getMessage().startswith("Sending DICOM object")
+    ]
+    assert messages == ["Sending DICOM object by C-STORE"]
+    assert test_dataset.SOPInstanceUID not in " ".join(messages)
+
+
+def test_dicom_sender_cli_omits_patient_bearing_file_paths(monkeypatch, caplog):
+    """Invalid clinical filenames do not appear in error diagnostics."""
+    sensitive_path = "synthetic-patient-123456-RTPLAN.dcm"
+    monkeypatch.setattr(DicomSender, "verify", lambda self: True)
+
+    def invalid_dicom(_path):
+        raise pydicom.errors.InvalidDicomError("private patient identifier")
+
+    monkeypatch.setattr(pydicom, "dcmread", invalid_dicom)
+    args = types.SimpleNamespace(
+        host="127.0.0.1", port=8888, aetitle="TEST", dcmfiles=[sensitive_path]
+    )
+    with caplog.at_level("ERROR"):
+        assert send_cli(args) is None
+
+    assert "Invalid DICOM file provided" in caplog.text
+    assert sensitive_path not in caplog.text
+    assert "private patient identifier" not in caplog.text
 
 
 @pytest.mark.pydicom
