@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeffrey D. Cooney
 # Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2018 Cancer Care Associates
 
@@ -122,9 +123,9 @@ def encode_file_name(value: object) -> str:
     # dots and spaces. Escape every character for this small class of names to
     # avoid case-insensitive collisions and normalize trailing characters.
     # POSIX archives keep their existing paths.
-    if _ON_WINDOWS and encoded.split(".", maxsplit=1)[0].rstrip(" ").upper() in (
-        _WINDOWS_DEVICE_NAMES
-    ):
-        encoded = "".join(f"%{ord(character):02X}" for character in encoded)
+    if _ON_WINDOWS:
+        basename = encoded.split(".", maxsplit=1)[0].rstrip(" ")
+        if basename.upper() in _WINDOWS_DEVICE_NAMES:
+            encoded = "".join(f"%{ord(character):02X}" for character in encoded)
 
     return encoded
