@@ -18,7 +18,6 @@
 import json
 import os
 import pathlib
-import traceback
 from glob import glob
 
 from pymedphys._imports import attr
@@ -112,7 +111,7 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
         os.rename(old_filepath, new_filepath)
     except FileExistsError:
         files_hashes_match = hash_file(old_filepath) == hash_file(new_filepath)
-        print("    File already exists at {}".format(new_filepath))
+        print("Destination logfile already exists")
         if files_hashes_match:
             os.remove(old_filepath)
         else:
@@ -161,7 +160,7 @@ def file_ready_to_be_indexed(
 
         try:
             header = decode_header_from_file(to_be_indexed_dict[filehash])
-            print("\n{}".format(header))
+            print("\nDecoded logfile header")
             if header.field_label == "":
                 print("No field label in logfile")
                 new_filepath = os.path.join(no_field_label_in_logfile, logfile_basename)
@@ -175,7 +174,7 @@ def file_ready_to_be_indexed(
                 header.date, centre_details[centre]["timezone"]
             )
         except Exception:  # pylint: disable = broad-except
-            traceback.print_exc()
+            print("Logfile header could not be processed")
             new_filepath = os.path.join(unknown_error_in_logfile, logfile_basename)
             rename_and_handle_fileexists(to_be_indexed_dict[filehash], new_filepath)
             continue
@@ -189,8 +188,8 @@ def file_ready_to_be_indexed(
                 header.field_name,
                 buffer=240,
             )
-        except NoMosaiqEntries as e:
-            print(e)
+        except NoMosaiqEntries:
+            print("No matching Mosaiq record found")
             new_filepath = os.path.join(no_mosaiq_record_found, logfile_basename)
             rename_and_handle_fileexists(to_be_indexed_dict[filehash], new_filepath)
             continue
@@ -227,11 +226,7 @@ def file_ready_to_be_indexed(
 
         os.rename(to_be_indexed_dict[filehash], abs_new_filepath)
 
-        print(
-            "Indexed logfile:\n    {} -->\n    {}".format(
-                to_be_indexed_dict[filehash], abs_new_filepath
-            )
-        )
+        print("Indexed logfile")
 
 
 def _separate_server_port_string(sql_server_and_port):
