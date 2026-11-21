@@ -19,10 +19,16 @@ temporary ``PYMEDPHYS_DATA_DIR``, and hashes come from a temporary copy of
 ``hashes.json``.
 """
 
+# pylint: disable=too-many-lines,protected-access
+# Security regression tests intentionally exercise internal archive operations.
+
+import errno
 import hashlib
 import json
 import os
 import pathlib
+import subprocess
+import tempfile
 import threading
 import zipfile
 
@@ -140,6 +146,214 @@ def test_every_downloadable_file_has_a_recorded_hash():
     assert sorted(set(urls) - set(hashes)) == []
 
 
+@pytest.mark.parametrize(
+    "member",
+    [
+        "../escape.txt",
+        ".. /escape.txt",
+        "folder./data.txt",
+        "/absolute.txt",
+        "NUL.txt",
+        "COM1",
+        "LPT1.log",
+        "file?.txt",
+        "data<secret>.txt",
+        "folder/name|other.txt",
+        "CONIN$",
+        "C:\\\\outside.txt",
+    ],
+)
+def test_zip_extraction_rejects_unsafe_member_paths(cache, tmp_path, member):
+    _, hashes = cache
+    source = _zip(tmp_path / "unsafe.zip", {member: "should not be extracted"})
+    _record(hashes, "archive.zip", source)
+
+    with pytest.raises(ValueError, match="unsafe member path"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+
+    assert not (tmp_path / "escape.txt").exists()
+
+
+def test_zip_extraction_does_not_follow_external_symlink(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"linked/secret.txt": "should not escape"})
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+    outside = tmp_path / "outside"
+    working.mkdir()
+    outside.mkdir()
+    try:
+        (working / "linked").symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError, match="linked extraction path"):
+        download.zip_data_paths(
+            "archive.zip",
+            url=source.as_uri(),
+            hash_filepath=hashes,
+            extract_directory=working,
+        )
+
+    assert not list(outside.iterdir())
+
+
+def test_zip_extraction_rejects_preexisting_hardlinked_target(cache, tmp_path):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "untrusted replacement"})
+    _record(hashes, "archive.zip", source)
+    outside = tmp_path / "outside.txt"
+    outside.write_text("protected contents", encoding="utf-8")
+    extracted = data_dir / "archive"
+    extracted.mkdir(parents=True)
+    os.link(outside, extracted / "data.txt")
+
+    with pytest.raises(ValueError, match="multiply linked file"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+
+    assert outside.read_text(encoding="utf-8") == "protected contents"
+
+
+def test_zip_extraction_errors_do_not_expose_patient_member_name(cache, tmp_path):
+    _, hashes = cache
+    private_name = "PATIENT_SAMPLE_918273.dcm"
+    source = _zip(tmp_path / "source.zip", {f"linked/{private_name}": "secret"})
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+    working.mkdir()
+    try:
+        (working / "linked").symlink_to("linked", target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError) as raised:
+        download.zip_data_paths(
+            "archive.zip",
+            url=source.as_uri(),
+            hash_filepath=hashes,
+            extract_directory=working,
+        )
+    assert private_name not in str(raised.value)
+
+
+def test_zip_root_directory_entries_are_ignored(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(
+        tmp_path / "source.zip",
+        {"./": "", ".": "", "files/": "", "files/data.txt": "payload"},
+    )
+    _record(hashes, "archive.zip", source)
+
+    paths = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert [path.read_text(encoding="utf-8") for path in paths] == ["payload"]
+
+    # Cache reuse must also accept the harmless root entries.
+    assert (
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+        == paths
+    )
+
+
+def test_zip_symlink_substituted_after_preflight_is_rejected(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"linked/record.txt": "untrusted"})
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+    outside = tmp_path / "outside"
+    working.mkdir()
+    outside.mkdir()
+    real_extract = download._zip_safe.extract_members
+
+    def substitute_before_extraction(archive, root, *, missing_only):
+        try:
+            (root / "linked").symlink_to(outside, target_is_directory=True)
+        except (NotImplementedError, OSError):
+            pytest.skip("Creating directory symlinks is unavailable on this platform")
+        return real_extract(archive, root, missing_only=missing_only)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            download._zip_safe, "extract_members", substitute_before_extraction
+        )
+        with pytest.raises(ValueError, match="linked extraction path"):
+            download.zip_data_paths(
+                "archive.zip",
+                url=source.as_uri(),
+                hash_filepath=hashes,
+                extract_directory=working,
+            )
+
+    assert not list(outside.iterdir())
+
+
+def test_zip_cache_rejects_symlink_substitution_during_reuse(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"linked/data.txt": "cached"})
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    real_check = download._extraction_is_current
+
+    def substitute_before_cache_check(archive, root, archive_hash, marker):
+        (root / "linked").rename(root / "former_linked")
+        try:
+            (root / "linked").symlink_to(outside, target_is_directory=True)
+        except (NotImplementedError, OSError):
+            pytest.skip("Creating directory symlinks is unavailable on this platform")
+        return real_check(archive, root, archive_hash, marker)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(download, "_extraction_is_current", substitute_before_cache_check)
+        with pytest.raises(ValueError, match="linked extraction path"):
+            download.zip_data_paths(
+                "archive.zip", url=source.as_uri(), hash_filepath=hashes
+            )
+
+    assert not list(outside.iterdir())
+
+
+def test_zip_cache_rejects_hardlink_substitution_after_preflight(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "cached"})
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    real_check = download._extraction_is_current
+
+    def substitute_before_cache_check(archive, root, archive_hash, marker):
+        (root / "data.txt").rename(root / "former_data.txt")
+        try:
+            os.link(outside, root / "data.txt")
+        except OSError:
+            pytest.skip("Creating hard links is unavailable on this platform")
+        return real_check(archive, root, archive_hash, marker)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(download, "_extraction_is_current", substitute_before_cache_check)
+        with pytest.raises(ValueError, match="linked extraction path"):
+            download.zip_data_paths(
+                "archive.zip", url=source.as_uri(), hash_filepath=hashes
+            )
+
+    assert outside.read_text(encoding="utf-8") == "secret"
+
+
 def test_caller_directories_keep_edited_files(cache, tmp_path):
     # The GUI demo extracts into the user's working directory, where people
     # edit the extracted configuration; those edits must survive.
@@ -191,11 +405,8 @@ def test_empty_archive_returns_no_files(cache, tmp_path):
     _record(hashes, "archive.zip", source)
 
     for _ in range(2):
-        assert (
-            download.zip_data_paths(
-                "archive.zip", url=source.as_uri(), hash_filepath=hashes
-            )
-            == []
+        assert not download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
         )
         assert (data_dir / "archive").is_dir()
 
@@ -231,7 +442,7 @@ def test_complete_extraction_is_reused(cache, tmp_path, monkeypatch):
     def unexpected_extraction(*_args, **_kwargs):
         pytest.fail("A complete, unchanged archive should not be extracted again")
 
-    monkeypatch.setattr(zipfile.ZipFile, "extractall", unexpected_extraction)
+    monkeypatch.setattr(download._zip_safe, "extract_members", unexpected_extraction)
 
     assert (
         download.zip_data_paths(
@@ -249,23 +460,115 @@ def test_interrupted_refresh_is_retried(cache, tmp_path, monkeypatch):
     download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
     (data_dir / "archive/b.txt").write_text("truncated", encoding="utf-8")
 
-    def interrupted_extraction(archive, path):
-        archive.extract("a.txt", path=path)
+    original_extract = download._zip_safe.extract_members
+
+    def interrupted_extraction(archive, path, *, missing_only):
+        class PartialArchive:
+            def infolist(self):
+                return archive.infolist()[:1]
+
+            def open(self, info):
+                return archive.open(info)
+
+        original_extract(PartialArchive(), path, missing_only=missing_only)
         raise OSError("Interrupted extraction")
 
     with monkeypatch.context() as patch:
-        patch.setattr(zipfile.ZipFile, "extractall", interrupted_extraction)
+        patch.setattr(download._zip_safe, "extract_members", interrupted_extraction)
         with pytest.raises(OSError, match="Interrupted extraction"):
             download.zip_data_paths(
                 "archive.zip", url=source.as_uri(), hash_filepath=hashes
             )
 
     assert not list(data_dir.rglob(f"*{download.EXTRACTED_ARCHIVE_MARKER}"))
+    assert (data_dir / "archive/b.txt").read_text(encoding="utf-8") == "truncated"
 
     paths = download.zip_data_paths(
         "archive.zip", url=source.as_uri(), hash_filepath=hashes
     )
     assert {path.name: path.read_text(encoding="utf-8") for path in paths} == members
+
+
+def test_zip_member_aliases_keep_final_contents_and_cache_is_current(
+    cache, tmp_path, monkeypatch
+):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"a.txt": "short"})
+    with zipfile.ZipFile(source, "a") as archive:
+        archive.writestr("./a.txt", "longer final contents")
+    _record(hashes, "archive.zip", source)
+
+    results = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert {path.read_text(encoding="utf-8") for path in results} == {
+        "longer final contents"
+    }
+
+    def unexpected_extraction(*_args, **_kwargs):
+        pytest.fail("An alias of an earlier member must not invalidate the cache")
+
+    monkeypatch.setattr(download._zip_safe, "extract_members", unexpected_extraction)
+    assert (
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+        == results
+    )
+
+
+def test_caller_managed_duplicate_uses_final_member(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "first"})
+    with zipfile.ZipFile(source, "a") as archive:
+        with pytest.warns(UserWarning, match="Duplicate name"):
+            archive.writestr("data.txt", "last")
+    _record(hashes, "archive.zip", source)
+    working = tmp_path / "working"
+
+    results = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=working,
+    )
+    assert [path.read_text(encoding="utf-8") for path in results] == [
+        "last",
+        "last",
+    ]
+    (working / "data.txt").write_text("user edit", encoding="utf-8")
+    again = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=working,
+    )
+    assert all(path.read_text(encoding="utf-8") == "user edit" for path in again)
+
+
+def test_zip_rejects_case_colliding_members(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"A.txt": "first", "a.txt": "second"})
+    _record(hashes, "archive.zip", source)
+    with pytest.raises(ValueError, match="unsafe member path"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+
+
+def test_zip_uses_normal_file_permissions(cache, tmp_path):
+    if os.name == "nt":
+        pytest.skip("POSIX file permission semantics")
+    _, hashes = cache
+    reference = tmp_path / "reference"
+    reference.write_text("contents", encoding="utf-8")
+    source = _zip(tmp_path / "source.zip", {"data.txt": "payload"})
+    _record(hashes, "archive.zip", source)
+
+    (extracted,) = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert (extracted.stat().st_mode & 0o777) == (reference.stat().st_mode & 0o777)
 
 
 def test_archives_sharing_an_extraction_directory_refresh_each_other(cache, tmp_path):
@@ -318,7 +621,7 @@ def test_duplicate_zip_members_reuse_the_final_entry(cache, tmp_path, monkeypatc
     def unexpected_extraction(*_args, **_kwargs):
         pytest.fail("Repeated member names should not invalidate a complete extraction")
 
-    monkeypatch.setattr(zipfile.ZipFile, "extractall", unexpected_extraction)
+    monkeypatch.setattr(download._zip_safe, "extract_members", unexpected_extraction)
     assert (
         download.zip_data_paths(
             "archive.zip", url=source.as_uri(), hash_filepath=hashes
@@ -660,3 +963,193 @@ def test_zenodo_downloads_require_hashes_unless_skipped(
     (path,) = download.zenodo_data_paths("review-record", check_hash=False)
     assert path.read_text(encoding="utf-8") == "contents"
     assert hashes.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.parametrize(
+    "members",
+    [
+        [("a", "file"), ("a/b", "nested")],
+        [("a/b", "nested"), ("a", "file")],
+        [("a/", ""), ("a", "file")],
+    ],
+)
+def test_zip_rejects_parent_file_conflicts_before_extraction(cache, tmp_path, members):
+    data_dir, hashes = cache
+    source = tmp_path / "conflicting.zip"
+    with zipfile.ZipFile(source, "w") as archive:
+        for name, contents in members:
+            archive.writestr(name, contents)
+    _record(hashes, "archive.zip", source)
+
+    with pytest.raises(ValueError, match="conflicting member paths"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+    assert not (data_dir / "archive").exists()
+
+
+def test_zip_rejects_unicode_normalization_aliases(cache, tmp_path):
+    data_dir, hashes = cache
+    # The two distinct ZIP names are the same canonical Unicode filename.
+    source = _zip(
+        tmp_path / "unicode.zip",
+        {"caf\u00e9.txt": "first", "cafe\u0301.txt": "second"},
+    )
+    _record(hashes, "archive.zip", source)
+
+    with pytest.raises(ValueError, match="unsafe member path"):
+        download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
+        )
+    assert not (data_dir / "archive").exists()
+
+
+def test_fresh_archive_creates_nested_caller_directory(cache, tmp_path):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"nested/data.txt": "contents"})
+    _record(hashes, "archive.zip", source)
+    destination = tmp_path / "missing" / "extraction"
+
+    (extracted,) = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=destination,
+    )
+    assert extracted.read_text(encoding="utf-8") == "contents"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Renaming an open ZIP on Windows differs")
+def test_marker_fingerprints_the_open_archive_after_replacement(
+    cache, tmp_path, monkeypatch
+):
+    data_dir, hashes = cache
+    original = _zip(tmp_path / "old.zip", {"data.txt": "old"})
+    replacement = _zip(tmp_path / "new.zip", {"data.txt": "new"})
+    _record(hashes, "archive.zip", original)
+
+    real_extract = download._zip_safe.extract_members
+    replaced = []
+
+    def swap_archive_after_read(archive, root, *, missing_only):
+        real_extract(archive, root, missing_only=missing_only)
+        if not replaced:
+            pending = data_dir / "pending.zip"
+            pending.write_bytes(replacement.read_bytes())
+            os.replace(pending, data_dir / "archive.zip")
+            replaced.append(True)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(download._zip_safe, "extract_members", swap_archive_after_read)
+        (first,) = download.zip_data_paths(
+            "archive.zip", url=original.as_uri(), hash_filepath=hashes
+        )
+    assert replaced and first.read_text(encoding="utf-8") == "old"
+
+    # Both member sizes match; only the archive-handle hash prevents stale
+    # extraction from being treated as a valid cache of the new archive.
+    _record(hashes, "archive.zip", replacement)
+    (updated,) = download.zip_data_paths(
+        "archive.zip", url=replacement.as_uri(), hash_filepath=hashes
+    )
+    assert updated.read_text(encoding="utf-8") == "new"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX FIFO behaviour")
+def test_fifo_cache_marker_does_not_block_recovery(cache, tmp_path):
+    data_dir, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"data.txt": "payload"})
+    _record(hashes, "archive.zip", source)
+    download.zip_data_paths("archive.zip", url=source.as_uri(), hash_filepath=hashes)
+
+    (marker,) = data_dir.glob(f"*{download.EXTRACTED_ARCHIVE_MARKER}")
+    marker.unlink()
+    os.mkfifo(marker)
+    (result,) = download.zip_data_paths(
+        "archive.zip", url=source.as_uri(), hash_filepath=hashes
+    )
+    assert result.read_text(encoding="utf-8") == "payload"
+    assert marker.is_file()
+
+
+def test_missing_only_extraction_without_hard_links(cache, tmp_path, monkeypatch):
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"config.txt": "archive"})
+    _record(hashes, "archive.zip", source)
+
+    def unavailable_link(*_args, **_kwargs):
+        raise OSError(errno.EOPNOTSUPP, "Hard links not supported")
+
+    monkeypatch.setattr(download._zip_safe.os, "link", unavailable_link)
+    destination = tmp_path / "custom"
+    (extracted,) = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=destination,
+    )
+    assert extracted.read_text(encoding="utf-8") == "archive"
+
+    extracted.write_text("user edit", encoding="utf-8")
+    (again,) = download.zip_data_paths(
+        "archive.zip",
+        url=source.as_uri(),
+        hash_filepath=hashes,
+        extract_directory=destination,
+    )
+    assert again.read_text(encoding="utf-8") == "user edit"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Requires Windows directory handles")
+def test_windows_pinned_parent_cannot_be_renamed(tmp_path):
+    root = tmp_path / "root"
+    with download._zip_safe._windows_pinned_directory(
+        root, ("nested",), create=True
+    ) as parent:
+        assert parent.is_dir()
+        with pytest.raises(OSError):
+            parent.rename(parent.with_name("swapped"))
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Requires native Windows ACLs")
+def test_windows_extraction_with_unwritable_parent(cache, tmp_path):
+    """Extraction needs write access to the selected folder, not its parent."""
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"nested/data.txt": "contents"})
+    _record(hashes, "archive.zip", source)
+
+    parent = tmp_path / "restricted_parent"
+    destination = parent / "extraction"
+    destination.mkdir(parents=True)
+
+    # Deny adding files to the parent only; the pre-existing destination
+    # retains write access. Directory read-only attributes do not enforce
+    # this condition on Windows, so test the effective NTFS ACL instead.
+    user = subprocess.check_output(["whoami"], text=True).strip()
+    subprocess.run(
+        ["icacls", str(parent), "/deny", f"{user}:(WD)"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    try:
+        with pytest.raises(PermissionError):
+            with tempfile.NamedTemporaryFile(dir=parent):
+                pass
+        with tempfile.NamedTemporaryFile(dir=destination):
+            pass
+
+        (extracted,) = download.zip_data_paths(
+            "archive.zip",
+            url=source.as_uri(),
+            hash_filepath=hashes,
+            extract_directory=destination,
+        )
+        assert extracted.read_text(encoding="utf-8") == "contents"
+    finally:
+        subprocess.run(
+            ["icacls", str(parent), "/remove:d", user],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
