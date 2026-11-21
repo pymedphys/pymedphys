@@ -191,8 +191,6 @@ async def _conversation_with_tool_use(
 
     if api_response.stop_reason == "tool_use":
         for item in api_response.content:
-            print(item)
-
             if item.type == "tool_use":
                 tool = tools_mappings[item.name]
 
@@ -220,8 +218,6 @@ async def _conversation_with_tool_use(
                 }
 
                 messages.append(response_message)
-
-                print(response_message)
 
         await _conversation_with_tool_use(
             anthropic_client=anthropic_client,
