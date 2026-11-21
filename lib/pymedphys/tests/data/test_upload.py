@@ -85,6 +85,36 @@ def fixture_zenodo(monkeypatch):
     return install, fake_keyring
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://zenodo.org/api/deposit/depositions",
+        "https://zenodo.org.evil.invalid/api/deposit/depositions",
+        "https://evil.invalid/api/deposit/depositions",
+        "https://zenodo.org@evil.invalid/api/deposit/depositions",
+        "https://attacker@zenodo.org/api/deposit/depositions",
+        "https://zenodo.org:444/api/deposit/depositions",
+    ],
+)
+def test_untrusted_zenodo_urls_rejected_before_reading_token(monkeypatch, url):
+    monkeypatch.setattr(
+        upload,
+        "get_zenodo_access_token",
+        lambda *_args: pytest.fail("Must not read a credential for an unsafe URL"),
+    )
+    with pytest.raises(ValueError, match="HTTPS Zenodo endpoint"):
+        upload.zenodo_api_with_helpful_fallback(url, "get")
+
+
+def test_sandbox_zenodo_https_endpoint_is_accepted(zenodo):
+    install, _ = zenodo
+    fake = install(_Response(200))
+    sandbox = "https://sandbox.zenodo.org/api/deposit/depositions"
+    upload.zenodo_api_with_helpful_fallback(sandbox, "get")
+    assert fake.calls[0]["url"] == sandbox
+    assert fake.calls[0]["headers"]["Authorization"] == "Bearer first-token"
+
+
 def test_token_is_sent_in_a_header_not_the_url(zenodo):
     install, _ = zenodo
     fake_requests = install(_Response(201))
