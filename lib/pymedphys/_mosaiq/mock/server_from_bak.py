@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pathlib
+import re
 import subprocess
 import time
 
@@ -24,6 +25,11 @@ DATA_DIR_IN_DOCKER_IMAGE = pathlib.Path("/mosaiq-data")
 def start_mssql_docker_image_with_bak_restore(
     bak_filepath: pathlib.Path, sa_password: str, database_name="PRACTICE"
 ):
+    if not isinstance(database_name, str) or re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*", database_name
+    ) is None:
+        raise ValueError("Invalid database identifier")
+
     volume_mount_string = f"{bak_filepath.parent}:{DATA_DIR_IN_DOCKER_IMAGE}"
 
     subprocess.call(
