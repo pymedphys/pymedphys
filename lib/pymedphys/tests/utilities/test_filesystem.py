@@ -85,26 +85,42 @@ def test_encode_file_name_encodes_path_characters(value, expected):
 @pytest.mark.parametrize(
     "value, expected",
     [
-        ("CON", "%43ON"),
-        ("con", "%63on"),
-        ("PRN.txt", "%50RN.txt"),
-        ("AUX", "%41UX"),
-        ("NUL ", "%4EUL "),
-        ("COM1.dcm", "%43OM1.dcm"),
-        ("LPT9", "%4CPT9"),
-        ("COM¹", "%43OM¹"),
-        ("LPT²", "%4CPT²"),
-        ("CONIN$", "%43ONIN$"),
-        ("CONOUT$.txt", "%43ONOUT$.txt"),
+        ("CON", "%43%4F%4E"),
+        ("con", "%63%6F%6E"),
+        ("CoN", "%43%6F%4E"),
+        ("CON.TXT", "%43%4F%4E%2E%54%58%54"),
+        ("con.txt", "%63%6F%6E%2E%74%78%74"),
+        ("CON.", "%43%4F%4E%2E"),
+        ("CON ", "%43%4F%4E%20"),
+        ("CON.. ", "%43%4F%4E%2E%2E%20"),
+        ("PRN.txt", "%50%52%4E%2E%74%78%74"),
+        ("AUX", "%41%55%58"),
+        ("NUL ", "%4E%55%4C%20"),
+        ("COM1.dcm", "%43%4F%4D%31%2E%64%63%6D"),
+        ("LPT9", "%4C%50%54%39"),
+        ("COM¹", "%43%4F%4D%B9"),
+        ("LPT²", "%4C%50%54%B2"),
+        ("CONIN$", "%43%4F%4E%49%4E%24"),
+        ("CONOUT$.txt", "%43%4F%4E%4F%55%54%24%2E%74%78%74"),
     ],
 )
-def test_encode_file_name_escapes_windows_reserved_devices(value, expected):
+def test_encode_file_name_escapes_windows_reserved_devices(
+    value, expected, monkeypatch
+):
+    monkeypatch.setattr(filesystem, "_ON_WINDOWS", True)
     assert filesystem.encode_file_name(value) == expected
 
 
-def test_encode_file_name_distinguishes_reserved_names_from_literal_escapes():
-    assert filesystem.encode_file_name("CON") == "%43ON"
-    assert filesystem.encode_file_name("%43ON") == "%2543ON"
+def test_encode_file_name_distinguishes_reserved_names_from_literal_escapes(monkeypatch):
+    monkeypatch.setattr(filesystem, "_ON_WINDOWS", True)
+    assert filesystem.encode_file_name("CON") == "%43%4F%4E"
+    assert filesystem.encode_file_name("%43%4F%4E") == "%2543%254F%254E"
+
+
+def test_posix_reserved_names_keep_their_existing_storage_paths(monkeypatch):
+    monkeypatch.setattr(filesystem, "_ON_WINDOWS", False)
+    for name in ("CON", "PRN.txt", "LPT9", "CON."):
+        assert filesystem.encode_file_name(name) == name
 
 
 def test_encode_file_name_keeps_ordinary_names_and_distinct_values():
