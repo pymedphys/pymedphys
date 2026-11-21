@@ -16,8 +16,9 @@ This project adheres to
 
 The legacy Mosaiq `.bak` restore helper now publishes SQL Server only on
 `127.0.0.1:1433` rather than all host interfaces. It requires a verifiable
-Docker Engine version 28.0.0 or newer and pins the Docker target throughout
-version verification and container startup. It stops prior matching restore
+Docker Engine version 28.0.0 or newer, rejects remote SSH/TCP Docker endpoints
+before any container cleanup, and pins the selected local socket across version
+verification, cleanup, and startup. It stops prior matching restore
 containers that occupy port 1433, but leaves unrelated containers untouched
 and aborts on Docker startup failure rather than reusing an existing service.
 The documented manual restoration commands also enforce this version
