@@ -588,7 +588,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 ### (Potentially) breaking changes
 
 - Data cache functions reject filenames outside `PYMEDPHYS_DATA_DIR`, parent
-  traversal, and symlink aliases (including links to other cache entries).
+  traversal, and symbolic-link or Windows-junction aliases (including links
+  to other cache entries).
   `data_path`, ZIP cache directories and Zenodo record paths now raise
   `ValueError` for these names; use a relative name within the cache instead.
   A separate ZIP member check is proposed in PR #2625.
