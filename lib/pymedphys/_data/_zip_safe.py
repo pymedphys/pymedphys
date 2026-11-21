@@ -15,8 +15,8 @@
 
 """Race-resistant ZIP extraction for prevalidated archive members.
 
-POSIX operations use no-follow directory descriptors. Windows files are first
-extracted to a private staging directory and installed with link/replace.
+POSIX operations use no-follow directory descriptors. Windows files are staged
+within pinned destination directories and installed with link/replace.
 """
 
 import contextlib
@@ -347,7 +347,8 @@ def _windows_pinned_directory(
 def _windows_open_regular_file(path: pathlib.Path) -> int:
     """Open an existing Windows file without dereferencing a reparse point."""
     import ctypes
-    import msvcrt
+    # Imported only when running on native Windows.
+    import msvcrt  # pylint: disable=import-error
     from ctypes import wintypes
 
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -381,7 +382,9 @@ def _windows_open_regular_file(path: pathlib.Path) -> int:
         attributes = _windows_file_attributes(kernel32, handle)
         if attributes & (0x10 | 0x400):  # Directory or reparse point
             raise ValueError(_UNSAFE)
-        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+        descriptor = msvcrt.open_osfhandle(
+            handle, os.O_RDONLY | getattr(os, "O_BINARY", 0)
+        )
         handle = None  # The Python descriptor owns the native handle.
         return descriptor
     finally:
@@ -438,9 +441,10 @@ def _extract_windows(
                 if missing_only:
                     continue
 
-            # Stage only one member at a time on the same filesystem.
+            # Stage in the pinned member directory, not root.parent: callers
+            # may have write access to root but not its containing folder.
             descriptor, temp_name = tempfile.mkstemp(
-                dir=root.parent, prefix=".pymedphys-zip-", suffix=".part"
+                dir=parent, prefix=".pymedphys-zip-", suffix=".part"
             )
             temp_path = pathlib.Path(temp_name)
             try:
