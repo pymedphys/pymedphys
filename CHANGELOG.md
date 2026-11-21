@@ -12,6 +12,17 @@ This project adheres to
 
 ## Unreleased
 
+### DICOM listener CLI defaults to local-only binding
+
+`pymedphys dicom listen` now binds to `127.0.0.1` (the local computer)
+instead of `0.0.0.0` (all network interfaces) by default. **Sites receiving
+DICOM associations from another computer must explicitly supply `--host`**
+with the IP address of a trusted network interface, or `--host 0.0.0.0` to
+listen on all interfaces. The DICOM listener does not provide authentication;
+restrict network access and do not expose it to the public internet. This
+change affects the CLI default, not callers configuring `DicomListener`
+directly. [PR #2645](https://github.com/pymedphys/pymedphys/pull/2645)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
