@@ -25,7 +25,7 @@ import pytest
 pytest.importorskip("anthropic")
 pytest.importorskip("trio")
 
-from pymedphys._ai.sql_agent import _select_tables, _utilities
+from pymedphys._ai.sql_agent import _select_tables, _utilities  # noqa: E402
 
 
 def test_schema_prompt_escapes_untrusted_table_and_column_names(monkeypatch):
