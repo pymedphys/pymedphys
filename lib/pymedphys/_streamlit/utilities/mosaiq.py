@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeff (jdotc1)
 # Copyright (C) 2020 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import ctypes
+import errno
+import importlib
+import os
 import pathlib
-from typing import Any, Dict, Literal, Optional, Tuple, cast
+import shutil
+import tempfile
+from ctypes import wintypes
+from typing import Any, Dict, Iterator, Literal, Optional, Tuple, cast
 
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import toml
@@ -111,6 +120,114 @@ def prompt_for_mosaiq_connection() -> Tuple[str, int, str, str]:
     return hostname, int(port), database, site_name
 
 
+@contextlib.contextmanager
+def _config_file_lock(config_path: pathlib.Path) -> Iterator[None]:
+    """Serialize saves using a stable lock file, not the replaced config inode."""
+    lock_path = config_path.with_name(f".{config_path.name}.lock")
+    # Keep this file: unlinking it after unlock permits separate lock inodes.
+    with open(lock_path, "a+b") as lock_file:
+        locker = importlib.import_module("msvcrt" if os.name == "nt" else "fcntl")
+        if os.name == "nt":
+            lock_file.seek(0)
+            locker.locking(lock_file.fileno(), locker.LK_LOCK, 1)
+        else:
+            locker.flock(lock_file.fileno(), locker.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                lock_file.seek(0)
+                locker.locking(lock_file.fileno(), locker.LK_UNLCK, 1)
+            else:
+                locker.flock(lock_file.fileno(), locker.LOCK_UN)
+
+
+def _copy_windows_dacl(source: pathlib.Path, destination: pathlib.Path) -> None:
+    """Preserve Windows file access rules before atomic replacement."""
+    advapi = getattr(ctypes, "WinDLL")("advapi32", use_last_error=True)
+    get_security = advapi.GetFileSecurityW
+    get_security.argtypes = (
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+    )
+    get_security.restype = wintypes.BOOL
+    set_security = advapi.SetFileSecurityW
+    set_security.argtypes = (
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+    )
+    set_security.restype = wintypes.BOOL
+
+    dacl_security_information = 0x00000004
+    required = wintypes.DWORD()
+    get_security(
+        str(source), dacl_security_information, None, 0, ctypes.byref(required)
+    )
+    if not required.value:
+        raise OSError(ctypes.get_last_error(), "Cannot read existing config ACL")
+
+    descriptor = ctypes.create_string_buffer(required.value)
+    if not get_security(
+        str(source),
+        dacl_security_information,
+        descriptor,
+        required.value,
+        ctypes.byref(required),
+    ):
+        raise OSError(ctypes.get_last_error(), "Cannot read existing config ACL")
+    if not set_security(str(destination), dacl_security_information, descriptor):
+        raise OSError(ctypes.get_last_error(), "Cannot copy existing config ACL")
+
+
+def _preserve_config_metadata(source: pathlib.Path, destination: pathlib.Path) -> None:
+    """Copy access settings; fail before replacing if they cannot be retained."""
+    if os.name == "posix":
+        source_stat = source.stat()
+        destination_stat = destination.stat()
+        if (source_stat.st_uid, source_stat.st_gid) != (
+            destination_stat.st_uid,
+            destination_stat.st_gid,
+        ):
+            os.chown(destination, source_stat.st_uid, source_stat.st_gid)
+    shutil.copystat(source, destination)
+    if os.name == "nt":
+        _copy_windows_dacl(source, destination)
+    elif hasattr(os, "listxattr"):
+        # shutil.copystat may silently ignore permission errors for xattrs.
+        for name in os.listxattr(source):
+            if "acl" in name.lower() and os.getxattr(source, name) != os.getxattr(
+                destination, name
+            ):
+                raise OSError(f"Cannot preserve config ACL attribute: {name}")
+    # A new save must have a fresh mtime, not the old config's timestamp.
+    os.utime(destination, None)
+
+
+def _sync_config_directory(directory: pathlib.Path) -> None:
+    """Persist the rename where the filesystem permits directory fsync."""
+    if os.name != "posix":
+        return
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    directory_fd = os.open(directory, flags)
+    try:
+        try:
+            os.fsync(directory_fd)
+        except OSError as error:
+            if error.errno not in (
+                errno.EBADF,
+                errno.EINVAL,
+                errno.ENOTSUP,
+                errno.EOPNOTSUPP,
+            ):
+                raise
+    finally:
+        os.close(directory_fd)
+
+
 def save_mosaiq_config_to_file(
     site_name: str,
     hostname: str,
@@ -137,50 +254,68 @@ def save_mosaiq_config_to_file(
         redirects elsewhere, this is the file it redirects to, since that is
         the one the config is read from.
     """
-    config_path = get_config_path()
-
-    # Load existing config or create new one
-    if config_path.exists():
-        with open(config_path) as f:
-            config = toml.load(f)
-    else:
-        config = {"version": 0}
-
-    # Ensure 'site' key exists as a list
-    if "site" not in config:
-        config["site"] = []
-
-    # Check if site already exists and update it, or add new site
-    site_exists = False
-    for site_config in config["site"]:
-        if site_config.get("name") == site_name:
-            # Update existing site
-            if "mosaiq" not in site_config:
-                site_config["mosaiq"] = {}
-            site_config["mosaiq"]["hostname"] = hostname
-            site_config["mosaiq"]["port"] = port
-            site_config["mosaiq"]["database"] = database
-            site_config["mosaiq"]["alias"] = f"{site_name} Mosaiq SQL Server"
-            site_exists = True
-            break
-
-    if not site_exists:
-        # Add new site configuration
-        new_site = {
-            "name": site_name,
-            "mosaiq": {
-                "hostname": hostname,
-                "port": port,
-                "database": database,
-                "alias": f"{site_name} Mosaiq SQL Server",
-            },
-        }
-        config["site"].append(new_site)
-
-    # Write the updated config back to file
+    # get_config_path follows TOML redirects; resolve the final filesystem
+    # symlink too so os.replace updates its target, not the symlink entry.
+    config_path = get_config_path().resolve()
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_path, "w") as f:
-        toml.dump(config, f)
+
+    # Lock across the read-modify-write transaction. The lock file is not
+    # replaced, so concurrent sessions cannot publish stale site snapshots.
+    with _config_file_lock(config_path):
+        if config_path.exists():
+            with open(config_path) as config_file:
+                config = toml.load(config_file)
+        else:
+            config = {"version": 0}
+
+        if "site" not in config:
+            config["site"] = []
+
+        for site_config in config["site"]:
+            if site_config.get("name") == site_name:
+                if "mosaiq" not in site_config:
+                    site_config["mosaiq"] = {}
+                site_config["mosaiq"].update(
+                    hostname=hostname,
+                    port=port,
+                    database=database,
+                    alias=f"{site_name} Mosaiq SQL Server",
+                )
+                break
+        else:
+            config["site"].append(
+                {
+                    "name": site_name,
+                    "mosaiq": {
+                        "hostname": hostname,
+                        "port": port,
+                        "database": database,
+                        "alias": f"{site_name} Mosaiq SQL Server",
+                    },
+                }
+            )
+
+        staged_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                dir=config_path.parent,
+                prefix=f".{config_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as staged:
+                staged_path = pathlib.Path(staged.name)
+                # Match the default text encoding used by every config reader.
+                toml.dump(config, staged)
+                staged.flush()
+                if config_path.exists():
+                    _preserve_config_metadata(config_path, staged_path)
+                os.fsync(staged.fileno())
+            os.replace(staged_path, config_path)
+            _sync_config_directory(config_path.parent)
+        finally:
+            if staged_path is not None:
+                staged_path.unlink(missing_ok=True)
 
     # get_config is memoised, so without this the app keeps reading the
     # config from before the save.
