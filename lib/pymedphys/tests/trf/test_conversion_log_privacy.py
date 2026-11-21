@@ -34,6 +34,7 @@ def test_trf_to_csv_does_not_log_patient_bearing_paths(tmp_path, caplog, monkeyp
         trf2csv_module, "trf2pandas", lambda _: (_FakeFrame(), _FakeFrame())
     )
 
+    monkeypatch.setenv("PYMEDPHYS_REDACT_TRF_PATHS", "1")
     with caplog.at_level(logging.INFO):
         header_path, table_path = trf2csv_module.trf2csv(
             source, output_directory=tmp_path
@@ -58,9 +59,25 @@ def test_directory_conversion_does_not_print_patient_paths(
         trf2csv_module, "trf2pandas", lambda _: (_FakeFrame(), _FakeFrame())
     )
 
+    monkeypatch.setenv("PYMEDPHYS_REDACT_TRF_PATHS", "1")
     trf2csv_module.trf2csv_by_directory(str(input_dir), str(output_dir))
 
     captured = capsys.readouterr()
     assert patient_name not in captured.out + captured.err
     assert "Converting TRF file" in captured.out
     assert len(list(output_dir.glob("*.csv"))) == 2
+
+
+def test_default_progress_keeps_local_file_identity(tmp_path, monkeypatch, caplog):
+    patient_name = "SYNTHETIC_SENSITIVE_PATIENT_123456"
+    source = tmp_path / f"{patient_name}.trf"
+    source.write_bytes(b"synthetic")
+    monkeypatch.delenv("PYMEDPHYS_REDACT_TRF_PATHS", raising=False)
+    monkeypatch.setattr(
+        trf2csv_module, "trf2pandas", lambda _: (_FakeFrame(), _FakeFrame())
+    )
+
+    with caplog.at_level(logging.INFO):
+        trf2csv_module.trf2csv(source, output_directory=tmp_path)
+
+    assert str(source) in caplog.text
