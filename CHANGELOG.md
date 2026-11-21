@@ -268,6 +268,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   identifiers.
   [PR #2623](https://github.com/pymedphys/pymedphys/pull/2623)
 
+- **[Security]** The DICOM sender now logs C-STORE progress and invalid input errors without SOP Instance UIDs or patient-bearing file paths. Actual transmissions are unchanged.
+
 ### Dependency changes
 
 - The lockfile and exported requirements now use certifi 2026.10.19, which restores unaffected emSign roots removed by 2026.10.18. Refresh pinned environments to use the corrected CA bundle. [PR #2424](https://github.com/pymedphys/pymedphys/pull/2424)
