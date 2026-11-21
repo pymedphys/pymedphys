@@ -18,16 +18,22 @@ def read_and_trigger_callback(event, callback):
     callback(ip, data)
 
 
-def create_event_handler(callback):
+def create_event_handler(callback, *, restricted_logs: bool = False):
     def on_created(event):
-        print(f"File created: {event.src_path}")
+        if restricted_logs:
+            print("File created")
+        else:
+            print(f"File created: {event.src_path}")
         read_and_trigger_callback(event, callback)
 
     def on_deleted(_):
         pass
 
     def on_modified(event):
-        print(f"File modified: {event.src_path}")
+        if restricted_logs:
+            print("File modified")
+        else:
+            print(f"File modified: {event.src_path}")
         read_and_trigger_callback(event, callback)
 
     def on_moved(_):
@@ -47,8 +53,10 @@ def create_event_handler(callback):
     return event_handler
 
 
-def observe_with_callback(directories_to_watch, callback):
-    event_handler = create_event_handler(callback)
+def observe_with_callback(
+    directories_to_watch, callback, *, restricted_logs: bool = False
+):
+    event_handler = create_event_handler(callback, restricted_logs=restricted_logs)
 
     observers = []
 

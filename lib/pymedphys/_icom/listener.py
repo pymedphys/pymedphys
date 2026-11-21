@@ -11,7 +11,9 @@ BUFFER_SIZE = 256
 ICOM_PORT = 1706
 
 
-def save_an_icom_batch(date_pattern, ip_directory, data_to_save):
+def save_an_icom_batch(
+    date_pattern, ip_directory, data_to_save, *, restricted_logs: bool = False
+):
     if not date_pattern.match(data_to_save[8:26]):
         raise ValueError("Unexpected iCOM stream format")
 
@@ -21,30 +23,38 @@ def save_an_icom_batch(date_pattern, ip_directory, data_to_save):
     with open(filepath, "bw+") as f:
         f.write(data_to_save)
 
-    logging.debug("Saved stream to %(filepath)s", {"filepath": filepath})
+    if restricted_logs:
+        logging.debug("Saved iCOM stream batch")
+    else:
+        logging.debug("Saved stream to %(filepath)s", {"filepath": filepath})
 
 
 def get_start_location_from_date_span(span):
     return span[0] - 8
 
 
-def initialise_socket(ip):
+def initialise_socket(ip, *, restricted_logs: bool = False):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, ICOM_PORT))
     s.settimeout(10)
-    logging.info(s)
+    if restricted_logs:
+        logging.info("iCOM socket connected")
+    else:
+        logging.info(s)
 
     return s
 
 
-def listen(ip, data_dir):
+def listen(ip, data_dir, *, restricted_logs: bool = False):
     date_pattern = re.compile(rb"\d\d\d\d-\d\d-\d\d\d\d:\d\d:\d\d")
 
     data_dir = pathlib.Path(data_dir)
     live_dir = data_dir.joinpath("live")
     patients_dir = data_dir.joinpath("patients")
 
-    patient_icom_data = patients.PatientIcomData(patients_dir)
+    patient_icom_data = patients.PatientIcomData(
+        patients_dir, restricted_logs=restricted_logs
+    )
 
     def archive_by_patient(ip, data):
         patient_icom_data.update_data(ip, data)
@@ -52,7 +62,7 @@ def listen(ip, data_dir):
     ip_directory = live_dir.joinpath(ip)
     ip_directory.mkdir(exist_ok=True, parents=True)
 
-    s = initialise_socket(ip)
+    s = initialise_socket(ip, restricted_logs=restricted_logs)
 
     try:
         data = b""
@@ -62,10 +72,14 @@ def listen(ip, data_dir):
                 data += s.recv(BUFFER_SIZE)
             except socket.timeout:
                 logging.warning("Socket connection timed out, retrying connection")
-                logging.info(s)
+                if restricted_logs:
+                    logging.info("Closing timed-out iCOM socket")
+                else:
+                    logging.info(s)
                 s.close()
-                logging.info(s)
-                s = initialise_socket(ip)
+                if not restricted_logs:
+                    logging.info(s)
+                s = initialise_socket(ip, restricted_logs=restricted_logs)
                 continue
 
             matches = date_pattern.finditer(data)
@@ -79,7 +93,12 @@ def listen(ip, data_dir):
                 new_start_location = get_start_location_from_date_span(match.span())
                 data_to_save = data[previous_start_location:new_start_location]
 
-                save_an_icom_batch(date_pattern, ip_directory, data_to_save)
+                save_an_icom_batch(
+                    date_pattern,
+                    ip_directory,
+                    data_to_save,
+                    restricted_logs=restricted_logs,
+                )
                 archive_by_patient(ip, data_to_save)
 
                 previous_start_location = new_start_location
@@ -88,13 +107,16 @@ def listen(ip, data_dir):
 
     finally:
         s.close()
-        logging.info(s)
+        if restricted_logs:
+            logging.info("iCOM socket closed")
+        else:
+            logging.info(s)
 
 
 def listen_cli(args):
     while True:
         try:
-            listen(args.ip, args.directory)
+            listen(args.ip, args.directory, restricted_logs=args.restricted_logs)
         except KeyboardInterrupt:
             raise
         except:  # pylint: disable = bare-except  # noqa: E722
