@@ -17,7 +17,9 @@ import logging
 import lzma
 from types import SimpleNamespace
 
-from pymedphys._icom import patients
+import pytest
+
+from pymedphys._icom import observer, patients
 
 IP = "192.168.100.200"
 START = "2026-09-28T10:00:00"
@@ -91,6 +93,8 @@ def test_icom_restricted_archive_logs_do_not_include_patient_identifiers(
 
     (archive,) = tmp_path.rglob("*.xz")
     assert archive.exists()
+    with lzma.open(archive) as f:
+        assert f.read() == item
     assert patient_id not in caplog.text
     assert patient_name not in caplog.text
     assert str(tmp_path) not in caplog.text
@@ -169,3 +173,57 @@ def test_icom_restricted_archive_failure_omits_delivery_context(tmp_path, caplog
     assert "Could not archive iCOM delivery" in caplog.text
     for sensitive in ("738419", "SYNTHETIC, PATIENT", IP, START, str(tmp_path)):
         assert sensitive not in caplog.text
+
+
+@pytest.mark.parametrize("restricted_logs", [False, True])
+def test_icom_observer_progress_output_respects_log_mode(
+    tmp_path, capsys, monkeypatch, restricted_logs
+):
+    """Restricted observer output hides source paths without losing callbacks."""
+    monkeypatch.setattr(
+        observer,
+        "watchdog",
+        SimpleNamespace(
+            events=SimpleNamespace(
+                PatternMatchingEventHandler=lambda **_kwargs: SimpleNamespace()
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        observer,
+        "read_and_trigger_callback",
+        lambda _event, callback: callback(IP, b"test data"),
+    )
+
+    received = []
+    handler = observer.create_event_handler(
+        lambda ip, data: received.append((ip, data)), restricted_logs=restricted_logs
+    )
+    source_path = tmp_path / "738419_SYNTHETIC, PATIENT" / "001.txt"
+    event = SimpleNamespace(src_path=str(source_path))
+    handler.on_created(event)
+    handler.on_modified(event)
+
+    if restricted_logs:
+        expected_output = "File created\nFile modified\n"
+    else:
+        expected_output = f"File created: {source_path}\nFile modified: {source_path}\n"
+    assert capsys.readouterr().out == expected_output
+    assert received == [(IP, b"test data"), (IP, b"test data")]
+
+
+@pytest.mark.parametrize("restricted_logs", [False, True])
+def test_icom_archive_watcher_propagates_log_mode(
+    tmp_path, monkeypatch, restricted_logs
+):
+    """The patient archive watcher forwards the selected observer log policy."""
+    observed_modes = []
+
+    def fake_observe(paths, callback, *, restricted_logs=False):
+        assert paths == [tmp_path]
+        assert callable(callback)
+        observed_modes.append(restricted_logs)
+
+    monkeypatch.setattr(observer, "observe_with_callback", fake_observe)
+    patients.archive_by_patient([tmp_path], tmp_path, restricted_logs=restricted_logs)
+    assert observed_modes == [restricted_logs]

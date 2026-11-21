@@ -251,4 +251,6 @@ def archive_by_patient(directories_to_watch, output_dir, *, restricted_logs=Fals
     def archive_by_patient_callback(ip, data):
         patient_icom_data.update_data(ip, data)
 
-    observer.observe_with_callback(directories_to_watch, archive_by_patient_callback)
+    observer.observe_with_callback(
+        directories_to_watch, archive_by_patient_callback, restricted_logs=restricted_logs
+    )
