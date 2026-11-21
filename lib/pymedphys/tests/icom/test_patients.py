@@ -1,3 +1,4 @@
+# Copyright (C) 2026 jdotc1
 # Copyright (C) 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 
 import logging
 import lzma
+from types import SimpleNamespace
 
 from pymedphys._icom import patients
 
@@ -77,13 +79,15 @@ def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, ca
         assert f.read() == next_delivery
 
 
-def test_icom_archive_logs_do_not_include_patient_identifiers(tmp_path, caplog):
-    """Patient IDs and names belong in the local archive, not centralised logs."""
+def test_icom_restricted_archive_logs_do_not_include_patient_identifiers(
+    tmp_path, caplog
+):
+    """Opt-in restricted logging excludes patient-bearing archive details."""
     patient_id, patient_name = "738419", "SYNTHETIC, PATIENT"
     item = _icom_item(0, patient_id=patient_id, patient_name=patient_name)
 
     with caplog.at_level(logging.DEBUG):
-        patients.save_patient_data(START, [item], tmp_path)
+        patients.save_patient_data(START, [item], tmp_path, restricted_logs=True)
 
     (archive,) = tmp_path.rglob("*.xz")
     assert archive.exists()
@@ -92,10 +96,12 @@ def test_icom_archive_logs_do_not_include_patient_identifiers(tmp_path, caplog):
     assert str(tmp_path) not in caplog.text
 
 
-def test_icom_acquisition_logs_do_not_include_patient_identifiers(tmp_path, caplog):
-    """Recording progress must be identified by event, not patient details."""
+def test_icom_restricted_acquisition_logs_do_not_include_patient_identifiers(
+    tmp_path, caplog
+):
+    """Restricted acquisition progress omits delivery context."""
     patient_id, patient_name = "738419", "SYNTHETIC, PATIENT"
-    recorder = patients.PatientIcomData(tmp_path)
+    recorder = patients.PatientIcomData(tmp_path, restricted_logs=True)
     with caplog.at_level(logging.DEBUG):
         recorder.update_data(
             IP, _icom_item(0, patient_id=patient_id, patient_name=patient_name)
@@ -105,4 +111,61 @@ def test_icom_acquisition_logs_do_not_include_patient_identifiers(tmp_path, capl
     assert "iCOM acquisition data received" in caplog.text
     assert patient_id not in caplog.text
     assert patient_name not in caplog.text
+    assert START not in caplog.text
+    assert IP not in caplog.text
     assert str(tmp_path) not in caplog.text
+
+
+def test_icom_default_archive_logs_preserve_operator_details(
+    tmp_path, caplog, monkeypatch
+):
+    """Protected-local logs retain patient, archive path and delivery MU."""
+    patient_id, patient_name = "738419", "SYNTHETIC, PATIENT"
+    item = _icom_item(0, patient_id=patient_id, patient_name=patient_name)
+    monkeypatch.setattr(
+        patients, "validate_data", lambda _data: SimpleNamespace(mu=[123.4])
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        patients.save_patient_data(START, [item], tmp_path)
+
+    assert patient_id in caplog.text
+    assert patient_name in caplog.text
+    assert str(tmp_path) in caplog.text
+    assert "123.4" in caplog.text
+    (archive,) = tmp_path.rglob("*.xz")
+    with lzma.open(archive) as f:
+        assert f.read() == item
+
+
+def test_icom_default_acquisition_logs_preserve_operator_details(tmp_path, caplog):
+    """Protected-local acquisition logs retain source and start timestamp."""
+    patient_id, patient_name = "738419", "SYNTHETIC, PATIENT"
+    recorder = patients.PatientIcomData(tmp_path)
+
+    with caplog.at_level(logging.DEBUG):
+        recorder.update_data(
+            IP, _icom_item(0, patient_id=patient_id, patient_name=patient_name)
+        )
+
+    assert patient_id in caplog.text
+    assert patient_name in caplog.text
+    assert IP in caplog.text
+    assert "2026-09-2810:00:00" in caplog.text
+    assert recorder._usage_start[IP] == START
+
+
+def test_icom_restricted_archive_failure_omits_delivery_context(tmp_path, caplog):
+    """Archive failures remain visible without patient-named paths."""
+    blocked_directory = tmp_path / "patients"
+    blocked_directory.write_text("")
+    recorder = patients.PatientIcomData(blocked_directory, restricted_logs=True)
+    with caplog.at_level(logging.DEBUG):
+        recorder.update_data(
+            IP, _icom_item(0, patient_id="738419", patient_name="SYNTHETIC, PATIENT")
+        )
+        recorder.update_data(IP, _icom_item(1))
+
+    assert "Could not archive iCOM delivery" in caplog.text
+    for sensitive in ("738419", "SYNTHETIC, PATIENT", IP, START, str(tmp_path)):
+        assert sensitive not in caplog.text

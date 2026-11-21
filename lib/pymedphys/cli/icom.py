@@ -44,6 +44,15 @@ def icom_listen(icom_subparsers):
     parser.add_argument(
         "directory", help="The output directory to store the iCom records."
     )
+    parser.add_argument(
+        "--restricted-logs",
+        action="store_true",
+        help=(
+            "Omit patient, delivery and archive-path details from iCOM "
+            "progress logs. Use when forwarding these logs to central services. "
+            "The default preserves protected-local clinical diagnostics."
+        ),
+    )
     parser.set_defaults(
         func=pymedphys._icom.listener.listen_cli  # pylint: disable = protected-access
     )
