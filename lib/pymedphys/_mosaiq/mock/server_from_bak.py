@@ -25,9 +25,11 @@ DATA_DIR_IN_DOCKER_IMAGE = pathlib.Path("/mosaiq-data")
 def start_mssql_docker_image_with_bak_restore(
     bak_filepath: pathlib.Path, sa_password: str, database_name="PRACTICE"
 ):
-    if not isinstance(database_name, str) or re.fullmatch(
-        r"[A-Za-z_][A-Za-z0-9_]*", database_name
-    ) is None:
+    if (
+        not isinstance(database_name, str)
+        or len(database_name) > 128
+        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", database_name) is None
+    ):
         raise ValueError("Invalid database identifier")
 
     volume_mount_string = f"{bak_filepath.parent}:{DATA_DIR_IN_DOCKER_IMAGE}"
@@ -76,10 +78,11 @@ def start_mssql_docker_image_with_bak_restore(
     bak_path_in_docker_image = DATA_DIR_IN_DOCKER_IMAGE / bak_filepath.name
     mdf_path = DATA_DIR_IN_DOCKER_IMAGE / "data.mdf"
     ldf_path = DATA_DIR_IN_DOCKER_IMAGE / "log.ldf"
+    escaped_bak_path = str(bak_path_in_docker_image).replace("'", "''")
 
     sql = f"""\
-RESTORE DATABASE {database_name}
-FROM DISK = '{bak_path_in_docker_image}'
+RESTORE DATABASE [{database_name}]
+FROM DISK = '{escaped_bak_path}'
 WITH FILE = 1,
 MOVE '{database_name}' TO '{mdf_path}',
 MOVE '{database_name}_log' TO '{ldf_path}',
