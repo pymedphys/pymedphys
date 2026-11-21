@@ -12,7 +12,9 @@ from . import extract, observer
 # see https://docs.python.org/3/howto/logging.html#optimization
 
 
-def _progress_log(level, restricted_logs: bool, local_message, restricted_message, *args):
+def _progress_log(
+    level, restricted_logs: bool, local_message, restricted_message, *args
+):
     """Preserve protected-local diagnostics unless restricted logging is selected."""
     if restricted_logs:
         logging.log(level, restricted_message)
@@ -49,7 +51,11 @@ def validate_data(data_to_be_saved):
 
 
 def save_patient_data(
-    start_timestamp, patient_data, output_dir: pathlib.Path, *, restricted_logs: bool = False
+    start_timestamp,
+    patient_data,
+    output_dir: pathlib.Path,
+    *,
+    restricted_logs: bool = False,
 ):
     _, patient_id = extract.extract(patient_data[0], "Patient ID")
 
@@ -245,12 +251,16 @@ class PatientIcomData:
             logging.debug("No delivery is currently being recorded.")
 
 
-def archive_by_patient(directories_to_watch, output_dir, *, restricted_logs: bool = False):
+def archive_by_patient(
+    directories_to_watch, output_dir, *, restricted_logs: bool = False
+):
     patient_icom_data = PatientIcomData(output_dir, restricted_logs=restricted_logs)
 
     def archive_by_patient_callback(ip, data):
         patient_icom_data.update_data(ip, data)
 
     observer.observe_with_callback(
-        directories_to_watch, archive_by_patient_callback, restricted_logs=restricted_logs
+        directories_to_watch,
+        archive_by_patient_callback,
+        restricted_logs=restricted_logs,
     )
