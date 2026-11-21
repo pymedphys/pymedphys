@@ -52,32 +52,6 @@ def test_patient_folder_name_is_valid_on_windows(tmp_path):
         assert f.read() == item
 
 
-def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, caplog):
-    # A file where the archive folder should be makes archiving fail.
-    patients_dir = tmp_path / "patients"
-    patients_dir.write_text("")
-    patient_icom_data = patients.PatientIcomData(patients_dir)
-
-    patient_icom_data.update_data(
-        IP, _icom_item(0, patient_id="123456", patient_name="SMITH")
-    )
-    with caplog.at_level(logging.ERROR):
-        patient_icom_data.update_data(IP, _icom_item(1))
-
-    assert f"Could not archive the delivery that started at {START}." in caplog.text
-
-    # The next delivery is recorded and archived on its own.
-    patients_dir.unlink()
-    patients_dir.mkdir()
-    next_delivery = _icom_item(2, patient_id="654321", patient_name="JONES")
-    patient_icom_data.update_data(IP, next_delivery)
-    patient_icom_data.update_data(IP, _icom_item(3))
-
-    (archive,) = patients_dir.rglob("*.xz")
-    assert archive.parent.name == "654321_JONES"
-    with lzma.open(archive) as f:
-        assert f.read() == next_delivery
-
 def test_parser_failure_does_not_emit_patient_bearing_tracebacks(
     monkeypatch, capsys
 ):
@@ -137,3 +111,30 @@ def test_listener_recovery_does_not_print_exception_details(
     assert secret not in caplog.text
     assert "Traceback" not in capsys.readouterr().err
 
+
+
+def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, caplog):
+    # A file where the archive folder should be makes archiving fail.
+    patients_dir = tmp_path / "patients"
+    patients_dir.write_text("")
+    patient_icom_data = patients.PatientIcomData(patients_dir)
+
+    patient_icom_data.update_data(
+        IP, _icom_item(0, patient_id="123456", patient_name="SMITH")
+    )
+    with caplog.at_level(logging.ERROR):
+        patient_icom_data.update_data(IP, _icom_item(1))
+
+    assert f"Could not archive the delivery that started at {START}." in caplog.text
+
+    # The next delivery is recorded and archived on its own.
+    patients_dir.unlink()
+    patients_dir.mkdir()
+    next_delivery = _icom_item(2, patient_id="654321", patient_name="JONES")
+    patient_icom_data.update_data(IP, next_delivery)
+    patient_icom_data.update_data(IP, _icom_item(3))
+
+    (archive,) = patients_dir.rglob("*.xz")
+    assert archive.parent.name == "654321_JONES"
+    with lzma.open(archive) as f:
+        assert f.read() == next_delivery
