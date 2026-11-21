@@ -43,30 +43,20 @@ def validate_data(data_to_be_saved):
 def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     _, patient_id = extract.extract(patient_data[0], "Patient ID")
 
-    logging.debug(
-        "When preparing patient record to be saved, the patient id was %(patient_id)s",
-        {"patient_id": patient_id},
-    )
+    logging.debug("Preparing iCOM delivery record for archiving")
 
     for data in patient_data:
         _, patient_name = extract.extract(data, "Patient Name")
         if patient_name is not None:
             break
 
-    logging.debug(
-        "When preparing patient record to be saved, the patient name was "
-        "%(patient_name)s",
-        {"patient_name": patient_name},
-    )
+    # A patient's name is needed for the local archive, never the logs.
 
     # Windows does not allow the double quotes that patient names can contain.
     patient_dir = output_dir.joinpath(encode_file_name(f"{patient_id}_{patient_name}"))
     patient_dir.mkdir(parents=True, exist_ok=True)
 
-    logging.debug(
-        "The patient archive directory to be used is %(patient_dir)s.",
-        {"patient_dir": patient_dir},
-    )
+    logging.debug("iCOM archive directory created")
 
     reformatted_timestamp = (
         start_timestamp.replace(":", "").replace("T", "_").replace("-", "")
@@ -78,17 +68,10 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
         data += item
 
     try:
-        delivery = validate_data(data)
-        logging.info(  # pylint: disable = logging-fstring-interpolation
-            f"Delivery with a total MU of {round(delivery.mu[-1], 1)} for "
-            f"{patient_name} ({patient_id}) is being saved within "
-            f"{filename}."
-        )
+        validate_data(data)
+        logging.info("Saving iCOM delivery record")
     except NoMUDelivered as _:
-        logging.info(  # pylint: disable = logging-fstring-interpolation
-            "No MU delivered, not saving delivery data for "
-            f"{patient_name} ({patient_id})."
-        )
+        logging.info("No MU delivered; iCOM delivery not archived")
 
         return
 
@@ -101,11 +84,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
 
         filename = new_location
 
-        logging.warning(  # pylint: disable = logging-fstring-interpolation
-            "Unknown error within the record for "
-            f"{patient_name} ({patient_id}). "
-            f"Will instead save the record within {str(filename)}."
-        )
+        logging.warning("Unrecognised iCOM record; using fallback archive")
 
     with lzma.open(filename, "w") as f:
         f.write(data)
@@ -137,15 +116,8 @@ class PatientIcomData:
         except KeyError:
             self._data[ip] = [data]
 
-        timestamp = data[8:26].decode()
-        shrunk_data, patient_id = extract.extract(data, "Patient ID")
-        shrunk_data, patient_name = extract.extract(shrunk_data, "Patient Name")
-        shrunk_data, machine_id = extract.extract(shrunk_data, "Machine ID")
-        logging.info(  # pylint: disable = logging-fstring-interpolation
-            f"IP: {ip} | Timestamp: {timestamp} | "
-            f"Patient ID: {patient_id} | "
-            f"Patient Name: {patient_name} | Machine ID: {machine_id}"
-        )
+        _, patient_id = extract.extract(data, "Patient ID")
+        logging.info("iCOM acquisition data received")
 
         try:
             usage_start = self._usage_start[ip]
@@ -160,25 +132,14 @@ class PatientIcomData:
                 iso_timestamp = f"{timestamp[0:10]}T{timestamp[10::]}"
                 self._usage_start[ip] = iso_timestamp
 
-                logging.debug(
-                    "Starting data collection for patient id %(patient_id)s. "
-                    "Recording started at %(usage_start)s.",
-                    {"usage_start": self._usage_start[ip], "patient_id": patient_id},
-                )
+                logging.debug("Started iCOM delivery collection")
 
             self._current_patient_data[ip].append(data)
 
-            logging.debug(
-                "iCOM stream appended to the data being collected for "
-                "patient id %(patient_id)s.",
-                {"patient_id": patient_id},
-            )
+            logging.debug("Appended iCOM data to active delivery")
 
         elif usage_start is not None:
-            logging.debug(
-                "Delivery that started at %(usage_start)s appears to have completed.",
-                {"usage_start": usage_start},
-            )
+            logging.debug("iCOM delivery collection appears complete")
 
             try:
                 save_patient_data(
