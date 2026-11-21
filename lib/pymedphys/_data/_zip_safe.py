@@ -347,6 +347,7 @@ def _windows_pinned_directory(
 def _windows_open_regular_file(path: pathlib.Path) -> int:
     """Open an existing Windows file without dereferencing a reparse point."""
     import ctypes
+
     # Imported only when running on native Windows.
     import msvcrt  # pylint: disable=import-error
     from ctypes import wintypes

@@ -1110,6 +1110,7 @@ def test_windows_pinned_parent_cannot_be_renamed(tmp_path):
         with pytest.raises(OSError):
             parent.rename(parent.with_name("swapped"))
 
+
 @pytest.mark.skipif(os.name != "nt", reason="Requires native Windows ACLs")
 def test_windows_extraction_with_unwritable_parent(cache, tmp_path):
     """Extraction needs write access to the selected folder, not its parent."""
