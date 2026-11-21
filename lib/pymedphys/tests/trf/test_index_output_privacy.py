@@ -70,7 +70,9 @@ def test_successful_index_does_not_print_patient_paths(tmp_path, monkeypatch, ca
     filename = tmp_path / f"{patient}.trf"
     filename.write_bytes(b"synthetic")
     header = SimpleNamespace(
-        machine="unit", date="2026-11-20", field_label="field",
+        machine="unit",
+        date="2026-11-20",
+        field_label="field",
         field_name="field",
     )
     monkeypatch.setattr(index_module, "decode_header_from_file", lambda _: header)
