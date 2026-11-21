@@ -320,10 +320,9 @@ def test_explicit_zip_extraction_ignores_unused_symlinked_cache_directory(
     )
 
     assert result == [(destination / "member.txt").resolve()]
-    assert (
-        (destination / "member.txt").read_text(encoding="utf-8")
-        == "expected extracted data"
-    )
+    assert (destination / "member.txt").read_text(
+        encoding="utf-8"
+    ) == "expected extracted data"
     assert not (outside / "member.txt").exists()
     assert legacy_directory.is_symlink()
 
