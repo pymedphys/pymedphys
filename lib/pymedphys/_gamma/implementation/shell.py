@@ -165,7 +165,7 @@ def gamma_shell(
         dose cutoff (so NaN, excluded with ``exclude_nan_reference``, is not)
         and, if ``random_subset`` is set, it was selected. Every
         analysed reference point has a value; NaN marks only the reference
-        points that were not analysed. :func:`pymedphys.gamma_pass_rate`
+        points that were not analysed. :func:`pymedphys.gamma_percent_passed`
         gives the percentage of analysed reference points that pass.
 
         An analysed reference point outside the evaluation grid is compared

@@ -125,7 +125,7 @@ all = ["pymedphys[user,ai,tests]"]
 # Smaller installs for one feature each. Each lists every package its feature
 # uses, and a CI job installs it alone and runs that feature's tests. Combine
 # them as needed, for example "pymedphys[gamma,dicom]" for gamma on DICOM files.
-# Gamma: pymedphys.gamma and gamma_pass_rate. numba runs the default
+# Gamma: pymedphys.gamma and its pass-count helpers. numba runs the default
 # interpolation; SciPy the "scipy" option and unevenly spaced axes.
 gamma = [
   "numba",
