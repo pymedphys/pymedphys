@@ -175,8 +175,8 @@ def test_multi_inputs():
     # Each pair is searched at its own step, the distance threshold divided
     # by interp_fraction, so a list gives what separate calls give. The 1 mm
     # pairs are unchanged. The 4 mm pairs were 99.8 and 99.2 while a list
-    # searched every pair at the 1 mm step. With interp_fraction=40 the four
-    # pairs give 97.1, 99.9, 94.3 and 99.6.
+    # searched them at a finer step than they get alone. With
+    # interp_fraction=40 the four pairs give 97.1, 99.9, 94.3 and 99.6.
     baseline = {
         (1, 1): LOCAL_GAMMA_0_25_BASELINE,
         (1, 4): 99.4,
