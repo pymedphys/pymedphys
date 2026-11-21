@@ -125,7 +125,9 @@ def _resolve_indexed_logfile_path(indexed_root, relative_path):
 
         return str(candidate)
     except (OSError, RuntimeError, TypeError, ValueError):
-        raise ValueError("Indexed logfile path escapes the indexed directory.") from None
+        raise ValueError(
+            "Indexed logfile path escapes the indexed directory."
+        ) from None
 
 
 def get_filepath(index, config, filehash):
