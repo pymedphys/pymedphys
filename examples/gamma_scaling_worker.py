@@ -16,6 +16,7 @@
 
 import hashlib
 import importlib
+import inspect
 import json
 import os
 import platform
@@ -185,6 +186,39 @@ def inputs(config):
     return axes, reference, evaluation, options
 
 
+# Options that pymedphys.gamma renamed in version 0.42.0.
+RENAMED_OPTIONS = {
+    "dose_percent_threshold": "dose_criterion_percent",
+    "distance_mm_threshold": "distance_criterion_mm",
+    "lower_percent_dose_cutoff": "lower_dose_cutoff_percent",
+    "global_normalisation": "normalisation_dose",
+    "max_gamma": "gamma_cap",
+    "interp_algo": "interpolator",
+    "ram_available": "memory_budget_bytes",
+}
+
+
+def gamma_call(options):
+    """Options and a result reader for the imported checkout's pymedphys.gamma.
+
+    The options here use the names from before version 0.42.0, so that one
+    worker can time revisions on either side of it. From 0.42.0 the function
+    takes renamed options and returns a result, whose gamma attribute is the
+    array that earlier revisions returned.
+    """
+    if "dose_criterion_percent" not in inspect.signature(pymedphys.gamma).parameters:
+        return dict(options), "array", lambda returned: returned
+    translated = {}
+    for name, value in options.items():
+        if name == "local_gamma":
+            translated["normalisation"] = "local" if value else "global"
+        elif name == "interp_fraction":
+            translated["search_step_fraction"] = 1 / value
+        else:
+            translated[RENAMED_OPTIONS.get(name, name)] = value
+    return translated, "result", lambda returned: returned.gamma
+
+
 def main():
     config = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     root = Path(config["checkout"]).resolve(strict=True)
@@ -203,14 +237,18 @@ def main():
     warnings.simplefilter("error")
     axes, reference, evaluation, options = inputs(config)
     input_hash = digest_arrays((*axes, reference, evaluation))
+    call_options, interface, as_array = gamma_call(options)
     warmup_start = time.perf_counter()
-    expected = pymedphys.gamma(axes, reference, axes, evaluation, **options)
+    expected = as_array(
+        pymedphys.gamma(axes, reference, axes, evaluation, **call_options)
+    )
     warmup_seconds = time.perf_counter() - warmup_start
     times = []
     for _ in range(config["repeats"]):
         start = time.perf_counter()
-        gamma = pymedphys.gamma(axes, reference, axes, evaluation, **options)
+        returned = pymedphys.gamma(axes, reference, axes, evaluation, **call_options)
         times.append(time.perf_counter() - start)
+        gamma = as_array(returned)
         # Every timed call must reproduce the full warm-up array exactly.
         for start in range(0, gamma.size, 1_000_000):
             np.testing.assert_array_equal(
@@ -240,6 +278,7 @@ def main():
                 "gamma_sha256": digest_arrays((gamma,)),
                 "repeat_equality": True,
                 "options": options,
+                "gamma_interface": interface,
                 "model_geometry": config.get("model_geometry"),
                 "origins": origins,
                 "python": sys.version,
