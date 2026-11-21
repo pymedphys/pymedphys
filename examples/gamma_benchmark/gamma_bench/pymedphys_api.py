@@ -17,6 +17,11 @@ Each version runs in a fresh worker process. A selected checkout must supply
 the imported package; an installed package is used only when checkout is null.
 The parent selects Python and thread settings before numerical imports. The
 interpolator is an explicit per-version factor; other gamma options are shared.
+
+Cases and shared options name gamma's options as they were before PyMedPhys
+0.42.0. That version renamed several of them and returns results in place of
+arrays. For a version with the new names, the options are translated and the
+arrays are read from the results, so the same case runs on either side of it.
 """
 
 from collections.abc import Mapping
@@ -32,6 +37,14 @@ import sys
 
 
 _CRITERIA = ("dose_percent_threshold", "distance_mm_threshold")
+# Options that pymedphys.gamma renamed in version 0.42.0.
+_RENAMED_OPTIONS = {
+    "lower_percent_dose_cutoff": "lower_dose_cutoff_percent",
+    "global_normalisation": "normalisation_dose",
+    "max_gamma": "gamma_cap",
+    "interp_algo": "interpolator",
+    "ram_available": "memory_budget_bytes",
+}
 _SOURCE_SUFFIXES = {".py", ".pyi", ".pyx", ".pxd"}
 _BUILD_FILES = {"pyproject.toml", "setup.cfg"}
 _EXCLUDED_DIRECTORIES = {
@@ -160,11 +173,62 @@ def _canonical_call(args, kwargs):
     return args, controls, expected
 
 
+def _takes_renamed_options(implementation):
+    """Whether this gamma function has the option names of PyMedPhys 0.42.0."""
+    try:
+        parameters = inspect.signature(implementation).parameters
+    except (TypeError, ValueError):
+        return False
+    return "dose_criterion_percent" in parameters
+
+
+def translate_options(implementation, options):
+    """The keyword options under the names that this gamma function takes.
+
+    The request is unchanged: ``local_gamma`` becomes the ``normalisation``
+    it selects, and ``interp_fraction`` the ``search_step_fraction`` that
+    gives the same search step.
+    """
+    if not _takes_renamed_options(implementation):
+        return dict(options)
+    translated = {}
+    for name, value in options.items():
+        if name == "local_gamma":
+            translated["normalisation"] = "local" if value else "global"
+        elif name == "interp_fraction":
+            translated["search_step_fraction"] = 1 / value
+        else:
+            translated[_RENAMED_OPTIONS.get(name, name)] = value
+    return translated
+
+
+def _results(result):
+    """The results that PyMedPhys 0.42.0 returns, or None for earlier output."""
+    results = result if isinstance(result, (tuple, list)) else (result,)
+    if results and all(
+        hasattr(item, "gamma") and hasattr(item, "settings") for item in results
+    ):
+        return results
+    return None
+
+
 def _normalise_result(result, expected, reference_shape):
     import numpy as np
 
     outputs = {}
-    if isinstance(result, Mapping):
+    results = _results(result)
+    if results is not None:
+        for item in results:
+            normalised_key = criterion_key(
+                item.settings.dose_criterion_percent,
+                item.settings.distance_criterion_mm,
+            )
+            if normalised_key in outputs:
+                raise ValueError(
+                    f"Duplicate normalised gamma criterion: {normalised_key}"
+                )
+            outputs[normalised_key] = item.gamma
+    elif isinstance(result, Mapping):
         for key, value in result.items():
             if not isinstance(key, tuple) or len(key) != 2:
                 raise ValueError(
@@ -233,6 +297,7 @@ def prepare_call(spec, args, kwargs):
     call_kwargs["interp_algo"] = interpolation_algorithm(spec)
     reference_shape = np.asarray(call_args[1]).shape
     implementation = load_callable(spec)
+    call_kwargs = translate_options(implementation, call_kwargs)
 
     def normalise(result):
         return _normalise_result(result, expected, reference_shape)

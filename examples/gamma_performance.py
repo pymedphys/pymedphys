@@ -197,6 +197,7 @@ Checks module origins, saves the full gamma array and prints timing/provenance J
 import json
 import hashlib
 import importlib
+import inspect
 import platform
 from pathlib import Path
 import numba
@@ -259,6 +260,39 @@ def case_inputs(case):
     return ref_axes, ref, eval_axes, ev, options
 
 
+# Options that pymedphys.gamma renamed in version 0.42.0.
+RENAMED_OPTIONS = {
+    "dose_percent_threshold": "dose_criterion_percent",
+    "distance_mm_threshold": "distance_criterion_mm",
+    "lower_percent_dose_cutoff": "lower_dose_cutoff_percent",
+    "global_normalisation": "normalisation_dose",
+    "max_gamma": "gamma_cap",
+    "interp_algo": "interpolator",
+    "ram_available": "memory_budget_bytes",
+}
+
+
+def gamma_call(options):
+    """Options and a result reader for the imported checkout's pymedphys.gamma.
+
+    The options here use the names from before version 0.42.0, so that one
+    worker can time revisions on either side of it. From 0.42.0 the function
+    takes renamed options and returns a result, whose gamma attribute is the
+    array that earlier revisions returned.
+    """
+    if "dose_criterion_percent" not in inspect.signature(pymedphys.gamma).parameters:
+        return dict(options), "array", lambda returned: returned
+    translated = {}
+    for name, value in options.items():
+        if name == "local_gamma":
+            translated["normalisation"] = "local" if value else "global"
+        elif name == "interp_fraction":
+            translated["search_step_fraction"] = 1 / value
+        else:
+            translated[RENAMED_OPTIONS.get(name, name)] = value
+    return translated, "result", lambda returned: returned.gamma
+
+
 def main():
     case, repeats = sys.argv[1], int(sys.argv[2])
     ref_axes, ref, eval_axes, ev, options = case_inputs(case)
@@ -271,16 +305,18 @@ def main():
             raise RuntimeError(f"Wrong imported module: {name} from {origin}; expected {root}")
         origins[name] = str(origin)
     warnings.simplefilter("error")
+    call_options, interface, as_array = gamma_call(options)
     # Warm-up: loads cached Numba kernels and SciPy code paths.
     warmup_start = time.perf_counter()
-    gamma = pymedphys.gamma(ref_axes, ref, eval_axes, ev, **options)
+    gamma = as_array(pymedphys.gamma(ref_axes, ref, eval_axes, ev, **call_options))
     warmup_seconds = time.perf_counter() - warmup_start
     baseline = gamma.copy()
     times = []
     for _ in range(repeats):
         start = time.perf_counter()
-        gamma = pymedphys.gamma(ref_axes, ref, eval_axes, ev, **options)
+        returned = pymedphys.gamma(ref_axes, ref, eval_axes, ev, **call_options)
         times.append(time.perf_counter() - start)
+        gamma = as_array(returned)
         np.testing.assert_array_equal(gamma, baseline)
     np.save(sys.argv[4], gamma, allow_pickle=False)
     print(
@@ -289,6 +325,7 @@ def main():
                 "case": case,
                 "shape": list(ref.shape),
                 "options": options,
+                "gamma_interface": interface,
                 "input_sha256": hashlib.sha256(b"".join(
                     array.tobytes() for array in (*ref_axes, ref, *eval_axes, ev)
                 )).hexdigest(),
