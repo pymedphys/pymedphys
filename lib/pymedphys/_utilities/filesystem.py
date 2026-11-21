@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import contextlib
+import os
 import string
 
 # pylint: disable = import-error
@@ -74,6 +75,8 @@ _CONTROL_CHARACTERS = frozenset(chr(code) for code in range(0x20))
 # path components on POSIX or Windows, those that Windows does not allow in
 # names, and "%", so that an encoded name cannot equal a different value.
 _ENCODED_NAME_CHARACTERS = frozenset('%/\\:*?"<>|') | _CONTROL_CHARACTERS
+_ON_WINDOWS = os.name == "nt"
+
 # Windows treats these basenames (including names with extensions) as devices.
 # The superscript digits are also reserved for COM and LPT devices.
 _WINDOWS_DEVICE_NAMES = frozenset(
@@ -92,8 +95,9 @@ def encode_file_name(value: object) -> str:
     Windows does not allow in names, and the whole names ``.`` and ``..``, are
     replaced by ``%`` and their two-digit hexadecimal code, so ``../x``
     becomes ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Windows device
-    basenames (such as ``CON`` or ``LPT1.txt``) are also escaped. Different
-    values give different names, and ordinary names are unchanged.
+    basenames (such as ``CON`` or ``LPT1.txt``) are also escaped on Windows,
+    but retain their original names on other systems for archive compatibility.
+    Different values give different names, and ordinary names are unchanged.
 
     Parameters
     ----------
@@ -114,10 +118,13 @@ def encode_file_name(value: object) -> str:
         for character in name
     )
 
-    # Windows resolves reserved device names even when an extension is present.
-    # Escape the first letter to keep the transformation reversible and avoid
-    # collisions with a literal percent-escaped name.
-    if encoded.split(".", maxsplit=1)[0].rstrip(" ").upper() in _WINDOWS_DEVICE_NAMES:
-        encoded = f"%{ord(encoded[0]):02X}{encoded[1:]}"
+    # Windows resolves reserved device names even with extensions or trailing
+    # dots and spaces. Escape every character for this small class of names to
+    # avoid case-insensitive collisions and normalize trailing characters.
+    # POSIX archives keep their existing paths.
+    if _ON_WINDOWS and encoded.split(".", maxsplit=1)[0].rstrip(" ").upper() in (
+        _WINDOWS_DEVICE_NAMES
+    ):
+        encoded = "".join(f"%{ord(character):02X}" for character in encoded)
 
     return encoded
