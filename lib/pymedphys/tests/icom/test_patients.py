@@ -75,3 +75,34 @@ def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, ca
     assert archive.parent.name == "654321_JONES"
     with lzma.open(archive) as f:
         assert f.read() == next_delivery
+
+def test_icom_archive_logs_do_not_include_patient_identifiers(tmp_path, caplog):
+    """Patient IDs and names belong in the local archive, not centralised logs."""
+    patient_id, patient_name = "738419", "SYNTHETIC, PATIENT"
+    item = _icom_item(0, patient_id=patient_id, patient_name=patient_name)
+
+    with caplog.at_level(logging.DEBUG):
+        patients.save_patient_data(START, [item], tmp_path)
+
+    (archive,) = tmp_path.rglob("*.xz")
+    assert archive.exists()
+    assert patient_id not in caplog.text
+    assert patient_name not in caplog.text
+    assert str(tmp_path) not in caplog.text
+
+
+def test_icom_acquisition_logs_do_not_include_patient_identifiers(tmp_path, caplog):
+    """Recording progress must be identified by event, not patient details."""
+    patient_id, patient_name = "738419", "SYNTHETIC, PATIENT"
+    recorder = patients.PatientIcomData(tmp_path)
+    with caplog.at_level(logging.DEBUG):
+        recorder.update_data(
+            IP, _icom_item(0, patient_id=patient_id, patient_name=patient_name)
+        )
+        recorder.update_data(IP, _icom_item(1))
+
+    assert "iCOM acquisition data received" in caplog.text
+    assert patient_id not in caplog.text
+    assert patient_name not in caplog.text
+    assert str(tmp_path) not in caplog.text
+
