@@ -239,11 +239,9 @@ def _validate_archive_member_names(names: Sequence[str], source: Path) -> None:
 def read_sdist(path: Path) -> Archive:
     with tarfile.open(path, "r:gz") as archive:
         members = archive.getmembers()
-        # Include links and special entries in collision checks: another TAR
-        # reader could follow a link or overwrite a verified regular file.
-        _validate_archive_member_names(
-            [member.name for member in members if not member.isdir()], path
-        )
+        # Include directories, links, and special entries: a file and
+        # directory can claim the same extraction path.
+        _validate_archive_member_names([member.name for member in members], path)
         names = [member.name for member in members if member.isfile()]
         roots = {name.split("/", 1)[0] for name in names}
         if len(roots) != 1:
