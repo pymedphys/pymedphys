@@ -32,8 +32,8 @@ def _box_2d(dose=1.0):
     return axes, np.full((9, 9), dose)
 
 
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_point_outside_the_grid_gets_gamma_to_the_nearest_edge_point(interp_algo):
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+def test_point_outside_the_grid_gets_gamma_to_the_nearest_edge_point(interpolator):
     # A uniform evaluation dose: every evaluation point has the same dose
     # difference, so gamma is minimised at the nearest point of the grid's
     # bounding box. For (-2, 7) against [0, 4] x [0, 4] that is (0, 4).
@@ -48,9 +48,9 @@ def test_point_outside_the_grid_gets_gamma_to_the_nearest_edge_point(interp_algo
             evaluation_dose,
             3,
             3,
-            lower_percent_dose_cutoff=0,
-            interp_algo=interp_algo,
-        )
+            lower_dose_cutoff_percent=0,
+            interpolator=interpolator,
+        ).gamma
 
     dose_term = 0.02 / 0.03
     nearest = np.array([[(0.0, 2.0), (0.0, 4.0)], [(1.0, 2.0), (1.0, 4.0)]])
@@ -60,9 +60,9 @@ def test_point_outside_the_grid_gets_gamma_to_the_nearest_edge_point(interp_algo
     np.testing.assert_allclose(result, expected, rtol=0, atol=1e-12)
 
 
-@pytest.mark.parametrize("local_gamma", [False, True])
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_linear_dose_gradient_matches_the_analytic_minimum(interp_algo, local_gamma):
+@pytest.mark.parametrize("normalisation", ["global", "local"])
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+def test_linear_dose_gradient_matches_the_analytic_minimum(interpolator, normalisation):
     # Along a linear evaluation dose a + b*x on [0, 3], gamma squared is a
     # convex quadratic in x, so its minimum is the stationary point clipped
     # to the grid. Reference points lie inside, just outside and well
@@ -80,12 +80,14 @@ def test_linear_dose_gradient_matches_the_analytic_minimum(interp_algo, local_ga
             a + b * evaluation_x,
             3,
             dta,
-            interp_fraction=100,
-            local_gamma=local_gamma,
-            interp_algo=interp_algo,
-        )
+            search_step_fraction=0.01,
+            normalisation=normalisation,
+            interpolator=interpolator,
+        ).gamma
 
-    dose_criterion = 0.03 * (reference_dose if local_gamma else reference_dose.max())
+    dose_criterion = 0.03 * (
+        reference_dose if normalisation == "local" else reference_dose.max()
+    )
     stationary = (
         reference_x * dose_criterion**2 - b * (a - reference_dose) * dta**2
     ) / (dose_criterion**2 + (b * dta) ** 2)
@@ -95,15 +97,15 @@ def test_linear_dose_gradient_matches_the_analytic_minimum(interp_algo, local_ga
         (nearest - reference_x) / dta,
     )
     # The search can only overestimate gamma, by at most one search step
-    # (dta / interp_fraction) times the objective's Lipschitz bound.
+    # (dta * search_step_fraction) times the objective's Lipschitz bound.
     step = dta / 100
     lipschitz = np.sqrt((b / dose_criterion) ** 2 + 1 / dta**2)
     assert np.all(result >= exact - 1e-12), (result, exact)
     assert np.all(result - exact <= step * lipschitz), (result, exact)
 
 
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_three_dimensional_point_outside_the_grid(interp_algo):
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+def test_three_dimensional_point_outside_the_grid(interpolator):
     axis = np.linspace(0.0, 2.0, 5)
     reference_axes = (np.array([3.0]), np.array([-1.0]), np.array([1.0]))
 
@@ -115,15 +117,15 @@ def test_three_dimensional_point_outside_the_grid(interp_algo):
             np.ones((5, 5, 5)),
             3,
             3,
-            interp_algo=interp_algo,
-        )
+            interpolator=interpolator,
+        ).gamma
 
     # The nearest evaluation point is (2, 0, 1).
     np.testing.assert_allclose(result.ravel(), [np.sqrt(2) / 3], rtol=0, atol=1e-12)
 
 
-@pytest.mark.parametrize("max_gamma", [1.5, 2, 10])
-def test_max_gamma_never_changes_pass_or_fail(max_gamma):
+@pytest.mark.parametrize("gamma_cap", [1.5, 2, 10])
+def test_gamma_cap_never_changes_pass_or_fail(gamma_cap):
     # Reference points span from well inside to far outside the evaluation
     # grid, so some would pass and some fail without a cap.
     reference_x = np.linspace(-40.0, 10.0, 101)
@@ -140,20 +142,20 @@ def test_max_gamma_never_changes_pass_or_fail(max_gamma):
                 evaluation_dose,
                 3,
                 3,
-                lower_percent_dose_cutoff=0,
+                lower_dose_cutoff_percent=0,
                 **kwargs,
-            )
+            ).gamma
 
     uncapped = gamma()
-    capped = gamma(max_gamma=max_gamma)
+    capped = gamma(gamma_cap=gamma_cap)
 
     assert np.all(np.isfinite(uncapped))
-    assert np.any(uncapped <= 1) and np.any(uncapped > max_gamma)
+    assert np.any(uncapped <= 1) and np.any(uncapped > gamma_cap)
     np.testing.assert_array_equal(capped <= 1, uncapped <= 1)
-    np.testing.assert_allclose(capped, np.minimum(uncapped, max_gamma))
+    np.testing.assert_allclose(capped, np.minimum(uncapped, gamma_cap))
 
 
-def test_points_beyond_max_gamma_fail_at_max_gamma():
+def test_points_beyond_gamma_cap_fail_at_gamma_cap():
     with pytest.warns(UserWarning, match=OUTSIDE):
         result = pymedphys.gamma(
             np.array([0.0, 1.0]),
@@ -162,13 +164,13 @@ def test_points_beyond_max_gamma_fail_at_max_gamma():
             np.ones(2),
             3,
             3,
-            max_gamma=2,
-        )
+            gamma_cap=2,
+        ).gamma
     np.testing.assert_array_equal(result, [2, 2])
 
 
 def test_only_points_not_analysed_are_nan():
-    # Points at |x| = 5 and 6 are beyond max_gamma * DTA = 4.5 mm from the
+    # Points at |x| = 5 and 6 are beyond gamma_cap * DTA = 4.5 mm from the
     # grid, but are still analysed and so must still get a value.
     reference_x = np.arange(-8.0, 9.0)
     reference_dose = np.where(np.abs(reference_x) > 6, 0.1, 1.0)
@@ -181,8 +183,8 @@ def test_only_points_not_analysed_are_nan():
             np.ones(3),
             3,
             3,
-            max_gamma=1.5,
-        )
+            gamma_cap=1.5,
+        ).gamma
 
     np.testing.assert_array_equal(np.isnan(result), reference_dose < 0.2)
 
@@ -211,7 +213,7 @@ def test_no_warning_within_one_search_step_of_the_grid():
         np.ones(2),
         3,
         3,
-    )
+    ).gamma
     np.testing.assert_allclose(result, [0.2 / 3, 0, 0.2 / 3], atol=1e-12)
 
 
@@ -264,21 +266,23 @@ def test_opt_in_excludes_only_nan_reference_points(reference, evaluation):
         )
 
 
-@pytest.mark.parametrize("local_gamma", [False, True])
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_nan_reference_points_are_not_analysed(interp_algo, local_gamma):
+@pytest.mark.parametrize("normalisation", ["global", "local"])
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+def test_nan_reference_points_are_not_analysed(interpolator, normalisation):
     axis = np.arange(6.0)
     reference = np.array([0.9, np.nan, 1.0, 0.95, np.nan, 1.02])
     evaluation = np.array([0.92, 1.0, 1.01, 0.97, 0.99, 1.0])
-    options = {"local_gamma": local_gamma, "interp_algo": interp_algo}
+    options = {"normalisation": normalisation, "interpolator": interpolator}
 
     result = pymedphys.gamma(
         axis, reference, axis, evaluation, 3, 1, exclude_nan_reference=True, **options
-    )
+    ).gamma
 
     # The same points, excluded instead by the lower dose cutoff.
     below_cutoff = np.where(np.isnan(reference), 0.01, reference)
-    expected = pymedphys.gamma(axis, below_cutoff, axis, evaluation, 3, 1, **options)
+    expected = pymedphys.gamma(
+        axis, below_cutoff, axis, evaluation, 3, 1, **options
+    ).gamma
 
     np.testing.assert_array_equal(np.isnan(result), np.isnan(reference))
     np.testing.assert_array_equal(result, expected)
@@ -299,9 +303,9 @@ def test_default_normalisation_ignores_nan_reference_points():
             1,
             exclude_nan_reference=True,
             **kwargs,
-        )
+        ).gamma
 
-    np.testing.assert_array_equal(gamma(), gamma(global_normalisation=1.0))
+    np.testing.assert_array_equal(gamma(), gamma(normalisation_dose=1.0))
 
 
 def test_random_subset_selects_only_non_nan_reference_points():
@@ -317,7 +321,7 @@ def test_random_subset_selects_only_non_nan_reference_points():
         random_subset=100,
         random_state=0,
         exclude_nan_reference=True,
-    )
+    ).gamma
     np.testing.assert_array_equal(np.isnan(result), np.isnan(reference))
 
 
@@ -329,17 +333,17 @@ def test_all_nan_reference_is_rejected():
         )
 
 
-@pytest.mark.parametrize("max_gamma", [1, 0.5, 0, np.nan])
-def test_max_gamma_that_could_hide_a_fail_is_rejected(max_gamma):
+@pytest.mark.parametrize("gamma_cap", [1, 0.5, 0, np.nan])
+def test_gamma_cap_that_could_hide_a_fail_is_rejected(gamma_cap):
     axis = np.array([0.0, 1.0])
-    with pytest.raises(ValueError, match="max_gamma"):
-        pymedphys.gamma(axis, np.ones(2), axis, np.ones(2), 3, 3, max_gamma=max_gamma)
+    with pytest.raises(ValueError, match="gamma_cap"):
+        pymedphys.gamma(axis, np.ones(2), axis, np.ones(2), 3, 3, gamma_cap=gamma_cap)
 
 
-@pytest.mark.parametrize("global_normalisation", [0, -1, np.nan, np.inf])
-def test_unusable_global_normalisation_is_rejected(global_normalisation):
+@pytest.mark.parametrize("normalisation_dose", [0, -1, np.nan, np.inf])
+def test_unusable_normalisation_dose_is_rejected(normalisation_dose):
     axis = np.array([0.0, 1.0])
-    with pytest.raises(ValueError, match="global_normalisation"):
+    with pytest.raises(ValueError, match="normalisation_dose"):
         pymedphys.gamma(
             axis,
             np.ones(2),
@@ -347,19 +351,19 @@ def test_unusable_global_normalisation_is_rejected(global_normalisation):
             np.ones(2),
             3,
             3,
-            global_normalisation=global_normalisation,
+            normalisation_dose=normalisation_dose,
         )
 
 
 def test_all_zero_reference_is_rejected():
     axis = np.array([0.0, 1.0])
-    with pytest.raises(ValueError, match="global_normalisation"):
+    with pytest.raises(ValueError, match="normalisation_dose"):
         pymedphys.gamma(axis, np.zeros(2), axis, np.ones(2), 3, 3)
 
 
-def test_local_gamma_at_zero_reference_dose_is_rejected():
+def test_local_normalisation_at_zero_reference_dose_is_rejected():
     axis = np.array([0.0, 1.0, 2.0])
-    with pytest.raises(ValueError, match="lower_percent_dose_cutoff"):
+    with pytest.raises(ValueError, match="lower_dose_cutoff_percent"):
         pymedphys.gamma(
             axis,
             np.array([0.0, 1.0, 1.0]),
@@ -367,12 +371,12 @@ def test_local_gamma_at_zero_reference_dose_is_rejected():
             np.ones(3),
             3,
             3,
-            lower_percent_dose_cutoff=0,
-            local_gamma=True,
+            lower_dose_cutoff_percent=0,
+            normalisation="local",
         )
 
 
-def test_local_gamma_ignores_zero_dose_below_the_cutoff():
+def test_local_normalisation_ignores_zero_dose_below_the_cutoff():
     axis = np.array([0.0, 1.0, 2.0])
     result = pymedphys.gamma(
         axis,
@@ -381,6 +385,6 @@ def test_local_gamma_ignores_zero_dose_below_the_cutoff():
         np.ones(3),
         3,
         3,
-        local_gamma=True,
-    )
+        normalisation="local",
+    ).gamma
     np.testing.assert_array_equal(np.isnan(result), [True, False, False])

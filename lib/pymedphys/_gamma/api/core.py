@@ -13,27 +13,31 @@
 
 from pymedphys._dicom.dose import zyx_and_dose_from_dataset
 
-from ..implementation import gamma_shell
+from ..calculate import gamma
 
 
 def gamma_dicom(
     dicom_dataset_ref,
     dicom_dataset_eval,
-    dose_percent_threshold,
-    distance_mm_threshold,
+    dose_criterion_percent,
+    distance_criterion_mm,
     **kwargs,
 ):
+    """Gamma between two RT Dose datasets, on the reference dataset's grid.
+
+    The axes are in (z, y, x) order, as
+    :func:`pymedphys.dicom.zyx_and_dose_from_dataset` returns them. The
+    options and the return value are those of :func:`pymedphys.gamma`.
+    """
     axes_reference, dose_reference = zyx_and_dose_from_dataset(dicom_dataset_ref)
     axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(dicom_dataset_eval)
 
-    gamma = gamma_shell(
+    return gamma(
         axes_reference,
         dose_reference,
         axes_evaluation,
         dose_evaluation,
-        dose_percent_threshold,
-        distance_mm_threshold,
+        dose_criterion_percent,
+        distance_criterion_mm,
         **kwargs,
     )
-
-    return gamma

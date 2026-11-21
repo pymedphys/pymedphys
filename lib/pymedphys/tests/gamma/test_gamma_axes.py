@@ -69,7 +69,7 @@ def test_head_first_prone_dose_matches_a_one_column_crop_of_itself(cropped_colum
         pixel_values=cropped_pixels,
     )
 
-    gamma = gamma_dicom(reference, evaluation, 1, 1, lower_percent_dose_cutoff=10)
+    gamma = gamma_dicom(reference, evaluation, 1, 1, lower_dose_cutoff_percent=10).gamma
 
     (_, _, x), _ = pymedphys.dicom.zyx_and_dose_from_dataset(reference)
     cropped_x = position[0] - PIXEL_SPACING[1] * cropped_index
@@ -90,27 +90,43 @@ def _grid():
 def test_descending_evaluation_axes_give_the_same_gamma():
     axes, dose = _grid()
     shifted = np.roll(dose, 1, axis=0)
-    expected = pymedphys.gamma(axes, dose, axes, shifted, 2, 2)
+    expected = pymedphys.gamma(axes, dose, axes, shifted, 2, 2).gamma
 
     descending_axes = (axes[0][::-1], axes[1][::-1])
-    result = pymedphys.gamma(axes, dose, descending_axes, shifted[::-1, ::-1], 2, 2)
+    result = pymedphys.gamma(
+        axes, dose, descending_axes, shifted[::-1, ::-1], 2, 2
+    ).gamma
 
     np.testing.assert_allclose(result, expected, equal_nan=True)
 
 
-def test_uneven_evaluation_axis_falls_back_to_scipy():
+@pytest.mark.filterwarnings("error::UserWarning")
+def test_uneven_evaluation_axis_is_interpolated_with_scipy():
     axes, dose = _grid()
     uneven_x = axes[0].copy()
     uneven_x[10:] += 0.5
     evaluation_axes = (uneven_x, axes[1])
     expected = pymedphys.gamma(
-        axes, dose, evaluation_axes, dose, 2, 2, interp_algo="scipy"
+        axes, dose, evaluation_axes, dose, 2, 2, interpolator="scipy"
     )
 
-    with pytest.warns(UserWarning, match="evenly spaced"):
-        result = pymedphys.gamma(axes, dose, evaluation_axes, dose, 2, 2)
+    # Left to choose, the calculation uses the interpolator that can take
+    # these axes, and records it.
+    result = pymedphys.gamma(axes, dose, evaluation_axes, dose, 2, 2)
 
-    np.testing.assert_allclose(result, expected, equal_nan=True)
+    assert result.settings.interpolator == "scipy"
+    np.testing.assert_allclose(result.gamma, expected.gamma, equal_nan=True)
+
+
+def test_pymedphys_interpolator_rejects_an_uneven_evaluation_axis():
+    axes, dose = _grid()
+    uneven_x = axes[0].copy()
+    uneven_x[10:] += 0.5
+
+    with pytest.raises(ValueError, match="evenly spaced"):
+        pymedphys.gamma(
+            axes, dose, (uneven_x, axes[1]), dose, 2, 2, interpolator="pymedphys"
+        )
 
 
 @pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
@@ -118,16 +134,18 @@ def test_singleton_evaluation_axis_works_with_either_interpolator():
     axes, dose = _grid()
     evaluation = ((axes[0], np.array([0.0])), dose[:, 6:7])
 
-    expected = pymedphys.gamma(axes, dose, *evaluation, 2, 2, interp_algo="scipy")
-    result = pymedphys.gamma(axes, dose, *evaluation, 2, 2)
+    expected = pymedphys.gamma(
+        axes, dose, *evaluation, 2, 2, interpolator="scipy"
+    ).gamma
+    result = pymedphys.gamma(axes, dose, *evaluation, 2, 2).gamma
 
     np.testing.assert_allclose(result, expected, rtol=0, atol=1e-12)
 
 
 @pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-@pytest.mark.parametrize("max_gamma", [None, 2])
-def test_non_overlapping_grids_can_pass_gamma(interp_algo, max_gamma):
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+@pytest.mark.parametrize("gamma_cap", [None, 2])
+def test_non_overlapping_grids_can_pass_gamma(interpolator, gamma_cap):
     # The nearest equal dose is 1.5 mm or 0.5 mm away, respectively, with a
     # 3 mm distance criterion. Overlapping grid extents are not required.
     result = pymedphys.gamma(
@@ -137,22 +155,22 @@ def test_non_overlapping_grids_can_pass_gamma(interp_algo, max_gamma):
         np.ones(2),
         3,
         3,
-        interp_fraction=30,
-        interp_algo=interp_algo,
-        max_gamma=max_gamma,
-    )
+        search_step_fraction=1 / 30,
+        interpolator=interpolator,
+        gamma_cap=gamma_cap,
+    ).gamma
     np.testing.assert_allclose(result, [0.5, 1 / 6])
 
 
 def test_scipy_preserves_singleton_spatial_dimensions():
     axes = (np.array([0.0, 1.0]), np.array([2.0]))
     dose = np.ones((2, 1))
-    result = pymedphys.gamma(axes, dose, axes, dose, 3, 3, interp_algo="scipy")
+    result = pymedphys.gamma(axes, dose, axes, dose, 3, 3, interpolator="scipy").gamma
     np.testing.assert_array_equal(result, np.zeros_like(dose))
 
 
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_planar_gamma_is_translation_invariant(interp_algo):
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+def test_planar_gamma_is_translation_invariant(interpolator):
     axis = np.arange(-2.0, 3.0)
     y, _ = np.meshgrid(axis, axis, indexing="ij")
     results = []
@@ -165,8 +183,8 @@ def test_planar_gamma_is_translation_invariant(interp_algo):
                 (1 + 0.1 * (y - 0.9))[None, :, :],
                 3,
                 3,
-                interp_algo=interp_algo,
-            ).item()
+                interpolator=interpolator,
+            ).gamma.item()
         )
     # Independently minimise (y - 0.9)^2 / 0.3^2 + y^2 / 3^2.
     # The sampled point y=0.9 is within 0.002 of the analytical minimum.
@@ -184,8 +202,8 @@ def test_scipy_planar_gamma_retains_perpendicular_distance():
         np.ones((1, 5, 5)),
         3,
         3,
-        interp_algo="scipy",
-    )
+        interpolator="scipy",
+    ).gamma
     # Uniform evaluation dose: the nearest point directly above each
     # reference point minimises gamma, including the 1 mm plane separation.
     expected = [np.hypot(0.1 / 0.03, 1 / 3), 0.0]
@@ -193,14 +211,14 @@ def test_scipy_planar_gamma_retains_perpendicular_distance():
 
 
 @pytest.mark.timeout(10)
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_search_stops_at_grid_extent_with_large_dose_difference(interp_algo):
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+def test_search_stops_at_grid_extent_with_large_dose_difference(interpolator):
     # No need to search thousands of mm beyond a 1 mm evaluation grid just
     # because the dose difference keeps gamma large.
     axes = np.array([0.0, 1.0])
     result = pymedphys.gamma(
-        axes, np.ones(2), axes, np.full(2, 100.0), 3, 3, interp_algo=interp_algo
-    )
+        axes, np.ones(2), axes, np.full(2, 100.0), 3, 3, interpolator=interpolator
+    ).gamma
     np.testing.assert_allclose(result, [3300, 3300])
 
 
@@ -211,12 +229,12 @@ def _exact_1d_gamma(reference_x, evaluation_x, dta):
     return distances.min(axis=1) / dta
 
 
-def _assert_within_search_resolution(result, expected, interp_fraction=10):
+def _assert_within_search_resolution(result, expected, search_step_fraction=0.1):
     # Sampling a subset of the candidates can only overestimate gamma, by at
-    # most one search step in distance.
-    resolution = 1 / interp_fraction
+    # most one search step in distance, which is search_step_fraction in
+    # gamma.
     assert np.all(result >= expected - 1e-12), (result, expected)
-    assert np.all(result <= expected + resolution), (result, expected)
+    assert np.all(result <= expected + search_step_fraction), (result, expected)
 
 
 @pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
@@ -233,8 +251,8 @@ def test_search_samples_the_spatial_endpoint():
         np.ones(2),
         3,
         3,
-        interp_algo="scipy",
-    )
+        interpolator="scipy",
+    ).gamma
 
     expected = _exact_1d_gamma(reference_x, evaluation_x, 3)
     _assert_within_search_resolution(result, expected)
@@ -242,8 +260,8 @@ def test_search_samples_the_spatial_endpoint():
 
 @pytest.mark.timeout(10)
 @pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
-def test_every_point_finds_an_evaluation_grid_narrower_than_a_step(interp_algo):
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
+def test_every_point_finds_an_evaluation_grid_narrower_than_a_step(interpolator):
     # The grids' bounding intervals overlap, but the 0.3 mm shells miss the
     # narrow evaluation interval. This used to search forever, and then
     # excluded the points it could not reach as NaN.
@@ -256,8 +274,8 @@ def test_every_point_finds_an_evaluation_grid_narrower_than_a_step(interp_algo):
         np.ones(2),
         3,
         3,
-        interp_algo=interp_algo,
-    )
+        interpolator=interpolator,
+    ).gamma
 
     _assert_within_search_resolution(
         result, _exact_1d_gamma(reference_x, evaluation_x, 3)
@@ -275,8 +293,8 @@ def test_far_disjoint_grids_skip_empty_search_shells():
         np.ones(1),
         3,
         0.1,
-        interp_algo="scipy",
-    )
+        interpolator="scipy",
+    ).gamma
     np.testing.assert_allclose(result, [10_000_000])
 
 
@@ -310,14 +328,15 @@ def test_scipy_interpolator_is_reused_within_each_calculation(monkeypatch):
     monkeypatch.setattr(
         scipy.interpolate, "RegularGridInterpolator", TrackingInterpolator
     )
-    # Uneven, descending axes exercise normalisation and automatic fallback.
+    # Uneven, descending axes exercise the reordering of the grid and the
+    # automatic choice of the SciPy interpolator.
     axis = np.array([2.0, 0.8, 0.0])
     for evaluation_dose in (0.9, 0.94):
-        with pytest.warns(UserWarning, match="evenly spaced"):
-            result = pymedphys.gamma(
-                axis, np.ones(3), axis, np.full(3, evaluation_dose), 3, 3
-            )
-        np.testing.assert_allclose(result, (1 - evaluation_dose) / 0.03)
+        result = pymedphys.gamma(
+            axis, np.ones(3), axis, np.full(3, evaluation_dose), 3, 3
+        )
+        assert result.settings.interpolator == "scipy"
+        np.testing.assert_allclose(result.gamma, (1 - evaluation_dose) / 0.03)
 
     assert len(instances) == 2
     assert all(instance.calls > 1 for instance in instances)
