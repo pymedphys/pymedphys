@@ -74,6 +74,15 @@ _CONTROL_CHARACTERS = frozenset(chr(code) for code in range(0x20))
 # path components on POSIX or Windows, those that Windows does not allow in
 # names, and "%", so that an encoded name cannot equal a different value.
 _ENCODED_NAME_CHARACTERS = frozenset('%/\\:*?"<>|') | _CONTROL_CHARACTERS
+# Windows treats these basenames (including names with extensions) as devices.
+# The superscript digits are also reserved for COM and LPT devices.
+_WINDOWS_DEVICE_NAMES = frozenset(
+    {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+) | frozenset(
+    f"{prefix}{digit}"
+    for prefix in ("COM", "LPT")
+    for digit in "123456789¹²³"
+)
 
 
 def encode_file_name(value: object) -> str:
@@ -82,8 +91,8 @@ def encode_file_name(value: object) -> str:
     Characters that could make the name refer to another folder, or that
     Windows does not allow in names, and the whole names ``.`` and ``..``, are
     replaced by ``%`` and their two-digit hexadecimal code, so ``../x``
-    becomes ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Different values give
-    different names, and names without these characters are unchanged.
+    becomes ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Windows device basenames (such as ``CON`` or ``LPT1.txt``) are also escaped.
+    Different values give different names, and ordinary names are unchanged.
 
     Parameters
     ----------
@@ -99,7 +108,15 @@ def encode_file_name(value: object) -> str:
     if name in (".", ".."):
         return name.replace(".", "%2E")
 
-    return "".join(
+    encoded = "".join(
         f"%{ord(character):02X}" if character in _ENCODED_NAME_CHARACTERS else character
         for character in name
     )
+
+    # Windows resolves reserved device names even when an extension is present.
+    # Escape the first letter to keep the transformation reversible and avoid
+    # collisions with a literal percent-escaped name.
+    if encoded.split(".", maxsplit=1)[0].rstrip(" ").upper() in _WINDOWS_DEVICE_NAMES:
+        encoded = f"%{ord(encoded[0]):02X}{encoded[1:]}"
+
+    return encoded
