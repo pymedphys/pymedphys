@@ -2,13 +2,14 @@
 
 import types
 
-from pymedphys._imports import pytest
 from pymedphys._mosaiq.mock import server_from_bak
 
 
 def test_restored_mosaiq_docker_port_is_loopback_only(monkeypatch, tmp_path):
     commands = []
-    monkeypatch.setattr(server_from_bak.subprocess, "call", lambda command: commands.append(command))
+    monkeypatch.setattr(
+        server_from_bak.subprocess, "call", lambda command: commands.append(command)
+    )
     cursor = types.SimpleNamespace(execute=lambda *_args: None)
     connection = types.SimpleNamespace(cursor=lambda: cursor, close=lambda: None)
     monkeypatch.setattr(
