@@ -52,11 +52,10 @@ def test_patient_folder_name_is_valid_on_windows(tmp_path):
         assert f.read() == item
 
 
-def test_parser_failure_does_not_emit_patient_bearing_tracebacks(
-    monkeypatch, capsys
-):
+def test_parser_failure_does_not_emit_patient_bearing_tracebacks(monkeypatch, capsys):
     """Errors from a clinical data decoder must not reach stderr."""
     original = "SYNTHETIC PATIENT 738419"
+
     def fail_decode(_bytes):
         raise ValueError("decoder failed while reading " + original)
 
@@ -96,6 +95,7 @@ def test_listener_recovery_does_not_print_exception_details(
 ):
     """The supervisor retries without exposing parser or file-path exceptions."""
     secret = "SYNTHETIC-PATIENT-738419"
+
     def fail_listen(_ip, _directory):
         raise RuntimeError("private source path for " + secret)
 
@@ -110,7 +110,6 @@ def test_listener_recovery_does_not_print_exception_details(
     assert "iCOM listener failed" in caplog.text
     assert secret not in caplog.text
     assert "Traceback" not in capsys.readouterr().err
-
 
 
 def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, caplog):
