@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Indexed logfile path validation
+
+Logfile index entries are now checked before archived files are opened or
+hashed for duplicate detection. Absolute paths, parent traversal, symlink
+escapes, malformed paths, and non-regular file targets are rejected with a
+generic error. Valid entries return their resolved in-directory filenames,
+including internal symlinks. Existing index files with invalid paths must
+be corrected before those entries can be used.
+[PR #2654](https://github.com/pymedphys/pymedphys/pull/2654)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
