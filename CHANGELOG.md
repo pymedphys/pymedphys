@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Explicit source-file deletion in DICOM commands
+
+The `pymedphys dicom anonymise` and `pymedphys experimental dicom
+pseudonymise` commands no longer accept `-d` as a shortcut for
+deleting original DICOM files. To request deletion, use the explicit
+`--delete_original_files` option. The global `pymedphys -d` option
+still enables debug logging; `-d` after either DICOM command is now
+rejected instead of deleting source files.
+[PR #2648](https://github.com/pymedphys/pymedphys/pull/2648)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
