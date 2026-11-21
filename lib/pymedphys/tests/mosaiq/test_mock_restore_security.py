@@ -14,6 +14,7 @@
 
 """Security regression checks for local mock Mosaiq restoration."""
 
+import json
 import subprocess
 import types
 
@@ -22,77 +23,187 @@ import pytest
 from pymedphys._mosaiq.mock import server_from_bak
 
 
-@pytest.mark.parametrize("engine_version", ["28.0.0", "28.0.1+build", "29.0.0"])
-def test_restored_mosaiq_docker_port_is_loopback_only(
-    monkeypatch, tmp_path, engine_version
-):
-    commands = []
-    version_commands = []
+@pytest.fixture
+def fake_docker(monkeypatch, tmp_path):
+    monkeypatch.delenv("DOCKER_CONTEXT", raising=False)
+    monkeypatch.delenv("DOCKER_HOST", raising=False)
+    records = {"commands": [], "runs": [], "version": "28.0.0", "containers": {}}
 
-    def docker_version(command, **kwargs):
-        version_commands.append((command, kwargs))
-        return f"{engine_version}\n"
+    def check_output(command, **_kwargs):
+        records["commands"].append(command)
+        if command == ["docker", "context", "show"]:
+            return "safe-context\n"
+        if command[-3:] == ["version", "--format", "{{.Server.Version}}"]:
+            return records["version"]
+        if command[-5:] == [
+            "ps", "--filter", "publish=1433/tcp", "--format", "{{.ID}}"
+        ]:
+            return "\n".join(records["containers"])
+        if "inspect" in command:
+            container_id = command[-1]
+            return json.dumps([records["containers"][container_id]])
+        raise AssertionError(f"Unexpected Docker command: {command}")
 
-    monkeypatch.setattr(server_from_bak.subprocess, "check_output", docker_version)
-    monkeypatch.setattr(
-        server_from_bak.subprocess, "call", lambda command: commands.append(command)
-    )
+    def run(command, **kwargs):
+        records["runs"].append((command, kwargs))
+        if records.get("fail_run") and "run" in command:
+            raise subprocess.CalledProcessError(125, command)
+        if records.get("fail_stop") and "stop" in command:
+            raise subprocess.CalledProcessError(1, command)
+        return subprocess.CompletedProcess(command, 0, stdout="container-id\n")
+
+    monkeypatch.setattr(server_from_bak.subprocess, "check_output", check_output)
+    monkeypatch.setattr(server_from_bak.subprocess, "run", run)
+
+    records["connections"] = []
     cursor = types.SimpleNamespace(execute=lambda *_args: None)
     connection = types.SimpleNamespace(cursor=lambda: cursor, close=lambda: None)
+
+    def connect(*args, **kwargs):
+        records["connections"].append((args, kwargs))
+        return connection
+
     monkeypatch.setattr(
-        server_from_bak,
-        "pymssql",
-        types.SimpleNamespace(connect=lambda *_args, **_kwargs: connection),
+        server_from_bak, "pymssql", types.SimpleNamespace(connect=connect)
     )
+    records["bak_path"] = tmp_path / "synthetic.bak"
+    return records
 
+
+def restore(fake_docker):
     server_from_bak.start_mssql_docker_image_with_bak_restore(
-        tmp_path / "synthetic.bak", "fake-password"
+        fake_docker["bak_path"], "synthetic-password"
     )
 
-    assert version_commands == [
-        (
-            ["docker", "version", "--format", "{{.Server.Version}}"],
-            {"text": True, "stderr": subprocess.DEVNULL},
-        )
+
+@pytest.mark.parametrize("engine_version", ["28.0.0", "28.0.1+build", "29.0.0"])
+def test_secure_restore_uses_pinned_context_and_loopback(fake_docker, engine_version):
+    fake_docker["version"] = engine_version
+    restore(fake_docker)
+    assert fake_docker["commands"] == [
+        ["docker", "context", "show"],
+        [
+            "docker", "--context", "safe-context", "version",
+            "--format", "{{.Server.Version}}",
+        ],
+        [
+            "docker", "--context", "safe-context", "ps", "--filter",
+            "publish=1433/tcp", "--format", "{{.ID}}",
+        ],
     ]
-    (command,) = commands
+    (command, kwargs), = fake_docker["runs"]
+    assert command[:4] == ["docker", "--context", "safe-context", "run"]
     assert command[command.index("-p") + 1] == "127.0.0.1:1433:1433"
     assert "1433:1433" not in command
+    assert kwargs["check"] is True
+    assert fake_docker["connections"][0][0][0] == "127.0.0.1"
 
 
 @pytest.mark.parametrize("engine_version", ["27.5.1", "28.0.0-rc.1", "unknown", ""])
-def test_restored_mosaiq_rejects_unsafe_or_unknown_engine(
-    monkeypatch, tmp_path, engine_version
-):
-    monkeypatch.setattr(
-        server_from_bak.subprocess,
-        "check_output",
-        lambda *_args, **_kwargs: engine_version,
-    )
-    monkeypatch.setattr(
-        server_from_bak.subprocess,
-        "call",
-        lambda *_args, **_kwargs: pytest.fail("docker run must not be invoked"),
-    )
-
+def test_rejects_unsafe_or_unverifiable_version(fake_docker, engine_version):
+    fake_docker["version"] = engine_version
     with pytest.raises(RuntimeError, match=r"Docker Engine 28\.0\.0 or newer"):
-        server_from_bak.start_mssql_docker_image_with_bak_restore(
-            tmp_path / "synthetic.bak", "fake-password"
-        )
+        restore(fake_docker)
+    assert fake_docker["runs"] == []
+    assert fake_docker["connections"] == []
 
 
-def test_restored_mosaiq_rejects_unverifiable_engine(monkeypatch, tmp_path):
-    def fail_docker_version(*_args, **_kwargs):
+def test_unavailable_docker_engine_fails_closed(fake_docker, monkeypatch):
+    def unavailable(*_args, **_kwargs):
         raise FileNotFoundError("docker")
 
-    monkeypatch.setattr(server_from_bak.subprocess, "check_output", fail_docker_version)
-    monkeypatch.setattr(
-        server_from_bak.subprocess,
-        "call",
-        lambda *_args, **_kwargs: pytest.fail("docker run must not be invoked"),
-    )
+    monkeypatch.setattr(server_from_bak.subprocess, "check_output", unavailable)
+    with pytest.raises(
+        RuntimeError, match="Cannot determine the active Docker context"
+    ):
+        restore(fake_docker)
+    assert not fake_docker["connections"]
 
-    with pytest.raises(RuntimeError, match=r"Docker Engine 28\.0\.0 or newer"):
-        server_from_bak.start_mssql_docker_image_with_bak_restore(
-            tmp_path / "synthetic.bak", "fake-password"
-        )
+
+def test_context_switch_does_not_change_selected_daemon(fake_docker, monkeypatch):
+    original_check_output = server_from_bak.subprocess.check_output
+
+    def switching_context(command, **kwargs):
+        if "version" in command:
+            monkeypatch.setenv("DOCKER_CONTEXT", "unsafe-context")
+        return original_check_output(command, **kwargs)
+
+    monkeypatch.setattr(server_from_bak.subprocess, "check_output", switching_context)
+    restore(fake_docker)
+    assert all(
+        command[1:3] == ["--context", "safe-context"]
+        for command in fake_docker["commands"]
+        if len(command) > 3
+    )
+    assert fake_docker["runs"][0][0][1:3] == ["--context", "safe-context"]
+
+
+@pytest.mark.parametrize(
+    ("variable", "value", "flag"),
+    [
+        ("DOCKER_CONTEXT", "selected", "--context"),
+        ("DOCKER_HOST", "unix:///tmp/docker.sock", "--host"),
+    ],
+)
+def test_environment_selected_target_remains_pinned(
+    fake_docker, monkeypatch, variable, value, flag
+):
+    monkeypatch.setenv(variable, value)
+    restore(fake_docker)
+    assert ["docker", "context", "show"] not in fake_docker["commands"]
+    assert fake_docker["commands"][0][:3] == ["docker", flag, value]
+    assert fake_docker["runs"][0][0][:3] == ["docker", flag, value]
+
+
+def old_container(
+    fake_docker, image="mcr.microsoft.com/mssql/server:2017-latest", mount=None
+):
+    return {
+        "Config": {"Image": image},
+        "Mounts": [
+            {
+                "Source": str(mount or fake_docker["bak_path"].parent),
+                "Destination": "/mosaiq-data",
+            }
+        ],
+        "NetworkSettings": {
+            "Ports": {"1433/tcp": [{"HostIp": "0.0.0.0", "HostPort": "1433"}]}
+        },
+    }
+
+
+def test_replaces_matching_exposed_legacy_container(fake_docker):
+    fake_docker["containers"]["legacy-id"] = old_container(fake_docker)
+    restore(fake_docker)
+    (stop_command, stop_kwargs), (run_command, run_kwargs) = fake_docker["runs"]
+    assert stop_command == ["docker", "--context", "safe-context", "stop", "legacy-id"]
+    assert stop_kwargs["check"] is True
+    assert run_command[3] == "run"
+    assert run_kwargs["check"] is True
+    assert len(fake_docker["connections"]) == 1
+
+
+def test_does_not_stop_unrelated_container(fake_docker):
+    fake_docker["containers"]["unrelated-id"] = old_container(
+        fake_docker, image="mcr.microsoft.com/mssql/server:2022-latest"
+    )
+    with pytest.raises(RuntimeError, match="unrelated container"):
+        restore(fake_docker)
+    assert fake_docker["runs"] == []
+    assert fake_docker["connections"] == []
+
+
+def test_failed_legacy_stop_aborts_before_connect(fake_docker):
+    fake_docker["containers"]["legacy-id"] = old_container(fake_docker)
+    fake_docker["fail_stop"] = True
+    with pytest.raises(RuntimeError, match="Cannot stop the previous"):
+        restore(fake_docker)
+    assert len(fake_docker["runs"]) == 1
+    assert not fake_docker["connections"]
+
+
+def test_failed_docker_run_does_not_connect_to_old_service(fake_docker):
+    fake_docker["fail_run"] = True
+    with pytest.raises(RuntimeError, match="refusing to connect"):
+        restore(fake_docker)
+    assert fake_docker["connections"] == []
