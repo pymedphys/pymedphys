@@ -117,6 +117,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
   [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
+- **[Privacy]** Experimental pseudonymisation omits missing clinical input paths from `FileNotFoundError` messages, avoiding disclosure of patient-bearing filenames through exception reporting. [PR #2644](https://github.com/pymedphys/pymedphys/pull/2644)
 - **[Security]** Experimental pseudonymisation now warns about its security
   limitations. It hashes UIDs and some numeric values without a secret key,
   so anyone who holds the original UIDs can re-link records, and anyone can
