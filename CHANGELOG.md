@@ -151,7 +151,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
-- **[Security]** iCOM acquisition and archiving progress messages no longer disclose patient names, identifiers, timestamps or patient-bearing file paths. The archive layout and recording workflow remain unchanged.
+- **[Security]** iCOM acquisition and archiving progress messages no longer disclose patient names, identifiers, timestamps or patient-bearing file paths. The archive layout and recording workflow remain unchanged. [PR #2638](https://github.com/pymedphys/pymedphys/pull/2638)
 
 - `pymedphys.Delivery.from_dicom` now reads RT Plans in which later control points leave out a beam limiting device whose positions do not change, as the DICOM standard specifies (PS3.3 C.8.8.14). For example, a beam with fixed Y jaws and moving MLC leaves lists the jaws only at its first control point. Such plans raised `ValueError: Expected exactly one item per control point for a given collimator`, and the MetersetMap app stopped with this error. Each device now keeps the positions from the last control point that listed it. A control point whose list of devices is empty, or that leaves out a device and lists one the beam does not define, still raises `ValueError`. Plans that list every device at every control point give the same `Delivery` as before. [PR #2614](https://github.com/pymedphys/pymedphys/pull/2614)
 
