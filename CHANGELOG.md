@@ -151,8 +151,9 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
-- **[Security]** Data downloads now refuse negative `Content-Length` values and responses
-  that specify both `Content-Length` and `Transfer-Encoding`. If the transport
+- **[Security]** Data downloads now reject negative, malformed, or repeated
+  `Content-Length` declarations, and responses containing both `Content-Length`
+  and `Transfer-Encoding` (even with blank field values). If the transport
   returns more bytes than declared, the excess is refused before writing it.
   These failures leave an existing cached file unchanged.
   [PR #2621](https://github.com/pymedphys/pymedphys/pull/2621)
