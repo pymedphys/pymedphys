@@ -29,8 +29,7 @@ def convert_patient_name(original_patient_name):
     else:
         raise ValueError(
             "Expected input to be either "
-            "LASTNAME^FIRSTNAME or LASTNAME, FIRSTNAME. "
-            f"Instead got {original_patient_name}"
+            "LASTNAME^FIRSTNAME or LASTNAME, FIRSTNAME."
         )
 
     # TODO: In the future it would be "nice" to handle multiple names here
