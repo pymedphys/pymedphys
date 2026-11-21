@@ -136,5 +136,10 @@ def send_cli(args):
 
         dcm_file_paths.append(dcm_file_path)
 
-    # Send the files
-    dicom_sender.send(dcm_file_paths)
+    # Files are read again by send(); a file may become unreadable after
+    # validation. Keep errors from that second read out of CLI tracebacks.
+    try:
+        dicom_sender.send(dcm_file_paths)
+    except (OSError, pydicom.errors.InvalidDicomError):
+        logger.error("DICOM send failed; file paths and error details omitted")
+        return
