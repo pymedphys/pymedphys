@@ -465,7 +465,9 @@ def test_listener_cli_redacts_prehandler_dependency_logs_and_warnings(caplog):
                 with warnings.catch_warnings():
                     warnings.simplefilter("always")
                     with _redacted_cli_diagnostics():
-                        dependency_logger.debug("Incoming SOP Instance UID: %s", sentinel)
+                        dependency_logger.debug(
+                            "Incoming SOP Instance UID: %s", sentinel
+                        )
                         try:
                             raise OSError(f"patient archive path /{sentinel}")
                         except OSError:
@@ -482,6 +484,7 @@ def test_listener_cli_redacts_prehandler_dependency_logs_and_warnings(caplog):
     assert sentinel not in caplog.text
     assert sentinel not in direct_stream.getvalue()
     assert "DICOM dependency diagnostic details suppressed" in caplog.text
+
 
 @pytest.mark.pydicom
 def test_dicom_listener_stores_inside_storage_directory(tmp_path, test_dataset):
