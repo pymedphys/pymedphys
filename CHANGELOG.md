@@ -151,6 +151,14 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- **[Security]** The mock Mosaiq database restore helper now rejects invalid
+  SQL Server database identifiers before starting Docker (only ASCII letters,
+  digits and underscores, starting with a letter or underscore, at most 128
+  characters). It also quotes database identifiers, including SQL reserved
+  words, and escapes apostrophes in backup filenames in the restore statement.
+  Invalid names raise `ValueError` without starting the container.
+  [PR #2632](https://github.com/pymedphys/pymedphys/pull/2632)
+
 - `pymedphys.Delivery.from_dicom` now reads RT Plans in which later control points leave out a beam limiting device whose positions do not change, as the DICOM standard specifies (PS3.3 C.8.8.14). For example, a beam with fixed Y jaws and moving MLC leaves lists the jaws only at its first control point. Such plans raised `ValueError: Expected exactly one item per control point for a given collimator`, and the MetersetMap app stopped with this error. Each device now keeps the positions from the last control point that listed it. A control point whose list of devices is empty, or that leaves out a device and lists one the beam does not define, still raises `ValueError`. Plans that list every device at every control point give the same `Delivery` as before. [PR #2614](https://github.com/pymedphys/pymedphys/pull/2614)
 
 - The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
