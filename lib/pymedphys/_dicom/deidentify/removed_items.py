@@ -103,13 +103,31 @@ class RemovedItems:
         Each item index of ``path`` is reduced by the removed items before
         it in the same sequence.
         """
-        if self.holds(path):
+        items = self.output_items(path.items)
+        return None if items is None else ElementPath(items, path.tag)
+
+    def output_items(self, items: Item) -> Item | None:
+        """Return where the output holds a source item, or None if removed.
+
+        ``items`` names the item, as the items tuple of a path that ends with
+        it does, in the source's numbering. It is None where it, or an item
+        that holds it, is removed; otherwise each index is reduced by the
+        removed items before it in the same sequence.
+
+        >>> content = "(0040,A730)"
+        >>> removed = RemovedItems({((content, 1),)})
+        >>> removed.output_items(((content, 2), (content, 4)))
+        (('(0040,A730)', 1), ('(0040,A730)', 4))
+        >>> removed.output_items(((content, 1), (content, 0))) is None
+        True
+        """
+        if any(items[:depth] in self.items for depth in range(1, len(items) + 1)):
             return None
-        items: list[tuple[str, int]] = []
-        for depth, (tag, index) in enumerate(path.items):
-            removed = self._by_sequence.get(ElementPath(path.items[:depth], tag), ())
-            items.append((tag, index - sum(1 for each in removed if each < index)))
-        return ElementPath(tuple(items), path.tag)
+        output: list[tuple[str, int]] = []
+        for depth, (tag, index) in enumerate(items):
+            removed = self._by_sequence.get(ElementPath(items[:depth], tag), ())
+            output.append((tag, index - sum(1 for each in removed if each < index)))
+        return tuple(output)
 
     def source_path(self, path: ElementPath) -> ElementPath:
         """Return the source's path of an output element, the inverse of
