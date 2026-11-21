@@ -112,7 +112,9 @@ def test_encode_file_name_escapes_windows_reserved_devices(
     assert filesystem.encode_file_name(value) == expected
 
 
-def test_encode_file_name_distinguishes_reserved_names_from_literal_escapes(monkeypatch):
+def test_encode_file_name_distinguishes_reserved_names_from_literal_escapes(
+    monkeypatch,
+):
     monkeypatch.setattr(filesystem, "_ON_WINDOWS", True)
     assert filesystem.encode_file_name("CON") == "%43%4F%4E"
     assert filesystem.encode_file_name("%43%4F%4E") == "%2543%254F%254E"

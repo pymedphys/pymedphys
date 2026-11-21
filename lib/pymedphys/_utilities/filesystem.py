@@ -83,9 +83,7 @@ _ON_WINDOWS = os.name == "nt"
 _WINDOWS_DEVICE_NAMES = frozenset(
     {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
 ) | frozenset(
-    f"{prefix}{digit}"
-    for prefix in ("COM", "LPT")
-    for digit in "123456789¹²³"
+    f"{prefix}{digit}" for prefix in ("COM", "LPT") for digit in "123456789¹²³"
 )
 
 
