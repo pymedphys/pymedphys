@@ -12,8 +12,12 @@ container used by the current database CI workflow.
 **Security prerequisite:** Docker Engine 28.0.0 or newer is required for this
 restoration workflow. Older Engines can allow devices on the same layer-2
 network to reach ports published to `127.0.0.1`. The shell commands below
-check the server version and pin one Docker target for both verification and
-container startup. The Python restoration helper enforces the same requirement.
+check the server version and pin one local Unix-socket or Windows named-pipe
+endpoint for verification, cleanup, and container startup. SSH and TCP Docker
+endpoints are rejected before inspecting or stopping containers. This guards
+against remote Docker contexts, but a socket forwarded to a remote Engine
+cannot be identified from its address alone; do not use remote socket proxies.
+The Python restoration helper enforces the same endpoint requirement.
 If an earlier restore container already occupies host port 1433, stop that
 container before running the manual steps. Do not reuse an earlier container
 whose port binding has not been verified.
@@ -21,17 +25,32 @@ whose port binding has not been verified.
 Move the `db-dump.bak` file into `~/mosaiq-data`.
 
 ```bash
-# Pin the selected Docker target so switching contexts cannot bypass the check.
-docker_cmd=(docker)
+# Pin the concrete Docker endpoint to prevent context changes or remote cleanup.
+docker_context=''
+docker_endpoint=''
 if [[ -n ${DOCKER_CONTEXT:-} ]]; then
-    docker_cmd+=(--context "$DOCKER_CONTEXT")
+    docker_context=$DOCKER_CONTEXT
 elif [[ -n ${DOCKER_HOST:-} ]]; then
-    docker_cmd+=(--host "$DOCKER_HOST")
+    docker_endpoint=$DOCKER_HOST
 else
     docker_context=$(docker context show) || exit 1
-    [[ -n $docker_context ]] || { echo "No Docker context selected" >&2; exit 1; }
-    docker_cmd+=(--context "$docker_context")
 fi
+
+if [[ -n $docker_context ]]; then
+    docker_endpoint=$(docker context inspect "$docker_context" --format '{{.Endpoints.docker.Host}}') || {
+        echo "Cannot inspect Docker endpoint; restore aborted" >&2
+        exit 1
+    }
+fi
+case $docker_endpoint in
+    unix:///*|npipe:////./pipe/*)
+        ;;
+    *)
+        echo "Local Docker socket required; remote Docker hosts are unsupported" >&2
+        exit 1
+        ;;
+esac
+docker_cmd=(docker --host "$docker_endpoint")
 
 engine_version=$("${docker_cmd[@]}" version --format '{{.Server.Version}}') || {
     echo "Cannot verify Docker Engine version; restore aborted" >&2
@@ -53,7 +72,7 @@ export MSSQL_SA_PASSWORD=$(openssl rand -hex 24)
 "${docker_cmd[@]}" run --platform linux/amd64 \
 -v ~/mosaiq-data:/mosaiq-data \
 -e "ACCEPT_EULA=Y" \
--e "MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD" \
+-e MSSQL_SA_PASSWORD \
 -p 127.0.0.1:1433:1433 \
 -d mcr.microsoft.com/mssql/server:2017-latest || {
     echo "Container startup failed; do not proceed with restoration" >&2
