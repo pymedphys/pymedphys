@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# The whole shell search is in this module, so it is long.
 
 """The shell search that :func:`pymedphys.gamma` calculates gamma with.
 
