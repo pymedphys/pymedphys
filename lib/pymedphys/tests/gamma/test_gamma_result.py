@@ -180,7 +180,7 @@ def test_attributes_cannot_be_rebound():
 def test_results_compare_by_identity():
     first, second = _result(), _result()
 
-    assert first == first
+    assert first == first  # pylint: disable = comparison-with-itself
     assert first != second
     assert first in [second, first]
     assert len({first, second}) == 2
@@ -265,6 +265,7 @@ def test_settings_are_plain_values():
 
 
 def test_settings_must_be_given_by_name():
+    # pylint: disable = too-many-function-args, missing-kwoa
     with pytest.raises(TypeError):
         GammaSettings(3.0, 2.0)  # type: ignore[call-arg,misc]
 
@@ -294,6 +295,7 @@ def test_provenance_versions_cannot_be_changed():
 
 def test_result_is_built_only_by_the_library():
     # The class takes keywords only, so that attributes can be added later.
+    # pylint: disable = too-many-function-args, missing-kwoa
     result = _result()
     with pytest.raises(TypeError):
         GammaResult(result.gamma, result.axes)  # type: ignore[call-arg,misc]
