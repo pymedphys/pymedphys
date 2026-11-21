@@ -120,6 +120,54 @@ def test_encode_file_name_distinguishes_reserved_names_from_literal_escapes(
     assert filesystem.encode_file_name("%43%4F%4E") == "%2543%254F%254E"
 
 
+@pytest.mark.parametrize("suffix", ["界" * 240, "é" * 240, "a" * 240, "𐀀" * 120])
+def test_long_windows_reserved_unicode_uses_compact_escape(suffix, monkeypatch):
+    monkeypatch.setattr(filesystem, "_ON_WINDOWS", True)
+    result = filesystem.encode_file_name("CON." + suffix)
+
+    assert result == "%43%4F%4E." + suffix
+    assert len(result.encode("utf-16-le")) // 2 <= 255
+
+
+def test_long_windows_reserved_names_keep_case_variants_distinct(monkeypatch):
+    monkeypatch.setattr(filesystem, "_ON_WINDOWS", True)
+    values = (
+        "CON." + "a" * 240,
+        "CON." + "a" * 239 + "A",
+        "CON." + "A" * 240,
+        "CON." + "i" * 240,
+        "CON." + "ı" + "i" * 239,
+    )
+    names = [filesystem.encode_file_name(value) for value in values]
+
+    assert len({name.casefold() for name in names}) == len(values)
+    assert all(len(name.encode("utf-16-le")) // 2 <= 255 for name in names)
+    assert names[2].startswith("%FF")
+
+
+def test_long_windows_reserved_names_preserve_trailing_characters(monkeypatch):
+    monkeypatch.setattr(filesystem, "_ON_WINDOWS", True)
+    prefix = "CON." + "界" * 238
+    names = {
+        filesystem.encode_file_name(prefix),
+        filesystem.encode_file_name(prefix + "."),
+        filesystem.encode_file_name(prefix + " "),
+    }
+    assert len(names) == 3
+    assert all(len(name.encode("utf-16-le")) // 2 <= 255 for name in names)
+
+
+def test_windows_reserved_name_hash_fallback_is_bounded_and_distinct(monkeypatch):
+    monkeypatch.setattr(filesystem, "_ON_WINDOWS", True)
+    name = filesystem.encode_file_name("CON." + "界" * 247)
+
+    assert name.startswith("%FF")
+    assert len(name) == 67  # Prefix plus 64 hex characters from SHA-256.
+    assert name != filesystem.encode_file_name("CON." + "界" * 246 + "A")
+    # A literal copy of the hash path is percent-escaped, not an alias.
+    assert filesystem.encode_file_name(name) != name
+
+
 def test_posix_reserved_names_keep_their_existing_storage_paths(monkeypatch):
     monkeypatch.setattr(filesystem, "_ON_WINDOWS", False)
     for name in ("CON", "PRN.txt", "LPT9", "CON."):
