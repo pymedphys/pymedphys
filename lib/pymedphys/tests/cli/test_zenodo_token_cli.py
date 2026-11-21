@@ -64,7 +64,6 @@ def test_zenodo_set_token_rejects_empty_credentials(monkeypatch):
         zenodo.set_zenodo_access_token_cli(SimpleNamespace(token=None))
 
 
-
 def test_zenodo_set_token_refuses_getpass_echo_fallback(monkeypatch):
     stored = []
     monkeypatch.delenv("PYMEDPHYS_ZENODO_TOKEN", raising=False)

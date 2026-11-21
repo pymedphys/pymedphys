@@ -20,6 +20,7 @@ def zenodo_set_token(zenodo_subparsers):
             "PYMEDPHYS_ZENODO_TOKEN or enter the token using a hidden prompt."
         ),
     )
+
     def store_token(args):
         try:
             pymedphys._data.zenodo.set_zenodo_access_token_cli(args)
