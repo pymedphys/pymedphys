@@ -19,6 +19,7 @@ from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from functools import wraps
 from typing import Any
+from xml.sax.saxutils import quoteattr
 
 import trio
 from anthropic import AsyncAnthropic
@@ -53,13 +54,14 @@ async def get_schema_formatted_for_prompt(
 
     table_strings = ""
     for table, columns in exported_schema.items():
-        table_strings += f'  <table name="{table}">\n'
+        table_strings += f"  <table name={quoteattr(str(table))}>\n"
 
         if include_columns:
             columns_string = ""
             for column_name, data_type in columns:
                 columns_string += (
-                    f'    <column name="{column_name}" type="{data_type}" />\n'
+                    f"    <column name={quoteattr(str(column_name))} "
+                    f"type={quoteattr(str(data_type))} />\n"
                 )
 
             table_strings += columns_string
