@@ -140,7 +140,7 @@ def test_counts_cannot_be_changed():
 
 def test_counts_are_plain_integers():
     counts = gamma_pass_counts(np.array([0.5, 2.0], dtype=np.float32))
-    assert type(counts.passed) is int and type(counts.analysed) is int
+    assert [type(counts.passed), type(counts.analysed)] == [int, int]
 
 
 def _subset(**kwargs):
