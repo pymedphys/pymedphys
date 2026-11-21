@@ -82,15 +82,35 @@ def fetch_system_diagnostics_multi_linac(
     """
 
     for machine, ip in machine_ip_map.items():
-        print("\nFetching diagnostic zip files from {} @ {}".format(machine, ip))
-        machine_storage_directory = os.path.join(
-            storage_directory, to_be_indexed, machine
-        )
-        already_indexed_directory = os.path.join(
-            storage_directory, already_indexed, machine
-        )
+        # Machine names become directory components; reject traversal and
+        # Windows drive/UNC paths even when running on a POSIX host.
+        machine_name = os.fspath(machine)
+        if (
+            not isinstance(machine_name, str)
+            or machine_name in ("", ".", "..")
+            or any(ord(char) < 32 or ord(char) == 127 for char in machine_name)
+            or len(pathlib.PurePosixPath(machine_name).parts) != 1
+            or len(pathlib.PureWindowsPath(machine_name).parts) != 1
+            or pathlib.PurePosixPath(machine_name).is_absolute()
+            or pathlib.PureWindowsPath(machine_name).drive
+        ):
+            raise ValueError("Machine identifier must be a single directory name.")
 
-        pathlib.Path(machine_storage_directory).mkdir(parents=True, exist_ok=True)
+        pending_root = pathlib.Path(storage_directory, to_be_indexed).resolve()
+        archived_root = pathlib.Path(storage_directory, already_indexed).resolve()
+        machine_storage_path = pending_root / machine_name
+        archived_machine_path = archived_root / machine_name
+        if (
+            not machine_storage_path.resolve().is_relative_to(pending_root)
+            or not archived_machine_path.resolve().is_relative_to(archived_root)
+        ):
+            raise ValueError("Machine directory escapes the diagnostics root.")
+
+        print("\nFetching diagnostic zip files from {} @ {}".format(machine, ip))
+        machine_storage_directory = str(machine_storage_path)
+        already_indexed_directory = str(archived_machine_path)
+
+        machine_storage_path.mkdir(parents=True, exist_ok=True)
 
         fetch_system_diagnostics(
             ip, machine_storage_directory, already_indexed_directory
