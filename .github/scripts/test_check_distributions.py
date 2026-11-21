@@ -277,6 +277,126 @@ class ContentTests(unittest.TestCase):
     def _failures(self, sdist, wheel, expected_version=None):
         return check_contents(read_sdist(sdist), read_wheel(wheel), expected_version)
 
+    def test_rejects_unsafe_archive_member_names(self):
+        source = Path(self.directory, "test.tar.gz")
+        for name in ("", "/file", "dir/../file", r"dir\file", "C:file"):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "unsafe archive member paths"):
+                    check_distributions._validate_archive_member_names([name], source)
+
+    def test_sdist_rejects_file_directory_path_collision(self):
+        path = Path(self.directory, "pymedphys-type-collision.tar.gz")
+        filename = "pymedphys-test/README.rst"
+        for directory_first in (False, True):
+            with self.subTest(directory_first=directory_first):
+                regular_file = tarfile.TarInfo(filename)
+                directory = tarfile.TarInfo("pymedphys-test/./README.rst/")
+                directory.type = tarfile.DIRTYPE
+                members = (
+                    (directory, regular_file)
+                    if directory_first
+                    else (regular_file, directory)
+                )
+                with tarfile.open(path, "w:gz") as archive:
+                    for member in members:
+                        archive.addfile(member)
+                # A type conflict must be rejected before PKG-INFO is read.
+                with self.assertRaisesRegex(ValueError, "duplicate file members"):
+                    read_sdist(path)
+
+    def test_sdist_directory_entries_are_not_counted_as_files(self):
+        path = Path(self.directory, "pymedphys-directory.tar.gz")
+        with tarfile.open(path, "w:gz") as archive:
+            directory = tarfile.TarInfo("pymedphys-test/docs/")
+            directory.type = tarfile.DIRTYPE
+            archive.addfile(directory)
+            payload = b"Version: 1.0.0\n"
+            metadata = tarfile.TarInfo("pymedphys-test/PKG-INFO")
+            metadata.size = len(payload)
+            archive.addfile(metadata, io.BytesIO(payload))
+
+        self.assertEqual(read_sdist(path).files, frozenset({"PKG-INFO"}))
+
+    def test_sdist_rejects_duplicate_file_members(self):
+        path = Path(self.directory, "pymedphys-test.tar.gz")
+        with tarfile.open(path, "w:gz") as archive:
+            for payload in (b"Version: 1\n", b"Version: 2\n"):
+                info = tarfile.TarInfo("pymedphys-test/PKG-INFO")
+                info.size = len(payload)
+                archive.addfile(info, io.BytesIO(payload))
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_sdist(path)
+
+    def test_wheel_rejects_duplicate_file_members(self):
+        path = Path(self.directory, "pymedphys-test.whl")
+        metadata = "pymedphys-1.0.0.dist-info/METADATA"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr(metadata, "Version: 1.0.0\n")
+            archive.writestr(metadata, "Version: 2.0.0\n")
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_wheel(path)
+
+    def test_wheel_rejects_file_directory_path_collision(self):
+        path = Path(self.directory, "pymedphys-type-collision.whl")
+        filename = "pymedphys/docs"
+        directory_name = "pymedphys/./docs/"
+        for directory_first in (False, True):
+            with self.subTest(directory_first=directory_first):
+                names = (
+                    (directory_name, filename)
+                    if directory_first
+                    else (filename, directory_name)
+                )
+                with zipfile.ZipFile(path, "w") as archive:
+                    for name in names:
+                        archive.writestr(name, "")
+                # The type conflict must fail before METADATA is read.
+                with self.assertRaisesRegex(ValueError, "duplicate file members"):
+                    read_wheel(path)
+
+    def test_wheel_directory_entries_are_not_counted_as_files(self):
+        path = Path(self.directory, "pymedphys-directory.whl")
+        metadata = "pymedphys-1.0.0.dist-info/METADATA"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("pymedphys/docs/", "")
+            archive.writestr(metadata, "Version: 1.0.0\n")
+
+        self.assertEqual(read_wheel(path).files, frozenset({metadata}))
+
+    def test_sdist_rejects_link_entry_over_regular_metadata(self):
+        path = Path(self.directory, "pymedphys-linked.tar.gz")
+        name = "pymedphys-test/PKG-INFO"
+        with tarfile.open(path, "w:gz") as archive:
+            payload = b"Version: 1.0.0\n"
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+            link = tarfile.TarInfo(name)
+            link.type = tarfile.SYMTYPE
+            link.linkname = "other-metadata"
+            archive.addfile(link)
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_sdist(path)
+
+    def test_sdist_rejects_aliased_member_paths(self):
+        path = Path(self.directory, "pymedphys-aliased.tar.gz")
+        with tarfile.open(path, "w:gz") as archive:
+            for name in ("pymedphys-test/PKG-INFO", "pymedphys-test/./PKG-INFO"):
+                payload = b"Version: 1.0.0\n"
+                info = tarfile.TarInfo(name)
+                info.size = len(payload)
+                archive.addfile(info, io.BytesIO(payload))
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_sdist(path)
+
+    def test_wheel_rejects_aliased_member_paths(self):
+        path = Path(self.directory, "pymedphys-aliased.whl")
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("pymedphys-1.dist-info/METADATA", "Version: 1\n")
+            archive.writestr("pymedphys-1.dist-info/./METADATA", "Version: 2\n")
+        with self.assertRaisesRegex(ValueError, "duplicate file members"):
+            read_wheel(path)
+
     def test_complete_distributions_pass(self):
         sdist = _write_sdist(self.directory)
         wheel = _write_wheel(self.directory)
