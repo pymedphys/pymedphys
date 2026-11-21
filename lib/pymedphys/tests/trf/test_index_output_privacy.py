@@ -180,7 +180,13 @@ def test_orchestration_cli_fatal_archive_move_respects_redaction(
     tmp_path, monkeypatch, capsys, redact
 ):
     from pymedphys import _config
-    from pymedphys.cli import pymedphys_cli
+
+    cli_module = importlib.import_module("pymedphys.cli")
+    # Exercise argument routing without altering pytest's global logging handlers.
+    monkeypatch.setattr(cli_module, "run_logging_basic_config", lambda *_: None)
+    monkeypatch.setattr(
+        _config, "is_cli", getattr(_config, "is_cli", False), raising=False
+    )
 
     orchestration_module = importlib.import_module(
         "pymedphys._trf.manage.orchestration"
@@ -266,7 +272,7 @@ def test_orchestration_cli_fatal_archive_move_respects_redaction(
 
     error_type = RuntimeError if redact else PermissionError
     with pytest.raises(error_type) as caught:
-        pymedphys_cli()
+        cli_module.pymedphys_cli()
 
     captured = capsys.readouterr()
     formatted = "".join(traceback.format_exception(caught.value))
