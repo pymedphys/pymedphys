@@ -86,9 +86,7 @@ def test_sql_agent_does_not_print_tool_call_or_clinical_result(
     assert prompt_marker not in caplog.text
 
 
-def test_nested_sql_agent_does_not_print_transcript_or_generated_sql(
-    capsys, caplog
-):
+def test_nested_sql_agent_does_not_print_transcript_or_generated_sql(capsys, caplog):
     transcript_marker = "synthetic-clinical-transcript-marker"
     generated_sql = (
         "SELECT PatientName FROM Patient "
