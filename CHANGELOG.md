@@ -18,7 +18,7 @@ Retries of failed data downloads now log the exception type rather than its
 message. HTTP exceptions can contain a signed download URL, access token or
 patient identifier; retry diagnostics no longer copy those values to terminal
 output or an application logger. Raised exceptions retain their original
-contents for callers that handle them directly.
+contents for callers that handle them directly. [PR #2635](https://github.com/pymedphys/pymedphys/pull/2635)
 
 
 ### Mosaiq treatment sessions follow Mosaiq's rule
