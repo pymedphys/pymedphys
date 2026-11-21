@@ -126,6 +126,25 @@ def test_sandbox_zenodo_https_endpoint_is_accepted(zenodo, monkeypatch):
     assert fake.calls[0]["headers"]["Authorization"] == "Bearer sandbox-token"
 
 
+@pytest.mark.parametrize("method", ["get", "post", "put", "delete"])
+@pytest.mark.parametrize("status_code", [301, 302, 303, 307, 308])
+def test_authenticated_zenodo_redirects_are_rejected(zenodo, method, status_code):
+    install, fake_keyring = zenodo
+    fake_requests = install(_Response(status_code))
+
+    # Even if a caller tries to enable redirects, credential-bearing requests
+    # must never follow a 3xx response to an unvalidated destination.
+    with pytest.raises(ValueError, match="must not redirect"):
+        upload.zenodo_api_with_helpful_fallback(
+            URL, method, allow_redirects=True
+        )
+
+    (call,) = fake_requests.calls
+    assert call["allow_redirects"] is False
+    assert call["headers"]["Authorization"] == "Bearer first-token"
+    assert fake_keyring.deleted == []
+
+
 def test_token_is_sent_in_a_header_not_the_url(zenodo):
     install, _ = zenodo
     fake_requests = install(_Response(201))
