@@ -52,7 +52,9 @@ def test_patient_folder_name_is_valid_on_windows(tmp_path):
         assert f.read() == item
 
 
-def test_parser_failure_does_not_emit_patient_bearing_tracebacks(monkeypatch, capsys):
+def test_parser_failure_does_not_emit_patient_bearing_tracebacks(
+    monkeypatch, capsys, caplog
+):
     """Errors from a clinical data decoder must not reach stderr."""
     original = "SYNTHETIC PATIENT 738419"
 
@@ -60,16 +62,17 @@ def test_parser_failure_does_not_emit_patient_bearing_tracebacks(monkeypatch, ca
         raise ValueError("decoder failed while reading " + original)
 
     monkeypatch.setattr(patients.pymedphys.Delivery, "from_icom", fail_decode)
-    with pytest.raises(patients.UnableToReadIcom):
+    with caplog.at_level(logging.DEBUG), pytest.raises(patients.UnableToReadIcom):
         patients.validate_data(b"synthetic invalid record")
 
     captured = capsys.readouterr()
     assert original not in captured.out + captured.err
-    assert "Traceback" not in captured.err
+    assert original not in caplog.text
+    assert "Traceback" not in captured.out + captured.err
 
 
 def test_icom_archive_oserror_does_not_log_private_details(
-    monkeypatch, tmp_path, caplog
+    monkeypatch, tmp_path, caplog, capsys
 ):
     """The logger receives a fixed error, not the path-bearing OSError."""
     person = "SYNTHETIC-738419"
@@ -88,6 +91,9 @@ def test_icom_archive_oserror_does_not_log_private_details(
     assert person not in caplog.text
     assert "is not writable" not in caplog.text
     assert "Traceback" not in caplog.text
+    output = capsys.readouterr()
+    assert person not in output.out + output.err
+    assert "is not writable" not in output.out + output.err
 
 
 def test_listener_recovery_does_not_print_exception_details(
@@ -104,12 +110,15 @@ def test_listener_recovery_does_not_print_exception_details(
 
     monkeypatch.setattr(listener, "listen", fail_listen)
     monkeypatch.setattr(listener.time, "sleep", stop_after_first_failure)
-    with caplog.at_level(logging.ERROR), pytest.raises(KeyboardInterrupt):
+    with caplog.at_level(logging.DEBUG), pytest.raises(KeyboardInterrupt):
         listener.listen_cli(type("Args", (), {"ip": IP, "directory": "/tmp"})())
 
     assert "iCOM listener failed" in caplog.text
+    assert "then retry connection" in caplog.text
     assert secret not in caplog.text
-    assert "Traceback" not in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert secret not in captured.out + captured.err
+    assert "Traceback" not in captured.out + captured.err
 
 
 def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, caplog):
@@ -124,7 +133,12 @@ def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, ca
     with caplog.at_level(logging.ERROR):
         patient_icom_data.update_data(IP, _icom_item(1))
 
-    assert f"Could not archive the delivery that started at {START}." in caplog.text
+    error_messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.levelno >= logging.ERROR
+    ]
+    assert error_messages == ["Could not archive iCOM delivery (OSError)"]
 
     # The next delivery is recorded and archived on its own.
     patients_dir.unlink()
