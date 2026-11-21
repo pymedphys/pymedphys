@@ -94,8 +94,6 @@ def listen_cli(args):
     while True:
         try:
             listen(args.ip, args.directory)
-        except KeyboardInterrupt:
-            raise
         except Exception:  # pylint: disable = broad-exception-caught
             # The exception can contain original iCOM data or identifying paths.
             logging.error("iCOM listener failed; exception details omitted")
