@@ -309,7 +309,9 @@ def test_listen_help_describes_stored_names(capsys, monkeypatch):
 
 
 @pytest.mark.pydicom
-def test_listener_logs_do_not_expose_patient_identifiers(tmp_path, test_dataset, caplog):
+def test_listener_logs_do_not_expose_patient_identifiers(
+    tmp_path, test_dataset, caplog
+):
     """The storage path contains PatientID and UIDs, which logs must not expose."""
     dicom_listener = DicomListener(storage_directory=tmp_path)
     event = types.SimpleNamespace(
