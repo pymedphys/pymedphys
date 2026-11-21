@@ -30,7 +30,18 @@ MAX_TOKEN_ATTEMPTS = 3
 
 
 def zenodo_api_with_helpful_fallback(url, method, **kwargs):
-    hostname = urllib.parse.urlparse(url).hostname
+    # Never attach a keyring credential to an arbitrary API URL, including an
+    # HTTP URL for Zenodo (which would expose the bearer token in transit).
+    parsed = urllib.parse.urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in {"zenodo.org", "sandbox.zenodo.org"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in (None, 443)
+    ):
+        raise ValueError("Zenodo API requests require an HTTPS Zenodo endpoint")
+    hostname = parsed.hostname
     caller_headers = kwargs.pop("headers", {})
 
     for _ in range(MAX_TOKEN_ATTEMPTS):
