@@ -229,7 +229,9 @@ def pseudonymise(dicom_input, output_path=None):
         return pseudonymised_file_list
 
     if not pathlib.Path().joinpath(dicom_input).is_file():
-        raise FileNotFoundError("No file or directory was found at the supplied input path.")
+        raise FileNotFoundError(
+            "No file or directory was found at the supplied input path."
+        )
     pseudonymised_filepath = anonymise_file(
         dicom_input,
         output_filepath=output_path,
