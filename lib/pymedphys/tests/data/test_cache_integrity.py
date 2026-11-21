@@ -19,11 +19,16 @@ temporary ``PYMEDPHYS_DATA_DIR``, and hashes come from a temporary copy of
 ``hashes.json``.
 """
 
+# pylint: disable=too-many-lines,protected-access
+# Security regression tests intentionally exercise internal archive operations.
+
 import errno
 import hashlib
 import json
 import os
 import pathlib
+import subprocess
+import tempfile
 import threading
 import zipfile
 
@@ -400,11 +405,8 @@ def test_empty_archive_returns_no_files(cache, tmp_path):
     _record(hashes, "archive.zip", source)
 
     for _ in range(2):
-        assert (
-            download.zip_data_paths(
-                "archive.zip", url=source.as_uri(), hash_filepath=hashes
-            )
-            == []
+        assert not download.zip_data_paths(
+            "archive.zip", url=source.as_uri(), hash_filepath=hashes
         )
         assert (data_dir / "archive").is_dir()
 
@@ -1107,3 +1109,46 @@ def test_windows_pinned_parent_cannot_be_renamed(tmp_path):
         assert parent.is_dir()
         with pytest.raises(OSError):
             parent.rename(parent.with_name("swapped"))
+
+@pytest.mark.skipif(os.name != "nt", reason="Requires native Windows ACLs")
+def test_windows_extraction_with_unwritable_parent(cache, tmp_path):
+    """Extraction needs write access to the selected folder, not its parent."""
+    _, hashes = cache
+    source = _zip(tmp_path / "source.zip", {"nested/data.txt": "contents"})
+    _record(hashes, "archive.zip", source)
+
+    parent = tmp_path / "restricted_parent"
+    destination = parent / "extraction"
+    destination.mkdir(parents=True)
+
+    # Deny adding files to the parent only; the pre-existing destination
+    # retains write access. Directory read-only attributes do not enforce
+    # this condition on Windows, so test the effective NTFS ACL instead.
+    user = subprocess.check_output(["whoami"], text=True).strip()
+    subprocess.run(
+        ["icacls", str(parent), "/deny", f"{user}:(WD)"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    try:
+        with pytest.raises(PermissionError):
+            with tempfile.NamedTemporaryFile(dir=parent):
+                pass
+        with tempfile.NamedTemporaryFile(dir=destination):
+            pass
+
+        (extracted,) = download.zip_data_paths(
+            "archive.zip",
+            url=source.as_uri(),
+            hash_filepath=hashes,
+            extract_directory=destination,
+        )
+        assert extracted.read_text(encoding="utf-8") == "contents"
+    finally:
+        subprocess.run(
+            ["icacls", str(parent), "/remove:d", user],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
