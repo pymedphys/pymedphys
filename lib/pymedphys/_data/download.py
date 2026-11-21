@@ -124,7 +124,8 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
     moved into place once it is complete, so an interrupted download never
     leaves a truncated file behind. Network errors, timeouts, and transient
     HTTP statuses are retried with an exponential backoff; other HTTP errors,
-    such as 404, are raised immediately.
+    such as 404, are raised immediately. Conflicting or malformed response
+    framing raises ``ValueError`` before the cached file is replaced.
 
     Parameters
     ----------
@@ -148,15 +149,28 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
     with urllib.request.urlopen(  # nosec B310
         url, timeout=DOWNLOAD_TIMEOUT_SECONDS
     ) as response:
-        content_length = response.headers.get("Content-Length")
-        expected_size = int(content_length) if content_length else None
-        if expected_size is not None and expected_size < 0:
-            raise ValueError("Negative Content-Length is invalid")
-        if expected_size is not None and response.headers.get("Transfer-Encoding"):
-            # RFC 9112 forbids using both response framing methods together.
-            # A chunked response can otherwise supply more bytes than the
-            # advertised Content-Length and different clients may disagree.
+        content_lengths = response.headers.get_all("Content-Length", [])
+        transfer_encodings = response.headers.get_all("Transfer-Encoding", [])
+        if content_lengths and transfer_encodings:
+            # Header presence matters even when a field value is blank.
+            # RFC 9112 treats conflicting response framing as an error.
             raise ValueError("Conflicting Content-Length and Transfer-Encoding headers")
+        if len(content_lengths) > 1:
+            # Do not trust the first of several potentially differing lengths.
+            raise ValueError("Multiple Content-Length headers are invalid")
+
+        expected_size = None
+        if content_lengths:
+            content_length = content_lengths[0].strip()
+            if content_length.startswith("-"):
+                raise ValueError("Negative Content-Length is invalid")
+            if (
+                not content_length
+                or not content_length.isascii()
+                or not content_length.isdecimal()
+            ):
+                raise ValueError("Invalid Content-Length header")
+            expected_size = int(content_length)
 
         file_descriptor, temp_name = tempfile.mkstemp(
             dir=filepath.parent, prefix=f".{filepath.name}.", suffix=".part"
