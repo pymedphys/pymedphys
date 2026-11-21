@@ -12,6 +12,15 @@ This project adheres to
 
 ## Unreleased
 
+### Safer Mosaiq configuration saves
+
+Saving Mosaiq connection settings now stages and syncs a complete configuration
+before replacing the original file. A failed serialisation or write leaves the
+previous configuration intact. Existing filesystem symlinks continue to point
+at the updated file, access settings are retained, and concurrent saves do not
+discard another session's site changes. The writer keeps the platform encoding
+used by the configuration readers. [PR #2647](https://github.com/pymedphys/pymedphys/pull/2647)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group

@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeff (jdotc1)
 # Copyright (C) 2026 Derek Lane
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +22,12 @@ Mosaiq connectivity.
 
 # pylint: disable = redefined-outer-name, import-outside-toplevel
 
+import locale
+import os
 import pathlib
+import stat
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Iterator, List, Tuple
 
 from pymedphys._imports import pytest
@@ -265,6 +271,7 @@ def test_config_write_failure_preserves_existing_file(config_dir, monkeypatch):
     from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
     original = "version = 0\n# keep this configuration intact\n"
+    assert toml.loads(original)["version"] == 0
     target = config_dir / "config.toml"
     target.write_text(original, encoding="utf-8")
 
@@ -277,19 +284,125 @@ def test_config_write_failure_preserves_existing_file(config_dir, monkeypatch):
         st_mosaiq.save_mosaiq_config_to_file("clinic", HOSTNAME)
 
     assert target.read_text(encoding="utf-8") == original
-    assert list(config_dir.glob(".config.toml.*.tmp")) == []
+    assert not list(config_dir.glob(".config.toml.*.tmp"))
 
 
-def test_saved_config_uses_private_permissions_on_posix(config_dir):
+@pytest.mark.usefixtures("config_dir")
+def test_saved_config_uses_private_permissions_on_posix():
     """Publishing a new connection configuration must not make it world-readable."""
-    import os
-
     from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
     saved = st_mosaiq.save_mosaiq_config_to_file("clinic", HOSTNAME)
     assert saved.read_text(encoding="utf-8")
     if os.name == "posix":
         assert saved.stat().st_mode & 0o077 == 0
+
+
+def test_saving_through_filesystem_symlink_keeps_link(config_dir):
+    """A filesystem symlink must still point to an updated shared config."""
+    from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+
+    target = config_dir / "shared.toml"
+    target.write_text("version = 0\n", encoding="utf-8")
+    link = config_dir / "config.toml"
+    try:
+        link.symlink_to(target)
+    except (OSError, NotImplementedError):
+        pytest.skip("Creating symlinks is not supported on this filesystem")
+
+    saved = st_mosaiq.save_mosaiq_config_to_file("clinic", HOSTNAME)
+    assert saved == target
+    assert link.is_symlink()
+    assert toml.loads(target.read_text(encoding="utf-8"))["site"][0]["name"] == "clinic"
+
+
+def test_existing_config_access_mode_is_preserved(config_dir):
+    """An existing shared file keeps group read access after publication."""
+    if os.name != "posix":
+        pytest.skip("POSIX permission bits")
+
+    from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+
+    target = config_dir / "config.toml"
+    target.write_text("version = 0\n", encoding="utf-8")
+    target.chmod(0o640)
+    st_mosaiq.save_mosaiq_config_to_file("clinic", HOSTNAME)
+    assert stat.S_IMODE(target.stat().st_mode) == 0o640
+
+
+@pytest.mark.usefixtures("config_dir")
+def test_non_ascii_site_name_round_trips_with_config_reader():
+    """The saved TOML must use the same platform encoding as its readers."""
+    from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+
+    site_name = "Café"
+    try:
+        site_name.encode(locale.getpreferredencoding(False))
+    except UnicodeEncodeError:
+        pytest.skip("The configured legacy locale cannot encode the test name")
+
+    saved = st_mosaiq.save_mosaiq_config_to_file(site_name, HOSTNAME)
+    with open(saved) as reader:
+        [site] = toml.load(reader)["site"]
+    assert site["name"] == site_name
+
+
+def test_concurrent_config_saves_preserve_both_sites(config_dir, monkeypatch):
+    """One writer cannot overwrite another writer's already saved site."""
+    from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+
+    (config_dir / "config.toml").write_text("version = 0\n", encoding="utf-8")
+    entered_dump = threading.Event()
+    finish_first = threading.Event()
+    second_started = threading.Event()
+    original_dump = st_mosaiq.toml.dump
+
+    def slow_dump(config, file_handle):
+        if any(site["name"] == "first" for site in config.get("site", [])):
+            entered_dump.set()
+            if not finish_first.wait(timeout=10):
+                raise TimeoutError("Timed out waiting for concurrent writer")
+        return original_dump(config, file_handle)
+
+    def second_save():
+        second_started.set()
+        return st_mosaiq.save_mosaiq_config_to_file("second", OTHER_HOSTNAME)
+
+    monkeypatch.setattr(st_mosaiq.toml, "dump", slow_dump)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(st_mosaiq.save_mosaiq_config_to_file, "first", HOSTNAME)
+        assert entered_dump.wait(timeout=10)
+        second = pool.submit(second_save)
+        assert second_started.wait(timeout=10)
+        finish_first.set()
+        first.result(timeout=10)
+        second.result(timeout=10)
+
+    assert {site["name"] for site in pmp_config.get_config()["site"]} == {
+        "first",
+        "second",
+    }
+
+
+@pytest.mark.usefixtures("config_dir")
+def test_parent_directory_is_synced_on_posix(monkeypatch):
+    """The atomic rename also attempts to persist its directory entry."""
+    if os.name != "posix":
+        pytest.skip("Directory fsync is POSIX-specific")
+
+    from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+
+    fsynced_directories = []
+    original_fsync = st_mosaiq.os.fsync
+
+    def recording_fsync(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            fsynced_directories.append(fd)
+        return original_fsync(fd)
+
+    monkeypatch.setattr(st_mosaiq.os, "fsync", recording_fsync)
+    st_mosaiq.save_mosaiq_config_to_file("clinic", HOSTNAME)
+    assert fsynced_directories
 
 
 def test_failed_endpoint_is_not_saved_and_can_be_corrected(
