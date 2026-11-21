@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import contextlib
+import hashlib
 import os
 import string
 
@@ -28,7 +29,6 @@ def get_detached_file_descriptor(filepath):
         return filepath
 
     import msvcrt  # type: ignore
-    import os
 
     handle = win32file.CreateFile(
         str(filepath),
@@ -77,6 +77,7 @@ _CONTROL_CHARACTERS = frozenset(chr(code) for code in range(0x20))
 # names, and "%", so that an encoded name cannot equal a different value.
 _ENCODED_NAME_CHARACTERS = frozenset('%/\\:*?"<>|') | _CONTROL_CHARACTERS
 _ON_WINDOWS = os.name == "nt"
+_WINDOWS_MAX_COMPONENT_CODE_UNITS = 255
 
 # Windows treats these basenames (including names with extensions) as devices.
 # The superscript digits are also reserved for COM and LPT devices.
@@ -85,6 +86,14 @@ _WINDOWS_DEVICE_NAMES = frozenset(
 ) | frozenset(
     f"{prefix}{digit}" for prefix in ("COM", "LPT") for digit in "123456789¹²³"
 )
+
+
+def _fits_windows_component(name: str) -> bool:
+    """Check the Windows component limit in UTF-16 code units."""
+    return (
+        len(name.encode("utf-16-le", errors="surrogatepass")) // 2
+        <= _WINDOWS_MAX_COMPONENT_CODE_UNITS
+    )
 
 
 def encode_file_name(value: object) -> str:
@@ -96,7 +105,10 @@ def encode_file_name(value: object) -> str:
     becomes ``..%2Fx`` and ``..`` becomes ``%2E%2E``. Windows device
     basenames (such as ``CON`` or ``LPT1.txt``) are also escaped on Windows,
     but retain their original names on other systems for archive compatibility.
-    Different values give different names, and ordinary names are unchanged.
+    If full escaping exceeds Windows' 255 UTF-16-code-unit component limit,
+    compact escaping preserves case distinctions and long Unicode suffixes.
+    Names still too long use a deterministic SHA-256-derived path component;
+    this exceptional fallback is not reversible. Ordinary names are unchanged.
 
     Parameters
     ----------
@@ -118,12 +130,44 @@ def encode_file_name(value: object) -> str:
     )
 
     # Windows resolves reserved device names even with extensions or trailing
-    # dots and spaces. Escape every character for this small class of names to
-    # avoid case-insensitive collisions and normalize trailing characters.
+    # dots and spaces. The full encoding distinguishes case variants.
     # POSIX archives keep their existing paths.
     if _ON_WINDOWS:
         basename = encoded.split(".", maxsplit=1)[0].rstrip(" ")
         if basename.upper() in _WINDOWS_DEVICE_NAMES:
-            encoded = "".join(f"%{ord(character):02X}" for character in encoded)
+            escaped = "".join(f"%{ord(character):02X}" for character in encoded)
+
+            if not _fits_windows_component(escaped):
+                # Full encoding can exceed Windows' component limit for long
+                # Unicode identifiers. Encode the device stem, unsafe
+                # characters, noncanonical case variants, and trailing dots
+                # or spaces, but leave other Unicode characters unchanged.
+                stem_end = name.find(".")
+                if stem_end == -1:
+                    stem_end = len(name)
+                trailing_start = len(name.rstrip(" ."))
+                escaped = "".join(
+                    f"%{ord(character):02X}"
+                    if (
+                        index < stem_end
+                        or character in _ENCODED_NAME_CHARACTERS
+                        or (index >= trailing_start and character in " .")
+                        or character.upper().lower() != character
+                    )
+                    else character
+                    for index, character in enumerate(name)
+                )
+
+                if not _fits_windows_component(escaped):
+                    # A bounded, collision-resistant fallback avoids silently
+                    # truncating distinct identifiers. Literal '%' is escaped
+                    # by the normal path, so this prefix cannot collide with
+                    # ordinary inputs.
+                    digest = hashlib.sha256(
+                        name.encode("utf-8", errors="surrogatepass")
+                    ).hexdigest()
+                    escaped = f"%FF{digest}"
+
+            encoded = escaped
 
     return encoded
