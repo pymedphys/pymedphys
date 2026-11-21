@@ -1,4 +1,5 @@
 """Security regression tests for index.json logfile path resolution."""
+
 import os
 
 import pytest
@@ -20,11 +21,14 @@ def test_get_filepath_preserves_valid_relative_logfile_path(tmp_path):
     assert resolved == os.path.abspath(expected)
 
 
-@pytest.mark.parametrize("invalid", [
-    "../outside.trf",
-    "../../outside.trf",
-    "/tmp/outside.trf",
-])
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "../outside.trf",
+        "../../outside.trf",
+        "/tmp/outside.trf",
+    ],
+)
 def test_get_filepath_rejects_absolute_and_traversal_entries(tmp_path, invalid):
     with pytest.raises(ValueError, match="escapes the indexed directory"):
         get_filepath(
