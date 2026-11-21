@@ -116,9 +116,9 @@ def gamma_pass_counts(gamma) -> GammaPassCounts:
     Parameters
     ----------
     gamma : array_like
-        Gamma values of any shape, as returned by :func:`pymedphys.gamma` for
-        one pair of dose and distance thresholds, or any part of them, such
-        as the points within a region of interest.
+        Gamma values of any shape, such as the ``gamma`` array of a result
+        from :func:`pymedphys.gamma`, or any part of it, such as the points
+        within a region of interest.
 
     Returns
     -------
@@ -129,9 +129,9 @@ def gamma_pass_counts(gamma) -> GammaPassCounts:
     Raises
     ------
     TypeError
-        If ``gamma`` is the dict that :func:`pymedphys.gamma` returns for
-        several thresholds, rather than one of its values, or is a gamma
-        result object, which carries its own counts.
+        If ``gamma`` is a result from :func:`pymedphys.gamma`, or several of
+        them, rather than an array. A result carries its own counts. Also if
+        ``gamma`` is a mapping.
     ValueError
         If any gamma value is negative.
 
@@ -147,9 +147,8 @@ def gamma_pass_counts(gamma) -> GammaPassCounts:
 
     if isinstance(gamma, Mapping):
         raise TypeError(
-            "gamma holds results for several thresholds, keyed by (dose, "
-            "distance). Pass the result for one pair of thresholds, for "
-            "example gamma[(3, 3)]."
+            "gamma is a mapping, not an array of gamma values. Pass one array "
+            "at a time, for example each of its values."
         )
 
     # Masked values, like NaN, were not analysed.
@@ -180,8 +179,8 @@ def gamma_percent_passed(gamma) -> float:
     Parameters
     ----------
     gamma : array_like
-        Gamma values of any shape, as returned by :func:`pymedphys.gamma` for
-        one pair of dose and distance thresholds, or any part of them.
+        Gamma values of any shape, such as the ``gamma`` array of a result
+        from :func:`pymedphys.gamma`, or any part of it.
 
     Returns
     -------
@@ -191,8 +190,8 @@ def gamma_percent_passed(gamma) -> float:
     Raises
     ------
     TypeError
-        If ``gamma`` is the dict that :func:`pymedphys.gamma` returns for
-        several thresholds, rather than one of its values.
+        If ``gamma`` is a result from :func:`pymedphys.gamma`, or several of
+        them, rather than an array, or is a mapping.
     ValueError
         If no reference point was analysed, so every value is NaN or masked,
         or if any gamma value is negative.

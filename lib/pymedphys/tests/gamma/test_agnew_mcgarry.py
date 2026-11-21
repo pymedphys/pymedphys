@@ -60,9 +60,9 @@ def run_gamma(
     filepath_ref,
     filepath_eval,
     random_subset=None,
-    max_gamma=1.1,
-    dose_threshold=1,
-    distance_threshold=1,
+    gamma_cap=1.1,
+    dose_criterion=1,
+    distance_criterion=1,
 ):
     if random_subset is not None:
         np.random.seed(42)
@@ -76,55 +76,51 @@ def run_gamma(
     axes_evaluation = load_yx_from_dicom(ds_eval)
     dose_evaluation = dose_from_dataset(ds_eval)
 
-    gamma = pymedphys.gamma(
+    return pymedphys.gamma(
         axes_reference,
         dose_reference,
         axes_evaluation,
         dose_evaluation,
-        dose_threshold,
-        distance_threshold,
-        lower_percent_dose_cutoff=20,
-        interp_fraction=10,
-        max_gamma=max_gamma,
-        local_gamma=True,
+        dose_criterion,
+        distance_criterion,
+        lower_dose_cutoff_percent=20,
+        search_step_fraction=0.1,
+        gamma_cap=gamma_cap,
+        normalisation="local",
         skip_once_passed=True,
         random_subset=random_subset,
     )
-
-    return gamma
 
 
 def local_gamma(
     filepath_ref,
     filepath_eval,
-    result,
+    expected_percent_passed,
     random_subset=None,
-    max_gamma=1.1,
-    dose_threshold=1,
-    distance_threshold=1,
+    gamma_cap=1.1,
+    dose_criterion=1,
+    distance_criterion=1,
 ):
-    gamma = run_gamma(
+    result = run_gamma(
         filepath_ref,
         filepath_eval,
         random_subset,
-        max_gamma,
-        dose_threshold,
-        distance_threshold,
+        gamma_cap,
+        dose_criterion,
+        distance_criterion,
     )
 
-    gamma_pass = pymedphys.gamma_percent_passed(gamma)
-
-    assert np.round(gamma_pass, decimals=1) == result
+    assert np.round(result.percent_passed, decimals=1) == expected_percent_passed
 
 
 @pytest.mark.pydicom
-def test_max_gamma():
+def test_gamma_cap():
     local_gamma(
         get_data_file("H&N_VMAT_Reference_1mmPx.dcm"),
         get_data_file("H&N_VMAT_Evaluated_1mmPx.dcm"),
         93.6,
         random_subset=RANDOM_SUBSET,
-        max_gamma=1.4,
+        gamma_cap=1.4,
     )
 
     local_gamma(
@@ -132,7 +128,7 @@ def test_max_gamma():
         get_data_file("H&N_VMAT_Evaluated_1mmPx.dcm"),
         93.6,
         random_subset=RANDOM_SUBSET,
-        max_gamma=1.0001,
+        gamma_cap=1.0001,
     )
 
 
@@ -166,16 +162,17 @@ def test_multi_inputs():
         get_data_file("H&N_VMAT_Reference_0_25mmPx.dcm"),
         get_data_file("H&N_VMAT_Evaluated_0_25mmPx.dcm"),
     )
-    options = {"random_subset": RANDOM_SUBSET, "max_gamma": 1.0001}
-    gamma = run_gamma(
-        *files, dose_threshold=[1, 0.2], distance_threshold=[1, 4], **options
+    options = {"random_subset": RANDOM_SUBSET, "gamma_cap": 1.0001}
+    results = run_gamma(
+        *files, dose_criterion=[1, 0.2], distance_criterion=[1, 4], **options
     )
 
-    # Each pair is searched at its own step, the distance threshold divided
-    # by interp_fraction, so a list gives what separate calls give. The 1 mm
-    # pairs are unchanged. The 4 mm pairs were 99.8 and 99.2 while a list
-    # searched every pair at the 1 mm step. With interp_fraction=40 the four
-    # pairs give 97.1, 99.9, 94.3 and 99.6.
+    # Each pair is searched at its own step, the distance criterion times
+    # search_step_fraction, so a list gives what separate calls give. The
+    # 1 mm pairs are unchanged. The 4 mm pairs were 99.8 and 99.2 while a list
+    # searched them at a finer step than they get alone. With
+    # search_step_fraction=0.025 the four pairs give 97.1, 99.9, 94.3 and
+    # 99.6.
     baseline = {
         (1, 1): LOCAL_GAMMA_0_25_BASELINE,
         (1, 4): 99.4,
@@ -183,18 +180,14 @@ def test_multi_inputs():
         (0.2, 4): 90.4,
     }
 
-    assert len(gamma) == len(baseline)
-    for (dose_threshold, distance_threshold), value in gamma.items():
-        pair = (dose_threshold, distance_threshold)
-        assert (
-            np.round(pymedphys.gamma_percent_passed(value), decimals=1)
-            == baseline[pair]
-        )
+    assert len(results) == len(baseline)
+    for result, pair in zip(results, baseline, strict=True):
+        settings = result.settings
+        assert (settings.dose_criterion_percent, settings.distance_criterion_mm) == pair
+        assert result.analysed == RANDOM_SUBSET
+        assert np.round(result.percent_passed, decimals=1) == baseline[pair]
 
         alone = run_gamma(
-            *files,
-            dose_threshold=dose_threshold,
-            distance_threshold=distance_threshold,
-            **options,
+            *files, dose_criterion=pair[0], distance_criterion=pair[1], **options
         )
-        np.testing.assert_array_equal(value, alone, err_msg=str(pair))
+        np.testing.assert_array_equal(result.gamma, alone.gamma, err_msg=str(pair))

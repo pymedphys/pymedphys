@@ -147,20 +147,20 @@ def test_all_encodings_recover_the_same_physical_grid(orientation, reverse_slice
 @pytest.mark.pydicom
 @pytest.mark.parametrize("reference_orientation", sorted(STORAGE_ORDER))
 @pytest.mark.parametrize("evaluation_orientation", sorted(STORAGE_ORDER))
-@pytest.mark.parametrize("interp_algo", ["pymedphys", "scipy"])
+@pytest.mark.parametrize("interpolator", ["pymedphys", "scipy"])
 def test_gamma_is_invariant_for_every_orientation_pair(
-    reference_orientation, evaluation_orientation, interp_algo
+    reference_orientation, evaluation_orientation, interpolator
 ):
-    if interp_algo == "pymedphys":
+    if interpolator == "pymedphys":
         _skip_without_other_feature("numba")
     axes, pixels = _physical_grid()
     reference = _encode_grid(reference_orientation, axes, pixels)
     options = {
-        "dose_percent_threshold": 3,
-        "distance_mm_threshold": 3,
-        "lower_percent_dose_cutoff": 0,
-        "max_gamma": 2,
-        "interp_algo": interp_algo,
+        "dose_criterion_percent": 3,
+        "distance_criterion_mm": 3,
+        "lower_dose_cutoff_percent": 0,
+        "gamma_cap": 2,
+        "interpolator": interpolator,
     }
     # Check equality AND a dose discrepancy. Self-comparisons alone can pass
     # even when both grids have the same incorrect coordinate mapping.
@@ -174,8 +174,8 @@ def test_gamma_is_invariant_for_every_orientation_pair(
             axes,
             (pixels + difference) * DOSE_GRID_SCALING,
             **options,
-        )
-        actual = gamma_dicom(reference, evaluation, **options)
+        ).gamma
+        actual = gamma_dicom(reference, evaluation, **options).gamma
         assert np.all(np.isfinite(actual))
         np.testing.assert_allclose(actual, expected, rtol=0, atol=1e-12)
         if difference == 0:
@@ -203,7 +203,9 @@ def test_same_orientation_crop_retains_physical_registration(
 
     # Every reference voxel is also in the full evaluation grid. No search
     # outside the crop is needed, so the exact gamma is zero everywhere.
-    result = gamma_dicom(cropped, full, 1, 1, lower_percent_dose_cutoff=0, max_gamma=2)
+    result = gamma_dicom(
+        cropped, full, 1, 1, lower_dose_cutoff_percent=0, gamma_cap=2
+    ).gamma
     assert result.shape == pixels[tuple(selection)].shape
     assert np.all(np.isfinite(result))
     np.testing.assert_allclose(result, 0, rtol=0, atol=1e-12)

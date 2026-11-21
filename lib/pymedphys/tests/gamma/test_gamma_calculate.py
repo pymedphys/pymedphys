@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The gamma calculation that returns results, with its renamed options."""
+"""What pymedphys.gamma returns, and the options it accepts."""
 
 import inspect
 import warnings
@@ -20,9 +20,8 @@ import warnings
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
-from pymedphys._gamma.calculate import gamma
-from pymedphys._gamma.implementation.shell import gamma_shell
-from pymedphys._gamma.result import GammaResult
+import pymedphys
+from pymedphys import GammaResult, gamma
 
 
 def _field(shape=(30, 26), shift=2.0, noise=0.04, seed=1):
@@ -43,34 +42,46 @@ def _field(shape=(30, 26), shift=2.0, noise=0.04, seed=1):
     return axes, reference, axes, evaluation
 
 
-# The same calculation written with the new options and with the old ones.
-EQUIVALENT_OPTIONS = [
-    ({}, {}),
-    ({"lower_dose_cutoff_percent": 5}, {"lower_percent_dose_cutoff": 5}),
-    ({"normalisation": "local"}, {"local_gamma": True}),
-    ({"normalisation_dose": 80.0}, {"global_normalisation": 80.0}),
-    ({"gamma_cap": 2}, {"max_gamma": 2}),
-    ({"skip_once_passed": True}, {"skip_once_passed": True}),
-    ({"search_step_fraction": 0.05}, {"interp_fraction": 20}),
-    ({"search_step_fraction": 0.1}, {"interp_fraction": 10}),
-    ({"interpolator": "scipy"}, {"interp_algo": "scipy"}),
-    ({"interpolator": "pymedphys"}, {"interp_algo": "pymedphys"}),
-    ({"memory_budget_bytes": 2**20}, {"ram_available": 2**20}),
-    (
-        {"random_subset": 150, "random_state": 7},
-        {"random_subset": 150, "random_state": 7},
-    ),
-]
-
-
-@pytest.mark.parametrize(("new", "old"), EQUIVALENT_OPTIONS, ids=str)
-def test_values_equal_the_array_returning_function(new, old):
+def test_doubling_the_normalisation_dose_halves_the_percentages():
+    # Percentages are of the normalisation dose, so 3% of 80 and 1.5% of 160
+    # are the same dose criterion, and 10% and 5% the same cutoff.
     arguments = _field()
 
-    result = gamma(*arguments, 2, 2, **new)
+    result = gamma(
+        *arguments, 3, 2, normalisation_dose=80.0, lower_dose_cutoff_percent=10
+    )
+    doubled = gamma(
+        *arguments, 1.5, 2, normalisation_dose=160.0, lower_dose_cutoff_percent=5
+    )
 
-    assert isinstance(result, GammaResult)
-    np.testing.assert_array_equal(result.gamma, gamma_shell(*arguments, 2, 2, **old))
+    assert doubled.settings.lower_dose_cutoff == result.settings.lower_dose_cutoff
+    assert (doubled.passed, doubled.analysed) == (result.passed, result.analysed)
+    assert 0 < result.passed < result.analysed
+    np.testing.assert_allclose(doubled.gamma, result.gamma, rtol=1e-12, atol=0)
+
+
+@pytest.mark.parametrize("normalisation", ["global", "local"])
+def test_skipping_once_passed_bounds_gamma_without_changing_what_passes(
+    normalisation,
+):
+    arguments = _field()
+
+    searched = gamma(*arguments, 2, 2, normalisation=normalisation)
+    skipped = gamma(
+        *arguments, 2, 2, normalisation=normalisation, skip_once_passed=True
+    )
+
+    analysed = ~np.isnan(searched.gamma)
+    np.testing.assert_array_equal(np.isnan(skipped.gamma), ~analysed)
+    assert (skipped.passed, skipped.analysed) == (searched.passed, searched.analysed)
+    assert 0 < searched.passed < searched.analysed
+    # A search that stops early has seen fewer candidates, so its minimum is
+    # an upper bound, and the search for a failing point never stops early.
+    assert np.all(skipped.gamma[analysed] >= searched.gamma[analysed])
+    assert np.any(skipped.gamma[analysed] > searched.gamma[analysed])
+    failing = analysed & (searched.gamma > 1)
+    np.testing.assert_array_equal(skipped.gamma[failing], searched.gamma[failing])
+    assert skipped.settings.skip_once_passed is True
 
 
 def test_result_carries_axes_counts_and_resolved_settings():
@@ -244,6 +255,25 @@ def test_no_analysed_points_warns_and_reports_zero_counts():
         _ = result.percent_passed
 
 
+def test_warnings_name_the_line_that_called_gamma():
+    arguments = _field()
+
+    with pytest.warns(UserWarning, match="No reference point was analysed") as none:
+        gamma(*arguments, 3, 2, normalisation_dose=1000.0)
+    with pytest.warns(UserWarning, match="outside the evaluation grid") as outside:
+        gamma(
+            np.array([0.0, 1.0, 5.0]),
+            np.ones(3),
+            np.array([0.0, 1.0]),
+            np.ones(2),
+            [3, 2],
+            3,
+        )
+
+    assert [warning.filename for warning in none] == [__file__]
+    assert [warning.filename for warning in outside] == [__file__]
+
+
 def test_the_calculation_chooses_an_interpolator_that_suits_the_axes():
     axes_reference, reference, _, evaluation = _field((40,))
     uneven = (np.cumsum(np.linspace(0.8, 1.2, 40)),)
@@ -298,6 +328,12 @@ def test_options_must_be_passed_by_keyword():
         parameter.kind is inspect.Parameter.KEYWORD_ONLY
         for parameter in list(parameters.values())[6:]
     )
+
+
+def test_the_function_is_presented_under_its_public_name():
+    # help() and the documentation name the module a user imports from.
+    assert (gamma.__module__, gamma.__name__) == ("pymedphys", "gamma")
+    assert pymedphys.gamma is gamma
 
 
 def test_every_old_option_name_in_a_call_is_explained_at_once():

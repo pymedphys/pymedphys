@@ -23,13 +23,8 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 import pymedphys
-from pymedphys._gamma.result import (
-    GammaProvenance,
-    GammaResult,
-    GammaSettings,
-    build_result,
-    current_provenance,
-)
+from pymedphys import GammaProvenance, GammaResult, GammaSettings
+from pymedphys._gamma.result import build_result, current_provenance
 
 
 def _settings(**changes):
