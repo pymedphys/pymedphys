@@ -106,13 +106,24 @@ def test_untrusted_zenodo_urls_rejected_before_reading_token(monkeypatch, url):
         upload.zenodo_api_with_helpful_fallback(url, "get")
 
 
-def test_sandbox_zenodo_https_endpoint_is_accepted(zenodo):
+def test_sandbox_zenodo_https_endpoint_is_accepted(zenodo, monkeypatch):
     install, _ = zenodo
     fake = install(_Response(200))
+    lookup_hosts = []
+
+    def get_token(hostname):
+        lookup_hosts.append(hostname)
+        return {
+            "zenodo.org": "production-token",
+            "sandbox.zenodo.org": "sandbox-token",
+        }[hostname]
+
+    monkeypatch.setattr(upload, "get_zenodo_access_token", get_token)
     sandbox = "https://sandbox.zenodo.org/api/deposit/depositions"
     upload.zenodo_api_with_helpful_fallback(sandbox, "get")
+    assert lookup_hosts == ["sandbox.zenodo.org"]
     assert fake.calls[0]["url"] == sandbox
-    assert fake.calls[0]["headers"]["Authorization"] == "Bearer first-token"
+    assert fake.calls[0]["headers"]["Authorization"] == "Bearer sandbox-token"
 
 
 def test_token_is_sent_in_a_header_not_the_url(zenodo):
