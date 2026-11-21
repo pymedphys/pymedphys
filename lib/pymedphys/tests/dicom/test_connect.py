@@ -155,6 +155,7 @@ def listener():
 @pytest.mark.pydicom
 def test_dicom_sender_does_not_log_identifying_uids(test_dataset, monkeypatch, caplog):
     """The C-STORE debug log must not contain SOP Instance UIDs."""
+
     class FakeAssociation:
         is_established = True
 
