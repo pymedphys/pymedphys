@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gamma pass rates, and reproducible random subsets of reference points."""
+"""Counting analysed and passing points, and reproducible random subsets."""
+
+import dataclasses
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 import pymedphys
-from pymedphys._gamma.utilities import calculate_pass_rate
+from pymedphys import GammaPassCounts, gamma_pass_counts, gamma_percent_passed
 
 
-def test_pass_rate_is_public():
-    assert pymedphys.gamma_pass_rate is calculate_pass_rate
-
-
-def test_pass_rate_of_a_gamma_calculation():
+def test_counts_of_a_gamma_calculation():
     axis = np.arange(5.0)
     reference = np.array([0.1, 1.0, 1.0, 1.0, 1.0])
     evaluation = np.array([0.1, 1.0, 1.02, 1.05, 1.0])
@@ -33,7 +31,8 @@ def test_pass_rate_of_a_gamma_calculation():
 
     # The first point is below the cutoff; 1.05 fails even at its neighbours.
     assert np.isnan(gamma[0])
-    assert pymedphys.gamma_pass_rate(gamma) == pytest.approx(75)
+    assert gamma_pass_counts(gamma) == GammaPassCounts(passed=3, analysed=4)
+    assert gamma_percent_passed(gamma) == pytest.approx(75)
 
 
 def test_nan_reference_points_left_out_of_gamma_are_not_counted():
@@ -45,18 +44,21 @@ def test_nan_reference_points_left_out_of_gamma_are_not_counted():
     )
 
     assert np.isnan(gamma[0])
-    assert pymedphys.gamma_pass_rate(gamma) == pytest.approx(75)
+    assert gamma_pass_counts(gamma) == GammaPassCounts(passed=3, analysed=4)
+    assert gamma_percent_passed(gamma) == pytest.approx(75)
 
 
 def test_gamma_of_exactly_one_passes():
     # NaN points were not evaluated, so they are not counted.
     gamma = np.array([0.5, 1.0, np.nextafter(1.0, 2.0), np.nan])
-    assert calculate_pass_rate(gamma) == pytest.approx(100 * 2 / 3)
+    assert gamma_pass_counts(gamma) == GammaPassCounts(passed=2, analysed=3)
+    assert gamma_percent_passed(gamma) == pytest.approx(100 * 2 / 3)
 
 
-def test_pass_rate_accepts_any_array_shape():
+def test_counts_accept_any_array_shape():
     gamma = [[0.2, 1.5], [np.nan, 0.9]]
-    assert calculate_pass_rate(gamma) == pytest.approx(100 * 2 / 3)
+    assert gamma_pass_counts(gamma) == GammaPassCounts(passed=2, analysed=3)
+    assert gamma_percent_passed(gamma) == pytest.approx(100 * 2 / 3)
 
 
 def test_masked_points_are_not_counted():
@@ -64,40 +66,81 @@ def test_masked_points_are_not_counted():
     gamma = np.ma.masked_array(
         [0.5, 2.0, 3.0, np.nan], mask=[False, False, True, False]
     )
-    assert calculate_pass_rate(gamma) == pytest.approx(50)
+    assert gamma_pass_counts(gamma) == GammaPassCounts(passed=1, analysed=2)
+    assert gamma_percent_passed(gamma) == pytest.approx(50)
 
 
 def test_infinite_gamma_fails():
-    assert calculate_pass_rate([0.5, np.inf]) == pytest.approx(50)
+    assert gamma_pass_counts([0.5, np.inf]) == GammaPassCounts(passed=1, analysed=2)
+    assert gamma_percent_passed([0.5, np.inf]) == pytest.approx(50)
 
 
+def test_negative_zero_is_accepted():
+    assert gamma_pass_counts([-0.0, 2.0]) == GammaPassCounts(passed=1, analysed=2)
+
+
+@pytest.mark.parametrize("function", [gamma_pass_counts, gamma_percent_passed])
 @pytest.mark.parametrize("negative", [-0.5, -np.inf])
-def test_negative_gamma_is_rejected(negative):
+def test_negative_gamma_is_rejected(function, negative):
     with pytest.raises(ValueError, match="Gamma cannot be negative"):
-        calculate_pass_rate([0.5, negative])
+        function([0.5, negative])
 
 
-def test_results_for_several_thresholds_are_rejected():
+@pytest.mark.parametrize("function", [gamma_pass_counts, gamma_percent_passed])
+def test_results_for_several_thresholds_are_rejected(function):
     axis = np.arange(5.0)
     dose = np.ones(5)
     gamma = pymedphys.gamma(axis, dose, axis, dose, [2, 3], 3)
 
     with pytest.raises(TypeError, match="one pair of thresholds"):
-        calculate_pass_rate(gamma)
-    assert calculate_pass_rate(gamma[(2, 3)]) == pytest.approx(100)
+        function(gamma)
+    assert gamma_percent_passed(gamma[(2, 3)]) == pytest.approx(100)
+
+
+NO_ANALYSED_POINTS = [
+    np.array([np.nan, np.nan]),
+    np.array([]),
+    np.ma.masked_array([0.5, np.nan], mask=[True, False]),
+]
+
+
+@pytest.mark.parametrize("gamma", NO_ANALYSED_POINTS)
+def test_no_analysed_points_gives_zero_counts(gamma):
+    assert gamma_pass_counts(gamma) == GammaPassCounts(passed=0, analysed=0)
+
+
+@pytest.mark.parametrize("gamma", NO_ANALYSED_POINTS)
+def test_percentage_without_analysed_points_is_rejected(gamma):
+    with pytest.raises(ValueError, match="No reference point was analysed"):
+        gamma_percent_passed(gamma)
+    with pytest.raises(ValueError, match="No reference point was analysed"):
+        _ = gamma_pass_counts(gamma).percent_passed
+
+
+def test_percent_passed_is_out_of_one_hundred():
+    counts = GammaPassCounts(passed=19, analysed=20)
+    assert counts.percent_passed == pytest.approx(95)
+    assert GammaPassCounts(passed=0, analysed=7).percent_passed == 0
+    assert GammaPassCounts(passed=7, analysed=7).percent_passed == 100
 
 
 @pytest.mark.parametrize(
-    "gamma",
-    [
-        np.array([np.nan, np.nan]),
-        np.array([]),
-        np.ma.masked_array([0.5, np.nan], mask=[True, False]),
-    ],
+    ("passed", "analysed"), [(-1, 3), (4, 3), (0, -1), (1.5, 3), (True, 3)]
 )
-def test_pass_rate_without_evaluated_points_is_rejected(gamma):
-    with pytest.raises(ValueError, match="No reference point was analysed"):
-        calculate_pass_rate(gamma)
+def test_inconsistent_counts_are_rejected(passed, analysed):
+    with pytest.raises((TypeError, ValueError)):
+        GammaPassCounts(passed=passed, analysed=analysed)
+
+
+def test_counts_cannot_be_changed():
+    counts = GammaPassCounts(passed=1, analysed=2)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        counts.passed = 2  # type: ignore[misc]
+
+
+def test_counts_are_plain_integers():
+    counts = gamma_pass_counts(np.array([0.5, 2.0], dtype=np.float32))
+    assert type(counts.passed) is int and type(counts.analysed) is int
 
 
 def _subset(**kwargs):

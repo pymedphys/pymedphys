@@ -108,7 +108,7 @@ DICOM files.
 
 | Extra | Covers |
 | --- | --- |
-| `gamma` | `pymedphys.gamma` and `pymedphys.gamma_pass_rate`. |
+| `gamma` | `pymedphys.gamma`, `pymedphys.gamma_pass_counts`, and `pymedphys.gamma_percent_passed`. |
 | `dicom` | `pymedphys.dicom` and the `pymedphys dicom` commands, including `listen` and `send`. |
 | `mosaiq` | `pymedphys.mosaiq` and `pymedphys.Delivery.from_mosaiq`. |
 | `icom` | `pymedphys icom listen` and `pymedphys.Delivery.from_icom`. |

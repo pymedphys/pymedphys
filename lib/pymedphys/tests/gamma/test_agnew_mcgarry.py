@@ -27,7 +27,6 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._gamma.utilities import calculate_pass_rate
 
 # pylint: disable=C0103,C1801
 
@@ -113,7 +112,7 @@ def local_gamma(
         distance_threshold,
     )
 
-    gamma_pass = calculate_pass_rate(gamma)
+    gamma_pass = pymedphys.gamma_percent_passed(gamma)
 
     assert np.round(gamma_pass, decimals=1) == result
 
@@ -187,7 +186,10 @@ def test_multi_inputs():
     assert len(gamma) == len(baseline)
     for (dose_threshold, distance_threshold), value in gamma.items():
         pair = (dose_threshold, distance_threshold)
-        assert np.round(calculate_pass_rate(value), decimals=1) == baseline[pair]
+        assert (
+            np.round(pymedphys.gamma_percent_passed(value), decimals=1)
+            == baseline[pair]
+        )
 
         alone = run_gamma(
             *files,
