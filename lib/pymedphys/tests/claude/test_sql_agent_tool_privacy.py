@@ -1,4 +1,5 @@
 """Privacy regression: SQL agent tool events must not reach stdout/stderr."""
+
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -15,16 +16,23 @@ def test_sql_agent_does_not_print_tool_call_or_clinical_result(monkeypatch, caps
     patient_marker = "synthetic-clinical-record-contents"
     prompt_marker = "synthetic-sensitive-tool-argument"
     tool_call = SimpleNamespace(
-        type="tool_use", name="mosaiq_sql_agent",
-        input={"sub_agent_prompt": prompt_marker}, id="toolu_synthetic",
+        type="tool_use",
+        name="mosaiq_sql_agent",
+        input={"sub_agent_prompt": prompt_marker},
+        id="toolu_synthetic",
     )
     first = SimpleNamespace(
-        stop_reason="tool_use", content=[tool_call],
+        stop_reason="tool_use",
+        content=[tool_call],
         to_dict=lambda: {"role": "assistant", "content": [{"type": "tool_use"}]},
     )
     second = SimpleNamespace(
-        stop_reason="end_turn", content=[],
-        to_dict=lambda: {"role": "assistant", "content": [{"type": "text", "text": "done"}]},
+        stop_reason="end_turn",
+        content=[],
+        to_dict=lambda: {
+            "role": "assistant",
+            "content": [{"type": "text", "text": "done"}],
+        },
     )
     create = AsyncMock(side_effect=[first, second])
     client = SimpleNamespace(messages=SimpleNamespace(create=create))
@@ -34,7 +42,8 @@ def test_sql_agent_does_not_print_tool_call_or_clinical_result(monkeypatch, caps
         return patient_marker
 
     monkeypatch.setattr(
-        conversation, "create_tools_mappings",
+        conversation,
+        "create_tools_mappings",
         lambda **_kwargs: {"mosaiq_sql_agent": fake_sql_tool},
     )
     messages = [{"role": "user", "content": "synthetic request"}]

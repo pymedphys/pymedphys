@@ -219,7 +219,6 @@ async def _conversation_with_tool_use(
 
                 messages.append(response_message)
 
-
         await _conversation_with_tool_use(
             anthropic_client=anthropic_client,
             connection=connection,
