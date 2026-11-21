@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import sys
+import warnings
 
 from pymedphys._imports import keyring, requests
 
@@ -103,7 +104,16 @@ def set_zenodo_access_token_cli(args):
                     "No Zenodo token supplied. Set PYMEDPHYS_ZENODO_TOKEN "
                     "for non-interactive use."
                 )
-            token = getpass.getpass("Zenodo access token: ")
+            # Abort before getpass can fall back to reading echoed input.
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error", getpass.GetPassWarning)
+                    token = getpass.getpass("Zenodo access token: ")
+            except getpass.GetPassWarning as exc:
+                raise ValueError(
+                    "Cannot hide Zenodo token input on this terminal. "
+                    "Set PYMEDPHYS_ZENODO_TOKEN instead."
+                ) from exc
 
     if not token:
         raise ValueError("A non-empty Zenodo access token is required.")
