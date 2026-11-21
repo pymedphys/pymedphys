@@ -1,4 +1,5 @@
 """Ensure database metadata cannot break the SQL agent's XML schema structure."""
+
 import asyncio
 import xml.etree.ElementTree as ET
 
