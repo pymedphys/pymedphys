@@ -19,6 +19,7 @@ runtime dependency to CI's bootstrap checks. Actionlint validates YAML and
 GitHub expressions separately through pre-commit.
 """
 
+import ast
 import fnmatch
 import json
 import re
@@ -876,6 +877,53 @@ class WorkflowContractTests(unittest.TestCase):
             [name for name, _ in pins], ["pyarrow", "opencv-python-headless", "s5cmd"]
         )
         self.assertEqual(len(hashes), len(pins))
+
+    def test_the_text_detector_evaluation_offers_exactly_the_named_searches(self):
+        # A tuning run's variant and grid are chosen from the names that
+        # text_evaluation_search gives, read from its source so that this
+        # check needs no installed package.
+        source = (
+            WORKFLOWS.parents[1]
+            / "lib/pymedphys/_dicom/deidentify/text_evaluation_search.py"
+        ).read_text(encoding="utf-8")
+        names = {}
+        for node in ast.parse(source).body:
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                found = [
+                    each
+                    for each in ast.walk(node.value)
+                    if isinstance(each, ast.Dict)
+                    or (
+                        isinstance(each, ast.Call)
+                        and isinstance(each.func, ast.Name)
+                        and each.func.id == "_variant"
+                    )
+                ]
+                constants = [
+                    key
+                    for each in found
+                    for key in (
+                        each.keys if isinstance(each, ast.Dict) else each.args[:1]
+                    )
+                    if isinstance(key, ast.Constant) and isinstance(key.value, str)
+                ]
+                constants.sort(key=lambda key: (key.lineno, key.col_offset))
+                names[node.target.id] = [key.value for key in constants]
+        self.assertEqual(names["VARIANTS"][0], "today")
+        # The parse found more than the default of each.
+        self.assertEqual(names["GRIDS"][0], "today")
+        self.assertGreater(len(names["VARIANTS"]), 1)
+        self.assertGreater(len(names["GRIDS"]), 1)
+        text = (WORKFLOWS / "text-detector-evaluation.yml").read_text(encoding="utf-8")
+        variant = re.search(r"\n      variant:\n(.*?)\n        default:", text, re.S)
+        grid = re.search(r"\n      grid:\n(.*?)\n        default:", text, re.S)
+        self.assertIsNotNone(variant)
+        self.assertIsNotNone(grid)
+        self.assertEqual(
+            re.findall(r"\n          - (.+)", variant.group(1)), names["VARIANTS"]
+        )
+        (options,) = re.findall(r"options: \[(.*)\]", grid.group(1))
+        self.assertEqual([each.strip() for each in options.split(",")], names["GRIDS"])
 
     def test_the_parametric_map_check_reads_only_and_keeps_its_tools_pinned(self):
         text = (WORKFLOWS / "parametric-map-check-idc.yml").read_text(encoding="utf-8")

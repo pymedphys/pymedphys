@@ -78,6 +78,7 @@ OVERLAY_IODS = (
     "MR Image",
     "Nuclear Medicine Image",
     "Positron Emission Tomography Image",
+    "Secondary Capture Image",
     "Computed Radiography Image",
 )
 # The Presentation State IODs that the first supported release supports,
@@ -454,11 +455,11 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
     # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
     # MR Image, Nuclear Medicine Image, Positron Emission Tomography Image,
-    # and Computed Radiography Image IODs include as user-optional, so
-    # removing the whole group leaves a valid instance. The other IODs do not
-    # define it, but for Digital X-Ray Image and the softcopy Presentation
-    # States, whose conditional module's Overlay Data sequesters the instance
-    # (below).
+    # Secondary Capture Image, and Computed Radiography Image IODs include as
+    # user-optional, so removing the whole group leaves a valid instance. The
+    # other IODs do not define it, but for Digital X-Ray Image and the
+    # softcopy Presentation States, whose conditional module's Overlay Data
+    # sequesters the instance (below).
     expected_type = "1" if iod in OVERLAY_IODS else "3"
 
     assert strictest_type(tables.iods[iod], tag) == expected_type

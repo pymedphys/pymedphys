@@ -214,6 +214,13 @@ def get_leaf_jaw_positions_for_type(
             if item.RTBeamLimitingDeviceType == rt_beam_limiting_device_type
         ]
 
+        # After the first control point, a plan lists only the devices whose
+        # positions change during the beam (PS3.3 C.8.8.14), so a device
+        # that is left out keeps the positions it was last given.
+        if not matching_type and leaf_jaw_positions:
+            leaf_jaw_positions.append(leaf_jaw_positions[-1])
+            continue
+
         if len(matching_type) != 1:
             raise ValueError(
                 "Expected exactly one item per control point for a given collimator"

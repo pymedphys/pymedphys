@@ -239,6 +239,41 @@ def test_the_elongation_filter_drops_only_large_square_regions():
     assert all(box.top > 40 for box in filtered)
 
 
+def test_line_extension_lengthens_a_region_along_its_line_within_the_frame():
+    probability = np.zeros((256, 256), np.float32)
+    probability[40:46, 100:140] = 0.9  # a line of text, across
+    probability[120:160, 60:66] = 0.9  # a line of text, down
+    probability[244:248, 244:248] = 0.9  # a single letter, in a corner
+    maps = [text_detection.RenderedProbability("full-range", (256, 256), probability)]
+    plain = detector.PostProcessing(renderings=("full-range",))
+    extended = dataclasses.replace(plain, line_extension=2.0)
+    before, after = (
+        {_line(box): box for box in boxes}
+        for boxes in detector.grid_boxes(maps, [plain, extended])
+    )
+    assert set(before) == set(after) == {"across", "down", "square"}
+    # Along its line, each end by twice its height; across it, unchanged.
+    for name in ("across", "down"):
+        old, new = before[name], after[name]
+        side = min(old.bottom - old.top, old.right - old.left)
+        if name == "across":
+            assert (new.top, new.bottom) == (old.top, old.bottom)
+            assert (new.left, new.right) == (old.left - 2 * side, old.right + 2 * side)
+        else:
+            assert (new.left, new.right) == (old.left, old.right)
+            assert (new.top, new.bottom) == (old.top - 2 * side, old.bottom + 2 * side)
+    # A square region along both sides, and kept within the frame.
+    old, new = before["square"], after["square"]
+    side = old.bottom - old.top
+    assert (new.top, new.left) == (old.top - 2 * side, old.left - 2 * side)
+    assert (new.bottom, new.right) == (256, 256)
+
+
+def _line(box):
+    height, width = box.bottom - box.top, box.right - box.left
+    return "across" if width > height else "down" if height > width else "square"
+
+
 def test_a_grid_is_every_combination_once_in_order():
     grid = detector.post_processing_grid(
         box_threshold=(0.5, 0.6), threshold=(0.3, 0.3, 0.4)

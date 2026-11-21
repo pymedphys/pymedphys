@@ -133,6 +133,11 @@ class TransformReason(enum.Enum):
     # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
     # rejected in an attested QC pack, so that it is never released
     REDACTION_REJECTED = "redaction-rejected"
+    # an instance of a Secondary Capture IOD under a policy without Clean
+    # Pixel Data, which alone blacks out the text that a screen capture or a
+    # scanned document carries in its pixel data and releases it only on a
+    # reviewer's verdict (D-037, D-048)
+    SECONDARY_CAPTURE_NOT_CLEANED = "secondary-capture-not-cleaned"
     # under Clean Pixel Data, an Encapsulated PDF whose document cannot be
     # rendered for review: encrypted, of no page or too many, too large,
     # with a page too large once rendered, or that PDFium cannot open or

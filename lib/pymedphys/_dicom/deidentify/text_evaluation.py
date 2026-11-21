@@ -86,7 +86,6 @@ import dataclasses
 import functools
 import hashlib
 import importlib.metadata
-import math
 import multiprocessing
 import platform
 import re
@@ -109,14 +108,19 @@ from .text_evaluation_frames import (
     tissue_mask,
 )
 from .text_evaluation_injection import InjectionPlan, inject, zone_of
+from .text_evaluation_intervals import cluster_bootstrap, seed_of, wilson
 from .text_evaluation_benchmarks import tier_of
 from .text_evaluation_models import BoxPoint
 from .text_evaluation_sources import CaseSource, Skipped
 
-FORMAT = "pymedphys-deid-text-detector-evaluation/1"
+FORMAT = "pymedphys-deid-text-detector-evaluation/2"
 SPLITS = ("tuning", "held-out")
 EVALUATED = (*SPLITS, "all")
 SPLIT_SALT = "pymedphys-text-detector-evaluation-split/1"
+# Seeds the bootstrap's resampling, apart from FORMAT, so that a new label
+# for the summary's layout leaves every interval where it was; the label the
+# first summaries were seeded with.
+BOOTSTRAP_SALT = "pymedphys-deid-text-detector-evaluation/1"
 SPLIT_RULE = (
     "A case is held out where its collection is held out whole, or where the "
     f"first 8 bytes of the SHA-256 of '{SPLIT_SALT}', its subject's namespace "
@@ -184,7 +188,6 @@ _KINDS = {
     "unknown": "text_unknown",
     "unknown-away": "text_unknown_away_from_injected",
 }
-_Z = 1.959963984540054
 
 
 def subject_of(source: object) -> str:
@@ -713,49 +716,6 @@ def _meet(first: TextBox, second: TextBox) -> bool:
     )
 
 
-def wilson(successes: int, trials: int) -> tuple[float, float] | None:
-    """The 95% Wilson score interval of a share, or None without trials."""
-    if trials <= 0:
-        return None
-    share = successes / trials
-    z2 = _Z * _Z
-    denominator = 1 + z2 / trials
-    centre = (share + z2 / (2 * trials)) / denominator
-    half = (
-        _Z
-        * math.sqrt(share * (1 - share) / trials + z2 / (4 * trials * trials))
-        / denominator
-    )
-    return (max(0.0, centre - half), min(1.0, centre + half))
-
-
-def cluster_bootstrap(
-    numerators: np.ndarray,
-    denominators: np.ndarray,
-    *,
-    replicates: int,
-    seed: int,
-) -> tuple[float, float] | None:
-    """The 95% percentile interval of a ratio of sums, resampling clusters
-    with replacement; None with fewer than two clusters that count."""
-    numerators = np.asarray(numerators, dtype=np.float64)
-    denominators = np.asarray(denominators, dtype=np.float64)
-    counted = denominators > 0
-    if int(np.count_nonzero(counted)) < 2 or replicates < 1:
-        return None
-    numerators, denominators = numerators[counted], denominators[counted]
-    rng = np.random.default_rng(seed)
-    chosen = rng.integers(0, numerators.size, size=(replicates, numerators.size))
-    ratios = numerators[chosen].sum(axis=1) / denominators[chosen].sum(axis=1)
-    low, high = np.percentile(ratios, [2.5, 97.5])
-    return (float(low), float(high))
-
-
-def _seed(*parts: object) -> int:
-    digest = hashlib.sha256("\0".join(str(each) for each in parts).encode()).digest()
-    return int.from_bytes(digest[:8], "big")
-
-
 def summarise(evaluation: Evaluation, *, replicates: int = 2000) -> dict[str, Any]:
     """Return the evaluation's counts, as the module describes, for JSON.
 
@@ -964,7 +924,7 @@ def _intervals(
         [each.get(key, [0] * len(_CLUSTER_FIELDS)) for each in clusters],
         dtype=np.float64,
     ).reshape(-1, len(_CLUSTER_FIELDS))
-    seed = _seed(FORMAT, index, "+".join(grouping), *value)
+    seed = seed_of(BOOTSTRAP_SALT, index, "+".join(grouping), *value)
     entry["sensitivity"]["bootstrap"] = _pair(
         cluster_bootstrap(rows[:, 1], rows[:, 0], replicates=replicates, seed=seed)
     )
