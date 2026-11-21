@@ -264,7 +264,7 @@ def test_config_write_failure_preserves_existing_file(config_dir, monkeypatch):
     """Failed serialisation cannot destroy the existing site configuration."""
     from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
-    original = "version = 0\\n# keep this configuration intact\\n"
+    original = "version = 0\n# keep this configuration intact\n"
     target = config_dir / "config.toml"
     target.write_text(original, encoding="utf-8")
 
