@@ -276,6 +276,7 @@ def test_invalid_http_framing_is_rejected_before_caching(
     assert destination.read_bytes() == b"previously cached content"
     assert _leftovers(tmp_path, "cache.bin") == [destination]
 
+
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     override = tmp_path / "nested" / "data"
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(override))
