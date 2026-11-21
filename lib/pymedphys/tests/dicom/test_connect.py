@@ -153,8 +153,10 @@ def listener():
 
 
 @pytest.mark.pydicom
-def test_dicom_sender_does_not_log_identifying_uids(test_dataset, monkeypatch, caplog):
-    """The C-STORE debug log must not contain SOP Instance UIDs."""
+def test_dicom_sender_own_progress_logs_omit_identifying_uids(
+    test_dataset, monkeypatch, caplog
+):
+    """PyMedPhys progress messages omit UIDs; dependency logs are separate."""
 
     class FakeAssociation:
         is_established = True
@@ -174,33 +176,63 @@ def test_dicom_sender_does_not_log_identifying_uids(test_dataset, monkeypatch, c
 
     monkeypatch.setattr(pynetdicom, "AE", FakeAE)
     with caplog.at_level("DEBUG"):
-        assert DicomSender().send([test_dataset]) == [0x0000]
+        assert DicomSender().send([test_dataset, test_dataset]) == [0x0000, 0x0000]
 
+    # The privacy guarantee covers only records emitted by this module.
+    # pynetdicom DEBUG logging may still contain SOP Instance UIDs.
     messages = [
         record.getMessage()
         for record in caplog.records
-        if record.getMessage().startswith("Sending DICOM object")
+        if record.name == "pymedphys._dicom.connect.send"
     ]
-    assert messages == ["Sending DICOM object by C-STORE"]
-    assert test_dataset.SOPInstanceUID not in " ".join(messages)
+    assert messages == [
+        "Sending DICOM object at position 1 by C-STORE",
+        "Sending DICOM object at position 2 by C-STORE",
+    ]
+    assert all(test_dataset.SOPInstanceUID not in message for message in messages)
 
 
-def test_dicom_sender_cli_omits_patient_bearing_file_paths(monkeypatch, caplog):
-    """Invalid clinical filenames do not appear in error diagnostics."""
+@pytest.mark.parametrize(
+    "error_type, expected",
+    [
+        (
+            pydicom.errors.InvalidDicomError,
+            "Invalid DICOM file provided at position 2; path omitted",
+        ),
+        (
+            OSError,
+            "Unable to read DICOM file at position 2; path omitted",
+        ),
+    ],
+)
+def test_dicom_sender_cli_omits_patient_bearing_file_paths(
+    monkeypatch, caplog, error_type, expected
+):
+    """CLI read failures report argument positions, not clinical filenames."""
     sensitive_path = "synthetic-patient-123456-RTPLAN.dcm"
     monkeypatch.setattr(DicomSender, "verify", lambda self: True)
 
-    def invalid_dicom(_path):
-        raise pydicom.errors.InvalidDicomError("private patient identifier")
+    def read_dicom(path):
+        if str(path) == sensitive_path:
+            raise error_type(f"private patient identifier: {sensitive_path}")
+        return pydicom.Dataset()
 
-    monkeypatch.setattr(pydicom, "dcmread", invalid_dicom)
+    monkeypatch.setattr(pydicom, "dcmread", read_dicom)
     args = types.SimpleNamespace(
-        host="127.0.0.1", port=8888, aetitle="TEST", dcmfiles=[sensitive_path]
+        host="127.0.0.1",
+        port=8888,
+        aetitle="TEST",
+        dcmfiles=["first-valid.dcm", sensitive_path],
     )
     with caplog.at_level("ERROR"):
         assert send_cli(args) is None
 
-    assert "Invalid DICOM file provided" in caplog.text
+    own_messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "pymedphys._dicom.connect.send"
+    ]
+    assert own_messages == [expected]
     assert sensitive_path not in caplog.text
     assert "private patient identifier" not in caplog.text
 
