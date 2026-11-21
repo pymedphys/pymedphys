@@ -54,7 +54,8 @@ def test_header_error_does_not_print_exception_with_patient_id(
     moves = []
     monkeypatch.setattr(index_module, "decode_header_from_file", reject_header)
     monkeypatch.setattr(
-        index_module, "rename_and_handle_fileexists",
+        index_module,
+        "rename_and_handle_fileexists",
         lambda old, new: moves.append((old, new)),
     )
 
@@ -98,7 +99,8 @@ def test_successful_index_does_not_print_patient_paths(tmp_path, monkeypatch, ca
         index_module, "get_mosaiq_delivery_details", lambda *_args, **_kw: object()
     )
     monkeypatch.setattr(
-        index_module, "create_logfile_directory_name",
+        index_module,
+        "create_logfile_directory_name",
         lambda *_: f"{patient}/clinical/field",
     )
     monkeypatch.setattr(
