@@ -23,6 +23,7 @@ apart.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import importlib.metadata
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -149,8 +150,14 @@ def _rebuild_provenance(versions: dict[str, str]) -> GammaProvenance:
     return GammaProvenance(versions=versions)
 
 
+@functools.cache
 def current_provenance() -> GammaProvenance:
-    """The provenance of a calculation made now, in this environment."""
+    """The provenance of a calculation made in this process.
+
+    Reading the installed versions takes longer than a small gamma
+    calculation, and they do not change while a process runs, so they are
+    read once. The provenance cannot be changed, so results share it.
+    """
     versions = {"pymedphys": __version__}
     for package in _VERSIONED_PACKAGES:
         try:
