@@ -294,9 +294,7 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
     except Exception as error:  # pylint: disable = broad-except
         if not _redact_progress_paths():
             raise
-        raise RuntimeError(
-            f"TRF indexing failed ({type(error).__name__})"
-        ) from None
+        raise RuntimeError(f"TRF indexing failed ({type(error).__name__})") from None
 
 
 def _index_logfiles(centre_map, machine_map, logfile_data_directory):
