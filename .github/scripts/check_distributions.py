@@ -264,8 +264,11 @@ def read_sdist(path: Path) -> Archive:
 
 def read_wheel(path: Path) -> Archive:
     with zipfile.ZipFile(path) as archive:
-        names = [name for name in archive.namelist() if not name.endswith("/")]
-        _validate_archive_member_names(names, path)
+        all_names = archive.namelist()
+        # Include explicit ZIP directories when checking for collisions, just
+        # as with TAR members; omit them only from the returned file inventory.
+        _validate_archive_member_names(all_names, path)
+        names = [name for name in all_names if not name.endswith("/")]
         metadata_paths = [
             name
             for name in names
