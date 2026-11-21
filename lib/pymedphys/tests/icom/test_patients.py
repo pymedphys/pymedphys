@@ -176,7 +176,14 @@ def test_icom_restricted_archive_failure_omits_delivery_context(tmp_path, caplog
         recorder.update_data(IP, _icom_item(1))
 
     assert "Could not archive iCOM delivery" in caplog.text
-    for sensitive in ("738419", "SYNTHETIC, PATIENT", IP, START, RAW_START, str(tmp_path)):
+    for sensitive in (
+        "738419",
+        "SYNTHETIC, PATIENT",
+        IP,
+        START,
+        RAW_START,
+        str(tmp_path),
+    ):
         assert sensitive not in caplog.text
 
 
