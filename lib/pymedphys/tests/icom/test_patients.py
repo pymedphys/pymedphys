@@ -23,6 +23,7 @@ from pymedphys._icom import observer, patients
 
 IP = "192.168.100.200"
 START = "2026-09-28T10:00:00"
+RAW_START = START.replace("T", "")
 
 
 def _icom_item(index, patient_id=None, patient_name=None):
@@ -33,7 +34,7 @@ def _icom_item(index, patient_id=None, patient_name=None):
     can read, so the archiver keeps it under ``unknown_error_in_record``, in a
     folder named after the patient.
     """
-    item = b"\x00" * 8 + b"2026-09-2810:00:00" + bytes([index])
+    item = b"\x00" * 8 + RAW_START.encode() + bytes([index])
     if patient_id is not None:
         item += b"0 \x00LO\x00P\x07\x00\x00\x00" + patient_id.encode() + b"\x00"
     if patient_name is not None:
@@ -97,6 +98,8 @@ def test_icom_restricted_archive_logs_do_not_include_patient_identifiers(
         assert f.read() == item
     assert patient_id not in caplog.text
     assert patient_name not in caplog.text
+    assert START not in caplog.text
+    assert RAW_START not in caplog.text
     assert str(tmp_path) not in caplog.text
 
 
@@ -110,12 +113,14 @@ def test_icom_restricted_acquisition_logs_do_not_include_patient_identifiers(
         recorder.update_data(
             IP, _icom_item(0, patient_id=patient_id, patient_name=patient_name)
         )
+        assert recorder._usage_start[IP] == START
         recorder.update_data(IP, _icom_item(1))
 
     assert "iCOM acquisition data received" in caplog.text
     assert patient_id not in caplog.text
     assert patient_name not in caplog.text
     assert START not in caplog.text
+    assert RAW_START not in caplog.text
     assert IP not in caplog.text
     assert str(tmp_path) not in caplog.text
 
@@ -155,7 +160,7 @@ def test_icom_default_acquisition_logs_preserve_operator_details(tmp_path, caplo
     assert patient_id in caplog.text
     assert patient_name in caplog.text
     assert IP in caplog.text
-    assert "2026-09-2810:00:00" in caplog.text
+    assert RAW_START in caplog.text
     assert recorder._usage_start[IP] == START
 
 
@@ -171,7 +176,7 @@ def test_icom_restricted_archive_failure_omits_delivery_context(tmp_path, caplog
         recorder.update_data(IP, _icom_item(1))
 
     assert "Could not archive iCOM delivery" in caplog.text
-    for sensitive in ("738419", "SYNTHETIC, PATIENT", IP, START, str(tmp_path)):
+    for sensitive in ("738419", "SYNTHETIC, PATIENT", IP, START, RAW_START, str(tmp_path)):
         assert sensitive not in caplog.text
 
 
@@ -219,7 +224,7 @@ def test_icom_archive_watcher_propagates_log_mode(
     """The patient archive watcher forwards the selected observer log policy."""
     observed_modes = []
 
-    def fake_observe(paths, callback, *, restricted_logs=False):
+    def fake_observe(paths, callback, *, restricted_logs: bool = False):
         assert paths == [tmp_path]
         assert callable(callback)
         observed_modes.append(restricted_logs)
