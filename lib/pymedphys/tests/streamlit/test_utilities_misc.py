@@ -88,7 +88,7 @@ def test_metersetmap_scale_from_zero_to_the_largest_value() -> None:
 
 def test_difference_scale_centred_on_zero() -> None:
     # The difference image: vmin=-largest, vmax=+largest absolute difference,
-    # so no difference lands on mid-grey.
+    # so a difference of zero lands on mid-grey.
     difference = np.array([-8.0, -2.0, 0.0, 2.0, 8.0])
 
     image = _convert_without_warnings(difference, vmin=-8.0, vmax=8.0)
