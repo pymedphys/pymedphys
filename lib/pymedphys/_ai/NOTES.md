@@ -9,25 +9,56 @@ container used by the current database CI workflow.
 
 ## Create the MSSQL database for MOSAIQ
 
-**Security prerequisite:** Use Docker Engine 28.0.0 or newer for this
-restoration workflow. Older Docker Engines may allow devices on the same
-layer-2 network to reach ports published to `127.0.0.1`. Verify the server
-version with `docker version --format '{{.Server.Version}}'` before starting
-the container; do not run the restoration on an older or unverified Engine.
-The Python restoration helper enforces this requirement automatically.
+**Security prerequisite:** Docker Engine 28.0.0 or newer is required for this
+restoration workflow. Older Engines can allow devices on the same layer-2
+network to reach ports published to `127.0.0.1`. The shell commands below
+check the server version and pin one Docker target for both verification and
+container startup. The Python restoration helper enforces the same requirement.
+If an earlier restore container already occupies host port 1433, stop that
+container before running the manual steps. Do not reuse an earlier container
+whose port binding has not been verified.
 
-Move the `db-dump.bak` file into `~/mosaiq-data`
+Move the `db-dump.bak` file into `~/mosaiq-data`.
 
 ```bash
+# Pin the selected Docker target so switching contexts cannot bypass the check.
+docker_cmd=(docker)
+if [[ -n ${DOCKER_CONTEXT:-} ]]; then
+    docker_cmd+=(--context "$DOCKER_CONTEXT")
+elif [[ -n ${DOCKER_HOST:-} ]]; then
+    docker_cmd+=(--host "$DOCKER_HOST")
+else
+    docker_context=$(docker context show) || exit 1
+    [[ -n $docker_context ]] || { echo "No Docker context selected" >&2; exit 1; }
+    docker_cmd+=(--context "$docker_context")
+fi
+
+engine_version=$("${docker_cmd[@]}" version --format '{{.Server.Version}}') || {
+    echo "Cannot verify Docker Engine version; restore aborted" >&2
+    exit 1
+}
+if [[ $engine_version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(\+[0-9A-Za-z.-]+)?$ ]]; then
+    engine_major=${BASH_REMATCH[1]}
+else
+    engine_major=0
+fi
+if (( 10#$engine_major < 28 )); then
+    echo "Docker Engine 28.0.0+ required; got ${engine_version}" >&2
+    exit 1
+fi
+
 export MSSQL_SA_PASSWORD=$(openssl rand -hex 24)
 
-# Mount mosaiq-data into the docker image
-docker run --platform linux/amd64 \
+# Mount mosaiq-data into the Docker image, exposing SQL only on loopback.
+"${docker_cmd[@]}" run --platform linux/amd64 \
 -v ~/mosaiq-data:/mosaiq-data \
 -e "ACCEPT_EULA=Y" \
 -e "MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD" \
 -p 127.0.0.1:1433:1433 \
--d mcr.microsoft.com/mssql/server:2017-latest
+-d mcr.microsoft.com/mssql/server:2017-latest || {
+    echo "Container startup failed; do not proceed with restoration" >&2
+    exit 1
+}
 ```
 
 Restoring the practice database from within Python
