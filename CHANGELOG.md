@@ -268,7 +268,12 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   identifiers.
   [PR #2623](https://github.com/pymedphys/pymedphys/pull/2623)
 
-- **[Security]** The DICOM sender now logs C-STORE progress and invalid input errors without SOP Instance UIDs or patient-bearing file paths. Actual transmissions are unchanged. [PR #2637](https://github.com/pymedphys/pymedphys/pull/2637)
+- **[Privacy]** PyMedPhys-owned DICOM sender progress and CLI read-error
+  messages now use input positions rather than SOP Instance UIDs, filenames,
+  or exception details. `pynetdicom` and `pydicom` diagnostics are unchanged
+  and may still contain identifying data, including at DEBUG level; keep
+  dependency logs within protected clinical environments. DICOM transmissions
+  are unchanged. [PR #2637](https://github.com/pymedphys/pymedphys/pull/2637)
 
 ### Dependency changes
 
