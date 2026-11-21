@@ -12,6 +12,14 @@ This project adheres to
 
 ## Unreleased
 
+### SQL agent conversation privacy
+
+The MOSAIQ SQL agent no longer prints prompts, model responses, tool-use
+messages, or SQL tool results to standard output. This removes a source of
+possible patient-data exposure in terminal output and retained console logs
+without changing the agent's conversation or query results.
+[PR #2651](https://github.com/pymedphys/pymedphys/pull/2651)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group

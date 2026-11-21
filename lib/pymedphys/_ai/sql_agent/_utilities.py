@@ -118,8 +118,6 @@ async def words_in_mouth_prompting(
     else:
         messages_to_submit = []
 
-    print(messages_to_submit)
-
     if messages_to_submit and messages_to_submit[-1]["role"] == "user":
         messages_to_submit[-1]["content"] += f"\n\n{appended_user_prompt}"
     else:
@@ -142,6 +140,4 @@ async def words_in_mouth_prompting(
 
     text: str = content_response.text
     result = start_of_assistant_prompt + text
-    print(result)
-
     return result
