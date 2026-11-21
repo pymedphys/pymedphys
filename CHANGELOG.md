@@ -15,11 +15,14 @@ This project adheres to
 ### Local Mosaiq backup restoration now requires a secure Docker Engine
 
 The legacy Mosaiq `.bak` restore helper now publishes SQL Server only on
-`127.0.0.1:1433`, rather than all host interfaces. It refuses to start the
-restore on Docker Engines older than 28.0.0 or when the Engine version cannot
-be verified; on older Engines, same-network hosts may still reach ports bound
-to localhost. The documented manual restore command is also loopback-only.
-**Upgrade Docker Engine to 28.0.0 or newer before restoring backups.**
+`127.0.0.1:1433` rather than all host interfaces. It requires a verifiable
+Docker Engine version 28.0.0 or newer and pins the Docker target throughout
+version verification and container startup. It stops prior matching restore
+containers that occupy port 1433, but leaves unrelated containers untouched
+and aborts on Docker startup failure rather than reusing an existing service.
+The documented manual restoration commands also enforce this version
+requirement and use a loopback-only binding. **Upgrade Docker Engine to
+28.0.0 or newer before restoring backups.**
 [PR #2630](https://github.com/pymedphys/pymedphys/pull/2630)
 
 ### Mosaiq treatment sessions follow Mosaiq's rule
