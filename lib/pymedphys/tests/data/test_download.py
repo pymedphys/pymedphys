@@ -16,9 +16,13 @@
 
 import email.message
 import io
+import json
 import pathlib
+import subprocess
+import sys
 import urllib.error
 import urllib.request
+import zipfile
 
 from pymedphys._imports import pytest
 
@@ -174,6 +178,157 @@ def test_truncated_response_is_rejected(tmp_path: pathlib.Path, monkeypatch):
         )
 
     assert _leftovers(tmp_path, "truncated.bin") == []
+
+
+@pytest.mark.parametrize(
+    "name", ["../outside.bin", "../../outside.bin", "/tmp/outside.bin"]
+)
+def test_data_path_rejects_outside_cache_names_before_writing(
+    name: str, tmp_path: pathlib.Path, monkeypatch
+):
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    source = tmp_path / "source.bin"
+    source.write_bytes(b"untrusted archive data")
+    outside = tmp_path / "outside.bin"
+    outside.write_bytes(b"important existing data")
+
+    with pytest.raises(ValueError, match="within the data directory"):
+        download.data_path(name, check_hash=False, url=source.as_uri())
+
+    assert outside.read_bytes() == b"important existing data"
+
+
+def test_zip_cache_path_rejects_directory_traversal(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(tmp_path / "cache"))
+    with pytest.raises(ValueError, match="within the data directory"):
+        download.zip_data_paths("../archive.zip", check_hash=False)
+
+
+def test_cache_path_rejects_symlink_escape(tmp_path: pathlib.Path, monkeypatch):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    try:
+        (cache / "linked").symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError, match="may not contain symlinks or junctions"):
+        download.data_path("linked/escape.bin", check_hash=False)
+
+
+def test_cache_path_refuses_in_cache_symlink_alias(tmp_path: pathlib.Path, monkeypatch):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    original = cache / "real.bin"
+    original.write_bytes(b"do not alter this cache entry")
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    try:
+        (cache / "alias.bin").symlink_to(original)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating file symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError, match="may not contain symlinks"):
+        download.data_path("alias.bin", check_hash=False)
+
+    assert original.read_bytes() == b"do not alter this cache entry"
+
+
+def test_cache_path_rejects_cyclic_symlink_before_resolving(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    try:
+        (cache / "cycle").symlink_to("cycle", target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    with pytest.raises(ValueError, match="may not contain symlinks or junctions"):
+        download.data_path("cycle/file.bin", check_hash=False)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows junctions only")
+def test_cache_path_rejects_junction_to_another_cache_entry(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    cache = tmp_path / "cache"
+    original = cache / "original"
+    original.mkdir(parents=True)
+    protected = original / "protected.bin"
+    protected.write_bytes(b"retain original cache contents")
+    source = tmp_path / "replacement.bin"
+    source.write_bytes(b"would overwrite the original")
+    hashes = tmp_path / "hashes.json"
+    hashes.write_text(
+        json.dumps({"alias/protected.bin": "invalid-hash"}), encoding="utf-8"
+    )
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+
+    alias = cache / "alias"
+    try:
+        subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(alias), str(original)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("Creating Windows directory junctions is unavailable")
+    assert alias.is_junction()
+
+    with pytest.raises(ValueError, match="may not contain symlinks or junctions"):
+        download.data_path(
+            "alias/protected.bin",
+            url=source.as_uri(),
+            hash_filepath=hashes,
+        )
+
+    assert protected.read_bytes() == b"retain original cache contents"
+
+
+def test_explicit_zip_extraction_ignores_unused_symlinked_cache_directory(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    outside = tmp_path / "legacy-target"
+    outside.mkdir()
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(cache))
+    try:
+        legacy_directory = cache / "archive"
+        legacy_directory.symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Creating directory symlinks is unavailable on this platform")
+
+    source = tmp_path / "source.zip"
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("member.txt", "expected extracted data")
+
+    destination = tmp_path / "caller-selected"
+    result = download.zip_data_paths(
+        "archive.zip",
+        check_hash=False,
+        url=source.as_uri(),
+        extract_directory=destination,
+    )
+
+    assert result == [(destination / "member.txt").resolve()]
+    assert (destination / "member.txt").read_text(
+        encoding="utf-8"
+    ) == "expected extracted data"
+    assert not (outside / "member.txt").exists()
+    assert legacy_directory.is_symlink()
+
+    # The same legacy link must still be rejected if using managed extraction.
+    with pytest.raises(ValueError, match="may not contain symlinks or junctions"):
+        download.zip_data_paths("archive.zip", check_hash=False)
 
 
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):

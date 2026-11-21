@@ -594,6 +594,14 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### (Potentially) breaking changes
 
+- Data cache functions reject filenames outside `PYMEDPHYS_DATA_DIR`, parent
+  traversal, and symbolic-link or Windows-junction aliases (including links
+  to other cache entries).
+  `data_path`, ZIP cache directories and Zenodo record paths now raise
+  `ValueError` for these names; use a relative name within the cache instead.
+  A separate ZIP member check is proposed in PR #2625.
+  [PR #2622](https://github.com/pymedphys/pymedphys/pull/2622)
+
 - The private `pymedphys._mosaiq.sessions` helpers return different sessions for some sites; see "Mosaiq treatment sessions follow Mosaiq's rule" above. Session numbers count one site's sessions, so they differ from the Treatment Chart's per-patient numbers when several sites are treated in the same visit. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
 - `pymedphys gui` now serves only the computer that runs it. It listens on `127.0.0.1` instead of every network interface, and accepts the WebSocket connections that run the apps only when they are addressed to `localhost` or `127.0.0.1`, which protects those connections against DNS rebinding. To serve other computers, for example from a department server, pass the address to listen on with the new `--address` option, such as `pymedphys gui --address 0.0.0.0`. The apps have no login and handle patient data, so anyone who can reach that address and port can use them, over unencrypted HTTP. The GUI also turns off Streamlit's usage statistics. It passes these settings to Streamlit on the command line, so they override Streamlit's configuration files and environment variables: a `server.address` set there no longer takes effect; use `--address` instead. See [Graphical apps](https://docs.pymedphys.com/en/latest/users/ref/cli/gui.html). [PR #2166](https://github.com/pymedphys/pymedphys/pull/2166), [PR #2167](https://github.com/pymedphys/pymedphys/pull/2167)
 - `pymedphys[mosaiq]` no longer installs attrs, scikit-learn, SQLAlchemy, or toml. Install `pymedphys[trf,mosaiq]` to identify TRF files against Mosaiq, and `pymedphys[user]` for everything else. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)

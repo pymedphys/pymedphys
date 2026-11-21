@@ -196,6 +196,35 @@ def get_data_dir():
     return data_dir
 
 
+def _cache_path(filename):
+    """Validate a cache name without following existing filesystem aliases.
+
+    Reject parent traversal, paths outside the cache, and symbolic links or
+    Windows junctions, including aliases to other entries within the cache.
+    """
+    root = get_data_dir().resolve()
+    requested = root / filename
+    if (
+        ".." in pathlib.Path(filename).parts
+        or not requested.is_relative_to(root)
+        or requested == root
+    ):
+        raise ValueError("Data cache path must stay within the data directory")
+
+    # Check components before resolve(): an in-cache alias could otherwise
+    # overwrite another entry, and cyclic symlinks fail to resolve on 3.12.
+    current = root
+    for part in requested.relative_to(root).parts:
+        current = current / part
+        if current.is_symlink() or current.is_junction():
+            raise ValueError("Data cache paths may not contain symlinks or junctions")
+
+    candidate = requested.resolve()
+    if not candidate.is_relative_to(root):
+        raise ValueError("Data cache path must stay within the data directory")
+    return candidate
+
+
 def get_file_within_data_zip(zip_name, file_name):
     dose_data_files = pymedphys.zip_data_paths(zip_name)
     path_match = [path for path in dose_data_files if path.name == file_name]
@@ -244,8 +273,22 @@ def data_path(
     url=None,
     hash_filepath=None,
 ):
+    """Check, download, and return a file within the configured data cache.
+
+    Parameters
+    ----------
+    filename : str or os.PathLike
+        Relative cache name or absolute path within the data cache. Parent
+        traversal, paths outside the cache, and existing symbolic-link or
+        Windows-junction components are not permitted.
+
+    Raises
+    ------
+    ValueError
+        If the filename is not a valid cache path.
+    """
     filename = str(filename).replace(os.sep, "/")
-    filepath = get_data_dir().joinpath(filename)
+    filepath = _cache_path(filename)
 
     containing_directory = pathlib.Path(filepath).parent
     containing_directory.mkdir(exist_ok=True, parents=True)
@@ -349,7 +392,7 @@ def data_file_hash_check(filename, hash_filepath=None):
 
     filename = str(filename).replace(os.sep, "/")
 
-    filepath = get_data_dir().joinpath(filename)
+    filepath = _cache_path(filename)
     calculated_filehash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
         filepath
     )
@@ -365,6 +408,20 @@ def data_file_hash_check(filename, hash_filepath=None):
 def zenodo_data_paths(
     record_name, check_hash=True, redownload_on_hash_mismatch=True, filenames=None
 ):
+    """Download files from a Zenodo record into a cache subdirectory.
+
+    Parameters
+    ----------
+    record_name : str or os.PathLike
+        Cache subdirectory name, subject to the same containment, parent
+        traversal, symbolic-link, and Windows-junction restrictions as
+        data_path().
+
+    Raises
+    ------
+    ValueError
+        If the record name is not a valid cache path.
+    """
     file_urls = zenodo.get_zenodo_file_urls(record_name)
 
     if filenames is not None:
@@ -376,8 +433,8 @@ def zenodo_data_paths(
 
     logging.debug("File URLS are %s", file_urls)
 
-    record_directory = get_data_dir().joinpath(record_name)
-    record_directory.mkdir(exist_ok=True)
+    record_directory = _cache_path(record_name)
+    record_directory.mkdir(exist_ok=True, parents=True)
 
     relative_record_path = pathlib.Path(record_name)
 
@@ -546,11 +603,28 @@ def zip_data_paths(
     extract_directory=None,
     hash_filepath=None,
 ):
-    cache_directory = get_data_dir().joinpath(
-        pathlib.Path(os.path.splitext(filename)[0])
-    )
+    """Download a cached ZIP archive and return its extracted file paths.
+
+    Parameters
+    ----------
+    filename : str or os.PathLike
+        ZIP archive name within the configured data cache, subject to the
+        same path restrictions as data_path().
+    extract_directory : str or os.PathLike, optional
+        Caller-selected extraction destination, which may be outside the
+        data cache. If omitted, use a managed directory next to the archive;
+        its cache path must also be valid.
+
+    Raises
+    ------
+    ValueError
+        If the archive name or managed extraction directory is not a valid
+        cache path. Explicit extraction destinations are not cache names.
+    """
+    archive_path = _cache_path(filename)
+    cache_directory = archive_path.with_name(os.path.splitext(archive_path.name)[0])
     if extract_directory is None:
-        extract_directory = cache_directory
+        extract_directory = _cache_path(cache_directory)
         cache_managed = True
     else:
         extract_directory = pathlib.Path(extract_directory)
