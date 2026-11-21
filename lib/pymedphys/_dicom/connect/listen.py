@@ -80,7 +80,7 @@ class DicomListener(DicomConnectBase):
         # The application entity
         self.ae = None
 
-        logging.debug("Will store files received in: %s", self.storage_directory)
+        logging.debug("DICOM listener storage directory configured")
 
     def start(self):
         """Start the listener.
@@ -206,10 +206,9 @@ class DicomListener(DicomConnectBase):
             file_ds.save_as(filepath, enforce_file_format=True)
             status_ds.Status = 0x0000  # Success
 
-            logging.info("DICOM object received: %s", filepath)
+            logging.info("DICOM object received and stored successfully")
         except OSError:
             logging.error("Could not write file to specified directory:")
-            logging.error("    %s", filepath)
             logging.error(
                 "Directory may not exist or you may not have write permission"
             )
