@@ -12,7 +12,7 @@ ICOM_PORT = 1706
 
 
 def save_an_icom_batch(
-    date_pattern, ip_directory, data_to_save, *, restricted_logs=False
+    date_pattern, ip_directory, data_to_save, *, restricted_logs: bool = False
 ):
     if not date_pattern.match(data_to_save[8:26]):
         raise ValueError("Unexpected iCOM stream format")
@@ -33,7 +33,7 @@ def get_start_location_from_date_span(span):
     return span[0] - 8
 
 
-def initialise_socket(ip, *, restricted_logs=False):
+def initialise_socket(ip, *, restricted_logs: bool = False):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, ICOM_PORT))
     s.settimeout(10)
@@ -45,7 +45,7 @@ def initialise_socket(ip, *, restricted_logs=False):
     return s
 
 
-def listen(ip, data_dir, *, restricted_logs=False):
+def listen(ip, data_dir, *, restricted_logs: bool = False):
     date_pattern = re.compile(rb"\d\d\d\d-\d\d-\d\d\d\d:\d\d:\d\d")
 
     data_dir = pathlib.Path(data_dir)
