@@ -136,7 +136,9 @@ def test_sql_pipeline_logs_counts_without_query_or_result(monkeypatch, caplog):
     async def gather_in_order(functions):
         return [await function() for function in functions]
 
-    monkeypatch.setattr(_pipeline, "get_single_set_of_query_result_pairs", fake_retrieval)
+    monkeypatch.setattr(
+        _pipeline, "get_single_set_of_query_result_pairs", fake_retrieval
+    )
     monkeypatch.setattr(_pipeline, "get_top_k_query_ids", fake_vote)
     monkeypatch.setattr(_pipeline, "gather", gather_in_order)
     monkeypatch.setattr(_pipeline, "NUM_PARALLEL_QUERY_CREATION_AGENTS", 1)
