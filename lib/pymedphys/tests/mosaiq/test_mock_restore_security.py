@@ -45,7 +45,11 @@ def docker_fixture(monkeypatch, tmp_path):
         if command[-3:] == ["version", "--format", "{{.Server.Version}}"]:
             return records["version"]
         if command[-5:] == [
-            "ps", "--filter", "publish=1433/tcp", "--format", "{{.ID}}"
+            "ps",
+            "--filter",
+            "publish=1433/tcp",
+            "--format",
+            "{{.ID}}",
         ]:
             return "\n".join(records["containers"])
         if "inspect" in command:
@@ -191,9 +195,7 @@ def test_environment_selected_target_remains_pinned(
             "{{.Endpoints.docker.Host}}",
         ] in fake_docker["commands"]
     else:
-        assert not any(
-            "context" in command for command in fake_docker["commands"]
-        )
+        assert not any("context" in command for command in fake_docker["commands"])
     assert fake_docker["commands"][-2][:3] == [
         "docker",
         "--host",
@@ -266,9 +268,7 @@ def test_context_inspection_failure_fails_closed(fake_docker, monkeypatch):
             raise subprocess.CalledProcessError(1, command)
         return original_check_output(command, **kwargs)
 
-    monkeypatch.setattr(
-        server_from_bak.subprocess, "check_output", failing_inspection
-    )
+    monkeypatch.setattr(server_from_bak.subprocess, "check_output", failing_inspection)
     with pytest.raises(RuntimeError, match="Cannot verify the selected Docker"):
         restore(fake_docker)
     assert not fake_docker["runs"]
@@ -296,7 +296,13 @@ def test_replaces_matching_exposed_legacy_container(fake_docker):
     fake_docker["containers"]["legacy-id"] = old_container(fake_docker)
     restore(fake_docker)
     (stop_command, stop_kwargs), (run_command, run_kwargs) = fake_docker["runs"]
-    assert stop_command == ["docker", "--host", "unix:///var/run/docker.sock", "stop", "legacy-id"]
+    assert stop_command == [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "stop",
+        "legacy-id",
+    ]
     assert stop_kwargs["check"] is True
     assert run_command[3] == "run"
     assert run_kwargs["check"] is True
