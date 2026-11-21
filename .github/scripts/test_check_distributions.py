@@ -359,7 +359,7 @@ class ContentTests(unittest.TestCase):
         metadata = "pymedphys-1.0.0.dist-info/METADATA"
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr("pymedphys/docs/", "")
-            archive.writestr(metadata, "Version: 1.0.0\\n")
+            archive.writestr(metadata, "Version: 1.0.0\n")
 
         self.assertEqual(read_wheel(path).files, frozenset({metadata}))
 
