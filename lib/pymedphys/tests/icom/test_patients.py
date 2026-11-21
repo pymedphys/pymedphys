@@ -76,6 +76,7 @@ def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, ca
     with lzma.open(archive) as f:
         assert f.read() == next_delivery
 
+
 def test_icom_archive_logs_do_not_include_patient_identifiers(tmp_path, caplog):
     """Patient IDs and names belong in the local archive, not centralised logs."""
     patient_id, patient_name = "738419", "SYNTHETIC, PATIENT"
@@ -105,4 +106,3 @@ def test_icom_acquisition_logs_do_not_include_patient_identifiers(tmp_path, capl
     assert patient_id not in caplog.text
     assert patient_name not in caplog.text
     assert str(tmp_path) not in caplog.text
-
