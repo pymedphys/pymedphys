@@ -21,6 +21,7 @@ index_module = importlib.import_module("pymedphys._trf.manage.index")
 
 
 def test_logfile_collision_does_not_print_patient_path(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("PYMEDPHYS_REDACT_TRF_PATHS", "1")
     patient = "SYNTHETIC_PATIENT_123456"
     original = tmp_path / f"{patient}_incoming.trf"
     archived = tmp_path / f"{patient}_archived.trf"
@@ -42,6 +43,7 @@ def test_logfile_collision_does_not_print_patient_path(tmp_path, monkeypatch, ca
 def test_header_error_does_not_print_exception_with_patient_id(
     tmp_path, monkeypatch, capsys
 ):
+    monkeypatch.setenv("PYMEDPHYS_REDACT_TRF_PATHS", "1")
     patient = "SYNTHETIC_PATIENT_123456"
     filename = tmp_path / f"{patient}.trf"
     filename.write_bytes(b"synthetic")
@@ -78,6 +80,7 @@ def test_header_error_does_not_print_exception_with_patient_id(
 
 
 def test_successful_index_does_not_print_patient_paths(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("PYMEDPHYS_REDACT_TRF_PATHS", "1")
     patient = "SYNTHETIC_PATIENT_123456"
     filename = tmp_path / f"{patient}.trf"
     filename.write_bytes(b"synthetic")
@@ -123,3 +126,22 @@ def test_successful_index_does_not_print_patient_paths(tmp_path, monkeypatch, ca
     captured = capsys.readouterr()
     assert patient not in captured.out + captured.err
     assert "Indexed logfile" in captured.out
+
+
+def test_default_collision_output_preserves_local_file_identity(
+    tmp_path, monkeypatch, capsys
+):
+    patient = "SYNTHETIC_PATIENT_123456"
+    original = tmp_path / f"{patient}_incoming.trf"
+    archived = tmp_path / f"{patient}_archived.trf"
+    original.write_bytes(b"same")
+    archived.write_bytes(b"same")
+    monkeypatch.delenv("PYMEDPHYS_REDACT_TRF_PATHS", raising=False)
+
+    def simulate_windows_collision(*_args):
+        raise FileExistsError()
+
+    monkeypatch.setattr(index_module.os, "rename", simulate_windows_collision)
+    index_module.rename_and_handle_fileexists(original, archived)
+
+    assert str(archived) in capsys.readouterr().out
