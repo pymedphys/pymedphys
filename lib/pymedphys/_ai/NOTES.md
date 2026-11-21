@@ -9,6 +9,13 @@ container used by the current database CI workflow.
 
 ## Create the MSSQL database for MOSAIQ
 
+**Security prerequisite:** Use Docker Engine 28.0.0 or newer for this
+restoration workflow. Older Docker Engines may allow devices on the same
+layer-2 network to reach ports published to `127.0.0.1`. Verify the server
+version with `docker version --format '{{.Server.Version}}'` before starting
+the container; do not run the restoration on an older or unverified Engine.
+The Python restoration helper enforces this requirement automatically.
+
 Move the `db-dump.bak` file into `~/mosaiq-data`
 
 ```bash
@@ -19,7 +26,7 @@ docker run --platform linux/amd64 \
 -v ~/mosaiq-data:/mosaiq-data \
 -e "ACCEPT_EULA=Y" \
 -e "MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD" \
--p 1433:1433 \
+-p 127.0.0.1:1433:1433 \
 -d mcr.microsoft.com/mssql/server:2017-latest
 ```
 
