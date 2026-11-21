@@ -26,6 +26,7 @@ from pymedphys._imports import attr
 import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import Header, decode_header_from_file
+from pymedphys._utilities.config import _resolve_indexed_logfile_path
 from pymedphys._utilities.filehash import hash_file
 from pymedphys._utilities.filesystem import make_a_valid_directory_name
 
@@ -338,7 +339,9 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
 
         for filehash in list(hashset.intersection(indexset)):
             file_already_in_index(
-                os.path.join(indexed_directory, index[filehash]["filepath"]),
+                _resolve_indexed_logfile_path(
+                    indexed_directory, index[filehash]["filepath"]
+                ),
                 to_be_indexed_dict[filehash],
                 filehash,
             )
