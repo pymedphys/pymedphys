@@ -33,7 +33,7 @@ from pymedphys._dicom.connect.listen import (
     DicomListener,
     hierarchical_dicom_storage_directory,
 )
-from pymedphys._dicom.connect.send import DicomSender
+from pymedphys._dicom.connect.send import DicomSender, send_cli
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys.cli import define_parser
 
@@ -150,6 +150,116 @@ def listener():
     yield dicom_listener
 
     dicom_listener.stop()
+
+
+@pytest.mark.pydicom
+def test_dicom_sender_own_progress_logs_omit_identifying_uids(
+    test_dataset, monkeypatch, caplog
+):
+    """PyMedPhys progress messages omit UIDs; dependency logs are separate."""
+
+    class FakeAssociation:
+        is_established = True
+
+        def send_c_store(self, _dataset):
+            return 0x0000
+
+        def release(self):
+            pass
+
+    class FakeAE:
+        def add_requested_context(self, *_args):
+            pass
+
+        def associate(self, *_args, **_kwargs):
+            return FakeAssociation()
+
+    monkeypatch.setattr(pynetdicom, "AE", FakeAE)
+    with caplog.at_level("DEBUG"):
+        assert DicomSender().send([test_dataset, test_dataset]) == [0x0000, 0x0000]
+
+    # The privacy guarantee covers only records emitted by this module.
+    # pynetdicom DEBUG logging may still contain SOP Instance UIDs.
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "pymedphys._dicom.connect.send"
+    ]
+    assert messages == [
+        "Sending DICOM object at position 1 by C-STORE",
+        "Sending DICOM object at position 2 by C-STORE",
+    ]
+    assert all(test_dataset.SOPInstanceUID not in message for message in messages)
+
+
+@pytest.mark.parametrize(
+    "error_type, expected",
+    [
+        (
+            pydicom.errors.InvalidDicomError,
+            "Invalid DICOM file provided at position 2; path omitted",
+        ),
+        (
+            OSError,
+            "Unable to read DICOM file at position 2; path omitted",
+        ),
+    ],
+)
+def test_dicom_sender_cli_omits_patient_bearing_file_paths(
+    monkeypatch, caplog, error_type, expected
+):
+    """CLI read failures report argument positions, not clinical filenames."""
+    sensitive_path = "synthetic-patient-123456-RTPLAN.dcm"
+    monkeypatch.setattr(DicomSender, "verify", lambda self: True)
+
+    def read_dicom(path):
+        if str(path) == sensitive_path:
+            raise error_type(f"private patient identifier: {sensitive_path}")
+        return pydicom.Dataset()
+
+    monkeypatch.setattr(pydicom, "dcmread", read_dicom)
+    args = types.SimpleNamespace(
+        host="127.0.0.1",
+        port=8888,
+        aetitle="TEST",
+        dcmfiles=["first-valid.dcm", sensitive_path],
+    )
+    with caplog.at_level("ERROR"):
+        assert send_cli(args) is None
+
+    own_messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "pymedphys._dicom.connect.send"
+    ]
+    assert own_messages == [expected]
+    assert sensitive_path not in caplog.text
+    assert "private patient identifier" not in caplog.text
+
+
+def test_dicom_sender_cli_omits_paths_when_send_fails(monkeypatch, caplog):
+    """Failures after CLI validation must not print identifying paths."""
+    sensitive_path = "synthetic-patient-123456-RTPLAN.dcm"
+    monkeypatch.setattr(DicomSender, "verify", lambda self: True)
+    monkeypatch.setattr(pydicom, "dcmread", lambda _path: pydicom.Dataset())
+
+    def unreadable(_self, _paths):
+        raise OSError(f"cannot read {sensitive_path}")
+
+    monkeypatch.setattr(DicomSender, "send", unreadable)
+    args = types.SimpleNamespace(
+        host="127.0.0.1", port=8888, aetitle="TEST", dcmfiles=[sensitive_path]
+    )
+    with caplog.at_level("ERROR"):
+        assert send_cli(args) is None
+
+    own_messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "pymedphys._dicom.connect.send"
+    ]
+    assert own_messages == ["DICOM send failed; file paths and error details omitted"]
+    assert sensitive_path not in caplog.text
 
 
 @pytest.mark.pydicom

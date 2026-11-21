@@ -268,6 +268,13 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   identifiers.
   [PR #2623](https://github.com/pymedphys/pymedphys/pull/2623)
 
+- **[Privacy]** PyMedPhys-owned DICOM sender progress and CLI read-error
+  messages now use input positions rather than SOP Instance UIDs, filenames,
+  or exception details. `pynetdicom` and `pydicom` diagnostics are unchanged
+  and may still contain identifying data, including at DEBUG level; keep
+  dependency logs within protected clinical environments. DICOM transmissions
+  are unchanged. [PR #2637](https://github.com/pymedphys/pymedphys/pull/2637)
+
 ### Dependency changes
 
 - The lockfile and exported requirements now use certifi 2026.10.19, which restores unaffected emSign roots removed by 2026.10.18. Refresh pinned environments to use the corrected CA bundle. [PR #2424](https://github.com/pymedphys/pymedphys/pull/2424)

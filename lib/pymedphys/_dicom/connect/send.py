@@ -21,6 +21,9 @@ from pymedphys._imports import pydicom, pynetdicom
 from pymedphys._dicom.connect.base import DicomConnectBase
 
 
+logger = logging.getLogger(__name__)
+
+
 class DicomSender(DicomConnectBase):
     """Class which provides SCU functionality to send DICOM objects"""
 
@@ -82,7 +85,7 @@ class DicomSender(DicomConnectBase):
 
         statuses = []
         if assoc.is_established:
-            for dataset in dcm_files:
+            for position, dataset in enumerate(dcm_files, start=1):
                 if not isinstance(dataset, (pydicom.Dataset, pathlib.Path, str)):
                     raise TypeError(
                         "dcm_files must be  str, pathlib.Path or pydicom.Dataset"
@@ -91,10 +94,8 @@ class DicomSender(DicomConnectBase):
                 if not isinstance(dataset, pydicom.Dataset):
                     dataset = pydicom.dcmread(dataset)
 
-                logging.debug(
-                    "Sending DICOM object with SOPInstanceUID: %s",
-                    dataset.SOPInstanceUID,
-                )
+                # The SOP Instance UID may identify a clinical examination.
+                logger.debug("Sending DICOM object at position %d by C-STORE", position)
 
                 statuses.append(assoc.send_c_store(dataset))
 
@@ -111,20 +112,34 @@ def send_cli(args):
 
     # Check we can contact the listener
     if not dicom_sender.verify():
-        logging.error("Unable to connect to DICOM host")
+        logger.error("Unable to connect to DICOM host")
         return
 
     # Prepare the DICOM file (check that all files are valid DICOM)
     dcm_file_paths = []
-    for dcm_file in args.dcmfiles:
+    for position, dcm_file in enumerate(args.dcmfiles, start=1):
         dcm_file_path = pathlib.Path(dcm_file)
         try:
             pydicom.dcmread(dcm_file_path)
         except pydicom.errors.InvalidDicomError:
-            logging.error("Invalid DICOM file provided: %s", dcm_file)
+            logger.error(
+                "Invalid DICOM file provided at position %d; path omitted",
+                position,
+            )
+            return
+        except OSError:
+            logger.error(
+                "Unable to read DICOM file at position %d; path omitted",
+                position,
+            )
             return
 
         dcm_file_paths.append(dcm_file_path)
 
-    # Send the files
-    dicom_sender.send(dcm_file_paths)
+    # Files are read again by send(); a file may become unreadable after
+    # validation. Keep errors from that second read out of CLI tracebacks.
+    try:
+        dicom_sender.send(dcm_file_paths)
+    except (OSError, pydicom.errors.InvalidDicomError):
+        logger.error("DICOM send failed; file paths and error details omitted")
+        return
