@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import time
+import urllib.error
 from functools import wraps
 
 
@@ -49,10 +50,16 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None, giveup=Non
                 except ExceptionToCheck as e:
                     if giveup is not None and giveup(e):
                         raise
-                    # Exceptions from HTTP libraries may contain signed URLs,
-                    # credentials or patient identifiers. Retain the error type
-                    # for diagnostics without copying exception text to output.
-                    msg = "%s, Retrying in %d seconds..." % (type(e).__name__, mdelay)
+                    # Exception messages can expose signed URLs, credentials or
+                    # patient identifiers. Retain only the type and, for HTTP
+                    # errors, the structured numeric status code.
+                    error_type = type(e).__name__
+                    if (
+                        isinstance(e, urllib.error.HTTPError)
+                        and isinstance(e.code, int)
+                    ):
+                        error_type = "%s %d" % (error_type, e.code)
+                    msg = "%s, Retrying in %d seconds..." % (error_type, mdelay)
                     if logger:
                         logger.warning(msg)
                     else:

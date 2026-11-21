@@ -224,3 +224,51 @@ def test_retry_logger_receives_only_safe_exception_metadata():
     assert fail_once() == "ok"
     logger.warning.assert_called_once_with("ConnectionError, Retrying in 0 seconds...")
     assert secret not in str(logger.warning.call_args)
+
+
+@pytest.mark.usefixtures("no_sleep")
+def test_retry_http_status_does_not_disclose_url_or_reason(capsys):
+    """An HTTP retry retains the numeric status but not sensitive text."""
+    signed_url = "https://example.invalid/data?token=synthetic-secret-value"
+    attempts = []
+
+    @retry.retry(urllib.error.URLError, tries=2, delay=0)
+    def fail_once():
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise urllib.error.HTTPError(
+                signed_url, 503, "private reason: synthetic-secret-value", None, None
+            )
+        return "recovered"
+
+    assert fail_once() == "recovered"
+    assert len(attempts) == 2
+    output = capsys.readouterr().out
+    assert output == "HTTPError 503, Retrying in 0 seconds...\n"
+    assert signed_url not in output
+    assert "synthetic-secret-value" not in output
+
+
+@pytest.mark.usefixtures("no_sleep")
+def test_retry_http_status_is_safe_with_injected_logger():
+    """The logger receives the HTTP status without an exception message."""
+    from unittest.mock import Mock
+
+    logger = Mock()
+    signed_url = "https://example.invalid/data?token=synthetic-secret-value"
+    attempts = []
+
+    @retry.retry(urllib.error.URLError, tries=2, delay=0, logger=logger)
+    def fail_once():
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise urllib.error.HTTPError(
+                signed_url, 429, "private reason: synthetic-secret-value", None, None
+            )
+        return "recovered"
+
+    assert fail_once() == "recovered"
+    assert len(attempts) == 2
+    logger.warning.assert_called_once_with("HTTPError 429, Retrying in 0 seconds...")
+    assert signed_url not in str(logger.warning.call_args)
+    assert "synthetic-secret-value" not in str(logger.warning.call_args)

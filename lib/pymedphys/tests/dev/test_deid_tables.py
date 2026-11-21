@@ -4538,7 +4538,9 @@ def test_a_retried_download_leaves_only_the_report_on_standard_output(
         path = url.removeprefix(current)
         if path == SECTION_E3_10 and not refused:
             refused.append(path)
-            raise urllib.error.HTTPError(url, 503, "Service Unavailable", None, None)
+            raise urllib.error.HTTPError(
+                url, 503, "Service Unavailable; token=synthetic-secret", None, None
+            )
         return _Response(FIXTURE_PAGES[path])
 
     # The downloader opens each URL with urllib.request.urlopen.
@@ -4554,7 +4556,9 @@ def test_a_retried_download_leaves_only_the_report_on_standard_output(
     captured = capsys.readouterr()
     assert refused == [SECTION_E3_10]
     assert len(sleeps) == 1
-    assert "HTTP Error 503: Service Unavailable, Retrying" in captured.err
+    assert "HTTPError 503, Retrying in " in captured.err
+    assert "synthetic-secret" not in captured.err
+    assert "Service Unavailable" not in captured.err
     report = edition_check.report_lines(_check_current(tables_dir))
     assert report[-1] == "Result: unchanged"
     assert captured.out == "\n".join(report) + "\n"
