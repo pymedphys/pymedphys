@@ -1,4 +1,5 @@
 """Verify the SQL agent does not print prompts or model responses containing PHI."""
+
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
