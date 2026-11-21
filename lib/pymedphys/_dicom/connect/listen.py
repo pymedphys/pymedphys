@@ -269,6 +269,7 @@ class DicomListener(DicomConnectBase):
         logging.info("DICOM object received and stored successfully")
         return status_ds
 
+
 def listen_cli(args):
     """Start a DICOM listener with a redacted CLI diagnostic stream."""
     with _redacted_cli_diagnostics():
