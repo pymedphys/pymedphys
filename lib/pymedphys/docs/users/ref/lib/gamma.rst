@@ -107,6 +107,20 @@ each shell.
   0.1 keeps this small while :math:`G` is of order one. A tight dose
   criterion with a large distance criterion, such as 0.2%/4 mm, or a steep
   dose gradient makes :math:`G` large, and needs a smaller step.
+- The default step has been measured against the exact minimum of the same
+  interpolated dose. On the published test images of Agnew and McGarry, a
+  head and neck VMAT case and a prostate IMRT case at 1 mm and 0.25 mm
+  pixels, the percentage passed was at most 0.1 of a point below the exact
+  one at 3%/3 mm, 3%/2 mm, and 2%/2 mm, with global or local normalisation.
+  With a 1 mm distance criterion it was up to 0.6 of a point below with
+  global normalisation, and up to 1.2 with local normalisation. For a 3D
+  dose shifted by 2 mm and scaled by 2% against its reference, it was 0.5 of
+  a point below at global 2%/2 mm and 2.0 points below at local 2%/2 mm.
+  `Issue 2664 <https://github.com/pymedphys/pymedphys/issues/2664>`_ has the
+  measurements.
+- Half the default step took 1.5 to 2.8 times as long in those 2D
+  comparisons and about five times as long in the 3D one, and still failed
+  about half of the points that the default step failed wrongly.
 - To check a result, lower ``search_step_fraction`` until the percentage
   passed stops changing.
 - ``skip_once_passed=True`` stops the search for a point once its gamma is
