@@ -104,7 +104,8 @@ def test_successful_index_does_not_print_patient_paths(tmp_path, monkeypatch, ca
     )
 
     assert not filename.exists()
-    assert (tmp_path / "indexed" / patient / "clinical" / "field" / filename.name).exists()
+    archived = tmp_path / "indexed" / patient / "clinical" / "field" / filename.name
+    assert archived.exists()
     captured = capsys.readouterr()
     assert patient not in captured.out + captured.err
     assert "Indexed logfile" in captured.out
