@@ -1,7 +1,9 @@
 import functools
 import getpass
 import json
+import os
 import pathlib
+import sys
 
 from pymedphys._imports import keyring, requests
 
@@ -90,7 +92,23 @@ def get_zenodo_access_token(hostname=ZENODO_HOSTNAME):
 
 
 def set_zenodo_access_token_cli(args):
-    set_zenodo_access_token(args.token)
+    # Prefer the already-supported positional argument for compatibility,
+    # but let callers avoid placing credentials in shell history or argv.
+    token = args.token
+    if token is None:
+        token = os.environ.get("PYMEDPHYS_ZENODO_TOKEN")
+        if token is None:
+            if not sys.stdin.isatty():
+                raise ValueError(
+                    "No Zenodo token supplied. Set PYMEDPHYS_ZENODO_TOKEN "
+                    "for non-interactive use."
+                )
+            token = getpass.getpass("Zenodo access token: ")
+
+    if not token:
+        raise ValueError("A non-empty Zenodo access token is required.")
+
+    set_zenodo_access_token(token)
 
 
 def set_zenodo_access_token(access_token, hostname=ZENODO_HOSTNAME):
