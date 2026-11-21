@@ -404,6 +404,15 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   module.
   [PR #2089](https://github.com/pymedphys/pymedphys/pull/2089)
 - **[Contributor facing only]** The maintainer helper that uploads test data to Zenodo (`pymedphys._data.upload`) now sends its access token in an `Authorization` header rather than in the request URL, which server logs and exception messages can record. When Zenodo rejects a token, the request is retried with a new one, up to three times; previously the retry always failed with a `TypeError`, and a retried file upload would have sent an empty file. [PR #2094](https://github.com/pymedphys/pymedphys/pull/2094)
+- **[Contributor facing only] [Security]** The Zenodo upload helper now
+  rejects HTTP, untrusted hosts, URLs containing user information, and non-default
+  TLS ports before looking up a keyring access token. Only HTTPS URLs for
+  `zenodo.org` and `sandbox.zenodo.org` (on port 443) may receive credentials;
+  production and sandbox continue to use their respective keyring entries.
+  Rejected destinations raise `ValueError` rather than sending a credential.
+  Authenticated API redirects (3xx) are rejected rather than followed, including
+  HTTPS-to-HTTP downgrades.
+  [PR #2633](https://github.com/pymedphys/pymedphys/pull/2633)
 - **[Contributor facing only]** Coding agents have repository guidance. `AGENTS.md` gives every agent the development commands, architecture, conventions, and workflow rules, and points to the pull request rules in `CONTRIBUTING.md`. `CLAUDE.md` points Claude Code to it and adds how the `@claude` workflow runs and how to handle workflow files, which it stages in `claude_created_workflows_preview/` when a push lacks the `workflows` permission. Maintainers' personal preferences stay in their own agent settings, not in the repository. [PR #1928](https://github.com/pymedphys/pymedphys/pull/1928), [PR #2071](https://github.com/pymedphys/pymedphys/pull/2071), [PR #2087](https://github.com/pymedphys/pymedphys/pull/2087)
 - **[Contributor facing only]** A development command,
   `pymedphys dev deid-tables`, generates Tables E.1-1, E.1-1a, and E.3.10-1
