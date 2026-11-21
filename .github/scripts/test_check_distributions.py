@@ -336,6 +336,33 @@ class ContentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate file members"):
             read_wheel(path)
 
+    def test_wheel_rejects_file_directory_path_collision(self):
+        path = Path(self.directory, "pymedphys-type-collision.whl")
+        filename = "pymedphys/docs"
+        directory_name = "pymedphys/./docs/"
+        for directory_first in (False, True):
+            with self.subTest(directory_first=directory_first):
+                names = (
+                    (directory_name, filename)
+                    if directory_first
+                    else (filename, directory_name)
+                )
+                with zipfile.ZipFile(path, "w") as archive:
+                    for name in names:
+                        archive.writestr(name, "")
+                # The type conflict must fail before METADATA is read.
+                with self.assertRaisesRegex(ValueError, "duplicate file members"):
+                    read_wheel(path)
+
+    def test_wheel_directory_entries_are_not_counted_as_files(self):
+        path = Path(self.directory, "pymedphys-directory.whl")
+        metadata = "pymedphys-1.0.0.dist-info/METADATA"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("pymedphys/docs/", "")
+            archive.writestr(metadata, "Version: 1.0.0\\n")
+
+        self.assertEqual(read_wheel(path).files, frozenset({metadata}))
+
     def test_sdist_rejects_link_entry_over_regular_metadata(self):
         path = Path(self.directory, "pymedphys-linked.tar.gz")
         name = "pymedphys-test/PKG-INFO"
