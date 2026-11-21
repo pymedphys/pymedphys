@@ -94,9 +94,7 @@ def test_sql_agent_tool_results_are_not_printed(capsys, monkeypatch):
     messages = [{"role": "user", "content": "help"}]
     asyncio.run(
         conversation._conversation_with_tool_use(
-            anthropic_client=SimpleNamespace(
-                messages=SimpleNamespace(create=create)
-            ),
+            anthropic_client=SimpleNamespace(messages=SimpleNamespace(create=create)),
             connection=None,
             model="synthetic-model",
             system_prompt="synthetic system",
