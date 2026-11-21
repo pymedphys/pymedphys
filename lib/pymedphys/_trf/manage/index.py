@@ -188,9 +188,7 @@ def file_ready_to_be_indexed(
             )
         except Exception as error:  # pylint: disable = broad-except
             if _redact_progress_paths():
-                print(
-                    f"Logfile header could not be processed ({type(error).__name__})"
-                )
+                print(f"Logfile header could not be processed ({type(error).__name__})")
             else:
                 traceback.print_exc()
             new_filepath = os.path.join(unknown_error_in_logfile, logfile_basename)
