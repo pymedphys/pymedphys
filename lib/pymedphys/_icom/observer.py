@@ -53,7 +53,9 @@ def create_event_handler(callback, *, restricted_logs: bool = False):
     return event_handler
 
 
-def observe_with_callback(directories_to_watch, callback, *, restricted_logs: bool = False):
+def observe_with_callback(
+    directories_to_watch, callback, *, restricted_logs: bool = False
+):
     event_handler = create_event_handler(callback, restricted_logs=restricted_logs)
 
     observers = []
