@@ -82,6 +82,31 @@ def test_encode_file_name_encodes_path_characters(value, expected):
     assert filesystem.encode_file_name(value) == expected
 
 
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("CON", "%43ON"),
+        ("con", "%63on"),
+        ("PRN.txt", "%50RN.txt"),
+        ("AUX", "%41UX"),
+        ("NUL ", "%4EUL "),
+        ("COM1.dcm", "%43OM1.dcm"),
+        ("LPT9", "%4CPT9"),
+        ("COM¹", "%43OM¹"),
+        ("LPT²", "%4CPT²"),
+        ("CONIN$", "%43ONIN$"),
+        ("CONOUT$.txt", "%43ONOUT$.txt"),
+    ],
+)
+def test_encode_file_name_escapes_windows_reserved_devices(value, expected):
+    assert filesystem.encode_file_name(value) == expected
+
+
+def test_encode_file_name_distinguishes_reserved_names_from_literal_escapes():
+    assert filesystem.encode_file_name("CON") == "%43ON"
+    assert filesystem.encode_file_name("%43ON") == "%2543ON"
+
+
 def test_encode_file_name_keeps_ordinary_names_and_distinct_values():
     for name in [
         "987654321PyMedPhysID",
