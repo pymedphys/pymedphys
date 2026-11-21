@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeffrey D. Cooney
 # Copyright (C) 2018 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,7 @@
 
 import json
 import os
+import stat
 from pathlib import Path
 
 
@@ -84,15 +86,50 @@ def get_sql_servers_list(config):
     return sql_servers_list
 
 
+def _resolve_indexed_logfile_path(indexed_root, relative_path):
+    """Resolve a logfile index entry to a file within its indexed root.
+
+    Existing ancestors are compared by filesystem identity when differing
+    path casing prevents a lexical match on a case-insensitive filesystem.
+    """
+    try:
+        relative_path = Path(relative_path)
+        if relative_path.is_absolute():
+            raise ValueError
+
+        root = Path(indexed_root).resolve()
+        candidate = (root / relative_path).resolve()
+
+        contained = candidate.is_relative_to(root)
+        if not contained:
+            for ancestor in candidate.parents:
+                try:
+                    if ancestor.samefile(root):
+                        contained = True
+                        break
+                except (FileNotFoundError, NotADirectoryError):
+                    continue
+
+        if not contained:
+            raise ValueError
+
+        # Do not hash or return a FIFO, device, directory, or unresolved
+        # symlink loop. A missing logfile is handled by its eventual reader.
+        try:
+            mode = candidate.stat().st_mode
+        except FileNotFoundError:
+            pass
+        else:
+            if not stat.S_ISREG(mode):
+                raise ValueError
+
+        return str(candidate)
+    except (OSError, RuntimeError, TypeError, ValueError):
+        raise ValueError("Indexed logfile path escapes the indexed directory.") from None
+
+
 def get_filepath(index, config, filehash):
-    data_directory = get_data_directory(config)
-    relative_path = index[filehash]["filepath"]
-    indexed_root = os.path.abspath(os.path.join(data_directory, "indexed"))
-    filepath = os.path.abspath(os.path.join(indexed_root, relative_path))
-
-    # Index JSON is file-backed metadata. Do not allow absolute paths, '..',
-    # or symlinks to redirect a logfile read outside the indexed directory.
-    if not Path(filepath).resolve().is_relative_to(Path(indexed_root).resolve()):
-        raise ValueError("Indexed logfile path escapes the indexed directory.")
-
-    return filepath
+    return _resolve_indexed_logfile_path(
+        os.path.join(get_data_directory(config), "indexed"),
+        index[filehash]["filepath"],
+    )
