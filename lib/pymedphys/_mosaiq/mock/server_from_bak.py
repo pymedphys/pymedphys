@@ -26,22 +26,55 @@ DATA_DIR_IN_DOCKER_IMAGE = pathlib.Path("/mosaiq-data")
 _MSSQL_IMAGE = "mcr.microsoft.com/mssql/server:2017-latest"
 
 
+def _local_docker_command(endpoint):
+    """Use one fixed local socket for all Docker operations."""
+    local_unix_socket = endpoint.startswith("unix:///") and endpoint != "unix:///"
+    local_windows_pipe = endpoint.startswith("npipe:////./pipe/") and (
+        endpoint != "npipe:////./pipe/"
+    )
+    if not (local_unix_socket or local_windows_pipe):
+        raise RuntimeError(
+            "Mosaiq restoration requires a local Docker Engine "
+            "(Unix socket or Windows named pipe); remote Docker hosts are unsupported."
+        )
+    return ["docker", "--host", endpoint]
+
+
 def _docker_command():
-    """Pin the daemon selection across the version, inspection, and run calls."""
+    """Resolve and pin a local Docker endpoint before any daemon operations."""
     if os.environ.get("DOCKER_CONTEXT"):
-        return ["docker", "--context", os.environ["DOCKER_CONTEXT"]]
-    if os.environ.get("DOCKER_HOST"):
-        return ["docker", "--host", os.environ["DOCKER_HOST"]]
+        context = os.environ["DOCKER_CONTEXT"]
+    elif os.environ.get("DOCKER_HOST"):
+        return _local_docker_command(os.environ["DOCKER_HOST"])
+    else:
+        try:
+            context = subprocess.check_output(
+                ["docker", "context", "show"], text=True, stderr=subprocess.DEVNULL
+            ).strip()
+        except (OSError, subprocess.CalledProcessError) as exc:
+            raise RuntimeError("Cannot determine the active Docker context.") from exc
+        if not context:
+            raise RuntimeError("Cannot determine the active Docker context.")
 
     try:
-        context = subprocess.check_output(
-            ["docker", "context", "show"], text=True, stderr=subprocess.DEVNULL
+        endpoint = subprocess.check_output(
+            [
+                "docker",
+                "context",
+                "inspect",
+                context,
+                "--format",
+                "{{.Endpoints.docker.Host}}",
+            ],
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise RuntimeError("Cannot determine the active Docker context.") from exc
-    if not context:
-        raise RuntimeError("Cannot determine the active Docker context.")
-    return ["docker", "--context", context]
+        raise RuntimeError(
+            "Cannot verify the selected Docker endpoint; refusing to restore."
+        ) from exc
+
+    return _local_docker_command(endpoint)
 
 
 def _require_docker_engine_28_or_newer(docker_command):
@@ -161,11 +194,12 @@ def start_mssql_docker_image_with_bak_restore(
             capture_output=True,
             text=True,
         )
-    except (OSError, subprocess.CalledProcessError) as exc:
+    except (OSError, subprocess.CalledProcessError):
+        # Do not display the failed command: argv still contains the SA password.
         raise RuntimeError(
             "Cannot start the loopback-only Mosaiq SQL Server container; "
             "refusing to connect to an existing service on port 1433."
-        ) from exc
+        ) from None
 
     for i in range(5):
         try:
