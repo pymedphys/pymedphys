@@ -33,7 +33,7 @@ def trf2csv_by_directory(input_directory, output_directory):
         header_csv_filepath = "{}.header.csv".format(new_filename)
         table_csv_filepath = "{}.table.csv".format(new_filename)
 
-        print("Converting {}".format(filepath))
+        print("Converting TRF file")
 
         header, table = trf2pandas(filepath)
         header.to_csv(header_csv_filepath)
@@ -56,7 +56,7 @@ def trf2csv(trf_filepath, output_directory=None):
         for contents in ["header", "table"]
     }
 
-    logging.info("Converting %(trf_filepath)s", {"trf_filepath": trf_filepath})
+    logging.info("Converting TRF file")
 
     dataframes = dict()
     dataframes["header"], dataframes["table"] = trf2pandas(trf_filepath)
