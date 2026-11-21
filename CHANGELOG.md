@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Local Mosaiq backup restoration now requires a secure Docker Engine
+
+The legacy Mosaiq `.bak` restore helper now publishes SQL Server only on
+`127.0.0.1:1433`, rather than all host interfaces. It refuses to start the
+restore on Docker Engines older than 28.0.0 or when the Engine version cannot
+be verified; on older Engines, same-network hosts may still reach ports bound
+to localhost. The documented manual restore command is also loopback-only.
+**Upgrade Docker Engine to 28.0.0 or newer before restoring backups.**
+[PR #2630](https://github.com/pymedphys/pymedphys/pull/2630)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
