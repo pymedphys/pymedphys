@@ -43,6 +43,9 @@ def zenodo_api_with_helpful_fallback(url, method, **kwargs):
         raise ValueError("Zenodo API requests require an HTTPS Zenodo endpoint")
     hostname = parsed.hostname
     caller_headers = kwargs.pop("headers", {})
+    # Do not follow redirects: they could expose a bearer token or request body
+    # outside the validated HTTPS endpoint, including on a scheme downgrade.
+    kwargs["allow_redirects"] = False
 
     for _ in range(MAX_TOKEN_ATTEMPTS):
         access_token = get_zenodo_access_token(hostname)
@@ -51,6 +54,8 @@ def zenodo_api_with_helpful_fallback(url, method, **kwargs):
         headers = {**caller_headers, "Authorization": f"Bearer {access_token}"}
 
         r = getattr(requests, method)(url, headers=headers, **kwargs)
+        if 300 <= r.status_code < 400:
+            raise ValueError("Authenticated Zenodo API requests must not redirect")
         if r.status_code == 401:
             print("The access token you provided is invalid.\n")
         elif r.status_code == 403:
