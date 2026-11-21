@@ -386,7 +386,7 @@ def gamma(
 
     if gamma_cap is not None:
         gamma_cap = _real_number(gamma_cap, "gamma_cap")
-        if not gamma_cap > 1:
+        if np.isnan(gamma_cap) or gamma_cap <= 1:
             raise ValueError(
                 "gamma_cap must be greater than 1. Gamma values above it are "
                 "reported as the cap, so a smaller cap would report failing "
