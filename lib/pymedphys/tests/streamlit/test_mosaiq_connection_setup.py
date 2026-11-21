@@ -260,6 +260,38 @@ def test_saving_writes_to_the_file_config_is_read_from(config_dir, hops):
     assert site["mosaiq"]["hostname"] == HOSTNAME
 
 
+def test_config_write_failure_preserves_existing_file(config_dir, monkeypatch):
+    """Failed serialisation cannot destroy the existing site configuration."""
+    from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+
+    original = "version = 0\\n# keep this configuration intact\\n"
+    target = config_dir / "config.toml"
+    target.write_text(original, encoding="utf-8")
+
+    def failed_dump(_config, staged):
+        staged.write("partially written")
+        raise OSError("simulated write failure")
+
+    monkeypatch.setattr(st_mosaiq.toml, "dump", failed_dump)
+    with pytest.raises(OSError, match="simulated write failure"):
+        st_mosaiq.save_mosaiq_config_to_file("clinic", HOSTNAME)
+
+    assert target.read_text(encoding="utf-8") == original
+    assert list(config_dir.glob(".config.toml.*.tmp")) == []
+
+
+def test_saved_config_uses_private_permissions_on_posix(config_dir):
+    """Publishing a new connection configuration must not make it world-readable."""
+    import os
+
+    from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+
+    saved = st_mosaiq.save_mosaiq_config_to_file("clinic", HOSTNAME)
+    assert saved.read_text(encoding="utf-8")
+    if os.name == "posix":
+        assert saved.stat().st_mode & 0o077 == 0
+
+
 def test_failed_endpoint_is_not_saved_and_can_be_corrected(
     config_dir, credential_store
 ):
