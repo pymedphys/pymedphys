@@ -16,6 +16,7 @@
 
 # pylint: disable=redefined-outer-name, no-member
 
+import logging
 import pathlib
 import re
 import shutil
@@ -305,6 +306,53 @@ def test_listen_help_describes_stored_names(capsys, monkeypatch):
     help_text = " ".join(capsys.readouterr().out.split())
     assert "written as % and their two-digit hexadecimal code" in help_text
     assert "as %2E and %2E%2E." in help_text
+
+
+@pytest.mark.pydicom
+def test_listener_logs_do_not_expose_patient_identifiers(tmp_path, test_dataset, caplog):
+    """The storage path contains PatientID and UIDs, which logs must not expose."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+    with caplog.at_level(logging.INFO):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0x0000
+    assert "DICOM object received and stored successfully" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert test_dataset.SOPInstanceUID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_listener_failure_logs_omit_storage_path(
+    tmp_path, test_dataset, caplog, monkeypatch
+):
+    """Failed writes must not emit patient-identifying archive locations."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+
+    def reject_write(_self, *_args, **_kwargs):
+        raise OSError("synthetic error mentioning patient name and source path")
+
+    monkeypatch.setattr(pydicom.dataset.FileDataset, "save_as", reject_write)
+    with caplog.at_level(logging.ERROR):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0xA700
+    assert "Could not write file" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+    assert "synthetic error" not in caplog.text
 
 
 @pytest.mark.pydicom
