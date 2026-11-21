@@ -18,7 +18,7 @@ def read_and_trigger_callback(event, callback):
     callback(ip, data)
 
 
-def create_event_handler(callback, *, restricted_logs=False):
+def create_event_handler(callback, *, restricted_logs: bool = False):
     def on_created(event):
         if restricted_logs:
             print("File created")
@@ -53,7 +53,7 @@ def create_event_handler(callback, *, restricted_logs=False):
     return event_handler
 
 
-def observe_with_callback(directories_to_watch, callback, *, restricted_logs=False):
+def observe_with_callback(directories_to_watch, callback, *, restricted_logs: bool = False):
     event_handler = create_event_handler(callback, restricted_logs=restricted_logs)
 
     observers = []
