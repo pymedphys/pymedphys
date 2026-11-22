@@ -68,7 +68,9 @@ WARNING_SUMMARY = (
     "A warning was issued while reading DICOM data. Details are not shown "
     "because they can contain file paths or DICOM values."
 )
-CLI_SUMMARY = "DICOM dependency diagnostic details suppressed (may contain patient data)"
+CLI_SUMMARY = (
+    "DICOM dependency diagnostic details suppressed (may contain patient data)"
+)
 
 # pydicom's messages can quote values, and can include file paths without
 # quotes, so only messages recognised here keep any detail, and only fields
