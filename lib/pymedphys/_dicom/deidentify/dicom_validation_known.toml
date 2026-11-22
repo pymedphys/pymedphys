@@ -266,5 +266,6 @@ IOD does not define, such as Radiopharmaceutical Information Sequence
 (0054,0016) in a CT Image. So outputs whose inputs all held the attribute
 differ by SOP Class, although each conforms to its own IOD. A series of one
 modality, which A.1.2.3 allows to mix IODs, gets no such explanation, nor
-does an attribute whose outputs differ within one SOP Class.
+does an attribute whose outputs differ within one SOP Class, nor an
+occurrence beyond those that the mixed series gives when checked alone.
 """

@@ -1218,6 +1218,15 @@ def _premised(*paths):
     return {dicom_validation.attribute_premise(MIXED, path) for path in paths}
 
 
+def _paths(pairs):
+    """The attributes that each IOD decides, over a patient's mixed series."""
+    return {
+        path
+        for series in dicom_validation.mixed_modality_series(pairs)
+        for path in series.paths
+    }
+
+
 def test_each_iod_decides_where_an_input_series_mixes_modalities(tmp_path):
     # As in a PET series that holds CT Image instances: the outputs of each
     # SOP Class hold the attributes, or lack them, alike.
@@ -1226,9 +1235,7 @@ def test_each_iod_decides_where_an_input_series_mixes_modalities(tmp_path):
         [(PET_IMAGE, "PT", ()), (PET_IMAGE, "PT", ()), (CT_IMAGE, "CT", CT_LOSES)],
     )
 
-    assert dicom_validation.series_premises(pairs) == _premised(
-        SERIES_DATE, SERIES_TIME, RADIOPHARMACEUTICAL
-    )
+    assert _paths(pairs) == {SERIES_DATE, SERIES_TIME, RADIOPHARMACEUTICAL}
 
 
 def test_nothing_is_premised_in_a_series_of_one_modality(tmp_path):
@@ -1238,7 +1245,7 @@ def test_nothing_is_premised_in_a_series_of_one_modality(tmp_path):
         tmp_path, [(CT_IMAGE, "CT", ()), (ENHANCED_CT_IMAGE, "CT", CT_LOSES)]
     )
 
-    assert dicom_validation.series_premises(pairs) == set()
+    assert _paths(pairs) == set()
 
 
 def test_nothing_is_premised_where_one_sop_classes_outputs_differ(tmp_path):
@@ -1251,18 +1258,14 @@ def test_nothing_is_premised_where_one_sop_classes_outputs_differ(tmp_path):
         ],
     )
 
-    assert dicom_validation.series_premises(pairs) == _premised(
-        SERIES_TIME, RADIOPHARMACEUTICAL
-    )
+    assert _paths(pairs) == {SERIES_TIME, RADIOPHARMACEUTICAL}
 
 
 def test_nothing_is_premised_for_what_an_input_lacked(tmp_path):
     pairs = _series(tmp_path, [(PET_IMAGE, "PT", ()), (CT_IMAGE, "CT", CT_LOSES)])
     _series_instance(pairs[1].source, CT_IMAGE, "CT", lose=("SeriesTime",))
 
-    assert dicom_validation.series_premises(pairs) == _premised(
-        SERIES_DATE, RADIOPHARMACEUTICAL
-    )
+    assert _paths(pairs) == {SERIES_DATE, RADIOPHARMACEUTICAL}
 
 
 def test_nothing_is_premised_across_series_or_from_an_unreadable_file(tmp_path):
@@ -1294,8 +1297,8 @@ def test_nothing_is_premised_across_series_or_from_an_unreadable_file(tmp_path):
     )
     unreadable[1].output.write_bytes(b"")
 
-    assert dicom_validation.series_premises(apart) == set()
-    assert dicom_validation.series_premises(unreadable) == set()
+    assert _paths(apart) == set()
+    assert _paths(unreadable) == set()
 
 
 def _mixed_series_entry():
@@ -1322,6 +1325,42 @@ def test_the_mixed_modality_entry_explains_only_the_premised_attribute():
     )
 
 
+def test_a_mixed_series_names_its_own_members(tmp_path):
+    pairs = _series(
+        tmp_path,
+        [(CT_IMAGE, "CT", ()), (PET_IMAGE, "PT", ()), (CT_IMAGE, "CT", CT_LOSES)],
+    )
+    _series_instance(pairs[0].source, CT_IMAGE, "CT", series="1.2.9")
+    _series_instance(pairs[0].output, CT_IMAGE, "CT", series="1.2.9")
+
+    (series,) = dicom_validation.mixed_modality_series(pairs)
+
+    assert series.members == (1, 2)
+
+
+def _fake_dcentvfy(monkeypatch, results):
+    """Have dcentvfy give, for each set of files, the findings that
+    ``results`` maps the set's file names to; inputs give none."""
+
+    def run_dcentvfy(executable, paths):  # pylint: disable = unused-argument
+        if any(path.parent.name == "in" for path in paths):
+            return _validation(DCENTVFY, {})
+        return _validation(DCENTVFY, results[frozenset(path.name for path in paths)])
+
+    monkeypatch.setattr(validators, "run_dcentvfy", run_dcentvfy)
+    monkeypatch.setattr(dicom_validation.Toolset, "versions", lambda self: NO_VERSIONS)
+    return dicom_validation.Toolset(None, DCENTVFY, None, "2026d")
+
+
+def _outcomes(comparison):
+    return collections.Counter(
+        {
+            (i.finding.path, i.outcome, i.difference): i.occurrences
+            for i in comparison.introduced
+        }
+    )
+
+
 def test_a_patient_whose_series_mixes_modalities_is_explained_attribute_by_attribute(
     tmp_path, monkeypatch
 ):
@@ -1336,27 +1375,74 @@ def test_a_patient_whose_series_mixes_modalities_is_explained_attribute_by_attri
     )
     date = Finding(DCENTVFY, "warning", SERIES_DATE, PRESENT_IN_ONE, "Series")
     time = Finding(DCENTVFY, "warning", SERIES_TIME, PRESENT_IN_ONE, "Series")
-    runs = iter(
-        [
-            _validation(DCENTVFY, {}),
-            _validation(DCENTVFY, {date: 1, time: 1}),
-        ]
+    toolset = _fake_dcentvfy(
+        monkeypatch, {frozenset({"0.dcm", "1.dcm", "2.dcm"}): {date: 1, time: 1}}
     )
-    monkeypatch.setattr(
-        validators, "run_dcentvfy", lambda executable, paths: next(runs)
-    )
-    monkeypatch.setattr(dicom_validation.Toolset, "versions", lambda self: NO_VERSIONS)
-    toolset = dicom_validation.Toolset(None, DCENTVFY, None, "2026d")
 
     comparison = dicom_validation.compare(pairs, toolset)
-    outcomes = {
-        i.finding.path: (i.outcome, i.difference) for i in comparison.introduced
-    }
     number = dicom_validation.read_known_differences().index(_mixed_series_entry()) + 1
 
-    assert outcomes == {
-        SERIES_DATE: (Outcome.EXPLAINED, number),
-        SERIES_TIME: (Outcome.UNEXPLAINED, None),
+    assert _outcomes(comparison) == {
+        (SERIES_DATE, Outcome.EXPLAINED, number): 1,
+        (SERIES_TIME, Outcome.UNEXPLAINED, None): 1,
     }
     assert not comparison.passed
     assert "Only where the outputs of a series" in comparison.markdown()
+
+
+def test_a_mixed_series_explains_none_of_another_series_of_its_patient(
+    tmp_path, monkeypatch
+):
+    # Series A mixes a PET and a CT image, and its CT output loses Series
+    # Date, as its IOD allows. Series B holds two CT images, one of whose
+    # outputs loses Series Date too: a new inconsistency, which dcentvfy
+    # counts with Series A's under one finding of the patient.
+    mixed = _series(
+        tmp_path / "a", [(PET_IMAGE, "PT", ()), (CT_IMAGE, "CT", ("SeriesDate",))]
+    )
+    ct = [
+        Pair(
+            _series_instance(
+                tmp_path / "b" / "in" / f"{n}.dcm", CT_IMAGE, "CT", series="1.2.5"
+            ),
+            _series_instance(
+                tmp_path / "b" / "out" / f"{n}.dcm",
+                CT_IMAGE,
+                "CT",
+                series="1.2.5",
+                lose=lose,
+            ),
+        )
+        for n, lose in ((2, ()), (3, ("SeriesDate",)))
+    ]
+    date = Finding(DCENTVFY, "warning", SERIES_DATE, PRESENT_IN_ONE, "Series")
+    toolset = _fake_dcentvfy(
+        monkeypatch,
+        {
+            frozenset({"0.dcm", "1.dcm", "2.dcm", "3.dcm"}): {date: 2},
+            frozenset({"0.dcm", "1.dcm"}): {date: 1},
+        },
+    )
+    number = dicom_validation.read_known_differences().index(_mixed_series_entry()) + 1
+
+    together = dicom_validation.compare([*mixed, *ct], toolset)
+
+    assert _outcomes(together) == {
+        (SERIES_DATE, Outcome.EXPLAINED, number): 1,
+        (SERIES_DATE, Outcome.UNEXPLAINED, None): 1,
+    }
+    assert not together.passed
+
+
+def test_a_mixed_series_explains_none_of_its_patients_study_findings(
+    tmp_path, monkeypatch
+):
+    pairs = _series(
+        tmp_path, [(PET_IMAGE, "PT", ()), (CT_IMAGE, "CT", ("SeriesDate",))]
+    )
+    study = Finding(DCENTVFY, "warning", SERIES_DATE, PRESENT_IN_ONE, "Study")
+    toolset = _fake_dcentvfy(monkeypatch, {frozenset({"0.dcm", "1.dcm"}): {study: 1}})
+
+    comparison = dicom_validation.compare(pairs, toolset)
+
+    assert _outcomes(comparison) == {(SERIES_DATE, Outcome.UNEXPLAINED, None): 1}
