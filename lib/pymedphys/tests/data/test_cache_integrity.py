@@ -142,13 +142,59 @@ def test_symlinked_cache_subdirectory_cannot_redirect_download(cache, tmp_path):
 
 
 def test_nested_cache_filename_remains_supported(cache, tmp_path):
-    _, _hashes = cache
+    data_dir, _hashes = cache
     source = tmp_path / "payload.txt"
     source.write_text("payload", encoding="utf-8")
     result = download.data_path(
         "nested/payload.txt", check_hash=False, url=source.as_uri()
     )
+    assert result == data_dir / "nested" / "payload.txt"
     assert result.read_text(encoding="utf-8") == "payload"
+
+
+def test_archive_path_is_rejected_before_creating_extraction_lock(cache, tmp_path):
+    data_dir, _ = cache
+    archive = _zip(tmp_path / "source.zip", {"example.txt": "content"})
+
+    with pytest.raises(ValueError, match="Data filename"):
+        download.zip_data_paths(
+            "../outside.zip", check_hash=False, url=archive.as_uri()
+        )
+
+    assert not list(tmp_path.glob(".*outside*"))
+    assert not list(data_dir.iterdir())
+
+
+def test_zenodo_record_path_is_rejected_before_directory_creation(
+    cache, tmp_path, monkeypatch
+):
+    data_dir, _ = cache
+    monkeypatch.setattr(download.zenodo, "get_zenodo_file_urls", lambda _name: {})
+
+    with pytest.raises(ValueError, match="Data filename"):
+        download.zenodo_data_paths("../outside", check_hash=False)
+
+    assert not (tmp_path / "outside").exists()
+    assert not list(data_dir.iterdir())
+
+
+def test_zip_cache_extraction_rejects_preexisting_symlink_escape(cache, tmp_path):
+    data_dir, _ = cache
+    data_dir.mkdir(exist_ok=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    try:
+        (data_dir / "bundle").symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Directory symlinks are unavailable in this test environment")
+    archive = _zip(tmp_path / "source.zip", {"example.txt": "content"})
+
+    with pytest.raises(ValueError, match="outside the cache"):
+        download.zip_data_paths(
+            "bundle.zip", check_hash=False, url=archive.as_uri()
+        )
+
+    assert list(outside.iterdir()) == []
 
 
 def test_extracted_files_follow_a_changed_archive(cache, tmp_path):
