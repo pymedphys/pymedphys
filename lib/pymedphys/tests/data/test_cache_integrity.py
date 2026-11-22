@@ -93,6 +93,64 @@ def test_hash_checks_can_still_be_skipped_explicitly(cache, tmp_path):
     assert path.read_text(encoding="utf-8") == "data"
 
 
+@pytest.mark.parametrize(
+    "filename",
+    ["../outside.txt", "nested/../../outside.txt", "", "."],
+)
+def test_cache_filename_cannot_escape_its_root(cache, tmp_path, filename):
+    data_dir, _ = cache
+    outside = tmp_path / "outside.txt"
+    outside.write_text("leave alone", encoding="utf-8")
+    source = tmp_path / "payload.txt"
+    source.write_text("replacement", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Data filename"):
+        download.data_path(filename, check_hash=False, url=source.as_uri())
+
+    assert outside.read_text(encoding="utf-8") == "leave alone"
+    assert not (data_dir / "nested").exists()
+
+
+def test_absolute_cache_filename_is_rejected(cache, tmp_path):
+    _, _hashes = cache
+    outside = tmp_path / "outside.txt"
+    outside.write_text("leave alone", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Data filename"):
+        download.data_path(outside, check_hash=False, url=outside.as_uri())
+
+    assert outside.read_text(encoding="utf-8") == "leave alone"
+
+
+def test_symlinked_cache_subdirectory_cannot_redirect_download(cache, tmp_path):
+    data_dir, _ = cache
+    data_dir.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    link = data_dir / "linked"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Directory symlinks are unavailable in this test environment")
+
+    source = tmp_path / "payload.txt"
+    source.write_text("payload", encoding="utf-8")
+    with pytest.raises(ValueError, match="outside the cache"):
+        download.data_path("linked/payload.txt", check_hash=False, url=source.as_uri())
+
+    assert list(outside.iterdir()) == []
+
+
+def test_nested_cache_filename_remains_supported(cache, tmp_path):
+    _, _hashes = cache
+    source = tmp_path / "payload.txt"
+    source.write_text("payload", encoding="utf-8")
+    result = download.data_path(
+        "nested/payload.txt", check_hash=False, url=source.as_uri()
+    )
+    assert result.read_text(encoding="utf-8") == "payload"
+
+
 def test_extracted_files_follow_a_changed_archive(cache, tmp_path):
     _, hashes = cache
     source = _zip(tmp_path / "v1.zip", {"a.txt": "one", "b/c.txt": "sea"})
