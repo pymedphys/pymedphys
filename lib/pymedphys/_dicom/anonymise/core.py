@@ -212,7 +212,7 @@ def create_filename_from_dataset(ds, dirpath=""):
     using them as part of an output path; do not quote their values in errors.
     """
     uid = str(ds.SOPInstanceUID)
-    if len(uid) > 64 or not re.fullmatch(r"[0-9]+(?:\\.[0-9]+)*", uid):
+    if len(uid) > 64 or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", uid):
         raise ValueError("Invalid SOP Instance UID for generated filename")
 
     mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
