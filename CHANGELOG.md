@@ -19,6 +19,7 @@ Streamlit download controls rather than raw HTML links with interpolated
 filenames. This avoids embedding clinical report filenames in HTML attributes
 or base64-encoded report content in page markup; the download filenames and
 report bytes are preserved, and PDFs use the correct MIME type.
+[PR #2670](https://github.com/pymedphys/pymedphys/pull/2670)
 
 
 ### Mosaiq treatment sessions follow Mosaiq's rule
