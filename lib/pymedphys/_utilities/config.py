@@ -17,6 +17,7 @@
 import json
 import os
 import stat
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
 
@@ -86,35 +87,58 @@ def get_sql_servers_list(config):
     return sql_servers_list
 
 
-def _resolve_indexed_logfile_path(indexed_root, relative_path):
-    """Resolve a logfile index entry to a file within its indexed root.
+_INDEXED_PATH_ERROR = "Indexed logfile path escapes the indexed directory."
 
-    Existing ancestors are compared by filesystem identity when differing
-    path casing prevents a lexical match on a case-insensitive filesystem.
+
+def _indexed_root_path(indexed_root):
+    """Resolve the configured indexed root without allowing it to be redirected."""
+    configured_root = Path(indexed_root)
+    if configured_root.is_symlink() or (
+        hasattr(configured_root, "is_junction") and configured_root.is_junction()
+    ):
+        raise ValueError
+
+    root = configured_root.resolve()
+    # A root symlink or junction must not redefine the trust boundary.
+    if root != configured_root.parent.resolve() / configured_root.name:
+        raise ValueError
+    return root
+
+
+def _relative_parts(root, candidate):
+    """Get in-root components, accepting genuine case aliases on macOS."""
+    if candidate.is_relative_to(root):
+        parts = candidate.relative_to(root).parts
+    else:
+        parts = ()
+        for ancestor in candidate.parents:
+            try:
+                if ancestor.samefile(root):
+                    parts = candidate.relative_to(ancestor).parts
+                    break
+            except (FileNotFoundError, NotADirectoryError):
+                continue
+
+    if not parts or any(part in ("", ".", "..") for part in parts):
+        raise ValueError
+    return parts
+
+
+def _resolve_indexed_logfile_path(indexed_root, relative_path):
+    """Resolve an indexed logfile to a regular file or an as-yet-missing path.
+
+    A returned pathname cannot protect a separate later read against concurrent
+    replacement. Use _open_indexed_logfile for security-sensitive reads.
     """
     try:
         relative_path = Path(relative_path)
-        if relative_path.is_absolute():
+        if relative_path.is_absolute() or relative_path.drive or ".." in relative_path.parts:
             raise ValueError
 
-        root = Path(indexed_root).resolve()
+        root = _indexed_root_path(indexed_root)
         candidate = (root / relative_path).resolve()
+        _relative_parts(root, candidate)
 
-        contained = candidate.is_relative_to(root)
-        if not contained:
-            for ancestor in candidate.parents:
-                try:
-                    if ancestor.samefile(root):
-                        contained = True
-                        break
-                except (FileNotFoundError, NotADirectoryError):
-                    continue
-
-        if not contained:
-            raise ValueError
-
-        # Do not hash or return a FIFO, device, directory, or unresolved
-        # symlink loop. A missing logfile is handled by its eventual reader.
         try:
             mode = candidate.stat().st_mode
         except FileNotFoundError:
@@ -125,9 +149,99 @@ def _resolve_indexed_logfile_path(indexed_root, relative_path):
 
         return str(candidate)
     except (OSError, RuntimeError, TypeError, ValueError):
-        raise ValueError(
-            "Indexed logfile path escapes the indexed directory."
+        raise ValueError(_INDEXED_PATH_ERROR) from None
+
+
+def _windows_opened_path(fd):
+    """Retrieve the actual opened file's path from its Windows handle."""
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    get_path = ctypes.WinDLL("kernel32", use_last_error=True).GetFinalPathNameByHandleW
+    get_path.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+    ]
+    get_path.restype = wintypes.DWORD
+
+    handle = msvcrt.get_osfhandle(fd)
+    length = get_path(handle, None, 0, 0)
+    if length == 0:
+        raise OSError
+    buffer = ctypes.create_unicode_buffer(length + 1)
+    used = get_path(handle, buffer, len(buffer), 0)
+    if used == 0 or used >= len(buffer):
+        raise OSError
+
+    path = buffer.value
+    if path.startswith("\\\\?\\UNC\\"):
+        path = "\\\\" + path[8:]
+    elif path.startswith("\\\\?\\"):
+        path = path[4:]
+    return Path(path)
+
+
+def _open_indexed_logfile_fd(indexed_root, relative_path):
+    resolved_path = Path(_resolve_indexed_logfile_path(indexed_root, relative_path))
+    root = _indexed_root_path(indexed_root)
+    parts = _relative_parts(root, resolved_path)
+
+    if os.name == "nt":
+        # Check the opened handle's location before reading any bytes.
+        fd = os.open(resolved_path, os.O_RDONLY | os.O_BINARY)
+        try:
+            _relative_parts(root, _windows_opened_path(fd))
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise ValueError
+        except BaseException:
+            os.close(fd)
+            raise
+        return fd
+
+    # On POSIX, open every component relative to a pinned directory handle.
+    # No-follow prevents a replacement symlink from crossing the root.
+    if not (hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY")):
+        raise ValueError
+
+    dir_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0)
+    with ExitStack() as stack:
+        # A deliberately configured alias for the data directory is permitted.
+        data_fd = os.open(root.parent, os.O_RDONLY | os.O_DIRECTORY)
+        stack.callback(os.close, data_fd)
+        current_fd = os.open(root.name, dir_flags, dir_fd=data_fd)
+        stack.callback(os.close, current_fd)
+        for part in parts[:-1]:
+            current_fd = os.open(part, dir_flags, dir_fd=current_fd)
+            stack.callback(os.close, current_fd)
+
+        fd = os.open(parts[-1], file_flags, dir_fd=current_fd)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise ValueError
+        except BaseException:
+            os.close(fd)
+            raise
+        return fd
+
+
+@contextmanager
+def _open_indexed_logfile(indexed_root, relative_path):
+    """Open a pinned regular-file handle without following replacement links."""
+    try:
+        fd = _open_indexed_logfile_fd(indexed_root, relative_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            "Indexed logfile can't be found in its declared location."
         ) from None
+    except (OSError, RuntimeError, TypeError, ValueError):
+        raise ValueError(_INDEXED_PATH_ERROR) from None
+
+    with os.fdopen(fd, "rb") as stream:
+        yield stream
 
 
 def get_filepath(index, config, filehash):

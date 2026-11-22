@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from pymedphys._utilities.config import get_filepath
+from pymedphys._utilities.config import _open_indexed_logfile, get_filepath
 
 
 def _entry(relative_path):
@@ -202,3 +202,145 @@ def test_index_logfiles_rejects_untrusted_index_paths_before_hashing(
 
     assert hashed_files == [staged_file]
     assert staged_file.exists()
+
+
+
+def test_indexed_root_symlink_is_rejected(tmp_path):
+    outside = tmp_path / "external"
+    outside.mkdir()
+    (outside / "fraction.trf").write_bytes(b"out-of-root")
+    indexed = tmp_path / "indexed"
+    try:
+        indexed.symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Directory symlinks unavailable")
+
+    with pytest.raises(ValueError, match="escapes the indexed directory"):
+        get_filepath(
+            _entry("fraction.trf"),
+            {"linac_logfile_data_directory": str(tmp_path)},
+            "synthetic_hash",
+        )
+    with pytest.raises(ValueError, match="escapes the indexed directory"):
+        with _open_indexed_logfile(indexed, "fraction.trf"):
+            pytest.fail("A symlinked indexed root was opened")
+
+
+def test_indexed_path_rejects_parent_components_even_when_contained(tmp_path):
+    indexed = tmp_path / "indexed"
+    (indexed / "nested").mkdir(parents=True)
+    (indexed / "fraction.trf").write_bytes(b"record")
+    with pytest.raises(ValueError, match="escapes the indexed directory"):
+        get_filepath(
+            _entry("nested/../fraction.trf"),
+            {"linac_logfile_data_directory": str(tmp_path)},
+            "synthetic_hash",
+        )
+
+
+def test_secure_open_pins_valid_in_root_symlink_target(tmp_path):
+    indexed = tmp_path / "indexed"
+    actual = indexed / "actual"
+    actual.mkdir(parents=True)
+    (actual / "fraction.trf").write_bytes(b"internal")
+    alias = indexed / "alias"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "fraction.trf").write_bytes(b"confidential")
+    try:
+        alias.symlink_to(actual, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("Directory symlinks unavailable")
+
+    with _open_indexed_logfile(indexed, "alias/fraction.trf") as archive:
+        alias.unlink()
+        alias.symlink_to(outside, target_is_directory=True)
+        assert archive.read() == b"internal"
+
+
+@pytest.mark.skipif(
+    os.name != "posix" or not hasattr(os, "O_NOFOLLOW"),
+    reason="Openat no-follow race regression requires POSIX",
+)
+@pytest.mark.parametrize("swapped_component", ["root", "directory", "file"])
+def test_secure_open_rejects_symlink_swap_during_open(
+    tmp_path, monkeypatch, swapped_component
+):
+    from pymedphys._utilities import config as config_module
+
+    indexed = tmp_path / "indexed"
+    actual = indexed / "actual"
+    actual.mkdir(parents=True)
+    original = actual / "fraction.trf"
+    original.write_bytes(b"internal")
+    outside = tmp_path / "outside"
+    (outside / "actual").mkdir(parents=True)
+    external = outside / "actual" / "fraction.trf"
+    external.write_bytes(b"confidential")
+
+    real_open = os.open
+    swapped = []
+
+    def swap_before_open(path, flags, *args, **kwargs):
+        if not swapped and kwargs.get("dir_fd") is not None:
+            if swapped_component == "root" and str(path) == "indexed":
+                indexed.rename(tmp_path / "former_indexed")
+                indexed.symlink_to(outside, target_is_directory=True)
+                swapped.append(True)
+            elif swapped_component == "directory" and str(path) == "actual":
+                actual.rename(indexed / "former_actual")
+                actual.symlink_to(outside / "actual", target_is_directory=True)
+                swapped.append(True)
+            elif swapped_component == "file" and str(path) == "fraction.trf":
+                original.unlink()
+                original.symlink_to(external)
+                swapped.append(True)
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(config_module.os, "open", swap_before_open)
+    with pytest.raises(ValueError, match="escapes the indexed directory"):
+        with _open_indexed_logfile(indexed, "actual/fraction.trf") as archive:
+            archive.read()
+    assert swapped
+
+
+def test_secure_open_rejects_nonregular_file_without_blocking(tmp_path):
+    if not hasattr(os, "mkfifo"):
+        pytest.skip("Named pipes unavailable")
+    indexed = tmp_path / "indexed"
+    indexed.mkdir()
+    os.mkfifo(indexed / "pipe")
+    with pytest.raises(ValueError, match="escapes the indexed directory"):
+        with _open_indexed_logfile(indexed, "pipe"):
+            pytest.fail("A FIFO was accepted")
+
+
+@pytest.mark.parametrize("archive_matches", [True, False])
+def test_index_logfiles_hashes_open_archive_handle(
+    tmp_path, archive_matches
+):
+    from pymedphys._trf.manage import index as trf_index
+    from pymedphys._utilities.filehash import hash_file
+
+    indexed = tmp_path / "indexed"
+    indexed.mkdir()
+    archived = indexed / "existing.trf"
+    staged = tmp_path / "to_be_indexed" / "incoming.trf"
+    staged.parent.mkdir()
+    staged.write_bytes(b"correct archive contents")
+    archived.write_bytes(
+        b"correct archive contents" if archive_matches else b"corrupt archive"
+    )
+    expected_hash = hash_file(staged)
+    (tmp_path / "index.json").write_text(
+        json.dumps({expected_hash: {"filepath": "existing.trf"}}),
+        encoding="utf-8",
+    )
+
+    if archive_matches:
+        trf_index.index_logfiles({}, {}, tmp_path)
+        assert not staged.exists()
+    else:
+        with pytest.raises(AssertionError, match="doesn't agree"):
+            trf_index.index_logfiles({}, {}, tmp_path)
+        assert staged.exists()
