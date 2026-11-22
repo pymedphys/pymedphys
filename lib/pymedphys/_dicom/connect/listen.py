@@ -20,6 +20,7 @@ import pathlib
 import signal
 import sys
 import tempfile
+import threading
 import uuid
 import warnings
 
@@ -39,39 +40,105 @@ _DICOM_DIAGNOSTIC_SUMMARY = (
 )
 
 
+# CLI protection changes process-global diagnostic hooks and must survive
+# overlapping listeners, even if they close in a different order.
+_CLI_DIAGNOSTICS_GUARD = threading.Lock()
+_CLI_DIAGNOSTICS_STATE = {"users": 0}
+
+# The reference count includes threads waiting on each path lock so it can be
+# removed as soon as the last storage operation completes.
+_STORAGE_PATH_LOCKS_GUARD = threading.Lock()
+_STORAGE_PATH_LOCKS = {}
+
+
 @contextlib.contextmanager
 def _redacted_cli_diagnostics():
-    """Sanitise DICOM dependency logs and warnings for the CLI's lifetime.
+    """Sanitise dependency records and warning emissions for CLI listeners.
 
-    This covers configured Python logging handlers, including a dependency's
-    own handlers, and warnings captured through Python's warnings machinery.
-    It does not sanitise arbitrary prints, application-specific callbacks or
-    handlers installed outside the CLI by users of :class:`DicomListener`.
+    The warning hook sanitises messages before they reach either a logger or
+    warnings.catch_warnings(record=True). Direct writes to stdout/stderr are
+    outside this safeguard.
     """
-    previous_factory = logging.getLogRecordFactory()
-    previous_showwarning = warnings.showwarning
+    with _CLI_DIAGNOSTICS_GUARD:
+        if _CLI_DIAGNOSTICS_STATE["users"] == 0:
+            previous_factory = logging.getLogRecordFactory()
+            previous_showwarning = warnings.showwarning
+            previous_showwarnmsg = warnings._showwarnmsg
+            was_capturing = getattr(logging, "_warnings_showwarning", None) is not None
 
-    def redacting_factory(*args, **kwargs):
-        record = previous_factory(*args, **kwargs)
-        name = record.name
-        if name in ("pydicom", "pynetdicom", "py.warnings") or name.startswith(
-            ("pydicom.", "pynetdicom.")
-        ):
-            record.msg = _DICOM_DIAGNOSTIC_SUMMARY
-            record.args = ()
-            record.exc_info = None
-            record.exc_text = None
-            record.stack_info = None
-        return record
+            def redacting_factory(*args, **kwargs):
+                record = previous_factory(*args, **kwargs)
+                name = record.name
+                if name in ("pydicom", "pynetdicom", "py.warnings") or name.startswith(
+                    ("pydicom.", "pynetdicom.")
+                ):
+                    record.msg = _DICOM_DIAGNOSTIC_SUMMARY
+                    record.args = ()
+                    record.exc_info = None
+                    record.exc_text = None
+                    record.stack_info = None
+                return record
 
-    logging.setLogRecordFactory(redacting_factory)
-    logging.captureWarnings(True)
+            def redacting_warning(message):
+                # catch_warnings(record=True) replaces showwarning and
+                # _showwarnmsg_impl, but still dispatches via _showwarnmsg.
+                message.message = UserWarning(_DICOM_DIAGNOSTIC_SUMMARY)
+                message.filename = "<redacted>"
+                message.line = None
+                message.source = None
+                return previous_showwarnmsg(message)
+
+            _CLI_DIAGNOSTICS_STATE["restore"] = (
+                previous_factory,
+                previous_showwarning,
+                previous_showwarnmsg,
+                was_capturing,
+            )
+            logging.setLogRecordFactory(redacting_factory)
+            if not was_capturing:
+                logging.captureWarnings(True)
+            warnings._showwarnmsg = redacting_warning
+        _CLI_DIAGNOSTICS_STATE["users"] += 1
+
     try:
         yield
     finally:
-        logging.setLogRecordFactory(previous_factory)
-        if warnings.showwarning is not previous_showwarning:
-            logging.captureWarnings(False)
+        with _CLI_DIAGNOSTICS_GUARD:
+            _CLI_DIAGNOSTICS_STATE["users"] -= 1
+            if _CLI_DIAGNOSTICS_STATE["users"] == 0:
+                (
+                    previous_factory,
+                    previous_showwarning,
+                    previous_showwarnmsg,
+                    was_capturing,
+                ) = _CLI_DIAGNOSTICS_STATE.pop("restore")
+                warnings._showwarnmsg = previous_showwarnmsg
+                logging.setLogRecordFactory(previous_factory)
+                if not was_capturing:
+                    logging.captureWarnings(False)
+                warnings.showwarning = previous_showwarning
+
+
+@contextlib.contextmanager
+def _locked_storage_path(filepath):
+    """Keep one path locked across its existence check, comparison and write."""
+    with _STORAGE_PATH_LOCKS_GUARD:
+        if filepath in _STORAGE_PATH_LOCKS:
+            lock, users = _STORAGE_PATH_LOCKS[filepath]
+        else:
+            lock, users = threading.Lock(), 0
+        _STORAGE_PATH_LOCKS[filepath] = (lock, users + 1)
+
+    try:
+        with lock:
+            yield
+    finally:
+        with _STORAGE_PATH_LOCKS_GUARD:
+            _, users = _STORAGE_PATH_LOCKS[filepath]
+            if users == 1:
+                del _STORAGE_PATH_LOCKS[filepath]
+            else:
+                _STORAGE_PATH_LOCKS[filepath] = (lock, users - 1)
 
 
 def hierarchical_dicom_storage_directory(
@@ -120,8 +187,11 @@ class DicomListener(DicomConnectBase):
         # data from that association was stored
         self.on_released_callback = on_released_callback
 
-        # Keep track of the directory where data for the current association is stored
+        # Legacy last-directory attribute for embedded callers; release
+        # callbacks use an association-specific mapping instead.
         self.association_directory = None
+        self._association_directories = {}
+        self._association_directories_lock = threading.Lock()
 
         # The application entity
         self.ae = None
@@ -157,6 +227,7 @@ class DicomListener(DicomConnectBase):
             (pynetdicom.evt.EVT_C_ECHO, self.on_c_echo),
             (pynetdicom.evt.EVT_ACCEPTED, self.on_association_accepted),
             (pynetdicom.evt.EVT_RELEASED, self.on_association_released),
+            (pynetdicom.evt.EVT_ABORTED, self.on_association_aborted),
         ]
 
         # Start listening for incoming association requests
@@ -176,12 +247,29 @@ class DicomListener(DicomConnectBase):
         logging.debug("C-ECHO!")
         return 0x0000
 
-    def on_association_accepted(self, _):
-        self.association_directory = None
+    def on_association_accepted(self, event):
+        association = getattr(event, "assoc", None)
+        if association is None:
+            self.association_directory = None
+            return
+        with self._association_directories_lock:
+            self._association_directories[association] = None
 
-    def on_association_released(self, _):
+    def on_association_released(self, event):
+        association = getattr(event, "assoc", None)
+        if association is None:
+            directory = self.association_directory
+        else:
+            with self._association_directories_lock:
+                directory = self._association_directories.pop(association, None)
         if self.on_released_callback:
-            self.on_released_callback(self.association_directory)
+            self.on_released_callback(directory)
+
+    def on_association_aborted(self, event):
+        association = getattr(event, "assoc", None)
+        if association is not None:
+            with self._association_directories_lock:
+                self._association_directories.pop(association, None)
 
     def on_c_store(self, event):
         """Handle C-STORE, including filesystem failures during archive preparation."""
@@ -212,6 +300,10 @@ class DicomListener(DicomConnectBase):
         )
         series_dir.mkdir(parents=True, exist_ok=True)
         self.association_directory = series_dir
+        association = getattr(event, "assoc", None)
+        if association is not None:
+            with self._association_directories_lock:
+                self._association_directories[association] = series_dir
 
         filename = pathlib.Path(
             "{!s}.{!s}.dcm".format(
@@ -220,6 +312,10 @@ class DicomListener(DicomConnectBase):
         )
         filepath = series_dir.joinpath(filename)
 
+        with _locked_storage_path(filepath):
+            return self._persist_c_store(dataset, event.context, series_dir, filepath)
+
+    def _persist_c_store(self, dataset, context, series_dir, filepath):
         status_ds = pydicom.Dataset()
         status_ds.Status = 0x0000
 
@@ -241,7 +337,6 @@ class DicomListener(DicomConnectBase):
                     "DICOM file exists, storing in orphan directory: %s", filename
                 )
 
-        context = event.context
         meta = pydicom.Dataset()
         meta.MediaStorageSOPClassUID = dataset.SOPClassUID
         meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
