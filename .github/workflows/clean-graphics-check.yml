@@ -1,0 +1,94 @@
+name: Clean Graphics on Public Data
+
+# On demand, run the Clean Graphics Option on seven public instances of
+# real people that hold graphics, and count what it does: three softcopy
+# Presentation States of 0.55 T cardiac MRI of consented volunteers (Zenodo
+# record 23089164, https://doi.org/10.5281/zenodo.23089164, CC BY 4.0),
+# whose Graphic Annotation Sequences hold text and graphic objects, and four
+# RT Images of the BRAVEHeart trial's patients, in the University of
+# Sydney's research data store (https://doi.org/10.25910/7by0-vf89, CC BY
+# 4.0), each with four curve groups. MIDI-B's instances hold no graphics,
+# so this is the option's own public check.
+# pymedphys._dicom.deidentify.clean_graphics_check reads each instance over
+# HTTP ranges from its archive, which it refuses unless the archive's size
+# and central directory are those that text_evaluation_archives pins, and
+# refuses each instance unless its CRC-32, SHA-256, and SOP Class are those
+# that it pins.
+#
+# These are real people's data, and this repository's logs and artefacts
+# are public. So only counts, codes, digests, versions, and the data sets'
+# public identifiers leave the runner: the command's standard output and
+# error go to files on the runner, the job shows the result files instead,
+# and a crash is reported by .github/scripts/run_redacted.py as its type and
+# code locations alone. The instances are held in memory only, and never
+# written, cached, or uploaded.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clean-graphics-check-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Clean Graphics on public data
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The user extra holds pydicom, NumPy, and SciPy.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      - name: Prepare the private directory
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/graphics/private"
+
+      # The command writes clean-graphics-check.json and
+      # clean-graphics-check.md, which hold only counts, codes, digests,
+      # versions, and the data sets' public identifiers.
+      - name: Run the check
+        timeout-minutes: 20
+        run: |
+          results="${RUNNER_TEMP}/graphics/results"
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/graphics/private/check-stdout.log" \
+            pymedphys._dicom.deidentify.clean_graphics_check check \
+            --out "${results}" \
+            2> "${RUNNER_TEMP}/graphics/private/check-stderr.log"
+          echo "${GITHUB_SHA}" > "${results}/commit.txt"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          page="${RUNNER_TEMP}/graphics/results/clean-graphics-check.md"
+          if [[ -f "${page}" ]]; then
+            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+          else
+            echo "The check wrote no results; the log shows why." \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: clean-graphics-check-results${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/graphics/results/
+          if-no-files-found: warn
+          retention-days: 90
