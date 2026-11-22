@@ -22,101 +22,22 @@ import sys
 import tempfile
 import threading
 import uuid
-import warnings
 
 from pymedphys._imports import pydicom, pynetdicom
 
 from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
-from pymedphys._dicom.deidentify.diagnostics import redacted_diagnostics
+from pymedphys._dicom.deidentify.diagnostics import (
+    redacted_cli_diagnostics as _redacted_cli_diagnostics,
+    redacted_diagnostics,
+)
 from pymedphys._utilities.filesystem import encode_file_name
 
 
-# DICOM library diagnostics may contain received patient identifiers and paths.
-# Sanitise at record creation, not at the EVT_C_STORE callback: pynetdicom logs
-# incoming SOP Instance UIDs before calling our handler, including at DEBUG.
-_DICOM_DIAGNOSTIC_SUMMARY = (
-    "DICOM dependency diagnostic details suppressed (may contain patient data)"
-)
-
-
-# CLI protection changes process-global diagnostic hooks and must survive
-# overlapping listeners, even if they close in a different order.
-_CLI_DIAGNOSTICS_GUARD = threading.Lock()
-_CLI_DIAGNOSTICS_STATE = {"users": 0}
-
-# The reference count includes threads waiting on each path lock so it can be
-# removed as soon as the last storage operation completes.
+# Serialise check/compare/write of an SOP instance path across connections and
+# listener objects in this process. Waiters count as users until they exit.
 _STORAGE_PATH_LOCKS_GUARD = threading.Lock()
 _STORAGE_PATH_LOCKS = {}
-
-
-@contextlib.contextmanager
-def _redacted_cli_diagnostics():
-    """Sanitise dependency records and warning emissions for CLI listeners.
-
-    The warning hook sanitises messages before they reach either a logger or
-    warnings.catch_warnings(record=True). Direct writes to stdout/stderr are
-    outside this safeguard.
-    """
-    with _CLI_DIAGNOSTICS_GUARD:
-        if _CLI_DIAGNOSTICS_STATE["users"] == 0:
-            previous_factory = logging.getLogRecordFactory()
-            previous_showwarning = warnings.showwarning
-            previous_showwarnmsg = warnings._showwarnmsg
-            was_capturing = getattr(logging, "_warnings_showwarning", None) is not None
-
-            def redacting_factory(*args, **kwargs):
-                record = previous_factory(*args, **kwargs)
-                name = record.name
-                if name in ("pydicom", "pynetdicom", "py.warnings") or name.startswith(
-                    ("pydicom.", "pynetdicom.")
-                ):
-                    record.msg = _DICOM_DIAGNOSTIC_SUMMARY
-                    record.args = ()
-                    record.exc_info = None
-                    record.exc_text = None
-                    record.stack_info = None
-                return record
-
-            def redacting_warning(message):
-                # catch_warnings(record=True) replaces showwarning and
-                # _showwarnmsg_impl, but still dispatches via _showwarnmsg.
-                message.message = UserWarning(_DICOM_DIAGNOSTIC_SUMMARY)
-                message.filename = "<redacted>"
-                message.line = None
-                message.source = None
-                return previous_showwarnmsg(message)
-
-            _CLI_DIAGNOSTICS_STATE["restore"] = (
-                previous_factory,
-                previous_showwarning,
-                previous_showwarnmsg,
-                was_capturing,
-            )
-            logging.setLogRecordFactory(redacting_factory)
-            if not was_capturing:
-                logging.captureWarnings(True)
-            warnings._showwarnmsg = redacting_warning
-        _CLI_DIAGNOSTICS_STATE["users"] += 1
-
-    try:
-        yield
-    finally:
-        with _CLI_DIAGNOSTICS_GUARD:
-            _CLI_DIAGNOSTICS_STATE["users"] -= 1
-            if _CLI_DIAGNOSTICS_STATE["users"] == 0:
-                (
-                    previous_factory,
-                    previous_showwarning,
-                    previous_showwarnmsg,
-                    was_capturing,
-                ) = _CLI_DIAGNOSTICS_STATE.pop("restore")
-                warnings._showwarnmsg = previous_showwarnmsg
-                logging.setLogRecordFactory(previous_factory)
-                if not was_capturing:
-                    logging.captureWarnings(False)
-                warnings.showwarning = previous_showwarning
 
 
 @contextlib.contextmanager
