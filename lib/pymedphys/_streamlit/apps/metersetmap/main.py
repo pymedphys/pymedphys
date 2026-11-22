@@ -438,7 +438,7 @@ def advanced_debugging(config):
 
 # DICOM patient IDs and delivery identifiers may contain path separators or
 # control characters. Treat them as filename data, never directory components.
-_UNSAFE_REPORT_FILENAME_CHARS = re.compile(r'[/\\\\\\x00-\\x1f<>:"|?*]')
+_UNSAFE_REPORT_FILENAME_CHARS = re.compile(r'[/\\\x00-\x1f<>:"|?*]')
 
 
 def _report_filename_stem(patient_id, reference_identifier, evaluation_identifier):
