@@ -17,9 +17,10 @@
 # - engine: a defect of the engine's output, recorded here until it is
 #   fixed, when its entry is removed.
 #
-# An entry whose explanation rests on a property of the output names it in
-# requires, one of dicom_validation.PREMISES, and explains the finding only
-# in an output that has it. One of dicom_validation.ATTRIBUTE_PREMISES, which
+# An entry whose explanation rests on a property of the output, or of the
+# output with its input, names it in requires, one of
+# dicom_validation.PREMISES, and explains the finding only where the files
+# have it. One of dicom_validation.ATTRIBUTE_PREMISES, which
 # dcentvfy's comparison of a patient's outputs evaluates, explains it only
 # for an attribute that the premise holds for.
 #

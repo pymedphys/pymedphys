@@ -37,10 +37,10 @@ Each introduced finding is then:
   limitation of the validator, a defect of the input that the
   de-identification cannot repair, or a defect of the engine that is
   recorded until it is fixed. An entry whose reason rests on a property of
-  the output names it (:data:`PREMISES`), and explains a finding only in an
-  output that has it (:func:`output_premises`), or, for ``dcentvfy``, only
-  for an attribute that a patient's outputs hold it for
-  (:func:`series_premises`);
+  the output, or of the output with its input, names it (:data:`PREMISES`),
+  and explains a finding only in an output that has it
+  (:func:`output_premises`), or, for ``dcentvfy``, only for an attribute
+  that a patient's inputs and outputs hold it for (:func:`series_premises`);
 - **not comparable**, where it lies below an attribute that the validator
   could not parse in the input, because its dictionary lacks it and the
   input is in Implicit VR or gives it the VR UN, while it could parse it in
@@ -101,8 +101,8 @@ OTHER_STUDIES_REFERENCED = "instances-of-other-studies-referenced-elsewhere"
 PIXEL_DATA_CLAIMED = "clean-pixel-data-claimed"
 VISUAL_FEATURES_CLAIMED = "clean-recognizable-visual-features-claimed"
 MIXED_MODALITY_SERIES = "each-iod-decides-in-a-series-of-mixed-modalities"
-# The properties of an output that a known difference can require, each
-# with what it means.
+# The properties of an output, or of a patient's outputs with their inputs,
+# that a known difference can require, each with what it means.
 PREMISES = {
     THIS_STUDY_REFERENCED: (
         "an instance that Referenced Series Sequence (0008,1115) lists is "
@@ -484,7 +484,7 @@ def _top_level(path: Path) -> _Top | None:
 
 
 def series_premises(pairs: Sequence[Pair]) -> frozenset[str]:
-    """Return the attribute premises that a patient's outputs hold.
+    """Return the attribute premises that a patient's inputs and outputs hold.
 
     :data:`MIXED_MODALITY_SERIES` holds for an attribute of a series, the
     inputs that share one Series Instance UID, where the inputs give more
