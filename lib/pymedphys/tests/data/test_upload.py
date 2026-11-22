@@ -104,6 +104,28 @@ def test_token_is_sent_in_a_header_not_the_url(zenodo):
     assert upload.HEADERS == original_headers
 
 
+@pytest.mark.parametrize("method", ["get", "post", "put", "delete"])
+def test_zenodo_requests_have_a_bounded_default_timeout(zenodo, method):
+    install, _ = zenodo
+    fake_requests = install(_Response(200))
+
+    upload.zenodo_api_with_helpful_fallback(URL, method)
+
+    (call,) = fake_requests.calls
+    assert call["timeout"] == upload.ZENODO_REQUEST_TIMEOUT_SECONDS
+    assert call["timeout"] > 0
+
+
+def test_explicit_zenodo_timeout_is_preserved(zenodo):
+    install, _ = zenodo
+    fake_requests = install(_Response(200))
+
+    upload.zenodo_api_with_helpful_fallback(URL, "get", timeout=15)
+
+    (call,) = fake_requests.calls
+    assert call["timeout"] == 15
+
+
 @pytest.mark.parametrize("status_code", [401, 403])
 def test_rejected_token_is_replaced_and_the_request_retried(zenodo, status_code):
     install, fake_keyring = zenodo
