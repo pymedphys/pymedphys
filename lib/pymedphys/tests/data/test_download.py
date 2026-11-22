@@ -14,6 +14,7 @@
 
 """Offline checks of the data download helper."""
 
+import contextlib
 import email.message
 import io
 import pathlib
@@ -101,6 +102,26 @@ def test_download_uses_a_timeout(tmp_path: pathlib.Path, monkeypatch):
 
     assert seen["timeout"] == download.DOWNLOAD_TIMEOUT_SECONDS
     assert (tmp_path / "a.bin").read_bytes() == b"payload"
+
+
+def test_signed_download_url_is_not_shown_in_progress(tmp_path, monkeypatch):
+    shown = []
+
+    def fake_urlopen(_url, **_kwargs):
+        return _FakeResponse(b"payload", content_length=7)
+
+    def fake_progress(_length, description):
+        shown.append(description)
+        return contextlib.nullcontext(download._NoProgress())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(download, "_progress_bar", fake_progress)
+
+    url = "https://example.invalid/file.bin?signature=" + "secret" * 4
+    download.download_with_progress(url, tmp_path / "file.bin")
+
+    assert shown == ["file.bin"]
+    assert (tmp_path / "file.bin").read_bytes() == b"payload"
 
 
 @pytest.mark.usefixtures("no_sleep")
