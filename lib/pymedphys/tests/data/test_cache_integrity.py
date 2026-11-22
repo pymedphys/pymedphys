@@ -21,6 +21,7 @@ temporary ``PYMEDPHYS_DATA_DIR``, and hashes come from a temporary copy of
 
 import hashlib
 import json
+import logging
 import os
 import pathlib
 import threading
@@ -91,6 +92,32 @@ def test_hash_checks_can_still_be_skipped_explicitly(cache, tmp_path):
     )
 
     assert path.read_text(encoding="utf-8") == "data"
+
+
+def test_zenodo_debug_log_does_not_disclose_signed_urls(
+    cache, monkeypatch, caplog
+):
+    data_dir, _ = cache
+    secret = "synthetic-private-signature"
+    signed_url = f"https://zenodo.org/api/files/example?signature={secret}"
+    monkeypatch.setattr(
+        download.zenodo,
+        "get_zenodo_file_urls",
+        lambda _record: {"data.txt": signed_url},
+    )
+    monkeypatch.setattr(
+        download,
+        "data_path",
+        lambda name, **_kwargs: data_dir / name,
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        paths = download.zenodo_data_paths("test-record", check_hash=False)
+
+    assert paths == [data_dir / "test-record" / "data.txt"]
+    assert "data.txt" in caplog.text
+    assert secret not in caplog.text
+    assert signed_url not in caplog.text
 
 
 def test_extracted_files_follow_a_changed_archive(cache, tmp_path):
