@@ -236,10 +236,9 @@ def fetch_system_diagnostics(
         basename = os.path.basename(nss_filepath)
         storage_filepath = os.path.join(storage_directory, basename)
         other_filepath = os.path.join(other_directory, basename)
-        if (
-            _existing_regular_file(storage_filepath, storage_fd)
-            or _existing_regular_file(other_filepath, other_fd)
-        ):
+        if _existing_regular_file(
+            storage_filepath, storage_fd
+        ) or _existing_regular_file(other_filepath, other_fd):
             print("    {} has already been copied.".format(basename))
             continue
         if _copy_zip_exclusive(nss_filepath, storage_filepath, storage_fd):

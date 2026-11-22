@@ -72,7 +72,9 @@ def test_machine_id_cannot_select_another_directory(tmp_path, monkeypatch, machi
     monkeypatch.setattr(
         diagnostics_zips,
         "fetch_system_diagnostics",
-        lambda *_args, **_kwargs: pytest.fail("No copy may start for an invalid machine"),
+        lambda *_args, **_kwargs: pytest.fail(
+            "No copy may start for an invalid machine"
+        ),
     )
     with pytest.raises(ValueError, match="Machine identifier"):
         diagnostics_zips.fetch_system_diagnostics_multi_linac(
@@ -93,7 +95,9 @@ def test_machine_id_cannot_follow_existing_symlink_outside_root(tmp_path, monkey
     monkeypatch.setattr(
         diagnostics_zips,
         "fetch_system_diagnostics",
-        lambda *_args, **_kwargs: pytest.fail("No copy may start through an unsafe symlink"),
+        lambda *_args, **_kwargs: pytest.fail(
+            "No copy may start through an unsafe symlink"
+        ),
     )
     with pytest.raises(ValueError, match="symlink|reparse"):
         diagnostics_zips.fetch_system_diagnostics_multi_linac(
@@ -129,9 +133,7 @@ def test_diagnostics_root_cannot_be_symlink_outside_storage(tmp_path, root_arg):
 
 @pytest.mark.parametrize("directory_name", ["to_be_indexed", "already_indexed"])
 @pytest.mark.parametrize("target", ["sibling", "outside"])
-def test_machine_directory_cannot_be_symlink_alias(
-    tmp_path, directory_name, target
-):
+def test_machine_directory_cannot_be_symlink_alias(tmp_path, directory_name, target):
     storage = tmp_path / "storage"
     parent = storage / directory_name
     parent.mkdir(parents=True)
