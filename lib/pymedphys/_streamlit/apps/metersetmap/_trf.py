@@ -125,6 +125,19 @@ def _attempt_patient_name_from_mosaiq(config, headers):
     return patient_name
 
 
+def _find_patient_trf_files(index_directory, patient_id):
+    """Match indexed patient directories without interpreting ID metacharacters."""
+    prefix = f"{patient_id}_"
+    return [
+        record
+        for machine_directory in index_directory.glob("*")
+        if machine_directory.is_dir()
+        for patient_directory in machine_directory.glob("*")
+        if patient_directory.is_dir() and patient_directory.name.startswith(prefix)
+        for record in patient_directory.glob("*/*/*/*.trf")
+    ]
+
+
 def trf_input_method(config, patient_id="", key_namespace="", **_):
     """Streamlit GUI method to facilitate TRF data provision.
 
@@ -183,7 +196,7 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
         )
         st.write(patient_id)
 
-        filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
+        filepaths = _find_patient_trf_files(indexed_trf_directory, patient_id)
 
         raw_timestamps = [
             "_".join(path.parent.name.split("_")[0:2]) for path in filepaths
