@@ -18,6 +18,7 @@ import base64
 import functools
 import os
 import pathlib
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -435,6 +436,17 @@ def advanced_debugging(config):
             st.write(f"Images Agree: `{agree}`")
 
 
+# DICOM patient IDs and delivery identifiers may contain path separators or
+# control characters. Treat them as filename data, never directory components.
+_UNSAFE_REPORT_FILENAME_CHARS = re.compile(r'[/\\\x00-\x1f<>:"|?*]')
+
+
+def _report_filename_stem(patient_id, reference_identifier, evaluation_identifier):
+    """Create one portable filename component from the report identifiers."""
+    raw = f"{patient_id} {reference_identifier} vs {evaluation_identifier}"
+    return _UNSAFE_REPORT_FILENAME_CHARS.sub("_", raw).strip(" .") or "metersetmap"
+
+
 def run_calculation(
     reference_results,
     evaluation_results,
@@ -458,9 +470,10 @@ def run_calculation(
     patient_id = reference_results["patient_id"]
 
     st.write("Creating figure...")
-    output_base_filename = (
-        f"{patient_id} {reference_results['identifier']} vs "
-        f"{evaluation_results['identifier']}"
+    output_base_filename = _report_filename_stem(
+        patient_id,
+        reference_results["identifier"],
+        evaluation_results["identifier"],
     )
     pdf_filepath = str(
         escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
