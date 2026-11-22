@@ -190,9 +190,7 @@ def test_zip_cache_extraction_rejects_preexisting_symlink_escape(cache, tmp_path
     archive = _zip(tmp_path / "source.zip", {"example.txt": "content"})
 
     with pytest.raises(ValueError, match="outside the cache"):
-        download.zip_data_paths(
-            "bundle.zip", check_hash=False, url=archive.as_uri()
-        )
+        download.zip_data_paths("bundle.zip", check_hash=False, url=archive.as_uri())
 
     assert list(outside.iterdir()) == []
 
