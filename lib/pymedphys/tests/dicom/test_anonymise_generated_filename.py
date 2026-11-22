@@ -45,9 +45,7 @@ def test_generated_filename_rejects_malformed_uid_without_echoing_it(
     with pytest.raises(
         ValueError, match="Invalid SOP Instance UID for generated filename"
     ) as caught:
-        create_filename_from_dataset(
-            _synthetic_dataset(invalid_uid), dirpath=tmp_path
-        )
+        create_filename_from_dataset(_synthetic_dataset(invalid_uid), dirpath=tmp_path)
 
     assert invalid_uid not in str(caught.value) or not invalid_uid
     assert list(tmp_path.iterdir()) == []
