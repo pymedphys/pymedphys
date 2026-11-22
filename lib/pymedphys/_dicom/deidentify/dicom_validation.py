@@ -32,12 +32,15 @@ Each introduced finding is then:
 
 - **explained**, where an entry of the known differences
   (:data:`KNOWN_DIFFERENCES`, :func:`read_known_differences`) matches it.
-  Each entry gives the reason, under one of three categories
+  Each entry gives the reason, under one of four categories
   (:class:`Category`): a consequence of the profile's own actions, a
-  limitation of the validator, or a defect of the engine that is recorded
-  until it is fixed. An entry whose reason rests on a property of the output
-  names it (:data:`PREMISES`), and explains a finding only in an output
-  that has it (:func:`output_premises`);
+  limitation of the validator, a defect of the input that the
+  de-identification cannot repair, or a defect of the engine that is
+  recorded until it is fixed. An entry whose reason rests on a property of
+  the output names it (:data:`PREMISES`), and explains a finding only in an
+  output that has it (:func:`output_premises`), or, for ``dcentvfy``, only
+  for an attribute that a patient's outputs hold it for
+  (:func:`series_premises`);
 - **not comparable**, where it lies below an attribute that the validator
   could not parse in the input, because its dictionary lacks it and the
   input is in Implicit VR or gives it the VR UN, while it could parse it in
@@ -97,6 +100,7 @@ THIS_STUDY_REFERENCED = "instances-of-this-study-referenced-elsewhere"
 OTHER_STUDIES_REFERENCED = "instances-of-other-studies-referenced-elsewhere"
 PIXEL_DATA_CLAIMED = "clean-pixel-data-claimed"
 VISUAL_FEATURES_CLAIMED = "clean-recognizable-visual-features-claimed"
+MIXED_MODALITY_SERIES = "each-iod-decides-in-a-series-of-mixed-modalities"
 # The properties of an output that a known difference can require, each
 # with what it means.
 PREMISES = {
@@ -117,7 +121,19 @@ PREMISES = {
         "De-identification Method Code Sequence (0012,0064) holds DCM 113102, "
         "the Clean Recognizable Visual Features Option's code"
     ),
+    MIXED_MODALITY_SERIES: (
+        "the outputs of a series whose inputs give more than one Modality "
+        "(0008,0060) hold the attribute or lack it by SOP Class alone, and "
+        "every input of the series holds it"
+    ),
 }
+# The premises that hold for one attribute of a patient's outputs, rather
+# than for an output as a whole (:func:`series_premises`).
+ATTRIBUTE_PREMISES = frozenset({MIXED_MODALITY_SERIES})
+
+_SOP_CLASS = 0x00080016
+_MODALITY = 0x00080060
+_SERIES_INSTANCE_UID = 0x0020000E
 
 
 class Category(enum.Enum):
@@ -128,6 +144,9 @@ class Category(enum.Enum):
     PROFILE = "profile"
     # A limitation or heuristic of the validator.
     VALIDATOR = "validator"
+    # A defect of the input that the de-identification cannot repair, where
+    # each output conforms to its own IOD.
+    SOURCE = "source"
     # A defect of the engine's output, recorded until it is fixed.
     ENGINE = "engine"
 
@@ -168,7 +187,8 @@ class KnownDifference:
         The explanation, in a sentence or two.
     requires : str
         One of :data:`PREMISES` that the output must have for this entry to
-        explain the finding, or ``""``.
+        explain the finding, or ``""``. One of :data:`ATTRIBUTE_PREMISES`
+        must hold for the finding's attribute.
     """
 
     validator: str
@@ -182,15 +202,30 @@ class KnownDifference:
     def matches(self, finding: Finding, premises: Collection[str] = ()) -> bool:
         """Return whether this entry explains a finding in an output.
 
-        ``premises`` are those of :data:`PREMISES` that the output has.
+        ``premises`` are those of :data:`PREMISES` that the output has, and
+        :func:`attribute_premise` of those of :data:`ATTRIBUTE_PREMISES`
+        that hold for an attribute.
         """
+        if self.requires in ATTRIBUTE_PREMISES:
+            held = attribute_premise(self.requires, finding.path) in premises
+        else:
+            held = not self.requires or self.requires in premises
         return (
             finding.validator == self.validator
             and finding.severity == self.severity
             and finding.message == self.message
             and any(fnmatch.fnmatchcase(finding.path, path) for path in self.paths)
-            and (not self.requires or self.requires in premises)
+            and held
         )
+
+
+def attribute_premise(premise: str, path: str) -> str:
+    """Return the premise of :data:`ATTRIBUTE_PREMISES` as it holds for an attribute.
+
+    >>> attribute_premise(MIXED_MODALITY_SERIES, "(0008,0021)")
+    'each-iod-decides-in-a-series-of-mixed-modalities (0008,0021)'
+    """
+    return f"{premise} {path}"
 
 
 def read_known_differences(
@@ -410,6 +445,83 @@ def output_premises(path: Path) -> frozenset[str]:
         premises.add(PIXEL_DATA_CLAIMED)
     if _VISUAL_FEATURES_CODE in codes:
         premises.add(VISUAL_FEATURES_CLAIMED)
+    return frozenset(premises)
+
+
+@dataclasses.dataclass(frozen=True)
+class _Top:
+    """A file's SOP Class, Modality, Series Instance UID, and top-level tags."""
+
+    sop_class: str
+    modality: str
+    series: str
+    tags: frozenset[int]
+
+
+def _top_level(path: Path) -> _Top | None:
+    """Read a file's top level, or return None if it cannot be read or has
+    no SOP Class UID.
+
+    Its values are compared by the caller and never leave this module.
+    """
+    # pydicom converts, and validates, each value as it is first read, so
+    # the values are read within the context too.
+    try:
+        with redacted_diagnostics():
+            dataset = pydicom.dcmread(path, stop_before_pixels=True, force=True)
+            tags = frozenset(
+                int(element.tag) for element in dataset if not element.tag.is_private
+            )
+            values = [
+                str(dataset[tag].value).strip(" \x00") if tag in dataset else ""
+                for tag in (_SOP_CLASS, _MODALITY, _SERIES_INSTANCE_UID)
+            ]
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    # A file that is not DICOM, such as an empty one, reads as a data set
+    # without a SOP Class UID.
+    return _Top(*values, tags=tags) if values[0] else None
+
+
+def series_premises(pairs: Sequence[Pair]) -> frozenset[str]:
+    """Return the attribute premises that a patient's outputs hold.
+
+    :data:`MIXED_MODALITY_SERIES` holds for an attribute of a series, the
+    inputs that share one Series Instance UID, where the inputs give more
+    than one Modality (0008,0060), which PS3.3 Section A.1.2.3 does not
+    allow; every input holds the attribute at its top level; and the
+    outputs of each SOP Class all hold it, or all lack it, while those of
+    another SOP Class differ. Each instance's own IOD then decides the
+    attribute's action, and each output's conformance to it is what the
+    per-file validators check. A series without a Series Instance UID or
+    Modality in an input holds none, and a patient with a file that cannot
+    be read, or that has no SOP Class UID, holds none, as ``dcentvfy`` stops
+    at such a file.
+    The values are compared here and never leave this function. Each is
+    returned as :func:`attribute_premise` gives it.
+    """
+    series: dict[str, list[tuple[_Top, _Top]]] = collections.defaultdict(list)
+    for pair in pairs:
+        source, output = _top_level(pair.source), _top_level(pair.output)
+        if source is None or output is None:
+            return frozenset()
+        series[source.series].append((source, output))
+    premises = set()
+    for uid, read in series.items():
+        if not uid or not all(source.modality for source, _ in read):
+            continue
+        if len({source.modality for source, _ in read}) < 2:
+            continue
+        held = frozenset.intersection(*(source.tags for source, _ in read))
+        for tag in held:
+            by_class: dict[str, set[bool]] = collections.defaultdict(set)
+            for source, output in read:
+                by_class[source.sop_class].add(tag in output.tags)
+            if all(len(kept) == 1 for kept in by_class.values()) and {
+                kept for (kept,) in by_class.values()
+            } == {True, False}:
+                path = f"({tag >> 16:04X},{tag & 0xFFFF:04X})"
+                premises.add(attribute_premise(MIXED_MODALITY_SERIES, path))
     return frozenset(premises)
 
 
@@ -704,7 +816,13 @@ def compare(  # pylint: disable = too-many-locals
     tallies: dict[str, _Tally] = collections.defaultdict(_Tally)
     introduced: dict[_Kind, list[tuple[int, int, str]]] = collections.defaultdict(list)
     # Only an entry that requires a premise needs the output read again.
-    required = any(difference.requires for difference in known)
+    required = any(
+        difference.requires and difference.requires not in ATTRIBUTE_PREMISES
+        for difference in known
+    )
+    by_attribute = any(
+        difference.requires in ATTRIBUTE_PREMISES for difference in known
+    )
     for index, sop_class in enumerate(sop_classes):
         premises = output_premises(outputs[index]) if required else frozenset()
         for source, output in zip(checked[index], checked[len(pairs) + index]):
@@ -730,7 +848,14 @@ def compare(  # pylint: disable = too-many-locals
             output = validators.run_dcentvfy(
                 toolset.dcentvfy, [outputs[index] for index in group]
             )
-            for kind, count in _introduced(source, output, tallies, known):
+            # The patient's files are read again only where its outputs
+            # gave a finding more often than its inputs.
+            premises = (
+                series_premises([pairs[index] for index in group])
+                if by_attribute and _gained(source, output)
+                else frozenset()
+            )
+            for kind, count in _introduced(source, output, tallies, known, premises):
                 introduced[kind].append((count, group[0], ""))
     return Comparison(
         versions=toolset.versions(),
@@ -774,6 +899,14 @@ def _patients(
     return [group for group in groups.values() if len(group) > 1]
 
 
+def _gained(source: Validation, output: Validation) -> bool:
+    """Whether the output gave a finding more often than the input."""
+    return any(
+        count > source.findings.get(finding, 0)
+        for finding, count in output.findings.items()
+    )
+
+
 def _status(validation: Validation) -> str:
     return validation.status.value
 
@@ -792,7 +925,9 @@ def _introduced(
 ) -> Iterable[tuple[_Kind, int]]:
     """Tally one comparison, and yield what the output introduced.
 
-    ``premises`` are those of :data:`PREMISES` that the output has.
+    ``premises`` are those of :data:`PREMISES` that the output has, or for
+    ``dcentvfy`` those of :data:`ATTRIBUTE_PREMISES` that the patient's
+    outputs hold (:func:`series_premises`).
     """
     tally = tallies[source.validator]
     tally.statuses[f"input {_status(source)}, output {_status(output)}"] += 1

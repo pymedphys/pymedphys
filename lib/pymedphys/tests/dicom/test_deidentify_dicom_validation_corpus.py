@@ -391,3 +391,65 @@ def test_a_dx_output_explains_the_attributes_whose_modules_dicom_validator_skips
     assert introduced == dict.fromkeys(
         (tag for tag, _ in DX_SHARED.values()), dicom_validation.Outcome.EXPLAINED
     )
+
+
+# What a CT Image's output loses where its input is in a PET series: Series
+# Date and Series Time, which X/D removes where they are Type 3, and
+# Radiopharmaceutical Information Sequence, which the CT Image IOD does not
+# define.
+CT_IN_PET_SERIES = ("(0008,0021)", "(0008,0031)", "(0054,0016)")
+
+
+def test_a_series_that_mixes_modalities_explains_what_each_iod_decides(
+    toolset, tmp_path, monkeypatch
+):
+    # A PET image and a CT image under one Series Instance UID, as in a
+    # MIDI-B Test series, which PS3.3 A.1.2.3 does not allow. The CT input
+    # holds the PET series' attributes too, so dcentvfy finds none of them
+    # missing in the inputs; their outputs differ by IOD, and the known
+    # differences explain each such attribute as the input's.
+    corpus = corpus_module.build_corpus()
+    files = {
+        file.name: pydicom.dcmread(io.BytesIO(file.data))
+        for file in corpus.files
+        if file.name in ("15-pet.dcm", "01-ct-1.dcm")
+    }
+    pet, ct = files["15-pet.dcm"], files["01-ct-1.dcm"]
+    ct.SeriesInstanceUID = pet.SeriesInstanceUID
+    ct.SeriesDate, ct.SeriesTime = pet.SeriesDate, pet.SeriesTime
+    ct.RadiopharmaceuticalInformationSequence = (
+        pet.RadiopharmaceuticalInformationSequence
+    )
+    source = tmp_path / "source"
+    source.mkdir()
+    pet.save_as(source / "pet.dcm", enforce_file_format=True)
+    ct.save_as(source / "ct.dcm", enforce_file_format=True)
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    discovery = run.discover(source)
+    result = api.deidentify(
+        source, tmp_path / "release", qc_pack=tmp_path / "qc", preset="basic"
+    ).result
+    pairs, unpaired = dicom_validation.pairs_from_run(discovery, result)
+    assert len(pairs) == 2 and unpaired == 0
+
+    comparison = dicom_validation.compare(pairs, toolset)
+    introduced = {
+        i.finding.path: (i.finding.message, i.outcome)
+        for i in comparison.introduced
+        if i.finding.validator == DCENTVFY
+    }
+
+    assert introduced == dict.fromkeys(
+        CT_IN_PET_SERIES,
+        (
+            "Attribute present in one instance but not the other",
+            dicom_validation.Outcome.EXPLAINED,
+        ),
+    )
+    (difference,) = {
+        comparison.known[i.difference - 1]
+        for i in comparison.introduced
+        if i.finding.validator == DCENTVFY
+    }
+    assert difference.category is dicom_validation.Category.SOURCE
+    assert comparison.passed

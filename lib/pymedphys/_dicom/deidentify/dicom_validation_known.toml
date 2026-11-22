@@ -11,12 +11,17 @@
 #   the finding, and the engine applies it as PS3.15 requires;
 # - validator: a limitation or heuristic of the validator, where the output
 #   conforms;
+# - source: a defect of the input that the de-identification cannot repair,
+#   where each output conforms to its own IOD, which the per-file
+#   validators check;
 # - engine: a defect of the engine's output, recorded here until it is
 #   fixed, when its entry is removed.
 #
 # An entry whose explanation rests on a property of the output names it in
 # requires, one of dicom_validation.PREMISES, and explains the finding only
-# in an output that has it.
+# in an output that has it. One of dicom_validation.ATTRIBUTE_PREMISES, which
+# dcentvfy's comparison of a patient's outputs evaluates, explains it only
+# for an attribute that the premise holds for.
 #
 # Keep entries narrow: a pattern of "*" is for findings that do not depend
 # on the attribute's place.
@@ -237,4 +242,28 @@ Description (0018,11A4) of DX Positioning. Where an output keeps no
 attribute of a module's own, the validator checks none of the modules that
 share these attributes and reports each of them as unexpected, as it does in
 a source that never held such an attribute.
+"""
+
+[[difference]]
+validator = "dcentvfy"
+severity = "warning"
+message = "Attribute present in one instance but not the other"
+paths = ["*"]
+category = "source"
+requires = "each-iod-decides-in-a-series-of-mixed-modalities"
+reason = """
+PS3.3 Section A.1.2.3 requires every instance of a series to be of one
+modality and to have the same Series information. An input series of more
+than one modality, such as a PET series that holds CT Image instances under
+its Series Instance UID, already breaks the first requirement, which no
+de-identification can repair. Each instance's own IOD then decides the
+action of each attribute. Table E.1-1 gives Series Date (0008,0021) and
+Series Time (0008,0031) X/D, a dummy value where the IOD makes them Type 1,
+as the PET Series Module does, and removal where it makes them Type 3, as
+the General Series Module does; and the engine removes a sequence that the
+IOD does not define, such as Radiopharmaceutical Information Sequence
+(0054,0016) in a CT Image. So outputs whose inputs all held the attribute
+differ by SOP Class, although each conforms to its own IOD. A series of one
+modality, which A.1.2.3 allows to mix IODs, gets no such explanation, nor
+does an attribute whose outputs differ within one SOP Class.
 """
