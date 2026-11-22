@@ -12,6 +12,15 @@ This project adheres to
 
 ## Unreleased
 
+### Safer clinical report downloads
+
+The DICOM Pseudonymisation ZIP and MetersetMap PDF screens now use native
+Streamlit download controls rather than raw HTML links with interpolated
+filenames. This avoids embedding clinical report filenames in HTML attributes
+or base64-encoded report content in page markup; the download filenames and
+report bytes are preserved, and PDFs use the correct MIME type.
+
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
