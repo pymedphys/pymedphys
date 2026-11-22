@@ -26,9 +26,10 @@ The redaction is scoped, not a filter: it adds nothing to Python's warning
 filters, which are process-wide and cannot be removed safely while other
 threads run, so warnings are still shown, recorded, or raised as the
 caller's filters say, and every other thread, and this one outside the
-context, sees the original messages. It works through two hooks, each
-wrapped once with a function that redacts only within the context and
-otherwise passes everything on unchanged: the log record factory
+context, sees the original messages unless the separate CLI-wide
+redaction context is active. It works through two hooks, each wrapped once
+with a function that redacts only within the relevant context and otherwise
+passes everything on unchanged: the log record factory
 (:func:`logging.setLogRecordFactory`), and the function to which CPython's
 :mod:`warnings` passes each warning to be shown or recorded,
 ``warnings._showwarnmsg``. That hook, unlike :func:`warnings.showwarning`,
@@ -137,7 +138,7 @@ _LOCK = threading.Lock()
 # CLI protection covers every thread while at least one listener context is
 # active. Unlike redacted_diagnostics(), it also handles pynetdicom records.
 _CLI_USERS = 0
-_CLI_WARNING_RESTORE = None
+_CLI_WARNING_RESTORE: tuple[Callable[..., object], bool] | None = None
 
 
 def _redacting() -> bool:
@@ -309,7 +310,9 @@ def redacted_cli_diagnostics() -> Iterator[None]:
         with _LOCK:
             _CLI_USERS -= 1
             if _CLI_USERS == 0:
-                previous_showwarning, was_capturing = _CLI_WARNING_RESTORE
+                restore = _CLI_WARNING_RESTORE
+                assert restore is not None
+                previous_showwarning, was_capturing = restore
                 if not was_capturing:
                     logging.captureWarnings(False)
                 warnings.showwarning = previous_showwarning
