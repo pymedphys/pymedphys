@@ -204,7 +204,6 @@ def test_index_logfiles_rejects_untrusted_index_paths_before_hashing(
     assert staged_file.exists()
 
 
-
 def test_indexed_root_symlink_is_rejected(tmp_path):
     outside = tmp_path / "external"
     outside.mkdir()
@@ -316,9 +315,7 @@ def test_secure_open_rejects_nonregular_file_without_blocking(tmp_path):
 
 
 @pytest.mark.parametrize("archive_matches", [True, False])
-def test_index_logfiles_hashes_open_archive_handle(
-    tmp_path, archive_matches
-):
+def test_index_logfiles_hashes_open_archive_handle(tmp_path, archive_matches):
     from pymedphys._trf.manage import index as trf_index
     from pymedphys._utilities.filehash import hash_file
 

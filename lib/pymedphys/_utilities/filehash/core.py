@@ -20,6 +20,7 @@ import hashlib
 
 def hash_fileobj(file_obj, dot_feedback=False):
     """Hash a preopened binary file without resolving or reopening its path."""
+    # A content fingerprint for archive consistency, not an authenticity proof.
     hasher = hashlib.sha1(usedforsecurity=False)
     while chunk := file_obj.read(65536):
         hasher.update(chunk)

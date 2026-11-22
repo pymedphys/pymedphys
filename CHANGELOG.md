@@ -14,7 +14,7 @@ This project adheres to
 
 ### (Potentially) breaking changes
 
-**Warning — archived TRF logfile paths:** 
+**Warning — archived TRF logfile paths:**
 `pymedphys._utilities.config.get_filepath` and
 `pymedphys._trf.manage.index.index_logfiles` now reject
 `index.json` entries containing absolute paths, parent traversal,

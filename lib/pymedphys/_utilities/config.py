@@ -132,7 +132,11 @@ def _resolve_indexed_logfile_path(indexed_root, relative_path):
     """
     try:
         relative_path = Path(relative_path)
-        if relative_path.is_absolute() or relative_path.drive or ".." in relative_path.parts:
+        if (
+            relative_path.is_absolute()
+            or relative_path.drive
+            or ".." in relative_path.parts
+        ):
             raise ValueError
 
         root = _indexed_root_path(indexed_root)
