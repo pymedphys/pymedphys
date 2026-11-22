@@ -245,7 +245,22 @@ def data_path(
     hash_filepath=None,
 ):
     filename = str(filename).replace(os.sep, "/")
-    filepath = get_data_dir().joinpath(filename)
+    data_dir = get_data_dir()
+    relative_path = pathlib.Path(filename)
+
+    # Cache keys must never write outside the configured data directory,
+    # including through pre-existing symlinks inside the cache.
+    if (
+        not filename
+        or relative_path == pathlib.Path(".")
+        or relative_path.is_absolute()
+        or ".." in relative_path.parts
+    ):
+        raise ValueError("Data filename must be a relative path inside the cache.")
+
+    filepath = data_dir.joinpath(relative_path)
+    if not filepath.resolve().is_relative_to(data_dir.resolve()):
+        raise ValueError("Data filename resolves outside the cache.")
 
     containing_directory = pathlib.Path(filepath).parent
     containing_directory.mkdir(exist_ok=True, parents=True)
