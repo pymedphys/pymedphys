@@ -14,7 +14,9 @@
 
 """Following ``redirect`` entries in a PyMedPhys ``config.toml``."""
 
+import os
 import pathlib
+import stat
 
 from pymedphys._imports import pytest
 
@@ -89,3 +91,23 @@ def test_config_path_may_be_a_redirect_target_not_yet_created(tmp_path):
     _redirect(tmp_path / "config.toml", "shared/config.toml")
 
     assert _config.get_config_path(tmp_path) == tmp_path / "shared" / "config.toml"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX directory permissions only")
+def test_new_config_directory_is_private(tmp_path, monkeypatch):
+    config_dir = tmp_path / ".pymedphys"
+    monkeypatch.setattr(_config, "config_dir_path", lambda: config_dir)
+
+    assert _config.get_config_dir() == config_dir
+    assert stat.S_IMODE(config_dir.stat().st_mode) == 0o700
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX directory permissions only")
+def test_existing_config_directory_permissions_are_preserved(tmp_path, monkeypatch):
+    config_dir = tmp_path / ".pymedphys"
+    config_dir.mkdir()
+    config_dir.chmod(0o750)
+    monkeypatch.setattr(_config, "config_dir_path", lambda: config_dir)
+
+    assert _config.get_config_dir() == config_dir
+    assert stat.S_IMODE(config_dir.stat().st_mode) == 0o750
