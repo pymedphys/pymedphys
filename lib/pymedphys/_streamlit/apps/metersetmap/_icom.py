@@ -24,7 +24,7 @@ from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._utilities import patient as utl_patient
 
 
-@st.cache_data
+@st.cache_data(scope="session")
 def load_icom_stream(icom_path):
     with lzma.open(icom_path, "r") as f:
         contents = f.read()
