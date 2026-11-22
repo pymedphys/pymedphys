@@ -94,9 +94,7 @@ def test_hash_checks_can_still_be_skipped_explicitly(cache, tmp_path):
     assert path.read_text(encoding="utf-8") == "data"
 
 
-def test_zenodo_debug_log_does_not_disclose_signed_urls(
-    cache, monkeypatch, caplog
-):
+def test_zenodo_debug_log_does_not_disclose_signed_urls(cache, monkeypatch, caplog):
     data_dir, _ = cache
     secret = "synthetic-private-signature"
     signed_url = f"https://zenodo.org/api/files/example?signature={secret}"
