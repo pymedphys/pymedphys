@@ -28,10 +28,15 @@ HEADERS = {"Content-Type": "application/json"}
 # How many access tokens to try before giving up on a request.
 MAX_TOKEN_ATTEMPTS = 3
 
+# Network inactivity limit per request. Uploads may be large, so this is a
+# generous socket timeout rather than a limit on total transfer duration.
+ZENODO_REQUEST_TIMEOUT_SECONDS = 180
+
 
 def zenodo_api_with_helpful_fallback(url, method, **kwargs):
     hostname = urllib.parse.urlparse(url).hostname
     caller_headers = kwargs.pop("headers", {})
+    kwargs.setdefault("timeout", ZENODO_REQUEST_TIMEOUT_SECONDS)
 
     for _ in range(MAX_TOKEN_ATTEMPTS):
         access_token = get_zenodo_access_token(hostname)
