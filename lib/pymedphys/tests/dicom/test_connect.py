@@ -518,9 +518,7 @@ def test_listener_cli_redacts_recorded_dependency_warnings(caplog):
     assert len(captured) == 1
     assert sentinel not in str(captured[0].message)
     assert sentinel not in captured[0].filename
-    assert "DICOM dependency diagnostic details suppressed" in str(
-        captured[0].message
-    )
+    assert "DICOM dependency diagnostic details suppressed" in str(captured[0].message)
     assert sentinel not in caplog.text
 
 
@@ -583,9 +581,7 @@ def test_listener_concurrent_store_keeps_conflict_in_orphan(
     first_dataset.Manufacturer = "ConcurrentFirst"
     second_dataset.Manufacturer = "ConcurrentSecond"
     dicom_listener = DicomListener(storage_directory=tmp_path)
-    context = types.SimpleNamespace(
-        transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
-    )
+    context = types.SimpleNamespace(transfer_syntax=pydicom.uid.ImplicitVRLittleEndian)
     first_event = types.SimpleNamespace(dataset=first_dataset, context=context)
     second_event = types.SimpleNamespace(dataset=second_dataset, context=context)
     canonical = _build_hierarchical_path_to_plan(tmp_path, first_dataset)
@@ -631,31 +627,21 @@ def test_listener_release_callback_tracks_each_association(tmp_path, test_datase
     first_dataset = copy.deepcopy(test_dataset)
     second_dataset = copy.deepcopy(test_dataset)
     second_dataset.SeriesInstanceUID = pydicom.uid.generate_uid()
-    context = types.SimpleNamespace(
-        transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
-    )
+    context = types.SimpleNamespace(transfer_syntax=pydicom.uid.ImplicitVRLittleEndian)
 
     for association in (first_assoc, second_assoc):
-        dicom_listener.on_association_accepted(
-            types.SimpleNamespace(assoc=association)
-        )
+        dicom_listener.on_association_accepted(types.SimpleNamespace(assoc=association))
     for association, dataset in (
         (first_assoc, first_dataset),
         (second_assoc, second_dataset),
     ):
         status = dicom_listener.on_c_store(
-            types.SimpleNamespace(
-                assoc=association, dataset=dataset, context=context
-            )
+            types.SimpleNamespace(assoc=association, dataset=dataset, context=context)
         )
         assert status.Status == 0x0000
 
-    dicom_listener.on_association_released(
-        types.SimpleNamespace(assoc=first_assoc)
-    )
-    dicom_listener.on_association_released(
-        types.SimpleNamespace(assoc=second_assoc)
-    )
+    dicom_listener.on_association_released(types.SimpleNamespace(assoc=first_assoc))
+    dicom_listener.on_association_released(types.SimpleNamespace(assoc=second_assoc))
     assert observed == [
         hierarchical_dicom_storage_directory(tmp_path, first_dataset),
         hierarchical_dicom_storage_directory(tmp_path, second_dataset),
