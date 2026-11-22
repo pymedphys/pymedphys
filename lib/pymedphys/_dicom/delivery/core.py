@@ -361,8 +361,11 @@ class DeliveryDicom(DeliveryBase):
                     "without the dose being calculated."
                 )
 
+        # The weight is divided by the final weight first, so that a large
+        # weight does not overflow its product with the meterset. The NumPy
+        # value comes first, so that the result stays a NumPy float.
         mu = [
-            meterset * np.array(weight) / final_mu_weight
+            (np.array(weight) / final_mu_weight) * meterset
             for control_point, weight in zip(control_points, cumulative_meterset_weight)
         ]
 

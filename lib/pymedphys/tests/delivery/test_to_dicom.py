@@ -256,9 +256,11 @@ def _assert_reads_back_as(written, delivery):
         # Decimal String, the weight has seven significant figures.
         (1e-10, ["0.000000E+00", "2.468000E-11", "2.468000E-11", "1.000000E-10"]),
         (2.5e9, ["0.000000", "617000000.000000", "617000000.000000", "2.500000E+09"]),
-        # Towards the ends of what a float holds.
+        # Towards the ends of what a float holds. At 1E308 the meterset
+        # read back overflowed where it multiplied before it divided.
         (1e-307, ["0.000000E+00", "2.468000E-308", "2.468000E-308", "1.000000E-307"]),
         (1e303, ["0.000000", "2.468000E+302", "2.468000E+302", "1.000000E+303"]),
+        (1e308, ["0.000000", "2.468000E+307", "2.468000E+307", "1.000000E+308"]),
     ],
 )
 def test_metersets_are_the_deliverys_on_any_template_weight_scale(
@@ -311,6 +313,26 @@ def test_weights_are_rounded_to_within_a_millionth_of_the_final_weight(
     assert abs(Decimal(written) - exact) <= Decimal(repr(final_weight)) * Decimal(
         repr(A_MILLIONTH)
     )
+
+
+def test_the_last_weight_is_the_final_weight_as_a_decimal():
+    # A valid 16-character Decimal String that a float does not hold: as
+    # a float it is 9999990000000000, which 9.999990E+15 also is.
+    final_weight = "9999990000000001"
+    template = _plan(TEMPLATE, final_weight=float(final_weight))
+    for beam in template.BeamSequence:
+        beam.FinalCumulativeMetersetWeight = final_weight
+    delivery = _delivery()
+
+    written = delivery.to_dicom(template)
+
+    for beam in written.BeamSequence:
+        assert str(beam.FinalCumulativeMetersetWeight) == final_weight
+        last_weight = beam.ControlPointSequence[-1].CumulativeMetersetWeight
+        assert Decimal(str(last_weight)) == Decimal(final_weight)
+
+    _assert_metersets_are_the_deliverys(written)
+    _assert_reads_back_as(written, delivery)
 
 
 def test_rounding_does_not_carry_a_weight_past_the_final_weight():

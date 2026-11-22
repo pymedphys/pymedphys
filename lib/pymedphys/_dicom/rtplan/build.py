@@ -68,7 +68,8 @@ def _cumulative_meterset_weight(
     precision and ``Delivery.to_dicom`` refuses the template.
 
     The weight at the end of the beam equals the final weight (PS3.3
-    C.8.8.14). Where the rounded weight would differ from it there, or
+    C.8.8.14), compared as the decimal numbers that are written, not as
+    floats. Where the rounded weight would differ from it there, or
     would pass it just before, the final weight itself is returned, as
     the template gives it.
     """
@@ -92,9 +93,13 @@ def _cumulative_meterset_weight(
         if len(fixed_point) <= _DECIMAL_STRING_MAX_LENGTH:
             text = fixed_point
 
-    written = float(text)
-    at_the_end = fraction == 1 or (fraction < 1 and written > final_weight)
-    if at_the_end and written != final_weight:
+    # As decimals: two Decimal Strings that a float holds as the same
+    # number, such as 9999990000000001 and 9.999990E+15, are not equal.
+    written = Decimal(text)
+    exact_final_weight = Decimal(str(final_cumulative_meterset_weight))
+    if (fraction == 1 and written != exact_final_weight) or (
+        fraction < 1 and written > exact_final_weight
+    ):
         return final_cumulative_meterset_weight
 
     return text
