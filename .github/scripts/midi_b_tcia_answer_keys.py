@@ -71,6 +71,9 @@ _FASPEX = re.compile(r'href="(https://faspex\.cancerimagingarchive\.net/[^"]+)"'
 _SAFE_NAME = re.compile(r"[A-Za-z0-9 ._()+-]{1,200}")
 _SQLITE = b"SQLite format 3\x00"
 CHUNK = 1 << 20
+# The page is only an HTML link index. A remote server must not be able to
+# stream arbitrarily many bytes into the benchmark runner's memory.
+MAX_PAGE_BYTES = 1 << 20
 # TCIA's site sometimes stops answering the runners for many minutes: up
 # to ten tries over about 40 minutes, 30 s to 5 min apart, with jitter, so
 # that the jobs of one run do not ask together.
@@ -216,7 +219,10 @@ def _page(
         try:
             # A constant HTTPS URL.
             with urllib.request.urlopen(request, timeout=60) as response:  # nosec B310
-                return response.read().decode("utf-8", "replace")
+                page = response.read(MAX_PAGE_BYTES + 1)
+                if len(page) > MAX_PAGE_BYTES:
+                    raise ValueError("TCIA's MIDI-B page exceeds the HTML size limit.")
+                return page.decode("utf-8", "replace")
         except OSError as error:
             if attempt == attempts:
                 raise
