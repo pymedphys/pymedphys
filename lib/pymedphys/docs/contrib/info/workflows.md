@@ -25,6 +25,7 @@ Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
+Manual run -> clean-graphics-check.yml
 Manual run -> face-validation.yml
 Manual run -> face-validation-visible-human.yml
 Manual run -> face-validation-keating.yml
@@ -665,6 +666,14 @@ Safe Private Option against TCIA's original.
   Once each new edition is reviewed, the pin moved or the edition added to
   `REVIEWED` in `lib/pymedphys/_dev/tcia_edition_check.py`, close the issue; a
   later finding opens a new one
+
+#### `clean-graphics-check.yml`
+
+Runs the Clean Graphics Option on eight public instances of real people that hold graphics, and counts what it does: four softcopy Presentation States of the iHEALTH 0.55 T cardiac and knee MRI of consented volunteers on Zenodo (CC BY 4.0), whose Graphic Annotation Sequences hold text and graphic objects, and four RT Images of the BRAVEHeart trial's patients in the University of Sydney's research data store (CC BY 4.0), each with four curve groups. MIDI-B's instances hold no graphics, so this is the option's own public check.
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra and runs `python -m pymedphys._dicom.deidentify.clean_graphics_check check` through `.github/scripts/run_redacted.py`. The command reads each instance over HTTP ranges from its archive, refuses an archive unless its size and central directory are those that `text_evaluation_archives` pins, and an instance unless its CRC-32, SHA-256, and SOP Class are those that the check pins, runs each under Modified Dates, alone and with Clean Graphics, with reviewed annotations lists built from its own annotations, and fails unless every expectation is met. Its job can only read the repository
+- **Results**: the job summary shows `clean-graphics-check.md`, and the `clean-graphics-check-results` artefact, kept for 90 days, holds it with `clean-graphics-check.json` and `commit.txt`. They hold only counts, codes, tag numbers, digests, versions, and the data sets' public identifiers. The instances are of real people, so they are held in memory only and never written, cached, or uploaded, and nothing else read from them leaves the runner
 
 #### `face-validation.yml`
 
