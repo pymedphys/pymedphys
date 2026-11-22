@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-import base64
 import functools
 import os
 import pathlib
@@ -546,13 +545,12 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
 
         pdf_filename = pathlib.Path(pdf_filepath).name
 
-        pdf_b64 = base64.b64encode(pdf_contents).decode()
-        href = f"""
-            <a href="data:file/zip;base64,{pdf_b64}" download='{pdf_filename}'>
-                Click to download {pdf_filename}
-            </a>
-        """
-        st.markdown(href, unsafe_allow_html=True)
+        st.download_button(
+            label=f"Click to download {pdf_filename}",
+            data=pdf_contents,
+            file_name=pdf_filename,
+            mime="application/pdf",
+        )
 
     else:
         if sys.platform == "win32":
