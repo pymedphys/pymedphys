@@ -96,7 +96,13 @@ No finding of any kind is a reason where every match of its source in
 De-identification Method (0012,0063) lies wholly inside the method digest
 that the run writes there, which the coverage records, since the digest
 holds no source value
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.in_method_digest`).
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.in_method_digest`),
+nor where the run selects Modified Dates and every match of its source in
+its element lies wholly inside the nominal UTC offset ``+0000`` that the
+option writes, whatever the source held, in Timezone Offset From UTC
+(0008,0201) or at the end of a datetime that it moved, since that offset
+holds no source value either
+(:func:`~pymedphys._dicom.deidentify.residual_offsets.in_nominal_offset`).
 Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
@@ -164,10 +170,11 @@ from .residuals import (
     find_residuals,
     reviewed_findings,
 )
+from .residual_offsets import in_nominal_offset, writes_nominal_offset
 from .residual_shifts import KINDS as SHIFTED_KINDS
 from .residual_shifts import shifted_date
 from .residual_vocabulary import vocabulary_descriptor, vocabulary_meaning
-from .policy import SAFE_PRIVATE
+from .policy import MODIFIED_DATES, SAFE_PRIVATE
 from .safe_private import SafePrivateList
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 
@@ -776,6 +783,16 @@ def release_condition(
             each, kept := kept or KeptValues(written), sources, coverage.options
         ):
             exempted.append((each, Exemption.SHIFTED_DATE))
+            continue
+        if (
+            MODIFIED_DATES in coverage.options
+            and each.location.element is not None
+            and writes_nominal_offset(each.location.element.tag)
+            and in_nominal_offset(
+                each, kept := kept or KeptValues(written), sources, coverage.options
+            )
+        ):
+            exempted.append((each, Exemption.NOMINAL_OFFSET))
             continue
         reason = _finding_reason(each, identifiers, coverage.options)
         if reason.code in _EXPLICABLE:

@@ -962,6 +962,8 @@ def _exempted(section: object) -> list[Block]:
             "that Modified Dates shifted, a value that a selected option keeps, "
             "text in a private creator that the run's safe private list keeps, "
             "the method digest that the run writes, which holds no source value, "
+            "the nominal UTC offset that Modified Dates writes, which holds none "
+            "either, "
             "or a standard code's meaning, or a UID that a selected option "
             "keeps, that only instances the run did not write held, a kept code "
             "meaning or technique descriptor made only of the reviewed technique "
