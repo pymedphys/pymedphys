@@ -79,7 +79,9 @@ class GammaPassCounts:
         if self.analysed == 0:
             raise ValueError(_NO_ANALYSED_POINTS)
 
-        return 100 * self.passed / self.analysed
+        # Python integers, because 100 times a NumPy integer count can
+        # overflow its fixed width.
+        return 100 * int(self.passed) / int(self.analysed)
 
 
 def gamma_pass_counts(gamma) -> GammaPassCounts:
