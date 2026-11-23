@@ -7,6 +7,8 @@ from pymedphys._imports import keyring, requests
 
 ZENODO_HOSTNAME = "zenodo.org"
 BASE_URL = f"https://{ZENODO_HOSTNAME}/api/records/"
+# Record metadata is a small JSON index, never a binary archive.
+MAX_RECORD_METADATA_BYTES = 2 * 1024 * 1024
 HERE = pathlib.Path(__file__).resolve().parent
 
 
@@ -28,11 +30,17 @@ def get_all_zenodo_file_data(record_name):
 
 @functools.lru_cache()
 def get_all_zenodo_file_data_by_id(record_id):
-    response = requests.get(f"{BASE_URL}{record_id}", timeout=30)
-    data = json.loads(response.text)
-    files = data["files"]
-
-    return files
+    # A record's JSON index comes from a remote server. Stream it with a hard
+    # cap so a faulty endpoint cannot consume unbounded application memory.
+    with requests.get(f"{BASE_URL}{record_id}", timeout=30, stream=True) as response:
+        response.raise_for_status()
+        payload = bytearray()
+        for chunk in response.iter_content(chunk_size=64 * 1024):
+            payload.extend(chunk)
+            if len(payload) > MAX_RECORD_METADATA_BYTES:
+                raise ValueError("Zenodo record metadata exceeds the size limit.")
+    data = json.loads(payload)
+    return data["files"]
 
 
 @functools.lru_cache()
