@@ -6,7 +6,6 @@ from .build import (
     merge_beam_sequences,
     replace_beam_sequence,
     replace_fraction_group,
-    restore_trailing_zeros,
 )
 from .core import (
     get_beam_indices_of_fraction_group,
