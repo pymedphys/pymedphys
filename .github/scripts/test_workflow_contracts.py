@@ -303,7 +303,12 @@ class WorkflowContractTests(unittest.TestCase):
         chosen = select_checks([], event_name="merge_group")
         self.assertEqual(
             {output for output, value in chosen.items() if not value},
-            {"run-full-matrix"},
+            {"run-full-matrix", "run-dependency-corpus"},
+        )
+        self.assertIn(
+            "      dependency-corpus: ${{ github.event_name != 'merge_group' && "
+            "needs.changes.outputs.run-dependency-corpus != 'false' }}\n",
+            jobs("ci.yml")["unit-tests"],
         )
         for filename, summary_id in (
             ("ci.yml", "summary"),
@@ -614,7 +619,30 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertTrue((WORKFLOWS.parents[1] / path).is_file())
         workflow = jobs("unit-tests.yml")
         floors, test = workflow["dependency-floors"], workflow["test"]
-        self.assertIn(f"        part: [{', '.join(pydicom_coverage.PARTS)}]\n", floors)
+        # The dependency floors and the dicom extra's run alone run every
+        # part when the dependency corpus is selected, and otherwise only the
+        # parts outside the corpus.
+        everywhere = ("deidentify-a-o", "others")
+        self.assertTrue(set(everywhere) < set(pydicom_coverage.PARTS))
+        every_part = ", ".join(f'"{part}"' for part in pydicom_coverage.PARTS)
+        kept = ", ".join(f'"{part}"' for part in everywhere)
+        dependency_parts = (
+            "        part: ${{ inputs.dependency-corpus && "
+            f"fromJSON('[{every_part}]') || fromJSON('[{kept}]') }}}}\n"
+        )
+        self.assertIn(dependency_parts, floors)
+        self.assertIn(
+            "      dependency-corpus:\n        required: false\n"
+            "        type: boolean\n        default: true\n",
+            text,
+        )
+        # Only CI narrows it; the release runs every part.
+        for caller in sorted(WORKFLOWS.glob("*.yml")):
+            if caller.name not in ("unit-tests.yml", "ci.yml"):
+                with self.subTest(caller=caller.name):
+                    self.assertNotIn(
+                        "dependency-corpus", caller.read_text(encoding="utf-8")
+                    )
         # The growing corpus gets an hour in both matrices; other floor
         # parts keep thirty minutes, while Windows already gets an hour.
         self.assertIn(
@@ -696,18 +724,18 @@ class WorkflowContractTests(unittest.TestCase):
         # place of the paths, and its others part adds the other parts'
         # ignores to them.
         narrow = workflow["narrow-extras"]
-        part = (
-            "          - extra: dicom\n"
-            "            part: {}\n"
-            "            marks: not slow\n"
-            "            paths: tests/dicom\n"
+        self.assertIn(
+            "        extra: [dicom]\n"
+            + dependency_parts
+            + "        marks: [not slow]\n"
+            "        paths: [tests/dicom]\n",
+            narrow,
         )
-        for name in pydicom_coverage.PARTS:
-            with self.subTest(narrow_part=name):
-                self.assertEqual(narrow.count(part.format(name)), 1)
-        self.assertEqual(
-            narrow.count("            part: "), len(pydicom_coverage.PARTS)
-        )
+        # The other extras run whole; each names its own extra, so none can
+        # join a dicom combination.
+        included = narrow.split("        include:\n", 1)[1]
+        self.assertNotIn("part:", included)
+        self.assertNotIn("extra: dicom", included)
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
             *ALONE_SELECTION,
