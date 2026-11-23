@@ -139,6 +139,21 @@ def test_percent_passed_is_out_of_one_hundred():
 
 
 @pytest.mark.parametrize(
+    ("passed", "analysed", "percent"),
+    [
+        (np.uint8(19), np.uint8(20), 95),
+        (np.int8(2), np.int8(3), 100 * 2 / 3),
+        (np.int32(30_000_000), np.int32(40_000_000), 75),
+    ],
+    ids=["uint8", "int8", "int32"],
+)
+def test_percent_passed_of_numpy_integer_counts(passed, analysed, percent):
+    # 100 times each of these counts overflows its NumPy integer type.
+    counts = GammaPassCounts(passed=passed, analysed=analysed)
+    assert counts.percent_passed == pytest.approx(percent)
+
+
+@pytest.mark.parametrize(
     ("passed", "analysed"), [(-1, 3), (4, 3), (0, -1), (1.5, 3), (True, 3)]
 )
 def test_inconsistent_counts_are_rejected(passed, analysed):
