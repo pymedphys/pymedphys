@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify import text_evaluation_idc as idc
 from pymedphys._dicom.deidentify import text_evaluation_phantoms as phantoms
 from pymedphys._dicom.deidentify import text_evaluation_search as search
 
+from . import _classic_images as classic
 from .test_deidentify_text_evaluation_idc import UUID, _row, _series_folder
 from .test_deidentify_text_evaluation_phantom_report import _phantom_file
 
@@ -391,3 +392,90 @@ def test_phantoms_held_out_are_not_previewed_while_tuning(
         out / "summary.json",
         out / "summary.md",
     ]
+
+
+def _measured(tmp_path, selected, downloads, name, *options):
+    out = tmp_path / name
+    arguments = [str(selected / "series.json"), str(downloads), "--evaluated", "all"]
+    command.main(["idc-measure", *arguments, *options, "--out", str(out)])
+    return out
+
+
+@pytest.mark.parametrize("converted", [False, True])
+def test_a_run_measured_in_shards_merges_to_the_run_measured_whole(
+    tmp_path, monkeypatch, stand_in, converted
+):
+    del stand_in
+    rows = [_row(number) for number in range(1, 6)]
+    # Two series of one patient, which the bootstrap resamples as one.
+    rows[2]["PatientID"] = rows[0]["PatientID"]
+    monkeypatch.setattr(command, "index_rows", lambda wheel: rows)
+    selected = tmp_path / "selected"
+    command.main(
+        ["idc-select", "unused.whl", "--per-collection", "9", "--out", str(selected)]
+    )
+    downloads = tmp_path / "downloads"
+    for number in range(1, 6):
+        # Classic CT images that convert, three slices of each series.
+        folder = downloads / UUID.format(number)
+        folder.mkdir(parents=True)
+        for index, dataset in enumerate(classic.classic_series("CT", series=number)):
+            dataset.SeriesInstanceUID = f"2.25.{number}"
+            (folder / f"{index}.dcm").write_bytes(classic.encoded(dataset))
+    extra = ["--converted"] if converted else []
+    whole = _measured(tmp_path, selected, downloads, "whole", *extra)
+    records = [
+        _measured(
+            tmp_path, selected, downloads, f"shard-{k}", *extra, "--shard", f"{k}/3"
+        )
+        / "shard.json"
+        for k in range(3)
+    ]
+    subjects = [
+        each["subject"] for each in json.loads((selected / "series.json").read_text())
+    ]
+    held = []
+    for record in records:
+        assert sorted(each.name for each in record.parent.iterdir()) == ["shard.json"]
+        text = record.read_text()
+        assert not any(name in text for name in ("INVENTED", *subjects))
+        found = json.loads(text)
+        held.append(len(found["named"]) + found["withheld"])
+    # Four subjects in three shards, numbered in the series' order: the
+    # patient's two series stay together.
+    numbers = {name: index for index, name in enumerate(dict.fromkeys(subjects))}
+    assert len(numbers) == 4
+    assert held == [sum(numbers[name] % 3 == k for name in subjects) for k in range(3)]
+    out = tmp_path / "merged"
+    assert command.main(["idc-merge", *map(str, records), "--out", str(out)]) == 0
+    names = sorted(each.name for each in whole.iterdir())
+    assert sorted(each.name for each in out.iterdir()) == names
+    for name in names:
+        assert (out / name).read_text() == (whole / name).read_text()
+    summary = json.loads((out / "summary.json").read_text())
+    assert sum(summary["frames"].values()) == 15
+    assert not summary["skipped"]
+
+
+def test_a_merge_refuses_records_not_of_idc_measure(tmp_path):
+    path = tmp_path / "shard.json"
+    for content in ("not JSON", "[]", json.dumps({"run": {"model": "other"}})):
+        path.write_text(content)
+        with pytest.raises(SystemExit, match="shard's record"):
+            command.main(["idc-merge", str(path), "--out", str(tmp_path / "o")])
+
+
+@pytest.mark.parametrize("shard", ["1/1", "-1/2", "a/2", "1", "0/0"])
+def test_a_shard_must_be_k_of_n(tmp_path, shard):
+    with pytest.raises(SystemExit):
+        command.main(
+            [
+                "idc-measure",
+                "s.json",
+                "d",
+                "--shard",
+                shard,
+                "--out",
+                str(tmp_path / "o"),
+            ]
+        )

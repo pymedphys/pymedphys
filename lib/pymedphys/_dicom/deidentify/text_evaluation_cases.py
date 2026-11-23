@@ -101,12 +101,13 @@ def reported(public: Mapping[str, str] | None) -> dict[str, str] | None:
     return dict(public) if allowed and held_up else None
 
 
-def cases_report(evaluation: Evaluation) -> dict[str, Any]:
+def cases_report(evaluation: Evaluation, *, withheld: int = 0) -> dict[str, Any]:
     """Return each reported case's counts, as the module describes, for
-    JSON, in the order of the cases."""
+    JSON, in the order of the cases, with ``withheld`` more cases counted
+    as withheld, such as those of a run's shards
+    (:mod:`~.text_evaluation_shards`)."""
     points = evaluation.settings.points
     cases = []
-    withheld = 0
     for result in evaluation.results:
         public = reported(result.public)
         if public is None:

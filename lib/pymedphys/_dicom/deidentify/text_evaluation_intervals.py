@@ -50,13 +50,19 @@ def cluster_bootstrap(
     seed: int,
 ) -> tuple[float, float] | None:
     """The 95% percentile interval of a ratio of sums, resampling clusters
-    with replacement; None with fewer than two clusters that count."""
+    with replacement; None with fewer than two clusters that count.
+
+    The clusters are put in the order of their counts before they are
+    resampled, so that the interval depends on their counts alone, not on
+    the order in which they are given."""
     numerators = np.asarray(numerators, dtype=np.float64)
     denominators = np.asarray(denominators, dtype=np.float64)
     counted = denominators > 0
     if int(np.count_nonzero(counted)) < 2 or replicates < 1:
         return None
     numerators, denominators = numerators[counted], denominators[counted]
+    order = np.lexsort((numerators, denominators))
+    numerators, denominators = numerators[order], denominators[order]
     rng = np.random.default_rng(seed)
     chosen = rng.integers(0, numerators.size, size=(replicates, numerators.size))
     ratios = numerators[chosen].sum(axis=1) / denominators[chosen].sum(axis=1)
