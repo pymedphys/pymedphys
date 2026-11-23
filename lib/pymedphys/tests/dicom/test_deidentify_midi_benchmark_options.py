@@ -113,7 +113,7 @@ def _sources(tmp_path):
 def test_a_custom_option_set_is_run_and_recorded(sources):
     work, document = _run(sources, "option", options=[UIDS])
 
-    assert document["format"] == "pymedphys-deid-midi-benchmark/4"
+    assert document["format"] == "pymedphys-deid-midi-benchmark/5"
     assert document["versions"]["preset"] is None
     assert document["versions"]["options"] == [UIDS]
     assert "| options | retain_uids |" in (work / "benchmark.md").read_text()

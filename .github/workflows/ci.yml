@@ -32,8 +32,12 @@ jobs:
   # Marking a PR ready for review starts a full run, and converting it to a
   # draft cancels an in-flight one. A skipped required check counts as passing,
   # but a draft can neither merge nor enter the merge queue.
+  # A merge group selects every check but the full matrix whatever it changes,
+  # so it skips this job and each selected job runs on its event instead: a
+  # job that waits for another waits for a runner again after it, and in a
+  # busy queue that wait alone took an hour.
   changes:
-    if: github.event.pull_request.draft != true
+    if: github.event_name != 'merge_group' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -47,6 +51,7 @@ jobs:
       run-docs: ${{ steps.select.outputs.run-docs }}
       run-scripts: ${{ steps.select.outputs.run-scripts }}
       run-full-matrix: ${{ steps.select.outputs.run-full-matrix }}
+      run-dependency-corpus: ${{ steps.select.outputs.run-dependency-corpus }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,7 +68,7 @@ jobs:
 
   script-tests:
     needs: [changes]
-    if: needs.changes.outputs.run-scripts == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-scripts == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -101,27 +106,32 @@ jobs:
   # token starts a new run, which cancels this one.
   lint:
     needs: [changes]
-    if: needs.changes.outputs.run-python == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-python == 'true') }}
     uses: ./.github/workflows/lint.yml
 
   type-check:
     needs: [changes]
-    if: needs.changes.outputs.run-python == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-python == 'true') }}
     uses: ./.github/workflows/type-check.yml
 
   unit-tests:
     needs: [changes]
-    if: needs.changes.outputs.run-python == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-python == 'true') }}
     uses: ./.github/workflows/unit-tests.yml
     with:
       # The selector owns the full-test label. Only an explicit false keeps the
       # quick matrix, so a missing or invalid output runs the full matrix.
-      quick: ${{ needs.changes.outputs.run-full-matrix == 'false' }}
+      # Merge groups, which skip the selector, use the quick matrix.
+      quick: ${{ github.event_name == 'merge_group' || needs.changes.outputs.run-full-matrix == 'false' }}
+      # The dicom extra's and the dependency floors' corpus parts follow their
+      # own selection; merge groups leave them to the nightly run, as the
+      # selector chooses. Only an explicit false skips them otherwise.
+      dependency-corpus: ${{ github.event_name != 'merge_group' && needs.changes.outputs.run-dependency-corpus != 'false' }}
 
   # Extended checks share selection outputs with the required summary.
   integration-tests:
     needs: [changes]
-    if: needs.changes.outputs.run-integration == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-integration == 'true') }}
     uses: ./.github/workflows/integration-tests.yml
     with:
       # Only explicit false skips a component; absent outputs keep coverage.
@@ -132,12 +142,12 @@ jobs:
 
   mosaiq-db-tests:
     needs: [changes]
-    if: needs.changes.outputs.run-database == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-database == 'true') }}
     uses: ./.github/workflows/mosaiq-db-tests.yml
 
   docs-check:
     needs: [changes]
-    if: needs.changes.outputs.run-docs == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-docs == 'true') }}
     uses: ./.github/workflows/docs.yml
     permissions:
       contents: read
@@ -163,6 +173,7 @@ jobs:
         run: >-
           python .github/scripts/check_workflow_status.py
           --title 'CI Results'
+          --merge-group-runs-every-check
           --conditional lint=run-python
           --conditional type-check=run-python
           --conditional unit-tests=run-python

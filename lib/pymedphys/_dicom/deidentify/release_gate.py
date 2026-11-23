@@ -76,7 +76,11 @@ such as Study Description, or a private copy of one
 or it is a removed requested procedure code's Code Value, Coding Scheme
 Designator, or Code Meaning equal to the same attribute of a kept code item,
 as where equipment copied the request's code into the procedure's
-(:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
+(:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`),
+or it is a removed code item's Coding Scheme Designator equal to the whole
+designator of a kept code item, as where Clean Structured Content removes a
+content item and keeps another of the same local scheme
+(:func:`~pymedphys._dicom.deidentify.residual_copies.shared_designator`).
 A date or datetime equal to a whole date, time, or datetime that an option
 keeps, a datetime whose date equals a whole date that an option keeps, or a
 date, or a datetime's date, that begins a whole datetime that an option
@@ -92,7 +96,13 @@ No finding of any kind is a reason where every match of its source in
 De-identification Method (0012,0063) lies wholly inside the method digest
 that the run writes there, which the coverage records, since the digest
 holds no source value
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.in_method_digest`).
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.in_method_digest`),
+nor where the run selects Modified Dates and every match of its source in
+its element lies wholly inside the nominal UTC offset ``+0000`` that the
+option writes, whatever the source held, in Timezone Offset From UTC
+(0008,0201) or at the end of a datetime that it moved, since that offset
+holds no source value either
+(:func:`~pymedphys._dicom.deidentify.residual_offsets.in_nominal_offset`).
 Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
@@ -138,7 +148,7 @@ import re
 
 from .file_layout import ElementPath, Location, Region
 from .option_kept import kept_text
-from .residual_copies import copied_request_code
+from .residual_copies import copied_request_code, shared_designator
 from .residual_exemptions import (
     DEIDENTIFICATION_METHOD,
     Exemption,
@@ -160,10 +170,11 @@ from .residuals import (
     find_residuals,
     reviewed_findings,
 )
+from .residual_offsets import in_nominal_offset, writes_nominal_offset
 from .residual_shifts import KINDS as SHIFTED_KINDS
 from .residual_shifts import shifted_date
 from .residual_vocabulary import vocabulary_descriptor, vocabulary_meaning
-from .policy import SAFE_PRIVATE
+from .policy import MODIFIED_DATES, SAFE_PRIVATE
 from .safe_private import SafePrivateList
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 
@@ -342,7 +353,10 @@ class Coverage:
         (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`),
         and a requested procedure code's value found from such values alone,
         equal to the same attribute of a kept code item, can be explained
-        (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
+        (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`),
+        as can a code item's Coding Scheme Designator, equal to the whole
+        designator of a kept code item
+        (:func:`~pymedphys._dicom.deidentify.residual_copies.shared_designator`).
     safe_private_list : SafePrivateList or None, optional
         The safe private list that the run chose under the Retain Safe
         Private Option, whose kept private creators can explain a text
@@ -770,6 +784,16 @@ def release_condition(
         ):
             exempted.append((each, Exemption.SHIFTED_DATE))
             continue
+        if (
+            MODIFIED_DATES in coverage.options
+            and each.location.element is not None
+            and writes_nominal_offset(each.location.element.tag)
+            and in_nominal_offset(
+                each, kept := kept or KeptValues(written), sources, coverage.options
+            )
+        ):
+            exempted.append((each, Exemption.NOMINAL_OFFSET))
+            continue
         reason = _finding_reason(each, identifiers, coverage.options)
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
@@ -786,6 +810,7 @@ def release_condition(
                     or vocabulary_meaning(each, kept, sources)
                     or copied_request_code(each, kept, sources, coverage.removed)
                     or vocabulary_descriptor(each, kept, sources)
+                    or shared_designator(each, kept, sources, coverage.removed)
                 )
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(
