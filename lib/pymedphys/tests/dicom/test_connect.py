@@ -16,6 +16,7 @@
 
 # pylint: disable=redefined-outer-name, no-member
 
+import logging
 import pathlib
 import re
 import shutil
@@ -506,6 +507,47 @@ def test_listener_process_reports_a_listener_that_fails_to_start(
             pass
 
     assert "OverflowError" in str(caught.value)
+
+
+@pytest.mark.pydicom
+def test_dicom_sender_log_does_not_reveal_sop_uid(test_dataset, monkeypatch, caplog):
+    from pymedphys._dicom.connect import send as sender_module
+
+    association = Mock(is_established=True)
+    association.send_c_store.return_value = types.SimpleNamespace(Status=0)
+    ae = Mock()
+    ae.associate.return_value = association
+    monkeypatch.setattr(sender_module.pynetdicom, "AE", lambda: ae)
+
+    sender = DicomSender()
+    with caplog.at_level(logging.DEBUG):
+        sender.send([test_dataset])
+
+    assert "Sending DICOM object" in caplog.text
+    assert str(test_dataset.SOPInstanceUID) not in caplog.text
+    association.send_c_store.assert_called_once_with(test_dataset)
+
+
+@pytest.mark.pydicom
+def test_sender_invalid_dicom_path_is_not_logged(tmp_path, monkeypatch, caplog):
+    from pymedphys._dicom.connect import send as sender_module
+
+    path = tmp_path / "synthetic-patient-12345.dcm"
+    monkeypatch.setattr(DicomSender, "verify", lambda _self: True)
+
+    def reject_dicom(_path):
+        raise pydicom.errors.InvalidDicomError("not valid")
+
+    monkeypatch.setattr(sender_module.pydicom, "dcmread", reject_dicom)
+    args = types.SimpleNamespace(
+        host="localhost", port=11112, aetitle="PYMEDPHYSCONNECT", dcmfiles=[str(path)]
+    )
+    with caplog.at_level(logging.ERROR):
+        sender_module.send_cli(args)
+
+    assert "Invalid DICOM file provided" in caplog.text
+    assert path.name not in caplog.text
+    assert str(path) not in caplog.text
 
 
 @pytest.mark.pydicom
