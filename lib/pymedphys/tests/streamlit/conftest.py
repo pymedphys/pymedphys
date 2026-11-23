@@ -65,6 +65,53 @@ def demo_working_directory(
     return demo_directory
 
 
+# The gamma options of the demo comparison, under the names that
+# pymedphys.gamma gives them.
+DEMO_GAMMA_TABLE = {
+    "dose_criterion_percent": 2,
+    "distance_criterion_mm": 0.5,
+    "normalisation": "local",
+    "gamma_cap": 5,
+    "lower_dose_cutoff_percent": 20,
+}
+
+
+@pytest.fixture
+def demo_gamma_table(
+    demo_directory: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[dict]:
+    """Give the demo configuration a ``[gamma]`` table that gamma accepts.
+
+    The MetersetMap app passes the ``[gamma]`` table of its configuration to
+    ``pymedphys.gamma`` as written. The demo archive was published before
+    version 0.42.0 renamed that function's options, so its table is no longer
+    one that gamma accepts. Until the archive is republished, a test that
+    reaches gamma takes the table from here: the same criteria, under the
+    current names.
+
+    The caches are cleared on the way in and on the way out, for the reason
+    given in ``demo_config_on_disk``.
+    """
+    original_get_config = pmp_config.get_config
+
+    def get_config(path=None):
+        config = original_get_config(path=path)
+        if (
+            path is not None
+            and pathlib.Path(path).resolve() == demo_directory.resolve()
+        ):
+            config["gamma"] = dict(DEMO_GAMMA_TABLE)
+
+        return config
+
+    st.cache_data.clear()
+    monkeypatch.setattr(pmp_config, "get_config", get_config)
+
+    yield dict(DEMO_GAMMA_TABLE)
+
+    st.cache_data.clear()
+
+
 @pytest.fixture
 def demo_config_on_disk(
     demo_directory: pathlib.Path, monkeypatch: pytest.MonkeyPatch

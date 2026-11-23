@@ -124,52 +124,14 @@ def get_default_icom_directories(config):
     return default_icom_directory
 
 
-# The names that the [gamma] table used before version 0.42.0, with the option
-# of pymedphys.gamma that each one sets. Existing configuration files, and
-# the demo data, still use them.
-_EARLIER_GAMMA_KEYS = {
-    "dose_percent_threshold": "dose_criterion_percent",
-    "distance_mm_threshold": "distance_criterion_mm",
-    "lower_percent_dose_cutoff": "lower_dose_cutoff_percent",
-    "global_normalisation": "normalisation_dose",
-    "max_gamma": "gamma_cap",
-    "interp_algo": "interpolator",
-    "ram_available": "memory_budget_bytes",
-}
-
-
-def gamma_options_from_table(table):
-    """The options for ``pymedphys.gamma`` that a ``[gamma]`` table sets.
-
-    The table may use the option names of ``pymedphys.gamma``, or the names
-    it used before version 0.42.0.
-    """
-    options = {}
-    for key, value in table.items():
-        if key == "quiet":
-            # Gamma reports its progress through logging.
-            continue
-        if key == "local_gamma":
-            key, value = "normalisation", "local" if value else "global"
-        elif key == "interp_fraction":
-            key, value = "search_step_fraction", 1 / value
-        else:
-            key = _EARLIER_GAMMA_KEYS.get(key, key)
-
-        if key in options:
-            raise ValueError(
-                f"The [gamma] table of the configuration sets {key} twice: "
-                "under that name, and under the name it had before version "
-                "0.42.0."
-            )
-        options[key] = value
-
-    return options
-
-
 @st.cache_data
 def get_default_gamma_options(config):
-    return gamma_options_from_table(config["gamma"])
+    """The options that the ``[gamma]`` table sets for ``pymedphys.gamma``.
+
+    The table is passed to ``pymedphys.gamma`` as written, so it uses that
+    function's option names.
+    """
+    return config["gamma"]
 
 
 @st.cache_data
