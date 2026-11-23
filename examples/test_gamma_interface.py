@@ -138,7 +138,9 @@ class GammaCallTests(unittest.TestCase):
     def test_a_translated_call_returns_the_array_of_the_result(self):
         axis = np.arange(6.0)
         reference = np.array([0.1, 1.0, 1.0, 1.0, 1.0, 1.0])
-        evaluation = reference * 1.02
+        # A constant evaluation dose makes 2/3 the exact minimum at every
+        # analysed point, whatever the search step.
+        evaluation = np.full_like(reference, 1.02)
         options = {
             "dose_percent_threshold": 3,
             "distance_mm_threshold": 1,
