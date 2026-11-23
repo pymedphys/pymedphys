@@ -161,7 +161,6 @@ def anonymise(dicom_subparsers):
     )
 
     parser.add_argument(
-        "-d",
         "--delete_original_files",
         action="store_true",
         help=(
