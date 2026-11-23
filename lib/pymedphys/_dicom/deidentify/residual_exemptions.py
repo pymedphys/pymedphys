@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# Every exemption that the release gate tries is decided here, so it is long.
+
 """Name the residual findings that kept vocabulary, labels, or options explain.
 
 The residual search finds the text of a removed value wherever it is in a
