@@ -12,6 +12,22 @@ This project adheres to
 
 ## Unreleased
 
+### (Potentially) breaking changes
+
+**Warning — archived TRF logfile paths:**
+`pymedphys._utilities.config.get_filepath` and
+`pymedphys._trf.manage.index.index_logfiles` now reject
+`index.json` entries containing absolute paths, parent traversal,
+symlink escapes, or non-regular file targets. The configured `indexed` directory
+must not itself be a symlink or junction. Entries that earlier versions could
+return or read now raise a path-independent `ValueError`. **Review and correct
+invalid `index.json` paths before retrieving or re-indexing archived logfiles.**
+For valid entries, `get_filepath` returns a resolved filename (including
+internal symlinks); duplicate indexing now hashes a pinned, validated file
+handle instead of reopening a checked pathname. A filename returned by
+`get_filepath` does not make a separate later open race-free.
+[PR #2654](https://github.com/pymedphys/pymedphys/pull/2654)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group

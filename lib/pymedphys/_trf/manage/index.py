@@ -26,7 +26,9 @@ from pymedphys._imports import attr
 import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import Header, decode_header_from_file
+from pymedphys._utilities.config import _open_indexed_logfile
 from pymedphys._utilities.filehash import hash_file
+from pymedphys._utilities.filehash.core import hash_fileobj
 from pymedphys._utilities.filesystem import make_a_valid_directory_name
 
 from .identify import date_convert
@@ -92,7 +94,10 @@ def create_index_entry(
 
 def file_already_in_index(indexed_filepath, to_be_indexed_filepath, filehash):
     try:
-        new_hash = hash_file(indexed_filepath)
+        if hasattr(indexed_filepath, "read"):
+            new_hash = hash_fileobj(indexed_filepath)
+        else:
+            new_hash = hash_file(indexed_filepath)
     except FileNotFoundError:
         raise FileNotFoundError(
             "Indexed logfile can't be found in its declared location."
@@ -337,11 +342,12 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
         hashset = set(hashlist)
 
         for filehash in list(hashset.intersection(indexset)):
-            file_already_in_index(
-                os.path.join(indexed_directory, index[filehash]["filepath"]),
-                to_be_indexed_dict[filehash],
-                filehash,
-            )
+            with _open_indexed_logfile(
+                indexed_directory, index[filehash]["filepath"]
+            ) as archived_file:
+                file_already_in_index(
+                    archived_file, to_be_indexed_dict[filehash], filehash
+                )
 
         file_ready_to_be_indexed(
             connections,

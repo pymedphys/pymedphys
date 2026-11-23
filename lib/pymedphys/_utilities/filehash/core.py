@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeffrey D. Cooney
 # Copyright (C) 2018 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,17 +18,20 @@
 import hashlib
 
 
-def hash_file(filename, dot_feedback=False):
-    BLOCKSIZE = 65536
-    # Content fingerprint for the data cache, not a security primitive.
+def hash_fileobj(file_obj, dot_feedback=False):
+    """Hash a preopened binary file without resolving or reopening its path."""
+    # A content fingerprint for archive consistency, not an authenticity proof.
     hasher = hashlib.sha1(usedforsecurity=False)
-    with open(filename, "rb") as afile:
-        buf = afile.read(BLOCKSIZE)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = afile.read(BLOCKSIZE)
+    while chunk := file_obj.read(65536):
+        hasher.update(chunk)
 
     if dot_feedback:
         print(".", end="", flush=True)
 
     return hasher.hexdigest()
+
+
+def hash_file(filename, dot_feedback=False):
+    """Hash a file by pathname; prefer hash_fileobj for validated open handles."""
+    with open(filename, "rb") as afile:
+        return hash_fileobj(afile, dot_feedback=dot_feedback)
