@@ -124,12 +124,13 @@ def test_patient_989898_plan_3abut_with_two_icom_records():
     _assert_overview(app_test, "150.0", "PHYSICS, Mock")
 
 
+@pytest.mark.usefixtures("demo_gamma_table")
 def test_advanced_mode_offers_the_configured_gamma_options():
     app_test = _load_demo_metersetmap()
     utl.widget(app_test.sidebar.checkbox, "Run in Advanced Mode").check().run()
     utl.assert_no_exception(app_test)
 
-    # The demo configuration's 2%, 0.5 mm, local gamma, capped at 5.
+    # The demo comparison's 2%, 0.5 mm, local gamma, capped at 5.
     number_inputs = app_test.sidebar.number_input
     assert utl.widget(number_inputs, "MU criterion (%)").value == 2
     assert utl.widget(number_inputs, "Distance criterion (mm)").value == 0.5
@@ -137,6 +138,7 @@ def test_advanced_mode_offers_the_configured_gamma_options():
     assert utl.widget(number_inputs, "Gamma cap").value == 5
 
 
+@pytest.mark.usefixtures("demo_gamma_table")
 def test_running_the_comparison_reports_gamma_with_its_counts():
     app_test = _load_demo_metersetmap()
 
@@ -150,8 +152,7 @@ def test_running_the_comparison_reports_gamma_with_its_counts():
     raised = _raised_apart_from_missing_imagemagick(app_test)
     assert not raised, f"The app raised: {raised}"
 
-    # The demo configuration names its gamma options as they were before
-    # version 0.42.0: 2%, 0.5 mm, local normalisation, a 20% dose cutoff.
+    # The demo comparison: 2%, 0.5 mm, local normalisation, a 20% dose cutoff.
     summaries = [
         match
         for text in utl.markdown_values(app_test)

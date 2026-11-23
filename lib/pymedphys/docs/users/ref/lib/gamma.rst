@@ -203,9 +203,8 @@ a list, and several options had other names.
       - removed
       - It had no effect. Configure :mod:`logging` to see progress messages.
 
-Options after the two criteria must now be passed by keyword. A call that
-uses an old name raises a ``TypeError`` that lists every replacement it
-needs.
+Options after the two criteria must now be passed by keyword, under their
+new names. The old names are not accepted.
 
 .. code-block:: python
 
