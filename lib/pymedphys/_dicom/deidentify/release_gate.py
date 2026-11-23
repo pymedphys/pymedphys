@@ -76,7 +76,11 @@ such as Study Description, or a private copy of one
 or it is a removed requested procedure code's Code Value, Coding Scheme
 Designator, or Code Meaning equal to the same attribute of a kept code item,
 as where equipment copied the request's code into the procedure's
-(:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
+(:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`),
+or it is a removed code item's Coding Scheme Designator equal to the whole
+designator of a kept code item, as where Clean Structured Content removes a
+content item and keeps another of the same local scheme
+(:func:`~pymedphys._dicom.deidentify.residual_copies.shared_designator`).
 A date or datetime equal to a whole date, time, or datetime that an option
 keeps, a datetime whose date equals a whole date that an option keeps, or a
 date, or a datetime's date, that begins a whole datetime that an option
@@ -144,7 +148,7 @@ import re
 
 from .file_layout import ElementPath, Location, Region
 from .option_kept import kept_text
-from .residual_copies import copied_request_code
+from .residual_copies import copied_request_code, shared_designator
 from .residual_exemptions import (
     DEIDENTIFICATION_METHOD,
     Exemption,
@@ -349,7 +353,10 @@ class Coverage:
         (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`),
         and a requested procedure code's value found from such values alone,
         equal to the same attribute of a kept code item, can be explained
-        (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
+        (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`),
+        as can a code item's Coding Scheme Designator, equal to the whole
+        designator of a kept code item
+        (:func:`~pymedphys._dicom.deidentify.residual_copies.shared_designator`).
     safe_private_list : SafePrivateList or None, optional
         The safe private list that the run chose under the Retain Safe
         Private Option, whose kept private creators can explain a text
@@ -803,6 +810,7 @@ def release_condition(
                     or vocabulary_meaning(each, kept, sources)
                     or copied_request_code(each, kept, sources, coverage.removed)
                     or vocabulary_descriptor(each, kept, sources)
+                    or shared_designator(each, kept, sources, coverage.removed)
                 )
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(

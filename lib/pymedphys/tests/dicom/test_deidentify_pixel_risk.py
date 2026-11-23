@@ -233,6 +233,31 @@ def test_an_overlay_with_its_own_overlay_data_is_not_in_the_pixel_data(transfer_
     assert not _assess(dataset, transfer_syntax).findings
 
 
+def test_an_overlay_activation_layer_alone_places_no_overlay():
+    # A softcopy Presentation State's Overlay Activation Module (PS3.3
+    # C.11.7) names, by its group, an overlay of the referenced image, or of
+    # the state's own Overlay Plane Module, to show on a graphic layer.
+    # Alone, its group holds no overlay, in Pixel Data or anywhere else.
+    dataset = _ct()
+    dataset.add_new(0x60001001, "CS", "LAYER")  # Overlay Activation Layer
+    assert not pixel_risk.overlay_groups_without_data(dataset)
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+    # Nor does its group length make the group an overlay group.
+    dataset.add_new(0x60000000, "UL", 10)  # Group Length
+    assert not pixel_risk.overlay_groups_without_data(dataset)
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+def test_an_overlay_activation_layer_beside_an_overlays_attributes_is_reported():
+    dataset = _ct()
+    dataset.add_new(0x60001001, "CS", "LAYER")  # Overlay Activation Layer
+    dataset.add_new(0x60000102, "US", 12)  # Overlay Bit Position
+    assert pixel_risk.overlay_groups_without_data(dataset) == {0x6000: 0x0102}
+    assert _found(pixel_risk.assess_pixel_risk(dataset)) == {
+        (Indicator.EMBEDDED_OVERLAY, "(6000,0102)")
+    }
+
+
 def test_odd_and_out_of_range_groups_are_not_overlays():
     dataset = _ct()
     dataset.add_new(0x60010010, "LO", "CREATOR")  # a private creator
