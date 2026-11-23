@@ -137,7 +137,10 @@ jobs:
       # Only explicit false skips a component; absent outputs keep coverage.
       run-doctests: ${{ needs.changes.outputs.run-doctests != 'false' }}
       run-slow: ${{ needs.changes.outputs.run-slow != 'false' }}
-      run-scripts: ${{ needs.changes.outputs.run-integration-scripts != 'false' }}
+      # Merge groups leave the Windows and macOS tooling tests to the PRs
+      # that change the tooling and to the nightly run, as the selector
+      # chooses; Ubuntu's run in script-tests above.
+      run-scripts: ${{ github.event_name != 'merge_group' && needs.changes.outputs.run-integration-scripts != 'false' }}
       run-packaging: ${{ needs.changes.outputs.run-packaging != 'false' }}
 
   mosaiq-db-tests:

@@ -479,9 +479,11 @@ class SelectionTests(unittest.TestCase):
 
     def test_merge_groups_keep_every_check_with_the_quick_unit_matrix(self):
         expected = dict.fromkeys(OUTPUTS, True)
-        # The nightly run covers the full matrix and the dependency corpus.
+        # The nightly run covers the full matrix, the dependency corpus, and
+        # the Windows and macOS tooling tests.
         expected["run-full-matrix"] = False
         expected["run-dependency-corpus"] = False
+        expected["run-integration-scripts"] = False
         for paths in (
             None,
             [],
