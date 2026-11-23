@@ -21,6 +21,7 @@ Manual run -> docs.yml
 security.yml <- schedule, manual run, main push, ready PR, merge_group
   |-- dependency audit / Bandit / zizmor (selected PRs; every merge group)
   `-- Security Summary
+merge_group / hourly schedule / manual run -> merge-queue-cleanup.yml
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
@@ -53,7 +54,8 @@ Coordinates all CI checks based on file changes, labels, and event types.
   push to `main` starts no run, as "Main Branch Workflow" below explains. See
   "Draft pull requests" below
 - **Jobs**:
-  - `changes`: Tests the selection/gating policy and reads the tested merge diff
+  - `changes`: Tests the selection/gating policy and reads the tested merge diff;
+    skipped in merge groups, as "Merge Queue Workflow" below explains
   - `pre-commit`: Auto-formatting and basic checks
   - `lint`: Code quality
   - `type-check`: Static type checking
@@ -124,8 +126,8 @@ links and unverifiable diffs enable every component.
 
 Unit runs skip the slow tests and never run doctests. `SLOW_TEST_FILES` and
 `DOCTEST_FILES` in `select_checks.py` list the package modules that apply the
-slow marker or hold doctests. The policy tests in the always-required `changes`
-job scan the package and fail unless each list equals what they find, naming
+slow marker or hold doctests. The policy tests in the `changes` job, which
+every pull request runs, and in `script-tests` scan the package and fail unless each list equals what they find, naming
 each module to add or remove, so update the list in the PR that adds, removes
 or renames such a module. Shared test data, including `_data/urls.json` and
 `_data/hashes.json`, also selects integration tests because ordinary unit runs
@@ -162,7 +164,10 @@ cancels any run still in progress for that pull request. Labels such as
 
 Only the jobs that start a run (`changes` and `pre-commit` in `ci.yml`,
 `changes` in `security.yml`) and the two summaries carry the draft condition;
-every other job needs `changes`, so it is skipped with it. The selector and
+every other job needs `changes`, so it is skipped with it. A selected job also
+runs in a merge group, where `changes` is skipped, so it carries
+`!cancelled()`; on a draft its selection output is empty and it is skipped
+all the same. The selector and
 the summaries' conditional checks are unchanged. GitHub counts a skipped
 required check as passing, so a draft shows `CI Summary` and `Security Summary`
 as skipped rather than pending. When a draft is marked ready without a new
@@ -933,6 +938,29 @@ merges after it.
 `CI Summary` and `Security Summary` must pass on that state before it merges.
 The queue may test up to three prospective states concurrently and merges PRs
 individually with merge commits.
+
+A merge group skips the `changes` job of both workflows. The selector would
+choose every check, with the quick unit matrix, whatever the group changes, so
+each selected job runs on the `merge_group` event instead and the summaries,
+given `--merge-group-runs-every-check`, require `changes` to be skipped and
+every other job to succeed. This matters when runners are scarce: the
+repository's account runs at most 20 jobs at once, a job that waits for
+another joins the back of the runner queue when it is ready, and on 22 Nov
+2026 the selector alone waited about an hour for a runner in each merge group.
+A merge group's CI run therefore has three stages that each wait for runners
+(the checks with pre-commit, the combined reports of the unit-test parts, and
+`CI Summary`) and its security scan two (the scans, and `Security Summary`).
+
+When the queue drops a group, because a group ahead of it failed or timed out
+or its pull request left the queue, it deletes the group's
+`gh-readonly-queue/` branch and builds the groups behind it again. The dropped
+group's runs carry on, since each group's ref is its own concurrency group and
+GitHub does not cancel them. `merge-queue-cleanup.yml` runs for each new merge
+group, hourly, and on demand, and cancels every queued or in-progress
+`ci.yml` and `security.yml` run of a merge group whose branch no longer
+exists. Its one job holds `actions: write`, which no other workflow has. It
+keeps any run whose branch lookup fails, and cancels nothing if it cannot see
+`main`.
 
 ## Main Branch Workflow
 
