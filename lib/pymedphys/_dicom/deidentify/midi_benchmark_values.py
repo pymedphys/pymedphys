@@ -15,7 +15,9 @@
 """Find what a MIDI benchmark check scores in a data set (D-018).
 
 The checks of a MIDI answer key name a place as a path of attributes and
-sequence items. :func:`find_element` finds the attribute at that place, and
+sequence items, numbered as the test data set's file numbers them.
+:func:`find_element` finds the attribute at that place, in a written file
+where the engine removed items on their own (:func:`written_path`), and
 :func:`element_text` gives its value as the text that the checks compare,
 and :func:`compare_text` compares it with the answer key's.
 :func:`is_engine_replacement` says whether a value is one that the engine
@@ -33,6 +35,7 @@ from pymedphys._imports import pydicom
 from .ae_titles import TOKEN_CHARACTERS, TOKEN_PREFIX
 from .midi_answer_key import AttributePath, Element
 from .pseudonyms import CODE_BYTES, FAMILY_NAME, PATIENT_ID_PREFIX
+from .removed_items import RemovedItems
 from .residuals import written_constants
 
 
@@ -48,10 +51,69 @@ def is_bulk_data(element: pydicom.DataElement) -> bool:
     )
 
 
+def written_path(path: AttributePath, removed: RemovedItems) -> AttributePath | None:
+    """Return where a written file holds the attribute at a source's ``path`` (D-063).
+
+    The answer key numbers a sequence's items as the test data set's file
+    does. Under Clean Structured Content, the engine removes an item of a
+    kept Content Sequence on its own, with everything in it (D-047), and
+    the written file numbers the items after it one lower, as ``removed``,
+    the items that the engine removed from the instance, maps them
+    (:meth:`~pymedphys._dicom.deidentify.removed_items.RemovedItems.output_items`).
+
+    Returns
+    -------
+    AttributePath or None
+        ``None`` where ``path`` is in an item that the engine removed;
+        otherwise ``path`` with each item index the written file's. An
+        index inside a private sequence is kept as it is, since the engine
+        removes no item there: it removes only content items that the IOD
+        defines.
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify.midi_answer_key import parse_path
+    >>> removed = RemovedItems({(("(0040,A730)", 0),)})
+    >>> place = parse_path("<(0040,A730)>[<0002>]<(0040,A124)>")
+    >>> written_path(place, removed).items
+    (1,)
+    >>> written_path(parse_path("<(0040,A730)>[<0000>]<(0040,A124)>"), removed)
+    """
+    if not removed:
+        return path
+    standard = 0
+    while standard < len(path.items) and not path.elements[standard].is_private:
+        standard += 1
+    items = removed.output_items(
+        tuple(
+            (str(element), index)
+            for element, index in zip(path.elements[:standard], path.items)
+        )
+    )
+    if items is None:
+        return None
+    indexes = (*(index for _, index in items), *path.items[standard:])
+    return path if indexes == path.items else AttributePath(path.elements, indexes)
+
+
 def find_element(
-    dataset: pydicom.Dataset, path: AttributePath
+    dataset: pydicom.Dataset,
+    path: AttributePath,
+    *,
+    removed: RemovedItems | None = None,
 ) -> pydicom.DataElement | None:
-    """Return the element at ``path``, or ``None`` if there is none."""
+    """Return the element at ``path``, or ``None`` if there is none.
+
+    ``removed``, for a written file, gives the items that the engine removed
+    on its own from the instance, so that ``path``, in the source's
+    numbering, is read where the written file holds it
+    (:func:`written_path`): an attribute in a removed item is none.
+    """
+    if removed is not None:
+        mapped = written_path(path, removed)
+        if mapped is None:
+            return None
+        path = mapped
     current = dataset
     for depth, wanted in enumerate(path.elements):
         element = _element(current, wanted)

@@ -99,9 +99,10 @@ reason that such a finding is not a reason for review (D-032), or returns
   only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
   The release gate tries it after every exemption listed here but
-  :attr:`Exemption.COPIED_REQUEST_CODE` and
-  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, for a text finding that none of
-  them explains.
+  :attr:`Exemption.COPIED_REQUEST_CODE`,
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, and
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
 - :attr:`Exemption.METHOD_DIGEST`: a finding of any kind in De-identification
   Method (0012,0063) of the top-level data set, every match of whose source
   there lies wholly inside a value equal to the method digest that the run
@@ -122,8 +123,9 @@ reason that such a finding is not a reason for review (D-032), or returns
   keeps, so the removed copy reveals nothing the kept code does not, and
   every other finding in the kept code is decided as before. The release
   gate tries it after every exemption listed here but
-  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, for a text finding that none of
-  them explains.
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR` and
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
 - :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
   descriptor, an attribute whose values the reviewed technique vocabulary's
   automatic tier may keep, such as Series Description (0008,103E), at the
@@ -133,8 +135,26 @@ reason that such a finding is not a reason for review (D-032), or returns
   contrast agent or radiopharmaceutical, or an SR TEXT value, or a private
   data element that only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
-  The release gate tries it after every other exemption listed here, for a
-  text finding that none of them explains.
+  The release gate tries it after every exemption listed here but
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
+- :attr:`Exemption.SHARED_DESIGNATOR`: the finding's source is the Coding
+  Scheme Designator (0008,0102) of a code item, at any depth, in no
+  private sequence and in none that codes or names an institution, a
+  department, a station, or a custodial organisation, every value of which
+  collected for the subject is one that the instance's output does not
+  hold, and it is found in the Coding Scheme Designator of a kept code
+  item, each of whose source values that the search could find there
+  equals a whole value of it
+  (:func:`~pymedphys._dicom.deidentify.residual_copies.shared_designator`).
+  A designator names its code's scheme and nothing else, so where Clean
+  Structured Content removes a content item and keeps another of the same
+  local scheme, the removed designator shows only that the two shared a
+  scheme, which the kept item already shows. Text of any other source
+  found in a designator, such as an organisation's name, and every Code
+  Meaning are decided as before. The release gate tries it after every
+  other exemption listed here, for a text finding that none of them
+  explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -145,7 +165,7 @@ whole kept value, a Code Meaning or a UID from unwritten instances only
 if no written instance collected any of them, and a removed private UID
 only if no written instance holds any of them replaced and each that could
 be in the element equals a whole kept value, and likewise a removed request
-code. A finding in an element that
+code or designator. A finding in an element that
 holds a byte outside ISO 646's printable characters, a finding of any other
 kind, and a finding outside the data set are never exempt. Kept values are read from the
 written file's bytes, as text in ISO 646, never decoded by pydicom, and none
@@ -225,6 +245,8 @@ class Exemption(enum.Enum):
     COPIED_REQUEST_CODE = "copied-request-code"
     # in a technique descriptor made only of the reviewed technique vocabulary
     VOCABULARY_DESCRIPTOR = "vocabulary-descriptor"
+    # equal to a kept code's whole designator, from a removed code's designator
+    SHARED_DESIGNATOR = "shared-designator"
     # a finding that would hold the file for review, which a reviewer cleared
     # in an attested QC pack of an earlier run of the same source file, in
     # the same value (residuals.ReviewedFinding)

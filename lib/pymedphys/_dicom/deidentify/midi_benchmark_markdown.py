@@ -24,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 
 from . import midi_benchmark_graphics
-from .midi_benchmark_sources import EXPLAINED, WATCHED
+from .midi_benchmark_sources import EXPLAINED, MOVED, WATCHED
 from .midi_benchmark_text import COUNTED, FRAMES_BY_REGIONS, REGION_BINS
 
 
@@ -347,6 +347,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
     )
     lines += _at_source(document["failed_at_source"])
     lines += _watched(document.get("watched", ()))
+    lines += _moved(document.get("moved_checks", ()))
     return "\n".join(lines) + "\n"
 
 
@@ -377,6 +378,28 @@ def _watched(rows: Sequence[Mapping[str, object]]) -> list[str]:
         *_rows_or_none(
             ("Category", "Action", "Attribute", "Outcome", "Checks"),
             [[row[field] for field in (*WATCHED, "checks")] for row in rows],
+        ),
+    ]
+
+
+def _moved(rows: Sequence[Mapping[str, object]]) -> list[str]:
+    """Render each check whose place a removed item moved."""
+    return [
+        "",
+        "## Checks moved by removed items",
+        "",
+        "Under Clean Structured Content, the engine removes a content item on "
+        "its own, and the written file numbers the items after it one lower "
+        "than the answer key, which numbers them as the test data set's file "
+        "does. Each check is read where the written file holds its place: "
+        "these are the checks whose place moved, or was in a removed item, "
+        "which the written file does not hold, by their outcome. A reading of "
+        "the answer key's item numbers in the written file would read another "
+        "item, or none, for each:",
+        "",
+        *_rows_or_none(
+            ("Category", "Action", "Attribute", "Place", "Outcome", "Checks"),
+            [[row[field] for field in (*MOVED, "checks")] for row in rows],
         ),
     ]
 
