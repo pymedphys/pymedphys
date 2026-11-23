@@ -274,7 +274,7 @@ def test_the_attributes_in_which_the_option_writes_the_nominal_offset(tag, write
     ],
 )
 def test_the_nominal_offsets_of_a_timezone_offset(raw, spans):
-    assert residual_offsets._offset_spans(raw, 10) == spans
+    assert residual_offsets.offset_spans(raw, 10) == spans
 
 
 @pytest.mark.parametrize(
@@ -289,4 +289,4 @@ def test_the_nominal_offsets_of_a_timezone_offset(raw, spans):
     ],
 )
 def test_the_nominal_offsets_that_end_a_datetime(raw, spans):
-    assert residual_offsets._datetime_spans(raw, 10) == spans
+    assert residual_offsets.datetime_spans(raw, 10) == spans

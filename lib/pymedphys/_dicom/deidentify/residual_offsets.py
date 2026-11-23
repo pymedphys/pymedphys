@@ -129,9 +129,9 @@ def in_nominal_offset(
         return False
     raw = kept.read(extent.value_start, extent.end)
     if action is TemporalAction.NOMINAL_OFFSET:
-        spans = _offset_spans(raw, extent.value_start)
+        spans = offset_spans(raw, extent.value_start)
     else:
-        spans = _datetime_spans(raw, extent.value_start)
+        spans = datetime_spans(raw, extent.value_start)
     return spans is not None and matches_within(finding, kept, sources, extent, spans)
 
 
@@ -154,7 +154,7 @@ def _action(tag: str) -> TemporalAction | None:
     return None
 
 
-def _offset_spans(raw: bytes, offset: int) -> list[tuple[int, int]] | None:
+def offset_spans(raw: bytes, offset: int) -> list[tuple[int, int]] | None:
     """Return where a Timezone Offset From UTC's nominal values are, or None.
 
     ``raw`` is the element's value, which starts at ``offset`` in the file.
@@ -174,7 +174,7 @@ def _offset_spans(raw: bytes, offset: int) -> list[tuple[int, int]] | None:
     return spans
 
 
-def _datetime_spans(raw: bytes, offset: int) -> list[tuple[int, int]]:
+def datetime_spans(raw: bytes, offset: int) -> list[tuple[int, int]]:
     """Return where the nominal offsets that end a DT element's values are.
 
     ``raw`` is the element's value, which starts at ``offset`` in the file.
