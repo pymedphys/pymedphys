@@ -262,6 +262,27 @@ def download_all():
     return paths
 
 
+def _cache_path(filename):
+    """Reject invalid and pre-existing symlinked cache paths before I/O."""
+    filename = str(filename).replace(os.sep, "/")
+    data_dir = get_data_dir()
+    relative_path = pathlib.Path(filename)
+
+    if (
+        not filename
+        or relative_path == pathlib.Path(".")
+        or relative_path.is_absolute()
+        or ".." in relative_path.parts
+    ):
+        raise ValueError("Data filename must be a relative path inside the cache.")
+
+    filepath = data_dir.joinpath(relative_path)
+    if not filepath.resolve().is_relative_to(data_dir.resolve()):
+        raise ValueError("Data filename resolves outside the cache.")
+
+    return filepath
+
+
 def data_path(
     filename,
     check_hash=True,
@@ -271,7 +292,7 @@ def data_path(
     hash_filepath=None,
 ):
     filename = str(filename).replace(os.sep, "/")
-    filepath = get_data_dir().joinpath(filename)
+    filepath = _cache_path(filename)
 
     containing_directory = pathlib.Path(filepath).parent
     containing_directory.mkdir(exist_ok=True, parents=True)
@@ -402,7 +423,7 @@ def zenodo_data_paths(
 
     logging.debug("File URLS are %s", file_urls)
 
-    record_directory = get_data_dir().joinpath(record_name)
+    record_directory = _cache_path(record_name)
     record_directory.mkdir(exist_ok=True)
 
     relative_record_path = pathlib.Path(record_name)
@@ -572,9 +593,8 @@ def zip_data_paths(
     extract_directory=None,
     hash_filepath=None,
 ):
-    cache_directory = get_data_dir().joinpath(
-        pathlib.Path(os.path.splitext(filename)[0])
-    )
+    # Validate before creating the extraction lock or directory.
+    cache_directory = _cache_path(os.path.splitext(filename)[0])
     if extract_directory is None:
         extract_directory = cache_directory
         cache_managed = True
