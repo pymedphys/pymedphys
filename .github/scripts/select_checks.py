@@ -17,8 +17,8 @@
 Diff the tested merge tree against its base parent, with rename detection off,
 so deletions and both sides of a rename remain visible. Two checkout generations
 suffice and there is no API file-count limit. Non-PR events select every check;
-merge groups use the quick unit-test matrix without the dependency corpus, and
-push runs omit documentation, which Read the Docs publishes. On pull requests
+merge groups use the quick unit-test matrix without the dependency corpus or the
+Windows and macOS tooling tests, and push runs omit documentation, which Read the Docs publishes. On pull requests
 only known inputs skip standard checks, while the costly integration and
 database tests, the full unit-test matrix, and the dependency corpus follow
 their labels and their own inputs. Links and unverifiable diffs
@@ -380,9 +380,11 @@ def explain_checks(
         select(OUTPUTS, Reason(f"{event_name} event"))
         if event_name == "merge_group":
             # Every check still runs; main's nightly run validates the full
-            # platform matrix and the dependency corpus.
+            # platform matrix, the dependency corpus, and the tooling tests on
+            # Windows and macOS, which PRs that change the tooling also run.
             reasons["run-full-matrix"] = None
             reasons["run-dependency-corpus"] = None
+            reasons["run-integration-scripts"] = None
         # ReadTheDocs publishes main independently; retain the existing policy.
         if event_name == "push":
             reasons["run-docs"] = None

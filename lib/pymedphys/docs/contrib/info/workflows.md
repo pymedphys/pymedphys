@@ -964,8 +964,12 @@ earlier queued PRs, then starts `ci.yml` and `security.yml` on `merge_group`.
 The selector uses the quick Ubuntu/Python 3.14 unit matrix and enables every
 other check, including integration and database tests, the documentation build,
 and all security scans, except the dependency corpus, which "The dependency
-corpus" above describes. The nightly run on `main` and releases run the full
-12-environment unit matrix. Platform failures first discovered on main can be
+corpus" above describes, and the Windows and macOS tooling tests. Those test
+only `.github/scripts`, which the PRs that change it test on both platforms
+before they merge, and a shortage of macOS runners on 23 Nov 2026 dropped a
+merge group whose macOS job never got a runner; Ubuntu's tooling tests still
+run in every merge group. The nightly run on `main` and releases run the full
+12-environment unit matrix and the Windows and macOS tooling tests. Platform failures first discovered on main can be
 reverted or corrected there; the maintainers accept that cost to avoid
 running the full matrix before each merge and to keep it from delaying the
 merges after it.
@@ -1181,7 +1185,8 @@ request broader coverage and trigger another CI run.
 - Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
   full OS/Python matrix runs nightly on `main`, on manual runs, on releases
   and on `full-test` PRs. Merge groups use the quick unit matrix, without the
-  dependency corpus, and run every integration and database check. Integration tests also run on PRs that
+  dependency corpus, and run every integration and database check but the
+  Windows and macOS tooling tests. Integration tests also run on PRs that
   change their inputs. A green merge-group summary therefore establishes the
   selected unit suite on Ubuntu/Python 3.14; the nightly run on `main`
   supplies the comprehensive platform validation.

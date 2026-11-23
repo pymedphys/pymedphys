@@ -462,7 +462,8 @@ detailed explanations of individual features.
   cost-gated on PRs, as the maintainers decided, and so are the dependency
   floors' and the `dicom` extra's de-identification corpus parts, which run
   for dependency inputs. Merge groups retain every other check with the quick
-  Ubuntu/Python 3.14 unit matrix; a push to main runs no
+  Ubuntu/Python 3.14 unit matrix, except the Windows and macOS tooling tests,
+  which run on PRs that change the tooling; a push to main runs no
   CI, since the merge group tested that commit, and main's nightly run,
   manual runs and releases run the full unit matrix. The maintainers accept
   platform failures first discovered on main to avoid repeating the full

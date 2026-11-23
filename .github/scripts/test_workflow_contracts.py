@@ -303,12 +303,17 @@ class WorkflowContractTests(unittest.TestCase):
         chosen = select_checks([], event_name="merge_group")
         self.assertEqual(
             {output for output, value in chosen.items() if not value},
-            {"run-full-matrix", "run-dependency-corpus"},
+            {"run-full-matrix", "run-dependency-corpus", "run-integration-scripts"},
         )
         self.assertIn(
             "      dependency-corpus: ${{ github.event_name != 'merge_group' && "
             "needs.changes.outputs.run-dependency-corpus != 'false' }}\n",
             jobs("ci.yml")["unit-tests"],
+        )
+        self.assertIn(
+            "      run-scripts: ${{ github.event_name != 'merge_group' && "
+            "needs.changes.outputs.run-integration-scripts != 'false' }}\n",
+            jobs("ci.yml")["integration-tests"],
         )
         for filename, summary_id in (
             ("ci.yml", "summary"),
@@ -330,9 +335,11 @@ class WorkflowContractTests(unittest.TestCase):
             # The summary then requires every job but the skipped selector.
             self.assertIn("--merge-group-runs-every-check", workflow[summary_id])
         # Integration components run unless the selector explicitly said
-        # false, so a merge group, with no selector output, runs them all.
+        # false, so a merge group, with no selector output, runs them all,
+        # except the Windows and macOS tooling tests, which ci.yml leaves to
+        # the nightly run as the selector chooses (pinned above).
         integration = jobs("ci.yml")["integration-tests"]
-        for component in ("doctests", "slow", "scripts", "packaging"):
+        for component in ("doctests", "slow", "packaging"):
             with self.subTest(component=component):
                 self.assertRegex(
                     integration,
@@ -404,9 +411,16 @@ class WorkflowContractTests(unittest.TestCase):
             ("script-tests", "run-scripts", "run-integration-scripts"),
             ("packaging", "run-packaging", "run-packaging"),
         ):
+            # Merge groups leave the Windows and macOS tooling tests to PRs
+            # that change the tooling and to the nightly run.
+            guard = (
+                "github.event_name != 'merge_group' && "
+                if output == "run-integration-scripts"
+                else ""
+            )
             with self.subTest(job=job):
                 self.assertIn(
-                    f"      {input_name}: ${{{{ needs.changes.outputs.{output} != 'false' }}}}",
+                    f"      {input_name}: ${{{{ {guard}needs.changes.outputs.{output} != 'false' }}}}",
                     workflow["integration-tests"],
                 )
                 self.assertIn(
