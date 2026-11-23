@@ -37,6 +37,7 @@ from pymedphys._imports import pydicom, pytest
 from pymedphys._dicom.deidentify import (
     dicom_validation,
     dicom_validation_command,
+    dicom_validation_series,
     iods,
     standard,
     supplementary_actions,
@@ -1222,7 +1223,7 @@ def _paths(pairs):
     """The attributes that each IOD decides, over a patient's mixed series."""
     return {
         path
-        for series in dicom_validation.mixed_modality_series(pairs)
+        for series in dicom_validation_series.mixed_modality_series(pairs)
         for path in series.paths
     }
 
@@ -1333,7 +1334,7 @@ def test_a_mixed_series_names_its_own_members(tmp_path):
     _series_instance(pairs[0].source, CT_IMAGE, "CT", series="1.2.9")
     _series_instance(pairs[0].output, CT_IMAGE, "CT", series="1.2.9")
 
-    (series,) = dicom_validation.mixed_modality_series(pairs)
+    (series,) = dicom_validation_series.mixed_modality_series(pairs)
 
     assert series.members == (1, 2)
 

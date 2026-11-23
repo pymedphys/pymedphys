@@ -9,7 +9,7 @@ De-identification must not break the files it releases: MIDI-BP-03 in the [requi
 
 Continuous integration runs it on every pull request, over the synthetic corpus, under each preset. This page also shows how to run it yourself, on the corpus or on a release of your own, such as the [MIDI-B benchmark's](deidentification-midi-benchmark.md).
 
-The code is in `pymedphys._dicom.deidentify`: `dicom_validators.py` runs the validators, `dicom_validation.py` compares inputs with outputs, and `dicom_validation_known.toml` lists the explained differences. The command is the development module `pymedphys._dicom.deidentify.dicom_validation_command`. It is not part of the `pymedphys` command line, because nothing de-identification related joins the public command line before the first supported release.
+The code is in `pymedphys._dicom.deidentify`: `dicom_validators.py` runs the validators, `dicom_validation.py` compares inputs with outputs, `dicom_validation_series.py` finds the series whose inputs mix modalities, and `dicom_validation_known.toml` lists the explained differences. The command is the development module `pymedphys._dicom.deidentify.dicom_validation_command`. It is not part of the `pymedphys` command line, because nothing de-identification related joins the public command line before the first supported release.
 
 ## The validators
 
