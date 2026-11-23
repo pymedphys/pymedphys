@@ -996,6 +996,31 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertNotIn("actions/cache", text)
 
+    def test_the_clean_graphics_check_reads_only_and_runs_redacted(self):
+        text = (WORKFLOWS / "clean-graphics-check.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertEqual(text.count("persist-credentials: false"), 1)
+        run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
+        self.assertTrue(run_blocks)
+        for block in run_blocks:
+            self.assertNotIn("${{", block)
+        # The check runs redacted, and only its results leave the runner.
+        self.assertEqual(text.count("python .github/scripts/run_redacted.py"), 1)
+        self.assertEqual(
+            re.findall(r"(?m)^          path: (.*)$", text),
+            ["${{ runner.temp }}/graphics/results/"],
+        )
+        self.assertNotIn("actions/cache", text)
+
 
 if __name__ == "__main__":
     unittest.main()
