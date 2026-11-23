@@ -51,6 +51,7 @@ jobs:
       run-docs: ${{ steps.select.outputs.run-docs }}
       run-scripts: ${{ steps.select.outputs.run-scripts }}
       run-full-matrix: ${{ steps.select.outputs.run-full-matrix }}
+      run-dependency-corpus: ${{ steps.select.outputs.run-dependency-corpus }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -122,6 +123,10 @@ jobs:
       # quick matrix, so a missing or invalid output runs the full matrix.
       # Merge groups, which skip the selector, use the quick matrix.
       quick: ${{ github.event_name == 'merge_group' || needs.changes.outputs.run-full-matrix == 'false' }}
+      # The dicom extra's and the dependency floors' corpus parts follow their
+      # own selection; merge groups leave them to the nightly run, as the
+      # selector chooses. Only an explicit false skips them otherwise.
+      dependency-corpus: ${{ github.event_name != 'merge_group' && needs.changes.outputs.run-dependency-corpus != 'false' }}
 
   # Extended checks share selection outputs with the required summary.
   integration-tests:
