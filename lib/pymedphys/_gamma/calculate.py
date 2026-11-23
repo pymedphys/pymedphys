@@ -16,11 +16,10 @@
 
 from __future__ import annotations
 
-import functools
 import itertools
 import numbers
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, overload
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Literal, overload
 
 from pymedphys._imports import numpy as np
 
@@ -33,49 +32,8 @@ if TYPE_CHECKING:
 
     _Criteria = Sequence[float] | npt.NDArray
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-
 _DEFAULT_SEARCH_STEP_FRACTION = 0.1
 _INTERPOLATORS = ("pymedphys", "scipy")
-
-# Options as they were named before version 0.42.0, with what replaces each.
-_RENAMED_OPTIONS = {
-    "dose_percent_threshold": "dose_criterion_percent",
-    "distance_mm_threshold": "distance_criterion_mm",
-    "lower_percent_dose_cutoff": "lower_dose_cutoff_percent",
-    "local_gamma": (
-        'normalisation ("local" in place of True, "global" in place of False)'
-    ),
-    "global_normalisation": "normalisation_dose",
-    "interp_fraction": (
-        "search_step_fraction (one divided by the old value, so 10 becomes 0.1)"
-    ),
-    "interp_algo": "interpolator",
-    "max_gamma": "gamma_cap",
-    "ram_available": "memory_budget_bytes",
-    "quiet": "nothing: remove it, and configure logging to see progress messages",
-}
-
-
-def _explain_renamed_options(function: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Answer a call that uses old option names with their replacements."""
-
-    @functools.wraps(function)
-    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-        renamed = [name for name in kwargs if name in _RENAMED_OPTIONS]
-        if renamed:
-            replacements = "; ".join(
-                f"{name} with {_RENAMED_OPTIONS[name]}" for name in renamed
-            )
-            raise TypeError(
-                "pymedphys.gamma options were renamed in version 0.42.0. "
-                f"Replace {replacements}."
-            )
-
-        return function(*args, **kwargs)
-
-    return wrapper
 
 
 def _real_number(value, name: str) -> float:
@@ -216,7 +174,6 @@ def gamma(
 ) -> tuple[GammaResult, ...]: ...
 
 
-@_explain_renamed_options
 def gamma(
     axes_reference,
     dose_reference,
@@ -366,8 +323,7 @@ def gamma(
     Raises
     ------
     TypeError
-        If an option has the wrong type, or is one of the names used before
-        version 0.42.0, in which case the message gives the replacement.
+        If an option has the wrong type.
     ValueError
         If a criterion is not finite and greater than zero, a list of
         criteria is empty or repeats a value, the axes do not match the

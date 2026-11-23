@@ -336,44 +336,6 @@ def test_the_function_is_presented_under_its_public_name():
     assert pymedphys.gamma is gamma
 
 
-def test_every_old_option_name_in_a_call_is_explained_at_once():
-    arguments = _field()
-    old_options = {"interp_fraction": 10, "max_gamma": 2, "local_gamma": True}
-
-    with pytest.raises(TypeError) as error:
-        gamma(*arguments, 3, 2, quiet=True, **old_options)  # type: ignore[call-arg]
-
-    message = str(error.value)
-    assert "0.42.0" in message
-    for old, new in [
-        ("interp_fraction", "search_step_fraction"),
-        ("max_gamma", "gamma_cap"),
-        ("local_gamma", "normalisation"),
-        ("quiet", "remove"),
-    ]:
-        assert old in message and new in message
-
-
-@pytest.mark.parametrize(
-    ("old", "new"),
-    [
-        ("dose_percent_threshold", "dose_criterion_percent"),
-        ("distance_mm_threshold", "distance_criterion_mm"),
-        ("lower_percent_dose_cutoff", "lower_dose_cutoff_percent"),
-        ("global_normalisation", "normalisation_dose"),
-        ("interp_algo", "interpolator"),
-        ("ram_available", "memory_budget_bytes"),
-    ],
-)
-def test_each_renamed_option_names_its_replacement(old, new):
-    axes_reference, reference, axes_evaluation, evaluation = _field()
-
-    with pytest.raises(TypeError, match=new):
-        gamma(  # type: ignore[call-arg]
-            axes_reference, reference, axes_evaluation, evaluation, 3, 2, **{old: 1}
-        )
-
-
 INVALID_OPTIONS = [
     ({"dose": 0}, ValueError, "dose_criterion_percent"),
     ({"dose": -3}, ValueError, "dose_criterion_percent"),
