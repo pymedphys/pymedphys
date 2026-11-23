@@ -181,6 +181,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- **[Security]** The mock Mosaiq SQL Server backup restore helper now passes the administrator password to Docker through environment-variable forwarding rather than embedding its value in `docker run` process arguments. This prevents exposure of the password through process command-line listings and logs; Docker still receives it as an environment variable. [PR #2631](https://github.com/pymedphys/pymedphys/pull/2631)
+
 - **[Security]** The `pymedphys` command line no longer retries a subcommand
   after its handler raises an internal `TypeError`. Previously, a command that
   had already written or deleted a file could run a second time after this
