@@ -15,8 +15,15 @@
 """Regression tests for the merge-blocking workflow summary policy."""
 
 import copy
+import io
+import json
+import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
+import check_workflow_status
 from check_workflow_status import check_jobs, make_summary
 
 
@@ -128,6 +135,89 @@ class WorkflowStatusTests(unittest.TestCase):
                         result == "skipped" and selection == "false"
                     )
                     self.assertEqual(not check_jobs(needs, conditional), should_pass)
+
+
+class MergeGroupTests(unittest.TestCase):
+    """A merge group skips the changes job and must run every other job."""
+
+    def setUp(self):
+        self.conditional = {
+            "lint": "run-python",
+            "unit-tests": "run-python",
+            "docs-check": "run-docs",
+        }
+        self.needs = {
+            "changes": {"result": "skipped", "outputs": {}},
+            "pre-commit": {"result": "success", "outputs": {}},
+            **{job: {"result": "success"} for job in self.conditional},
+        }
+
+    def test_every_job_succeeding_passes(self):
+        self.assertEqual(check_jobs(self.needs, self.conditional, merge_group=True), [])
+        summary = make_summary(
+            "CI Results", self.needs, self.conditional, [], merge_group=True
+        )
+        self.assertIn("| changes | no | skipped |", summary)
+        self.assertIn("| docs-check | yes | success |", summary)
+        self.assertIn("All required checks passed", summary)
+
+    def test_no_conditional_job_may_be_skipped(self):
+        for job in ("pre-commit", *self.conditional):
+            for result in ("skipped", "failure", "cancelled", None):
+                with self.subTest(job=job, result=result):
+                    needs = copy.deepcopy(self.needs)
+                    needs[job]["result"] = result
+                    failures = check_jobs(needs, self.conditional, merge_group=True)
+                    self.assertTrue(any(f.startswith(f"{job}:") for f in failures))
+
+    def test_the_changes_job_must_have_been_skipped(self):
+        # A changes job that ran means the workflow's conditions and this
+        # rule disagree; its selection could have skipped a check.
+        for result in ("success", "failure", "cancelled", None):
+            with self.subTest(result=result):
+                needs = copy.deepcopy(self.needs)
+                needs["changes"]["result"] = result
+                self.assertTrue(check_jobs(needs, self.conditional, merge_group=True))
+
+    def test_missing_dependencies_fail(self):
+        for job in ("changes", *self.conditional):
+            with self.subTest(job=job):
+                needs = copy.deepcopy(self.needs)
+                del needs[job]
+                self.assertTrue(check_jobs(needs, self.conditional, merge_group=True))
+
+    def test_the_option_applies_only_to_merge_groups(self):
+        def summarise(event: str, *options: str) -> int:
+            with tempfile.TemporaryDirectory() as directory:
+                environ = {
+                    "NEEDS_JSON": json.dumps(self.needs),
+                    "GITHUB_STEP_SUMMARY": str(Path(directory) / "summary.md"),
+                    "GITHUB_EVENT_NAME": event,
+                }
+                argv = [
+                    "check_workflow_status.py",
+                    "--title",
+                    "CI Results",
+                    *options,
+                    *(
+                        f"--conditional={job}={output}"
+                        for job, output in self.conditional.items()
+                    ),
+                ]
+                with (
+                    mock.patch.dict(os.environ, environ, clear=True),
+                    mock.patch("sys.argv", argv),
+                    mock.patch("sys.stdout", new_callable=io.StringIO),
+                ):
+                    return check_workflow_status.main()
+
+        option = "--merge-group-runs-every-check"
+        self.assertEqual(summarise("merge_group", option), 0)
+        # Without the option, or outside a merge group, a skipped changes
+        # job with no selection fails closed, as before.
+        self.assertEqual(summarise("merge_group"), 1)
+        self.assertEqual(summarise("pull_request", option), 1)
+        self.assertEqual(summarise("push", option), 1)
 
 
 class UnconditionalSummaryTests(unittest.TestCase):

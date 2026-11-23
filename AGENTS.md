@@ -481,8 +481,10 @@ detailed explanations of individual features.
   ready for review starts both. Only the jobs without `needs` and the two
   summaries carry the draft condition, so every other job is skipped with
   `changes`. Give a new job without `needs` the same condition, and use a
-  status function (`always()`, `cancelled()`, `failure()`) only on a summary or
-  a push-only job.
+  status function (`always()`, `cancelled()`, `failure()`) only on a summary, a
+  main-only job, or a selected job's `!cancelled() && (github.event_name ==
+  'merge_group' || ...)` condition: merge groups skip `changes`, and the
+  summaries then require every other job to succeed.
 
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named
