@@ -158,10 +158,11 @@ def gamma_shell(
         :func:`pymedphys.dicom.zyx_and_dose_from_dataset`, its order can differ
         from the DICOM dataset's raw ``pixel_array``.
 
-        When either threshold is a list, a dict of such arrays is returned,
-        keyed by ``(dose threshold, distance threshold)``. Each array is what
-        a call with that pair alone returns: a list shares work between the
-        dose thresholds and never changes a result.
+        With more than one distinct pair of thresholds, a dict of such arrays
+        is returned, keyed by ``(dose threshold, distance threshold)``. Each
+        array is what a call with that pair alone returns: a list shares work
+        between the dose thresholds and never changes a result. One distinct
+        pair, including lists of one threshold each, gives a single array.
 
         A reference point is analysed when its dose is at or above the lower
         dose cutoff (so NaN, excluded with ``exclude_nan_reference``, is not)
