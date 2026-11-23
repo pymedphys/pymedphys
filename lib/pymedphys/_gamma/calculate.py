@@ -32,7 +32,6 @@ if TYPE_CHECKING:
 
     _Criteria = Sequence[float] | npt.NDArray
 
-_DEFAULT_SEARCH_STEP_FRACTION = 0.1
 _INTERPOLATORS = ("pymedphys", "scipy")
 
 
@@ -411,7 +410,7 @@ def gamma(
     )
 
     if search_step_fraction is None:
-        search_step_fraction = _DEFAULT_SEARCH_STEP_FRACTION
+        search_step_fraction = shell.DEFAULT_SEARCH_STEP_FRACTION
     else:
         search_step_fraction = _real_number(
             search_step_fraction, "search_step_fraction"
@@ -429,7 +428,7 @@ def gamma(
         )
 
     if memory_budget_bytes is None:
-        memory_budget_bytes = shell.DEFAULT_RAM
+        memory_budget_bytes = shell.DEFAULT_MEMORY_BUDGET_BYTES
     else:
         memory_budget_bytes = _whole_number(memory_budget_bytes, "memory_budget_bytes")
         if memory_budget_bytes <= 0:
@@ -442,15 +441,15 @@ def gamma(
         dose_evaluation,
         list(doses),
         list(distances),
-        lower_percent_dose_cutoff=lower_dose_cutoff_percent,
-        interp_fraction=1 / search_step_fraction,
-        max_gamma=np.inf if gamma_cap is None else gamma_cap,
-        local_gamma=normalisation == "local",
-        global_normalisation=normalisation_dose,
+        lower_dose_cutoff_percent=lower_dose_cutoff_percent,
+        search_step_fraction=search_step_fraction,
+        gamma_cap=gamma_cap,
+        normalisation=normalisation,
+        normalisation_dose=normalisation_dose,
         skip_once_passed=bool(skip_once_passed),
         random_subset=random_subset,
-        ram_available=memory_budget_bytes,
-        interp_algo="pymedphys" if interpolator is None else interpolator,
+        memory_budget_bytes=memory_budget_bytes,
+        interpolator="pymedphys" if interpolator is None else interpolator,
         random_state=random_state,
         exclude_nan_reference=bool(exclude_nan_reference),
         uneven_axes="switch" if interpolator is None else "raise",
@@ -489,7 +488,7 @@ def gamma(
                 dose_criterion_percent=dose,
                 distance_criterion_mm=distance,
                 normalisation=normalisation,
-                normalisation_dose=float(options.global_normalisation),
+                normalisation_dose=float(options.normalisation_dose),
                 normalisation_dose_supplied=normalisation_dose is not None,
                 lower_dose_cutoff_percent=lower_dose_cutoff_percent,
                 lower_dose_cutoff=float(options.lower_dose_cutoff),
@@ -501,7 +500,7 @@ def gamma(
                 random_seed=random_seed,
                 method="shell",
                 search_step_fraction=search_step_fraction,
-                interpolator=str(options.interp_algo).lower(),
+                interpolator=str(options.interpolator).lower(),
             ),
             provenance=provenance,
         )
