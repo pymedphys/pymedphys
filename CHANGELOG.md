@@ -88,6 +88,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### New features and enhancements
 
+- **[Privacy]** Set `PYMEDPHYS_REDACT_TRF_PATHS=1` to omit patient-bearing file paths from TRF-to-CSV conversion progress logs. The default preserves local file-identifying diagnostics for clinical operators. [PR #2642](https://github.com/pymedphys/pymedphys/pull/2642)
 - The experimental Mosaiq to CSV app asks for the Mosaiq server's hostname, port, database and site name when no Mosaiq site is configured, instead of failing. After the first successful connection it can save these settings, but not the credentials, to the `config.toml` that PyMedPhys reads, following any `redirect`; settings that fail to connect stay editable in the app. Sites configured in `config.toml` now connect to their `database` entry, which defaults to `MOSAIQ`, and each site's login prompt names its hostname, port and database, so sites that share an alias keep separate logins. [PR #1975](https://github.com/pymedphys/pymedphys/pull/1975)
 - A reusable gamma benchmark in `examples/gamma_benchmark` compares PyMedPhys versions and branches, or the SciPy and PyMedPhys interpolators in one checkout. Saved workload plans cover grid size, above-cutoff fraction, search settings and resource budgets, with numerical verification and illustrated offline reports. Follow the [comparison guide](https://docs.pymedphys.com/en/latest/contrib/info/gamma-benchmark.html) to prepare a study and run it when ready to measure. [PR #2183](https://github.com/pymedphys/pymedphys/pull/2183)
 - `pymedphys.gamma` has a new `exclude_nan_reference` option. When set, reference points whose dose is NaN are left out of the analysis, for example unmeasured detector positions or points outside a region of interest. They are reported as NaN, and the default normalisation ignores them. Without it, a NaN reference dose still raises `ValueError`, whose message now names the option, so that NaN from an upstream error is not silently dropped. NaN in the evaluation dose, and infinite doses in either grid, still raise; the evaluation message recommends cropping the evaluation grid, or using the measurement as the reference with the new option. [PR #2124](https://github.com/pymedphys/pymedphys/pull/2124)
@@ -117,6 +118,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
   [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
+- **[Privacy]** Experimental pseudonymisation omits missing clinical input paths from `FileNotFoundError` messages, avoiding disclosure of patient-bearing filenames through exception reporting. [PR #2644](https://github.com/pymedphys/pymedphys/pull/2644)
 - **[Security]** Experimental pseudonymisation now warns about its security
   limitations. It hashes UIDs and some numeric values without a secret key,
   so anyone who holds the original UIDs can re-link records, and anyone can
@@ -151,10 +153,16 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- **[Security]** Data downloads now reject negative, malformed, or repeated
+  `Content-Length` declarations, and responses containing both `Content-Length`
+  and `Transfer-Encoding` (even with blank field values). If the transport
+  returns more bytes than declared, the excess is refused before writing it.
+  These failures leave an existing cached file unchanged.
+  [PR #2621](https://github.com/pymedphys/pymedphys/pull/2621)
 - The MetersetMap app now writes the points that gamma did not analyse, such as those below the lower dose cutoff, as pixel value 0 in its saved `gamma.png` on every platform. Gamma is NaN at these points, and the app converted NaN to an integer pixel value, which C does not define, so the value could differ between platforms, and NumPy raised `RuntimeWarning: invalid value encountered in cast`. Images written on x86-64 Linux are unchanged, because the conversion already gave 0 there; where it gave another value, those pixels change to 0. A pixel value of 0 in `gamma.png` marks either a point that was not analysed or a gamma below 2/255 (about 0.008); the gamma plot in the report leaves the points that were not analysed blank. [PR #2656](https://github.com/pymedphys/pymedphys/pull/2656)
-
 - `pymedphys.Delivery.from_dicom` now reads RT Plans in which later control points leave out a beam limiting device whose positions do not change, as the DICOM standard specifies (PS3.3 C.8.8.14). For example, a beam with fixed Y jaws and moving MLC leaves lists the jaws only at its first control point. Such plans raised `ValueError: Expected exactly one item per control point for a given collimator`, and the MetersetMap app stopped with this error. Each device now keeps the positions from the last control point that listed it. A control point whose list of devices is empty, or that leaves out a device and lists one the beam does not define, still raises `ValueError`. Plans that list every device at every control point give the same `Delivery` as before. [PR #2614](https://github.com/pymedphys/pymedphys/pull/2614)
 
+- **[Privacy]** `convert_patient_name` now states the expected name format without copying malformed patient-name values into exceptions. [PR #2641](https://github.com/pymedphys/pymedphys/pull/2641)
 - The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
 
 - `pymedphys._mosaiq.sessions.cluster_sessions` no longer drops whole days and fractions of a second from its `interval`, and handles one or no treatments. `sessions_for_site` and the session offset helpers return no sessions, and a mean offset of `None`, for a site with no treatments, where they raised `IndexError`. `sessions_for_site`, `session_offsets_for_site` and `mean_session_offset_for_site` take the session interval as an argument, defaulting to the department setting from the new `session_interval_for_site`, which raises `ValueError` when a site's treatments come from departments with different settings. `session_offsets_for_site` searches for each session's offset from no earlier than the previous session's last treatment, so a session no longer takes the previous session's offset, and compares offset times to the second rather than to the minute. Session clustering no longer uses scikit-learn. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
@@ -295,6 +303,12 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - Documentation and gamma-scaling example environments now pin setuptools 84.1.0, fixing a Windows path escape in legacy wheel installation. Refresh these environments from the updated dependency files. [PR #2444](https://github.com/pymedphys/pymedphys/pull/2444)
 
 ### Contributor facing changes
+
+- **[Contributor facing only]** The distribution verifier rejects TAR and wheel
+  archives with duplicate or aliased member paths before reading metadata,
+  including duplicate TAR entries involving links. This avoids accepting
+  archives whose contents depend on which entry a reader selects.
+  [PR #2624](https://github.com/pymedphys/pymedphys/pull/2624)
 
 - **[Contributor facing only]** The locked pre-commit environment now uses virtualenv 21.14.13, fixing shell-prompt command execution in generated activation scripts. Recreate affected environments with the updated tool to receive the corrected scripts. [PR #2445](https://github.com/pymedphys/pymedphys/pull/2445)
 - **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [PR #2411](https://github.com/pymedphys/pymedphys/pull/2411)
