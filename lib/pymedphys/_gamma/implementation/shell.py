@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# The whole shell search is in this module, so it is long.
 
 """Compare two dose grids with the gamma index."""
 
@@ -83,11 +85,13 @@ def gamma_shell(
         The evaluation dose grid. Evaluation here is defined as the grid which
         is interpolated and searched over at increasing distances away from
         each reference point.
-    dose_percent_threshold : float
-        The percent dose threshold
-    distance_mm_threshold : float
+    dose_percent_threshold : float or list of float
+        The percent dose threshold. A list gives a result for every
+        combination with ``distance_mm_threshold``.
+    distance_mm_threshold : float or list of float
         The gamma distance threshold. Units must
-        match of the coordinates given.
+        match of the coordinates given. A list gives a result for every
+        combination with ``dose_percent_threshold``.
     lower_percent_dose_cutoff : float, optional
         The percent lower dose cutoff below which gamma will not be calculated.
         This is only applied to the reference grid.
@@ -153,6 +157,12 @@ def gamma_shell(
         coordinates when plotting. If the reference was obtained from
         :func:`pymedphys.dicom.zyx_and_dose_from_dataset`, its order can differ
         from the DICOM dataset's raw ``pixel_array``.
+
+        With more than one distinct pair of thresholds, a dict of such arrays
+        is returned, keyed by ``(dose threshold, distance threshold)``. Each
+        array is what a call with that pair alone returns: a list shares work
+        between the dose thresholds and never changes a result. One distinct
+        pair, including lists of one threshold each, gives a single array.
 
         A reference point is analysed when its dose is at or above the lower
         dose cutoff (so NaN, excluded with ``exclude_nan_reference``, is not)
@@ -656,36 +666,64 @@ class GammaInternalFixedOptions:
 
 
 def gamma_loop(options: GammaInternalFixedOptions):
-    still_searching_for_gamma = np.full_like(
-        options.flat_dose_reference, True, dtype=bool
-    )
+    """Gamma for every combination of dose and distance threshold.
 
-    current_gamma = np.inf * np.ones(
+    Returns an array shaped ``(reference points, dose thresholds, distance
+    thresholds)``. Each distance threshold has a search of its own, at its
+    own step, so the gamma for a combination is what a call with that pair
+    alone gives, whatever else was requested with it. The dose thresholds
+    share each search, which is what makes a list of them cheaper than
+    separate calls.
+    """
+    current_gamma = np.empty(
         (
             len(options.flat_dose_reference),
             len(options.dose_percent_threshold),
             len(options.distance_mm_threshold),
         )
     )
-    current_gamma = gamma_at_nearest_grid_points(options, current_gamma)
+    for index, distance_mm_threshold in enumerate(options.distance_mm_threshold):
+        current_gamma[:, :, index] = _gamma_loop_for_one_distance(
+            options, distance_mm_threshold
+        )
+
+    return current_gamma
+
+
+def _gamma_loop_for_one_distance(
+    options: GammaInternalFixedOptions, distance_mm_threshold
+):
+    """Search with one distance threshold and every dose threshold.
+
+    Returns an array shaped ``(reference points, dose thresholds)``.
+    """
+    current_gamma = np.full(
+        (len(options.flat_dose_reference), len(options.dose_percent_threshold)),
+        np.inf,
+    )
+    current_gamma = gamma_at_nearest_grid_points(
+        options, current_gamma, distance_mm_threshold
+    )
 
     if not options.free_axes:
         # A single evaluation point: its gamma is the only candidate.
         return current_gamma
 
-    distance_step_size = np.min(options.distance_mm_threshold) / options.interp_fraction
+    maximum_test_distance = min(
+        distance_mm_threshold * options.max_gamma, options.maximum_test_distance
+    )
+    distance_step_size = distance_mm_threshold / options.interp_fraction
 
-    to_be_checked = options.reference_points_to_calc & still_searching_for_gamma
+    still_searching_for_gamma = np.full(current_gamma.shape, True)
+    to_be_checked = options.reference_points_to_calc
 
     distance = options.minimum_test_distance
 
     # Include the spatial endpoint even when it is not a multiple of the
     # interpolation step; it can be the only sampled evaluation point.
-    force_search_distances = np.unique(
-        np.append(options.distance_mm_threshold, options.maximum_test_distance)
-    )
+    force_search_distances = np.unique([distance_mm_threshold, maximum_test_distance])
     force_search_distances = force_search_distances[force_search_distances > distance]
-    while distance <= options.maximum_test_distance:
+    while distance <= maximum_test_distance:
         logger.debug(
             "Current distance: %.2f mm | Number of reference points remaining: %i",
             distance,
@@ -696,38 +734,28 @@ def gamma_loop(options: GammaInternalFixedOptions):
             options, distance, to_be_checked, distance_step_size
         )
 
-        current_gamma, still_searching_for_gamma_all = multi_thresholds_gamma_calc(
+        current_gamma, still_searching_for_gamma = multi_thresholds_gamma_calc(
             options,
             current_gamma,
             min_relative_dose_difference,
             distance,
             to_be_checked,
+            distance_mm_threshold,
+            still_searching_for_gamma,
         )
 
-        still_searching_for_gamma = np.any(
-            np.any(still_searching_for_gamma_all, axis=-1), axis=-1
+        to_be_checked = options.reference_points_to_calc & np.any(
+            still_searching_for_gamma, axis=-1
         )
-
-        to_be_checked = options.reference_points_to_calc & still_searching_for_gamma
 
         if np.sum(to_be_checked) == 0:
             break
 
-        relevant_distances = options.distance_mm_threshold[
-            np.any(
-                np.any(
-                    options.reference_points_to_calc[:, None, None]
-                    & still_searching_for_gamma_all,
-                    axis=0,
-                ),
-                axis=0,
-            )
-        ]
-
-        distance_step_size = np.min(relevant_distances) / options.interp_fraction
-
         distance_step_size = np.max(
-            [distance / options.interp_fraction / options.max_gamma, distance_step_size]
+            [
+                distance / options.interp_fraction / options.max_gamma,
+                distance_mm_threshold / options.interp_fraction,
+            ]
         )
 
         distance += distance_step_size
@@ -742,7 +770,9 @@ def gamma_loop(options: GammaInternalFixedOptions):
     return current_gamma
 
 
-def gamma_at_nearest_grid_points(options: GammaInternalFixedOptions, current_gamma):
+def gamma_at_nearest_grid_points(
+    options: GammaInternalFixedOptions, current_gamma, distance_mm_threshold
+):
     """Bound gamma at points outside the evaluation grid.
 
     The nearest point of the evaluation grid's extent is always a candidate,
@@ -781,15 +811,11 @@ def gamma_at_nearest_grid_points(options: GammaInternalFixedOptions, current_gam
         )
         gamma_at_edge = np.sqrt(
             (
-                relative_dose_difference[:, None, None]
-                / (options.dose_percent_threshold[None, :, None] / 100)
+                relative_dose_difference[:, None]
+                / (options.dose_percent_threshold[None, :] / 100)
             )
             ** 2
-            + (
-                distance[current_slice, None, None]
-                / options.distance_mm_threshold[None, None, :]
-            )
-            ** 2
+            + (distance[current_slice, None] / distance_mm_threshold) ** 2
         )
         current_gamma[indices] = np.minimum(current_gamma[indices], gamma_at_edge)
 
@@ -802,7 +828,17 @@ def multi_thresholds_gamma_calc(
     min_relative_dose_difference,
     distance,
     to_be_checked,
+    distance_mm_threshold,
+    still_searching_for_gamma,
 ):
+    """Update gamma for one shell and say which combinations keep searching.
+
+    ``current_gamma`` and ``still_searching_for_gamma`` are shaped
+    ``(reference points, dose thresholds)``. A combination that has stopped
+    searching is left as it is, even while another dose threshold keeps its
+    reference point in the search, so its gamma is what a call with that
+    pair alone gives.
+    """
     # The shell radius lies within the free axes. Off a plane, line or
     # point, the perpendicular distance adds in quadrature; hypot(r, 0) is
     # exactly r, so free-only grids are unaffected.
@@ -810,31 +846,25 @@ def multi_thresholds_gamma_calc(
         total_distance = np.full(len(options.flat_dose_reference), distance)
     else:
         total_distance = np.hypot(distance, options.flat_perpendicular_distance)
-    total_distance = total_distance[:, None, None]
+    total_distance = total_distance[:, None]
 
     gamma_at_distance = np.sqrt(
         (
-            min_relative_dose_difference[:, None, None]
-            / (options.dose_percent_threshold[None, :, None] / 100)
+            min_relative_dose_difference[:, None]
+            / (options.dose_percent_threshold[None, :] / 100)
         )
         ** 2
-        + (total_distance[to_be_checked] / options.distance_mm_threshold[None, None, :])
-        ** 2
+        + (total_distance[to_be_checked] / distance_mm_threshold) ** 2
     )
 
-    current_gamma[to_be_checked, :, :] = np.min(
-        np.concatenate(
-            [
-                gamma_at_distance[None, :, :, :],
-                current_gamma[None, to_be_checked, :, :],
-            ],
-            axis=0,
-        ),
-        axis=0,
+    current_gamma[to_be_checked] = np.where(
+        still_searching_for_gamma[to_be_checked],
+        np.minimum(gamma_at_distance, current_gamma[to_be_checked]),
+        current_gamma[to_be_checked],
     )
 
-    still_searching_for_gamma = current_gamma > (
-        total_distance / options.distance_mm_threshold[None, None, :]
+    still_searching_for_gamma = still_searching_for_gamma & (
+        current_gamma > total_distance / distance_mm_threshold
     )
 
     if options.skip_once_passed:
