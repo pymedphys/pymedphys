@@ -1,23 +1,24 @@
 name: Clean Graphics on Public Data
 
-# On demand, run the Clean Graphics Option on eight public instances of
-# real people that hold graphics, and count what it does: four softcopy
-# Presentation States of 0.55 T MRI of consented volunteers, three of the
-# heart (Zenodo record 23089164, https://doi.org/10.5281/zenodo.23089164)
-# and one of the knee (record 23964089,
-# https://doi.org/10.5281/zenodo.23964089), both CC BY 4.0, whose Graphic
-# Annotation Sequences hold text and graphic objects, and four RT Images of
-# the BRAVEHeart trial's patients, in the University of Sydney's research
-# data store (https://doi.org/10.25910/7by0-vf89, CC BY 4.0), each with
-# four curve groups. MIDI-B's instances hold no graphics, so this is the
+# On demand, run the Clean Graphics Option on ten public instances of real
+# people, and count what it does: six softcopy Presentation States of
+# 0.55 T MRI of consented volunteers, three of the heart (Zenodo record
+# 23089164, https://doi.org/10.5281/zenodo.23089164) and three of the knee
+# (record 23964089, https://doi.org/10.5281/zenodo.23964089), both CC BY
+# 4.0, four of them with Graphic Annotation Sequences that hold text and
+# graphic objects, and two without annotations, whose overlay groups hold
+# only Overlay Activation Layer (60xx,1001); and four RT Images of the
+# BRAVEHeart trial's patients, in the University of Sydney's research data
+# store (https://doi.org/10.25910/7by0-vf89, CC BY 4.0), each with four
+# curve groups. MIDI-B's instances hold no graphics, so this is the
 # option's own public check.
 # pymedphys._dicom.deidentify.clean_graphics_check reads each instance over
 # HTTP ranges from its archive, which it refuses unless the archive's size
 # and central directory are those that text_evaluation_archives pins, and
 # refuses each instance unless its CRC-32, SHA-256, and SOP Class are those
 # that it pins. It runs each under Modified Dates, alone and with Clean
-# Graphics, with reviewed annotations lists built from its own annotations,
-# and fails unless every expectation is met.
+# Graphics, with reviewed annotations lists built from its own annotations
+# where it has any, and fails unless every expectation is met.
 #
 # These are real people's data, and this repository's logs and artefacts
 # are public. So only counts, codes, digests, versions, and the data sets'

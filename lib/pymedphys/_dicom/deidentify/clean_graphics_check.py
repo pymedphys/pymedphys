@@ -24,11 +24,15 @@ consented volunteers, on Zenodo, whose Graphic Annotation Sequences
 BRAVEHeart trial's patients, in the University of Sydney's research data
 store, which hold curve groups (50xx,xxxx). None holds Overlay Data
 (60xx,3000), Overlay Comments (60xx,4000), or an overlay in unused bits of
-Pixel Data, which only the synthetic tests exercise. :data:`MEMBERS` pins
-eight of these instances by their archive, their place in its central
-directory, their SHA-256, and their SOP Class, and :func:`read_members`
-reads each over HTTP ranges, refusing any archive or member that is not the
-pinned one.
+Pixel Data, which only the synthetic tests exercise. Two of the knee
+Presentation States hold no annotation, but an overlay group whose only
+attribute is Overlay Activation Layer (60xx,1001), with which a
+Presentation State shows an overlay of the image that it references: it
+places no overlay in the state, so the option must keep it and release the
+state. :data:`MEMBERS` pins ten of these instances by their archive, their
+place in its central directory, their SHA-256, and their SOP Class, and
+:func:`read_members` reads each over HTTP ranges, refusing any archive or
+member that is not the pinned one.
 
 :func:`check` runs each instance under Modified Dates, alone and with Clean
 Graphics, with and without reviewed annotations lists, and tests the runs
@@ -90,6 +94,9 @@ CARDIAC_MR_COLLECTION = "zenodo_cardiac_mr_0p55t"
 CARDIAC_MR = "23089164/aa60c0f515584b4214849cc7fa1382f5"
 KNEE_MR_COLLECTION = "zenodo_knee_mr_0p55t"
 KNEE_MR = "23964089/1dfe43da0e2feaa8a739998002630005"
+# The knee archive of the two Presentation States without annotations, whose
+# overlay groups hold only Overlay Activation Layer (60xx,1001).
+KNEE_MR_ACTIVATION = "23964089/3145043d3f56591e4e7e669a75ecc0ef"
 BRAVEHEART_COLLECTION = "sydney_braveheart_rt_image"
 BRAVEHEART = "32833_Byrne_2/P01-P05 (Anonymised).zip"
 # Ranges of 1 MiB: an archive's central directory, then each member, take
@@ -176,6 +183,20 @@ MEMBERS: tuple[PinnedMember, ...] = (
         12,
         "bff31065f8776a5e4cfd5a58eb7c8a17eb0922131718b9fccd72ff5e0bd191ee",
         PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE,
+    ),
+    PinnedMember(
+        KNEE_MR_COLLECTION,
+        KNEE_MR_ACTIVATION,
+        14,
+        "7dcdc75192194913e126e59b28c71e5acafa7413c04b57dcc94c6e0c7efbc486",
+        GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
+    ),
+    PinnedMember(
+        KNEE_MR_COLLECTION,
+        KNEE_MR_ACTIVATION,
+        18,
+        "5f975b9fb3c49af3efbaeb5698f63c217b8b43e73ec0856a4d24b9840559b591",
+        GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
     ),
     PinnedMember(
         BRAVEHEART_COLLECTION,
@@ -358,11 +379,12 @@ def markdown(summary: Mapping[str, Any]) -> str:
     lines = [
         "# Clean Graphics on public data",
         "",
-        "Public instances of real people that hold graphics, each given to "
-        "de-identification transforms under Modified Dates, alone and with "
-        "Clean Graphics, with reviewed annotations lists built from its own "
-        "annotations, and each written file to a release gate. Only counts "
-        "are shown: no value, text, image, or file of the instances.",
+        "Public instances of real people that hold graphics, or an overlay "
+        "group that holds no overlay, each given to de-identification "
+        "transforms under Modified Dates, alone and with Clean Graphics, with "
+        "reviewed annotations lists built from its own annotations where it "
+        "has any, and each written file to a release gate. Only counts are "
+        "shown: no value, text, image, or file of the instances.",
         "",
         "| About | |",
         "| --- | --- |",
@@ -417,7 +439,10 @@ def markdown(summary: Mapping[str, Any]) -> str:
     if compared:
         lines += [
             "",
-            "## Images with and without Clean Graphics",
+            "## Files written with and without Clean Graphics",
+            "",
+            "The tags in which the file written with Clean Graphics differs "
+            "from the one written under Modified Dates alone, without a list.",
             "",
             "| Instance | Added | Removed | Differ |",
             "| --- | --- | --- | --- |",

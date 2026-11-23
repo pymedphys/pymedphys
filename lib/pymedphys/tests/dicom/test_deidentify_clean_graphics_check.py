@@ -17,16 +17,17 @@ synthetic archives and files: its pins, its reads, its runs and their
 expectations, and that it writes no value of an instance. Values that must
 never reach its output carry the text ``SENTINEL``."""
 
+import dataclasses
 import hashlib
 import io
 import json
 import zipfile
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import clean_graphics_check as check_module
 from pymedphys._dicom.deidentify import clean_graphics_runs as runs_module
-from pymedphys._dicom.deidentify import policy
+from pymedphys._dicom.deidentify import pixel_risk, policy
 from pymedphys._dicom.deidentify.clean_graphics_check import (
     FORMAT,
     GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
@@ -53,7 +54,9 @@ from . import _synthetic_references as synthetic
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 
 CARDIAC = "zenodo_cardiac_mr_0p55t"
+KNEE = "zenodo_knee_mr_0p55t"
 PRESENTATION_STATE = "2.25.701"
+ACTIVATING_STATE = "2.25.702"
 PRESENTATION_STATE_SERIES = "2.25.700"
 RT_IMAGE_INSTANCE = "2.25.801"
 RT_IMAGE_SERIES = "2.25.800"
@@ -309,6 +312,20 @@ def _state(annotations):
     return dataset
 
 
+def _activating():
+    """A Presentation State without annotations whose one overlay group
+    holds only Overlay Activation Layer, which shows the overlay of group
+    6000 of the slices that it references on its one graphic layer."""
+    dataset = _state([])
+    dataset.SOPInstanceUID = ACTIVATING_STATE
+    dataset.ContentLabel = "ACTIVATING"
+    dataset.GraphicLayerSequence = [
+        synthetic.item(GraphicLayer="SENTINEL", GraphicLayerOrder=1)
+    ]
+    dataset.add_new(0x60001001, "CS", "SENTINEL")  # Overlay Activation Layer
+    return dataset
+
+
 def _image():
     """A CT slice with two curve groups, which its IOD does not define."""
     dataset = synthetic.ct_slice(0)
@@ -322,9 +339,12 @@ def _image():
     return dataset
 
 
-def _found(state=None, image=None):
-    """A Presentation State and an image, as read members."""
+def _found(state=None, activating=None, image=None):
+    """A Presentation State with annotations, one without annotations whose
+    overlay group holds only Overlay Activation Layer, and an image, as read
+    members."""
     state = synthetic.written(_state(_annotations()) if state is None else state)
+    activating = synthetic.written(_activating() if activating is None else activating)
     image = synthetic.written(_image() if image is None else image)
     return (
         (
@@ -336,6 +356,16 @@ def _found(state=None, image=None):
                 GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
             ),
             state,
+        ),
+        (
+            PinnedMember(
+                KNEE,
+                "23964089/" + "0" * 32,
+                3,
+                hashlib.sha256(activating).hexdigest(),
+                GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
+            ),
+            activating,
         ),
         (
             PinnedMember(
@@ -366,9 +396,10 @@ def test_each_expectation_is_met_where_the_engine_follows_the_design():
     assert [each["expectation"] for each in summary["expectations"]] == list(
         EXPECTATIONS
     )
-    state, image = summary["members"]
+    state, activating, image = summary["members"]
     assert state["holds"]["graphic_annotations"] == 4
     assert state["holds"]["set_sizes"] == [3]
+    assert state["holds"]["activation_only_overlay_groups"] == 0
     runs = state["runs"]
     # Kept alone, an annotation shown with others is held until they are
     # decided on together, and one that names the patient is held whatever.
@@ -396,12 +427,20 @@ def test_each_expectation_is_met_where_the_engine_follows_the_design():
     assert runs["text_removed"]["outcome"] == "released"
     assert runs["text_removed"]["passes"] == 1
     assert runs["text_removed"]["written"]["graphic_annotations"] == 2
+    markers = {"added": [], "removed": [], "differ": ["(0012,0063)", "(0012,0064)"]}
+    # Its overlay group only shows an overlay of the slices that it
+    # references, so it is not an overlay, and nothing is decided by a list.
+    assert activating["holds"]["graphics"] == []
+    assert activating["holds"]["graphic_annotations"] == 0
+    assert activating["holds"]["activation_only_overlay_groups"] == 1
+    assert list(activating["runs"]) == ["modified_dates", "no_list"]
+    for ran in activating["runs"].values():
+        assert ran["outcome"] == "released"
+        assert ran["written"]["activation_only_overlay_groups"] == 1
+    assert activating["differences"] == markers
     assert image["holds"] == {"graphics": ["curve_data"], "curve_groups": 2}
-    assert image["differences"] == {
-        "added": [],
-        "removed": [],
-        "differ": ["(0012,0063)", "(0012,0064)"],
-    }
+    assert image["differences"] == markers
+    assert "differences" not in state
     assert not summary["crashed"]
 
 
@@ -416,12 +455,13 @@ def test_the_summary_and_its_page_hold_no_value_of_an_instance():
         assert annotation_digest(annotation) not in written
 
 
-def test_a_presentation_state_without_annotations_fails_by_its_label():
+def test_a_presentation_state_without_annotations_or_activation_fails_by_its_label():
     summary = check(_found(state=_state([])))
 
     assert not summary["met"]
     unmet = _unmet(summary)
-    assert unmet[EXPECTATIONS[0]] == [f"{CARDIAC} #1"]
+    assert unmet[EXPECTATIONS[9]] == [f"{CARDIAC} #1"]
+    assert unmet[EXPECTATIONS[0]] == ["no instance"]
     assert EXPECTATIONS[7] not in unmet
 
 
@@ -431,7 +471,42 @@ def test_an_engine_that_does_not_apply_the_option_fails(monkeypatch):
     unmet = _unmet(check(_found()))
 
     assert unmet[EXPECTATIONS[8]] == ["sydney_braveheart_rt_image #2"]
-    assert unmet[EXPECTATIONS[9]] == ["sydney_braveheart_rt_image #2"]
+    assert unmet[EXPECTATIONS[9]] == [f"{KNEE} #3"]
+    assert unmet[EXPECTATIONS[10]] == [f"{KNEE} #3", "sydney_braveheart_rt_image #2"]
+
+
+def test_an_engine_that_takes_an_activation_for_an_overlay_fails(monkeypatch):
+    # As the engine did before it read a group that holds only Overlay
+    # Activation Layer as no overlay.
+    monkeypatch.setattr(pixel_risk, "_OVERLAY_ACTIVATION_LAYER_ELEMENT", None)
+
+    unmet = _unmet(check(_found()))
+
+    assert unmet[EXPECTATIONS[9]] == [f"{KNEE} #3"]
+
+
+@pytest.mark.parametrize("kept", ["none", "another value"])
+def test_a_file_written_without_the_activation_as_received_fails(monkeypatch, kept):
+    # pylint: disable-next = protected-access
+    written = runs_module._written
+
+    def altered(data):
+        found = written(data)
+        if not found.claims_clean_graphics:
+            return found
+        layers = tuple(
+            pydicom.DataElement(each.tag, each.VR, "OTHER")
+            for each in found.activation_layers
+            if kept == "another value"
+        )
+        return dataclasses.replace(found, activation_layers=layers)
+
+    monkeypatch.setattr(runs_module, "_written", altered)
+
+    unmet = _unmet(check(_found()))
+
+    assert list(unmet) == [EXPECTATIONS[9]]
+    assert unmet[EXPECTATIONS[9]] == [f"{KNEE} #3"]
 
 
 def test_a_member_that_raises_is_counted_by_where_never_by_its_message():
@@ -444,7 +519,7 @@ def test_a_member_that_raises_is_counted_by_where_never_by_its_message():
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
     )
 
-    summary = check(((member, state), _found()[1]))
+    summary = check(((member, state), *_found()[1:]))
 
     assert sum(summary["crashed"].values()) == 1
     assert _unmet(summary)[EXPECTATIONS[-1]] == [f"{CARDIAC} #1"]

@@ -20,17 +20,17 @@ run does, under Retain Longitudinal Temporal Information with Modified
 Dates, alone and with Clean Graphics, and gives each file that a transform
 writes to a release gate, with the instance's own evidence as its
 subject's. The Basic Profile alone would sequester a Presentation State for
-its creation date (D-020). A Presentation State is run without a reviewed
-annotations list (D-062), and with lists built in memory from its own
-annotations, as a reviewer would decide on them (:data:`RUNS`): an empty
-list; each annotation kept; each annotation kept and each set of
+its creation date (D-020). A Presentation State with annotations is run
+without a reviewed annotations list (D-062), and with lists built in memory
+from its own annotations, as a reviewer would decide on them (:data:`RUNS`):
+an empty list; each annotation kept; each annotation kept and each set of
 annotations that a display shows together kept too, by the digests of the
 sets that a first pass holds, as a reviewer takes them from the QC pack;
 each annotation removed; each annotation that holds a text object removed,
 the rest and their sets kept; and, where keeping them all holds an
 annotation for echoing an identifier, those removed, the rest and their
-sets kept. An image is run without a list, and its two written files are
-compared.
+sets kept. An image, and a Presentation State without annotations, are run
+without a list alone, and their two written files are compared.
 
 For each run, :func:`instance_summary` counts the outcome and its reasons,
 as the release report names them, what is decided for each annotation and
@@ -41,12 +41,16 @@ which sequesters a Presentation State, since the Type 1 sequence has no
 dummy value (D-021); with a list, each annotation is kept as received but
 for its UIDs, removed, or held, as the list decides, and kept annotations
 shown together need a decision on them together; curves are removed, as
-under the Basic Profile; and every file written under the option claims it
-(D-041). A run that raises is counted by the exception's type and place,
-never its message.
+under the Basic Profile; an overlay group whose only attribute is Overlay
+Activation Layer (60xx,1001), with which a Presentation State shows an
+overlay of the image that it references, places no overlay in the state, so
+it is kept and the state is released; and every file written under the
+option claims it (D-041). A run that raises is counted by the exception's
+type and place, never its message.
 
 The annotations' digests, which the reviewed annotations list keeps
-confidential, and the written files stay in memory: no summary holds them.
+confidential, the Overlay Activation Layers, and the written files stay in
+memory: no summary holds them.
 """
 
 from __future__ import annotations
@@ -109,7 +113,8 @@ RUNS: Mapping[str, str] = {
         "removed, the rest and their sets kept"
     ),
 }
-# The runs without a list, which are an image's runs.
+# The runs without a list, which are the only runs of an image and of a
+# Presentation State without annotations.
 WITHOUT_A_LIST = ("modified_dates", "no_list")
 # The reason that the walker gives for sequestering a Presentation State
 # whose Graphic Annotation Sequence takes D, as the release report names it.
@@ -129,6 +134,9 @@ _BASELINE = (policy.MODIFIED_DATES,)
 _OPTION = (policy.MODIFIED_DATES, policy.CLEAN_GRAPHICS)
 _GRAPHIC_ANNOTATION_SEQUENCE = 0x00700001
 _METHOD_CODES = 0x00120064
+# Overlay Activation Layer (60xx,1001), the only attribute of a softcopy
+# Presentation State's Overlay Activation Module (PS3.3 C.11.7).
+_OVERLAY_ACTIVATION_LAYER = 0x1001
 # A first pass, then a second with the decisions on the sets that it held.
 _PASSES = 2
 # Why a kept annotation can be held for itself, whatever the list decides on
@@ -167,7 +175,8 @@ class _Annotations:
 @dataclasses.dataclass(frozen=True)
 class _Written:
     """What a transform wrote, in memory: the digests of the annotations
-    that its file holds, in order, never leave the check."""
+    that its file holds, in order, and its Overlay Activation Layers never
+    leave the check."""
 
     data: bytes
     digests: tuple[str, ...]
@@ -176,6 +185,7 @@ class _Written:
     graphics: frozenset[str]
     nested_graphics: int
     claims_clean_graphics: bool
+    activation_layers: tuple[pydicom.DataElement, ...]
 
 
 @dataclasses.dataclass
@@ -246,6 +256,10 @@ class InstanceRuns:
     crashed : str or None
         Where reading it raised, by the exception's type and place, if it
         did.
+    activation_layers : tuple of pydicom.DataElement
+        The Overlay Activation Layer (60xx,1001) of each of its overlay
+        groups that holds no other attribute, as :func:`_activation_layers`
+        reads them; they stay in memory.
     """
 
     label: str
@@ -254,6 +268,7 @@ class InstanceRuns:
     annotations: _Annotations | None
     runs: dict[str, _Ran]
     crashed: str | None = None
+    activation_layers: tuple[pydicom.DataElement, ...] = ()
 
     @property
     def presentation_state(self) -> bool:
@@ -267,13 +282,16 @@ def run_instance(label: str, sop_class: str, data: bytes) -> InstanceRuns:
     try:
         dataset = pydicom.dcmread(io.BytesIO(data), stop_before_pixels=True)
         annotations = _annotations(data) if sop_class in PRESENTATION_STATES else None
-        holds = _holds(dataset, annotations)
+        layers = _activation_layers(dataset)
+        holds = _holds(dataset, annotations, layers)
     # Anything that reading the instance raises is counted, by where; its
     # message, which could quote a value, is dropped.
     except Exception as error:  # pylint: disable = broad-exception-caught
         return InstanceRuns(label, sop_class, {}, None, {}, crashed=crash_site(error))
-    ran = InstanceRuns(label, sop_class, holds, annotations, {})
-    if annotations is None:
+    ran = InstanceRuns(
+        label, sop_class, holds, annotations, {}, activation_layers=layers
+    )
+    if annotations is None or not annotations.digests:
         for name in WITHOUT_A_LIST:
             ran.runs[name] = _run(data, name, None, None)
         return ran
@@ -324,10 +342,30 @@ def _annotations(data: bytes) -> _Annotations:
     )
 
 
+def _activation_layers(dataset: pydicom.Dataset) -> tuple[pydicom.DataElement, ...]:
+    """The Overlay Activation Layer (60xx,1001) of each overlay group that
+    holds no other attribute but its group length, in the order of the data
+    set. With such a group, a Presentation State shows an overlay of the
+    image that it references, and places no overlay in itself."""
+    groups: dict[int, set[int]] = {}
+    for tag in dataset.keys():
+        if 0x6000 <= tag.group <= 0x601E and tag.group % 2 == 0 and tag.element:
+            groups.setdefault(tag.group, set()).add(tag.element)
+    return tuple(
+        dataset[group << 16 | _OVERLAY_ACTIVATION_LAYER]
+        for group, elements in groups.items()
+        if elements == {_OVERLAY_ACTIVATION_LAYER}
+    )
+
+
 def _holds(
-    dataset: pydicom.Dataset, annotations: _Annotations | None
+    dataset: pydicom.Dataset,
+    annotations: _Annotations | None,
+    layers: Sequence[pydicom.DataElement],
 ) -> dict[str, Any]:
-    """Counts of the graphics that an instance holds, and no value."""
+    """Counts of the graphics that an instance holds, and of a Presentation
+    State's overlay groups that hold only Overlay Activation Layer, and no
+    value."""
     holds: dict[str, Any] = {
         "graphics": sorted(graphics_of(dataset)),
         "curve_groups": len(
@@ -352,6 +390,7 @@ def _holds(
             "compound_graphics": _objects(items, "CompoundGraphicSequence"),
             "sets_shown_together": len(sets),
             "set_sizes": sorted(len(each) for each in sets),
+            "activation_only_overlay_groups": len(layers),
         }
     )
     return holds
@@ -479,6 +518,7 @@ def _written(data: bytes) -> _Written:
         graphics_of(dataset),
         _nested_graphics(dataset),
         claims,
+        _activation_layers(dataset),
     )
 
 
@@ -555,7 +595,7 @@ def instance_summary(ran: InstanceRuns) -> dict[str, Any]:
             entry["written"] = _written_summary(each, ran.annotations)
         summary["runs"][name] = entry
     files = [ran.runs[name].written for name in WITHOUT_A_LIST if name in ran.runs]
-    if not ran.presentation_state and len(files) == 2 and None not in files:
+    if len(files) == 2 and None not in files:
         first, second = (each.data for each in files if each is not None)
         summary["differences"] = differences(first, second)
     return summary
@@ -572,6 +612,7 @@ def _written_summary(ran: _Ran, source: _Annotations | None) -> dict[str, Any]:
             "text_objects": written.text_objects,
             "graphic_objects": written.graphic_objects,
             "kept_as_received": ran.kept_as_received(source),
+            "activation_only_overlay_groups": len(written.activation_layers),
         }
     return {
         **found,
@@ -582,9 +623,9 @@ def _written_summary(ran: _Ran, source: _Annotations | None) -> dict[str, Any]:
 
 
 EXPECTATIONS: tuple[str, ...] = (
-    "Without a reviewed annotations list, each Presentation State is "
-    "sequestered for its Graphic Annotation Sequence alone, under Modified "
-    "Dates alone and with Clean Graphics.",
+    "Without a reviewed annotations list, each Presentation State with "
+    "annotations is sequestered for its Graphic Annotation Sequence alone, "
+    "under Modified Dates alone and with Clean Graphics.",
     "With an empty list, each annotation is held as not reviewed and each set "
     "of annotations shown together is held, so each Presentation State is "
     "held for review, for its annotations alone.",
@@ -612,6 +653,12 @@ EXPECTATIONS: tuple[str, ...] = (
     "Clean Graphics changes nothing in an image's written file but its "
     "De-identification Method (0012,0063) and De-identification Method Code "
     "Sequence (0012,0064).",
+    "Each Presentation State without annotations has an overlay group whose "
+    "only attribute is Overlay Activation Layer (60xx,1001), and is released "
+    "under Modified Dates alone and with Clean Graphics, with each such group "
+    "kept as received; Clean Graphics changes nothing in its written file but "
+    "its De-identification Method (0012,0063) and De-identification Method "
+    "Code Sequence (0012,0064).",
     "Every file written under Clean Graphics claims it, with DCM 113103, and "
     "holds no Curve Data, Overlay Data, Overlay Comments, or overlay in Pixel "
     "Data, at any depth; no file written under Modified Dates alone claims it.",
@@ -622,7 +669,10 @@ EXPECTATIONS: tuple[str, ...] = (
 def evaluate(members: Sequence[InstanceRuns]) -> list[tuple[str, list[str]]]:
     """Each expectation, with the labels of the instances for which it is
     not met, or ``no instance`` where it applies to none."""
-    states = [each for each in members if each.presentation_state]
+    unannotated = [each for each in members if _unannotated(each)]
+    states = [
+        each for each in members if each.presentation_state and not _unannotated(each)
+    ]
     images = [each for each in members if not each.presentation_state]
     tests: list[tuple[Sequence[InstanceRuns], Callable[[InstanceRuns], bool]]] = [
         (states, _sequestered_without_a_list),
@@ -634,6 +684,7 @@ def evaluate(members: Sequence[InstanceRuns]) -> list[tuple[str, list[str]]]:
         (states, _released_without_the_echoes),
         (images, _curves_removed),
         (images, _only_the_markers_change),
+        (unannotated, _released_keeping_the_activation),
         (members, _claimed_and_clean),
         (members, _nothing_raised),
     ]
@@ -644,6 +695,16 @@ def evaluate(members: Sequence[InstanceRuns]) -> list[tuple[str, list[str]]]:
             continue
         found.append((text, [each.label for each in scope if not _met(test, each)]))
     return found
+
+
+def _unannotated(member: InstanceRuns) -> bool:
+    """Whether a member is a Presentation State read without annotations;
+    one that could not be read is taken to have them."""
+    return (
+        member.presentation_state
+        and member.annotations is not None
+        and not member.annotations.digests
+    )
 
 
 def _met(test: Callable[[InstanceRuns], bool], member: InstanceRuns) -> bool:
@@ -830,6 +891,18 @@ def _only_the_markers_change(member: InstanceRuns) -> bool:
         "removed": [],
         "differ": list(MARKERS),
     }
+
+
+def _released_keeping_the_activation(member: InstanceRuns) -> bool:
+    if not member.activation_layers:
+        return False
+    for name in WITHOUT_A_LIST:
+        ran = member.runs.get(name)
+        if ran is None or ran.outcome != "released" or ran.written is None:
+            return False
+        if ran.written.activation_layers != member.activation_layers:
+            return False
+    return _only_the_markers_change(member)
 
 
 def _claimed_and_clean(member: InstanceRuns) -> bool:
