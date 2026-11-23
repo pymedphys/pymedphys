@@ -136,8 +136,10 @@ class GammaProvenance:
             return NotImplemented
         return self.versions == other.versions
 
+    # Equal mappings can list their items in different orders, so hash them
+    # without order.
     def __hash__(self) -> int:
-        return hash(tuple(self.versions.items()))
+        return hash(frozenset(self.versions.items()))
 
     # A read-only mapping view cannot be pickled or copied, so rebuild from a
     # plain dictionary.
