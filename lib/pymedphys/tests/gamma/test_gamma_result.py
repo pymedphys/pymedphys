@@ -299,6 +299,18 @@ def test_provenance_versions_cannot_be_changed():
     assert pickle.loads(pickle.dumps(provenance)) == provenance
 
 
+def test_provenance_in_another_order_is_the_same_record():
+    versions = {"pymedphys": "1.2.3", "numpy": "2.0.2", "scipy": "1.14.1"}
+    provenance = GammaProvenance(versions=versions)
+    reordered = GammaProvenance(versions=dict(reversed(versions.items())))
+
+    assert reordered == provenance
+    assert hash(reordered) == hash(provenance)
+    assert len({provenance, reordered}) == 1
+    assert {provenance: "found"}[reordered] == "found"
+    assert list(reordered.versions) == ["scipy", "numpy", "pymedphys"]
+
+
 def test_result_is_built_only_by_the_library():
     # The class takes keywords only, so that attributes can be added later.
     # pylint: disable = too-many-function-args, missing-kwoa
