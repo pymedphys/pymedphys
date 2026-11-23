@@ -88,6 +88,14 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### New features and enhancements
 
+- `pymedphys zenodo set-token` can now omit the positional credential: it reads
+  `PYMEDPHYS_ZENODO_TOKEN` or prompts with hidden input when the terminal can
+  suppress echo. Missing or empty credentials, and terminals that cannot hide
+  input, produce a CLI error rather than exposing the token. The positional
+  form remains available for compatibility but exposes tokens in command-line
+  arguments and potentially shell history. See the
+  [Zenodo token guide](https://docs.pymedphys.com/en/latest/users/howto/zenodo-token.html).
+  [PR #2646](https://github.com/pymedphys/pymedphys/pull/2646)
 - The experimental Mosaiq to CSV app asks for the Mosaiq server's hostname, port, database and site name when no Mosaiq site is configured, instead of failing. After the first successful connection it can save these settings, but not the credentials, to the `config.toml` that PyMedPhys reads, following any `redirect`; settings that fail to connect stay editable in the app. Sites configured in `config.toml` now connect to their `database` entry, which defaults to `MOSAIQ`, and each site's login prompt names its hostname, port and database, so sites that share an alias keep separate logins. [PR #1975](https://github.com/pymedphys/pymedphys/pull/1975)
 - A reusable gamma benchmark in `examples/gamma_benchmark` compares PyMedPhys versions and branches, or the SciPy and PyMedPhys interpolators in one checkout. Saved workload plans cover grid size, above-cutoff fraction, search settings and resource budgets, with numerical verification and illustrated offline reports. Follow the [comparison guide](https://docs.pymedphys.com/en/latest/contrib/info/gamma-benchmark.html) to prepare a study and run it when ready to measure. [PR #2183](https://github.com/pymedphys/pymedphys/pull/2183)
 - `pymedphys.gamma` has a new `exclude_nan_reference` option. When set, reference points whose dose is NaN are left out of the analysis, for example unmeasured detector positions or points outside a region of interest. They are reported as NaN, and the default normalisation ignores them. Without it, a NaN reference dose still raises `ValueError`, whose message now names the option, so that NaN from an upstream error is not silently dropped. NaN in the evaluation dose, and infinite doses in either grid, still raise; the evaluation message recommends cropping the evaluation grid, or using the measurement as the reference with the new option. [PR #2124](https://github.com/pymedphys/pymedphys/pull/2124)
