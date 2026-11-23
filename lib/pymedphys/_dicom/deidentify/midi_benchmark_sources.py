@@ -45,6 +45,7 @@ from .midi_answer_key import Action, Check
 from .midi_benchmark_errors import uid_name
 from .midi_benchmark_values import element_text, find_element, held_words, unbracketed
 from .reasons import HeldDescriptor, HeldPixelData, HeldRoiName, HeldVisualFeatures
+from .removed_items import RemovedItems
 from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
 from .walker import Sequestration
 
@@ -123,7 +124,11 @@ def removed_shape(source: pydicom.Dataset, check: Check) -> tuple[str, str, bool
     return "IS", shape, whole, dates
 
 
-def kept_word_kinds(written: pydicom.Dataset | None, check: Check) -> str:
+def kept_word_kinds(
+    written: pydicom.Dataset | None,
+    check: Check,
+    removed: RemovedItems | None = None,
+) -> str:
     """Name the kinds of the answer key's words that the released value holds.
 
     Each word of the key's text that the written value holds, as the
@@ -132,6 +137,8 @@ def kept_word_kinds(written: pydicom.Dataset | None, check: Check) -> str:
     (:meth:`~.technique_descriptors.TechniqueVocabulary.word_kind`), such as
     ``named exception`` or ``bare number``, never by the word. The names are
     sorted and joined, or ``none``, or ``unknown`` without a written value.
+    ``removed`` maps the check's place to the written file
+    (:func:`~.midi_benchmark_values.find_element`).
 
     >>> from .midi_answer_key import parse_check
     >>> written = pydicom.Dataset()
@@ -144,7 +151,7 @@ def kept_word_kinds(written: pydicom.Dataset | None, check: Check) -> str:
     element = (
         None
         if written is None or check.path is None
-        else find_element(written, check.path)
+        else find_element(written, check.path, removed=removed)
     )
     if element is None:
         return "unknown"
@@ -316,18 +323,23 @@ def describe_source(
     described: tuple[str, ...],
     explained: Mapping[str, collections.Counter],
     written: pydicom.Dataset | None = None,
+    removed: RemovedItems | None = None,
 ) -> None:
     """Count a failed check by what its source instance holds, without a value.
 
     A text that the check asks to be removed is also counted by the kinds
-    of its words that the written instance holds (:func:`kept_word_kinds`).
+    of its words that the written instance holds (:func:`kept_word_kinds`),
+    its place mapped to the written file by ``removed``.
     """
     if source is None:
         return
     if check.action in (Action.TAG_RETAINED, Action.TEXT_NOTNULL):
         explained["present"][(*described, source_state(source, check))] += 1
     elif check.action is Action.TEXT_REMOVED:
-        shape = (*removed_shape(source, check), kept_word_kinds(written, check))
+        shape = (
+            *removed_shape(source, check),
+            kept_word_kinds(written, check, removed),
+        )
         explained["removed"][(*described, *shape)] += 1
 
 
@@ -354,6 +366,9 @@ def describe_finding(  # pylint: disable = too-many-arguments
 
 # Each check of a watched attribute, by where it ended up.
 WATCHED = ("category", "action", "attribute", "outcome")
+# Each check whose place a removed item moved, by where it was read
+# (``moved`` or ``removed``), and its outcome.
+MOVED = ("category", "action", "attribute", "place", "outcome")
 
 
 def counted_rows(

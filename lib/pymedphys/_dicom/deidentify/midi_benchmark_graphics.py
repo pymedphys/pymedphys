@@ -99,6 +99,9 @@ def graphics_of(dataset: pydicom.Dataset) -> frozenset[str]:
     >>> dataset = pydicom.Dataset()
     >>> graphics_of(dataset)
     frozenset()
+    >>> dataset.add_new(0x60001001, "CS", "LAYER")  # Overlay Activation Layer
+    >>> graphics_of(dataset)
+    frozenset()
     >>> dataset.add_new(0x60003000, "OW", b"\\x00\\x00")
     >>> dataset.add_new(0x50020005, "US", 2)
     >>> sorted(graphics_of(dataset))

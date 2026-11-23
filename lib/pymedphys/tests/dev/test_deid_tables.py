@@ -25,6 +25,7 @@ from the standard: every attribute in it is invented.
 # pylint: disable = too-many-lines
 
 import dataclasses
+import email.message
 import hashlib
 import http.client
 import io
@@ -4521,7 +4522,8 @@ class _Response(io.BytesIO):
 
     def __init__(self, page):
         super().__init__(page)
-        self.headers = {"Content-Length": str(len(page))}
+        self.headers = email.message.Message()
+        self.headers["Content-Length"] = str(len(page))
 
 
 def test_a_retried_download_leaves_only_the_report_on_standard_output(
