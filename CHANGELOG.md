@@ -12,6 +12,14 @@ This project adheres to
 
 ## Unreleased
 
+### Mosaiq mock-database credential handling
+
+Mosaiq mock-database connections now construct SQLAlchemy URLs from separate
+credential and endpoint fields. Passwords containing reserved URL characters
+(such as `@`, `:`, `/`, `#` and `%`) are preserved instead of being parsed as
+URL delimiters, avoiding connection failures or unintended destinations.
+[PR #2634](https://github.com/pymedphys/pymedphys/pull/2634)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
