@@ -181,6 +181,13 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- **[Security]** The `pymedphys` command line no longer retries a subcommand
+  after its handler raises an internal `TypeError`. Previously, a command that
+  had already written or deleted a file could run a second time after this
+  error. The original error now propagates after one invocation. One-argument
+  handlers still reject unknown options; two-argument handlers still receive
+  the remaining options. [PR #2649](https://github.com/pymedphys/pymedphys/pull/2649)
+
 - **[Security]** Data downloads now reject negative, malformed, or repeated
   `Content-Length` declarations, and responses containing both `Content-Length`
   and `Transfer-Encoding` (even with blank field values). If the transport
