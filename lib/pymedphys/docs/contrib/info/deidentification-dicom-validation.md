@@ -44,6 +44,8 @@ At present the synthetic corpus needs five known differences, each listed with i
 - `profile`: Study Date, Study Time, and Study ID, which the Basic Profile empties (action Z), are needed to build a DICOMDIR, so `dciodvfy` warns.
 - `validator`: `dciodvfy` warns about every Person Name without a component delimiter, such as the dummy value `DEIDENTIFIED`, as a retired form; its dictionary predates RT Assertions Sequence (0044,0110); and its condition for the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200) counts references from only a few sequences, so it reports both as present without need once the Basic Profile removes or empties Referenced Image Sequence and Source Image Sequence in the functional groups of enhanced images. PS3.3 Section C.12.2 counts references from any module, and the corpus's outputs still reference the instances they list elsewhere, for example from Referenced Image Evidence Sequence (0008,9092), so their condition is met. These two entries apply only to an output that still references, outside the module, an instance that the sequence lists; where the last such reference is gone, the finding is unexplained. Where no reference to an instance survives outside the module, the engine removes both sequences.
 
+Other entries explain findings that the synthetic corpus does not give, but releases of other data can. Among them, in `validator`: `dicom-validator` checks a user-optional module only where the data set holds an attribute of it that no other module present holds. In the Digital X-Ray Image IOD, the X-Ray Acquisition Dose Module shares 18 Type 3 attributes, such as Distance Source to Detector (0018,1110) and Filter Type (0018,1160), with the DX Positioning, X-Ray Filtration, and X-Ray Generation Modules, all user-optional, and X-Ray Filtration has no attribute of its own. The Basic Profile removes attributes that are the other three modules' own, such as Comments on Radiation Dose (0040,0310). An output that keeps none of them then gives each shared attribute it holds as unexpected, as a source that never held one does, although the output conforms. A test in `test_deidentify_dicom_validation_corpus.py` gives such an image to the engine and `dicom-validator`, and another checks the entry's 18 attributes against the generated PS3.3 tables.
+
 ## Run it on the synthetic corpus
 
 The corpus tests build the synthetic corpus, run the engine over it once for each policy, each defined by a module of `lib/pymedphys/tests/dicom/corpus_runs`, and compare each run. They hold `basic`, `basic-clean-descriptors`, and `basic` with the corpus's images compressed, and each option joins them as a module of its own once the engine applies the option. They need Linux or macOS with dicom3tools on the `PATH`.
@@ -59,12 +61,13 @@ The corpus tests build the synthetic corpus, run the engine over it once for eac
    export PYMEDPHYS_DICOM_VALIDATORS=required
    export PYMEDPHYS_DICOM_VALIDATION_REPORT="$PWD/dicom-validation"
    uv run --no-dev --extra tests pymedphys dev tests --dicom-validators \
-     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py
+     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
+     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus_p_z.py
    ```
 
 The tests are marked `dicom_validators`, so the ordinary test run leaves them out. Without `PYMEDPHYS_DICOM_VALIDATORS=required` they skip when a validator is missing, rather than fail. The first run downloads the DocBook source into `~/.pymedphys/dicom-validator`, or into the directory that `PYMEDPHYS_DICOM_VALIDATOR_STANDARD` names. Each run's report is written into a directory of `dicom-validation` named after the run.
 
-In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow. Its summary shows each run's report, and its `dicom-validation` artefact holds the reports as Markdown and JSON.
+The first module validates the policies whose names begin with a letter from a to o, and the second the others, through the same checks. In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow, which validates the two halves on two runners, `(a-o)` and `(p-z)`. Each runner's summary shows its runs' reports, and its `dicom-validation-a-o` or `dicom-validation-p-z` artefact holds them as Markdown and JSON.
 
 ## Run it on a release of your own
 
@@ -79,6 +82,8 @@ uv run --no-dev --extra tests python -m pymedphys._dicom.deidentify.dicom_valida
   --work /data/midi-b/runs/validation-basic-1 \
   --out /data/midi-b/runs/validation-basic-1-dicom-validation
 ```
+
+The **MIDI-B Benchmark** workflow runs the same command in each of its jobs, after the benchmark, and keeps the results in the job's artefact (section 9 of the [MIDI-B benchmark guide](deidentification-midi-benchmark.md)).
 
 For another release, give the release and the mapping instead:
 

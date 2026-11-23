@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# Every exemption that the release gate tries is decided here, so it is long.
+
 """Name the residual findings that kept vocabulary, labels, or options explain.
 
 The residual search finds the text of a removed value wherever it is in a
@@ -90,6 +93,81 @@ reason that such a finding is not a reason for review (D-032), or returns
   whose values that the search could find there equals a whole value of it
   (:func:`removed_uid`). It applies to a finding that would otherwise
   withhold the file.
+- :attr:`Exemption.VOCABULARY_MEANING`: the finding is in a Code Meaning
+  (0008,0104) of a code item, whatever its scheme, every value of which is
+  made only of words of the reviewed technique vocabulary and echoes no
+  identifier of the subject, and its source is a description, comment, or
+  technique descriptor of the examination, a contrast agent or
+  radiopharmaceutical, or an SR TEXT value, or a private data element that
+  only copies one of them
+  (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
+  The release gate tries it after every exemption listed here but
+  :attr:`Exemption.COPIED_REQUEST_CODE`,
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, and
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
+- :attr:`Exemption.METHOD_DIGEST`: a finding of any kind in De-identification
+  Method (0012,0063) of the top-level data set, every match of whose source
+  there lies wholly inside a value equal to the method digest that the run
+  writes (:func:`in_method_digest`). The digest is a SHA-256 of the policy
+  and the engine, never of a source value, so a value found in its digits
+  is there by chance.
+- :attr:`Exemption.NOMINAL_OFFSET`: under Modified Dates, a finding of any
+  kind, every match of whose source in its element lies wholly inside the
+  nominal UTC offset ``+0000`` that the option writes, whatever the source
+  held: a value of Timezone Offset From UTC (0008,0201), every value of
+  which is the nominal offset, or the offset that ends a datetime that the
+  option moved
+  (:func:`~pymedphys._dicom.deidentify.residual_offsets.in_nominal_offset`,
+  D-039). The nominal offset holds no source value, so a value found
+  wholly inside it, such as a source offset that was already ``+0000``,
+  reveals nothing.
+- :attr:`Exemption.COPIED_REQUEST_CODE`: the finding's source is the Code
+  Value, Coding Scheme Designator, or Code Meaning of a code item directly
+  in Requested Procedure Code Sequence (0032,1064), at any depth, every
+  value of which collected for the subject is one that the instance's output
+  does not hold, and it is found in the same attribute of a kept code item,
+  each of whose source values that the search could find there equals a
+  whole value of it
+  (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
+  Equipment copies the
+  request's code, which the Basic Profile removes with Request Attributes
+  Sequence (0040,0275), into Procedure Code Sequence (0008,1032), which it
+  keeps, so the removed copy reveals nothing the kept code does not, and
+  every other finding in the kept code is decided as before. The release
+  gate tries it after every exemption listed here but
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR` and
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
+- :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
+  descriptor, an attribute whose values the reviewed technique vocabulary's
+  automatic tier may keep, such as Series Description (0008,103E), at the
+  top level or in an item, every value of which is made only of words of
+  that vocabulary and echoes no identifier of the subject, and its source
+  is a description, comment, or technique descriptor of the examination, a
+  contrast agent or radiopharmaceutical, or an SR TEXT value, or a private
+  data element that only copies one of them
+  (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
+  The release gate tries it after every exemption listed here but
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
+- :attr:`Exemption.SHARED_DESIGNATOR`: the finding's source is the Coding
+  Scheme Designator (0008,0102) of a code item, at any depth, in no
+  private sequence and in none that codes or names an institution, a
+  department, a station, or a custodial organisation, every value of which
+  collected for the subject is one that the instance's output does not
+  hold, and it is found in the Coding Scheme Designator of a kept code
+  item, each of whose source values that the search could find there
+  equals a whole value of it
+  (:func:`~pymedphys._dicom.deidentify.residual_copies.shared_designator`).
+  A designator names its code's scheme and nothing else, so where Clean
+  Structured Content removes a content item and keeps another of the same
+  local scheme, the removed designator shows only that the two shared a
+  scheme, which the kept item already shows. Text of any other source
+  found in a designator, such as an organisation's name, and every Code
+  Meaning are decided as before. The release gate tries it after every
+  other exemption listed here, for a text finding that none of them
+  explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -99,7 +177,8 @@ vendor's, a date only if each of them that could be in the element equals a
 whole kept value, a Code Meaning or a UID from unwritten instances only
 if no written instance collected any of them, and a removed private UID
 only if no written instance holds any of them replaced and each that could
-be in the element equals a whole kept value. A finding in an element that
+be in the element equals a whole kept value, and likewise a removed request
+code or designator. A finding in an element that
 holds a byte outside ISO 646's printable characters, a finding of any other
 kind, and a finding outside the data set are never exempt. Kept values are read from the
 written file's bytes, as text in ISO 646, never decoded by pydicom, and none
@@ -113,10 +192,10 @@ import enum
 import functools
 import pathlib
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from .codes import load_coding_schemes
-from .file_layout import ElementPath, Region, read_file_layout
+from .file_layout import ElementPath, Extent, Region, read_file_layout
 from .option_kept import (
     UID_KINDS,
     kept_by,
@@ -124,7 +203,7 @@ from .option_kept import (
     retained_value,
     whole_values,
 )
-from .residuals import Finding, SourceValue
+from .residuals import Finding, SourceValue, _derive, _Needle
 from .safe_private import SafePrivateList, load_safe_private_rules
 from .standard import _RESERVED_ODD_GROUPS, dictionary_attribute, load_table_e3_10_1
 from .tcia_private_tags import tcia_safe_private_rules
@@ -137,6 +216,9 @@ _CODE_MEANING = "(0008,0104)"
 _CREATOR_REFERENCE = "(0008,0302)"
 _CHARACTERISTICS = "(0008,0300)"
 BODY_PART_EXAMINED = "(0018,0015)"
+# De-identification Method, which holds the method digest that the run writes.
+DEIDENTIFICATION_METHOD = ElementPath((), "(0012,0063)")
+_METHOD_DIGEST = re.compile(r"[0-9a-f]{64}")
 # Code Value, Coding Scheme Version, Code Meaning, Long Code Value, and URN
 # Code Value, which the designator in their item qualifies.
 _CODE_ITEM = frozenset(
@@ -170,6 +252,21 @@ class Exemption(enum.Enum):
     UNWRITTEN_CODE_MEANING = "unwritten-code-meaning"
     UNWRITTEN_UID = "unwritten-uid"  # in a UID an option keeps, from unwritten only
     REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
+    # in a Code Meaning made only of the reviewed technique vocabulary
+    VOCABULARY_MEANING = "vocabulary-meaning"
+    # equal to the same attribute of a kept code, from a removed request code
+    COPIED_REQUEST_CODE = "copied-request-code"
+    # in a technique descriptor made only of the reviewed technique vocabulary
+    VOCABULARY_DESCRIPTOR = "vocabulary-descriptor"
+    # equal to a kept code's whole designator, from a removed code's designator
+    SHARED_DESIGNATOR = "shared-designator"
+    # a finding that would hold the file for review, which a reviewer cleared
+    # in an attested QC pack of an earlier run of the same source file, in
+    # the same value (residuals.ReviewedFinding)
+    REVIEWED = "reviewed"
+    METHOD_DIGEST = "method-digest"  # wholly inside the run's own method digest
+    # wholly inside the nominal UTC offset that Modified Dates writes
+    NOMINAL_OFFSET = "nominal-offset"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -383,6 +480,14 @@ class KeptValues:
         if any(byte < 0x20 or byte > 0x7E for byte in raw):
             return None
         return raw.decode("ascii")
+
+    def extent(self, path: ElementPath) -> Extent | None:
+        """Return where an element of the data set is, or ``None`` if it is not."""
+        return self._extents.get(path)
+
+    def read(self, start: int, stop: int) -> bytes:
+        """Return the written file's bytes from ``start`` up to ``stop``."""
+        return bytes(self._written[start:stop])
 
     def values(self, path: ElementPath) -> tuple[str, ...] | None:
         """Return an element's values without padding, or ``None``.
@@ -637,6 +742,144 @@ def removed_uid(
     if whole_values(values, written, text, UID_KINDS):
         return Exemption.REMOVED_UID
     return None
+
+
+def in_method_digest(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    digest: str | None,
+) -> Exemption | None:
+    """Return whether a finding lies wholly inside the run's own method digest.
+
+    Parameters
+    ----------
+    finding : Finding
+        A finding of the residual search, of any kind.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    digest : str or None
+        The method digest that the run writes into De-identification
+        Method (0012,0063), 64 lowercase hexadecimal digits, as the
+        coverage records it; ``None`` explains nothing.
+
+    Returns
+    -------
+    Exemption or None
+        :attr:`Exemption.METHOD_DIGEST` where all of these hold, and
+        ``None`` otherwise:
+
+        - the finding is in De-identification Method of the top-level data
+          set, whose values, read as ISO 646 text, include ``digest``;
+        - the finding's match starts inside such a value; and
+        - every place in that element, from its header to the end of its
+          value, where a form that the search derives from any value of the
+          finding's source, pooled across the subject, starts, in any codec
+          and case, lies wholly inside such a value. The characters around
+          each are ignored, which finds at least what the search does, since
+          the search records only the first match of a source in each
+          element.
+
+        So the same value found before or after the digest, in the value
+        that the run writes after it, or in a digest of another run, which
+        the element keeps from its source, still counts, as does a match
+        that starts in the digest and runs past its end. The digest is a
+        SHA-256 of the policy and the engine, never of a source value, so a
+        value found wholly inside it is there by chance and reveals nothing.
+    """
+    element = finding.location.element
+    if (
+        digest is None
+        or not _METHOD_DIGEST.fullmatch(digest)
+        or finding.location.region is not Region.DATA_SET
+        or element != DEIDENTIFICATION_METHOD
+    ):
+        return None
+    extent, values = kept.extent(element), kept.values(element)
+    if extent is None or values is None or digest not in values:
+        return None
+    spans = _digest_spans(
+        kept.read(extent.value_start, extent.end), extent.value_start, digest
+    )
+    if not matches_within(finding, kept, sources, extent, spans):
+        return None
+    return Exemption.METHOD_DIGEST
+
+
+def matches_within(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    extent: Extent,
+    spans: Sequence[tuple[int, int]],
+) -> bool:
+    """Return whether every match of a finding's source in its element is in ``spans``.
+
+    Parameters
+    ----------
+    finding : Finding
+        A finding of the residual search, in the element at ``extent``.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    extent : Extent
+        Where the finding's element is in the written file.
+    spans : sequence of tuple of int
+        The ranges of the written file, each from its first byte up to the
+        byte after its last, that the engine wrote whatever the source held.
+
+    Returns
+    -------
+    bool
+        Whether the finding's match starts inside a span, and every place
+        in the element, from its header to the end of its value, where a
+        form that the search derives from any value of the finding's source,
+        pooled across the subject, starts, in any codec and case, lies
+        wholly inside a span. The characters around each are ignored, which
+        finds at least what the search does, since the search records only
+        the first match of a source in each element. A match that starts in
+        a span and runs past its end counts against it.
+    """
+    if not any(start <= finding.offset < stop for start, stop in spans):
+        return False
+    needles = {
+        needle.folded
+        for value in sources.get(finding.source, ())
+        for needle in _derive(value)
+        if isinstance(needle, _Needle)
+    }
+    if not needles:
+        return False
+    # The bytes of the element, and those after it that a match starting in
+    # it could run into, with ASCII letters in lower case, as searched.
+    longest = max(map(len, needles))
+    window = kept.read(extent.start, extent.end + longest - 1).lower()
+    for needle in needles:
+        at = window.find(needle)
+        while at != -1 and extent.start + at < extent.end:
+            begin, end = extent.start + at, extent.start + at + len(needle)
+            if not any(start <= begin and end <= stop for start, stop in spans):
+                return False
+            at = window.find(needle, at + 1)
+    return True
+
+
+def _digest_spans(value: bytes, offset: int, digest: str) -> list[tuple[int, int]]:
+    """Return where the values of an element's ``value`` that equal ``digest`` are.
+
+    ``offset`` is where ``value`` starts in the file. Each span is of the
+    digest's own bytes, without padding.
+    """
+    spans, start, wanted = [], offset, digest.encode("ascii")
+    for each in value.split(b"\\"):
+        if each.strip(_PADDING) == wanted:
+            begin = start + len(each) - len(each.lstrip(_PADDING))
+            spans.append((begin, begin + len(wanted)))
+        start += len(each) + 1
+    return spans
 
 
 def standard_code_meanings(

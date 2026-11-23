@@ -28,7 +28,7 @@ import inspect
 from pymedphys._imports import pytest
 
 from . import test_deidentify_corpus_end_to_end as first_half
-from .test_deidentify_corpus_end_to_end import SECOND_HALF
+from .corpus_runs import SECOND_HALF
 
 # The first half's fixture, which pytest finds here by its name.
 from .test_deidentify_corpus_end_to_end import (  # noqa: F401  # pylint: disable = unused-import
@@ -201,6 +201,29 @@ def test_the_delivery_instructions_name_what_they_reference_as_written(policy_ru
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_the_brachy_records_source_manufacturer_is_emptied_or_kept(policy_run):
     first_half.test_the_brachy_records_source_manufacturer_is_emptied_or_kept(
+        policy_run
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_intent_preparation_and_position_instruction_name_what_they_reference(
+    policy_run,
+):
+    first_half.test_the_intent_preparation_and_position_instruction_name_what_they_reference(
+        policy_run
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_a_type_1_referenced_study_sequence_keeps_its_items_keyed(policy_run):
+    first_half.test_a_type_1_referenced_study_sequence_keeps_its_items_keyed(policy_run)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_the_required_preparation_and_prescription_descriptions_are_emptied(
+    policy_run,
+):
+    first_half.test_the_required_preparation_and_prescription_descriptions_are_emptied(
         policy_run
     )
 

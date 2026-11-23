@@ -21,6 +21,7 @@ Manual run -> docs.yml
 security.yml <- schedule, manual run, main push, ready PR, merge_group
   |-- dependency audit / Bandit / zizmor (selected PRs; every merge group)
   `-- Security Summary
+merge_group / hourly schedule / manual run -> merge-queue-cleanup.yml
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
@@ -53,7 +54,8 @@ Coordinates all CI checks based on file changes, labels, and event types.
   push to `main` starts no run, as "Main Branch Workflow" below explains. See
   "Draft pull requests" below
 - **Jobs**:
-  - `changes`: Tests the selection/gating policy and reads the tested merge diff
+  - `changes`: Tests the selection/gating policy and reads the tested merge diff;
+    skipped in merge groups, as "Merge Queue Workflow" below explains
   - `pre-commit`: Auto-formatting and basic checks
   - `lint`: Code quality
   - `type-check`: Static type checking
@@ -124,8 +126,8 @@ links and unverifiable diffs enable every component.
 
 Unit runs skip the slow tests and never run doctests. `SLOW_TEST_FILES` and
 `DOCTEST_FILES` in `select_checks.py` list the package modules that apply the
-slow marker or hold doctests. The policy tests in the always-required `changes`
-job scan the package and fail unless each list equals what they find, naming
+slow marker or hold doctests. The policy tests in the `changes` job, which
+every pull request runs, and in `script-tests` scan the package and fail unless each list equals what they find, naming
 each module to add or remove, so update the list in the PR that adds, removes
 or renames such a module. Shared test data, including `_data/urls.json` and
 `_data/hashes.json`, also selects integration tests because ordinary unit runs
@@ -162,7 +164,10 @@ cancels any run still in progress for that pull request. Labels such as
 
 Only the jobs that start a run (`changes` and `pre-commit` in `ci.yml`,
 `changes` in `security.yml`) and the two summaries carry the draft condition;
-every other job needs `changes`, so it is skipped with it. The selector and
+every other job needs `changes`, so it is skipped with it. A selected job also
+runs in a merge group, where `changes` is skipped, so it carries
+`!cancelled()`; on a draft its selection output is empty and it is skipped
+all the same. The selector and
 the summaries' conditional checks are unchanged. GitHub counts a skipped
 required check as passing, so a draft shows `CI Summary` and `Security Summary`
 as skipped rather than pending. When a draft is marked ready without a new
@@ -257,16 +262,26 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-Every cell of the unit-test matrix runs in six parts on six runners, since
+Every cell of the unit-test matrix runs in eight parts on eight runners, since
 a slow runner could take the 30-minute limit (60 minutes on Windows and for
 `corpus-runs`) to run the
 whole suite at once, the corpus modules together, or the rest of the suite. The workflow's
 `CORPUS_RUN_TESTS` lists the modules that run the synthetic collection through
 the engine, which take about half the suite's time, and `CT_DEFACING_RUN_TEST`,
-`CT_DEFACING_REVIEW_TEST`, and `CORPUS_END_TO_END_P_Z_TEST` name the three of
-them that each run alone. The first two are the two halves of the CT defacing
-runs, which share their helpers in `tests/dicom/_ct_defacing_runs.py`. The
-third is the second half of the policies' end-to-end runs:
+`CT_DEFACING_VARIANT_TEST`, `CT_DEFACING_REVIEW_TEST`, `CT_DEFACING_DOSE_TEST`, and
+`CORPUS_END_TO_END_P_Z_TEST` name the five of them that each run alone. The
+first four share the CT defacing runs, and their helpers in
+`tests/dicom/_ct_defacing_runs.py`: the variants module runs the head CT's
+variants (two defaced series in one Frame of Reference, two time points, a
+multi-frame series, and eyes drawn away from the globes), and compares each
+with the defaced run that the first module also reviews, so both make that
+run; the review module runs a target in the face block, Clean Pixel Data
+reviewed with the option, and an RT Dose that a block whose eyes disagree with
+the ROIs drawn cleaned; and the dose
+module runs an RT Dose with too much dose in the face block to set to zero,
+the reviewer's choice for it, and the RT Doses that cannot be placed or hold
+no grid. Each CT defacing run writes the whole synthetic collection beside the
+head, so each corpus file that is added lengthens all four parts. The fifth is the second half of the policies' end-to-end runs:
 `test_deidentify_corpus_end_to_end.py` runs each policy in
 `tests/dicom/corpus_runs` whose name begins with a letter from `a` to `o`
 through every check of a policy's run, and
@@ -275,8 +290,10 @@ checks. Each test of the second module calls the first module's test of the
 same name and cites the same requirements, so the requirements register names
 both, and a test there fails when a check of the first module has no
 counterpart in the second. The `ct-defacing` part runs
-`test_deidentify_ct_defacing_run.py`, the `ct-defacing-reviews` part runs
-`test_deidentify_ct_defacing_review_runs.py`, the `corpus-end-to-end-p-z` part
+`test_deidentify_ct_defacing_run.py`, the `ct-defacing-variants` part runs
+`test_deidentify_ct_defacing_variant_runs.py`, the `ct-defacing-reviews` part runs
+`test_deidentify_ct_defacing_review_runs.py`, the `ct-defacing-doses` part runs
+`test_deidentify_ct_defacing_dose_runs.py`, the `corpus-end-to-end-p-z` part
 runs `test_deidentify_corpus_end_to_end_p_z.py`, the `corpus-runs` part runs the
 other listed modules, with the first half of the policies' runs, the `deidentify-a-o` part runs every other
 `tests/dicom/test_deidentify_*.py` module whose name goes on with a letter from
@@ -285,7 +302,7 @@ of the other parts to `--ignore`. One glob, `test_deidentify_[abcdefghijklmno]*.
 gives `deidentify-a-o` its modules and `others` its ignores, so a new
 de-identification module runs in the part its name gives it, any other new
 module runs in `others` until it is listed, and every test runs in exactly one
-of the six parts. The letters are listed rather than written as a range, which
+of the eight parts. The letters are listed rather than written as a range, which
 can match capitals under some locales. The cut at `p` halved the remaining
 time: on 7 November 2026, locally, the remaining modules' summed test time was
 1,133 seconds in `deidentify-a-o` and 1,167 seconds in `others`. A listed
@@ -294,15 +311,16 @@ list, the same module named for two of the parts that run one alone, or an
 empty remaining corpus
 or `deidentify-a-o` selection fails every part before pytest starts, and a
 contract test checks that each listed module exists and is listed once. The
-four corpus parts and `deidentify-a-o` read no downloaded data, as the
+five corpus parts and `deidentify-a-o` read no downloaded data, as the
 `pydicom-versions` job's de-identification tests do not, so they skip the data
 cache. Its key ends in the job's ID,
 so every part and cell of a job on one OS shares it, and a part that saved it
 without the data would leave the others re-downloading. Move a module between
-the corpus parts, or a group of runs between the two CT defacing modules, when
-the `--durations` reports show one part taking much longer than another; each
-CT defacing module makes the runs that its own tests review, so that no run is
-made in both. The corpus selection was split this way on 5 November 2026,
+the corpus parts, or a group of runs between the three CT defacing modules,
+when the `--durations` reports show one part taking much longer than another;
+each CT defacing module makes the runs that its own tests review, so that no
+run is made in two, but for the defaced run that the variants are compared
+with. The corpus selection was split this way on 5 November 2026,
 when more Structured Reports in the synthetic corpus took the combined
 corpus part past 30 minutes on Ubuntu, the CT defacing runs were halved on
 6 November 2026, when they alone reached 30 minutes on Ubuntu, and the
@@ -312,15 +330,16 @@ another letter when the `--durations` reports show one of these two parts
 taking much longer than the other. The policies' end-to-end runs take most of
 the corpus modules' time, more than any grouping of whole modules can balance,
 so they are halved by the first letter of each policy's name; change
-`FIRST_LETTERS` in `test_deidentify_corpus_end_to_end.py` to move the cut when
+`FIRST_LETTERS` in `tests/dicom/corpus_runs/__init__.py` to move the cut when
 the `--durations` reports show `corpus-runs` and `corpus-end-to-end-p-z`
-drifting apart.
+drifting apart. The same cut halves the policies' runs in the `DICOM
+validation of de-identified output` job.
 
-The run at the dependency floors runs in the same six parts. Each part
+The run at the dependency floors runs in the same eight parts. Each part
 retains its job limit (60 minutes for `corpus-runs`, 30 for the others), two
 pytest workers and the 900-second
-per-test limit. Only `others` uses the data cache. All six JUnit reports must
-arrive and all six parts must pass; the required summary continues to depend
+per-test limit. Only `others` uses the data cache. All eight JUnit reports must
+arrive and all eight parts must pass; the required summary continues to depend
 on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
@@ -331,7 +350,7 @@ job combines each cell's parts into `junit-<os>-<python>`, such as
 `junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
 reads for that environment. It writes no report for a cell if one of its
 parts' reports is missing or a test case ran in two parts. Since every cell
-runs six jobs, a full-matrix run starts eighteen macOS unit-test jobs, and GitHub
+runs eight jobs, a full-matrix run starts twenty-four macOS unit-test jobs, and GitHub
 runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
 parts may queue for a runner; the queue does not count towards a job's time
 limit.
@@ -355,9 +374,9 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision: each of its six parts records the pydicom and
+versions and checkout revision: each of its eight parts records the pydicom and
 Python versions it imported, and the `combined-report` job records the
-combined evidence only when all six parts passed on the checked-out commit and
+combined evidence only when all eight parts passed on the checked-out commit and
 imported the same pydicom, which must match the lock, under Python 3.14. The
 parts may run different 3.14 patch releases, since each runner image carries
 its own while GitHub rolls out a new one, and the evidence records each part's.
@@ -379,7 +398,7 @@ For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
 another feature skip themselves when its packages are missing. The `dicom`
-extra's tests run in the same six parts as the unit-test matrix, on six
+extra's tests run in the same eight parts as the unit-test matrix, on eight
 runners, since together they can reach the time limit on a slow runner;
 `corpus-runs` has 60 minutes and the other parts 30. Its `others` part holds
 only `tests/dicom`, but the de-identification modules alone bring it near the
@@ -493,7 +512,7 @@ Publishes to PyPI behind quality gates.
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
   environment in the unit-test matrix; each environment reports through its
-  six parts' combined report. It fails when a traced test failed, was
+  eight parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to
@@ -813,9 +832,11 @@ reports the synthetic phantoms and IDC's allow-listed phantom collections in
 full, with crops.
 
 - **Triggers**: manually only, with the jobs to run (`all`, `patients`, or
-  `phantoms`), the model, today's settings or its publishers', the part of
-  the split, and the most series or folders from one collection and in all
-  for each source
+  `phantoms`), the model, today's settings or its publishers', for a tuning
+  run a detector variant and a post-processing grid named in
+  `text_evaluation_search`, the part of the split, and the most series or
+  folders from one collection and in all for each source; runs of different
+  variants and grids run side by side
 - **Steps**: two jobs, each of which installs the project with the `user`
   and `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
   `.github/text-evaluation/requirements.txt` with `--require-hashes
@@ -917,6 +938,29 @@ merges after it.
 `CI Summary` and `Security Summary` must pass on that state before it merges.
 The queue may test up to three prospective states concurrently and merges PRs
 individually with merge commits.
+
+A merge group skips the `changes` job of both workflows. The selector would
+choose every check, with the quick unit matrix, whatever the group changes, so
+each selected job runs on the `merge_group` event instead and the summaries,
+given `--merge-group-runs-every-check`, require `changes` to be skipped and
+every other job to succeed. This matters when runners are scarce: the
+repository's account runs at most 20 jobs at once, a job that waits for
+another joins the back of the runner queue when it is ready, and on 22 Nov
+2026 the selector alone waited about an hour for a runner in each merge group.
+A merge group's CI run therefore has three stages that each wait for runners
+(the checks with pre-commit, the combined reports of the unit-test parts, and
+`CI Summary`) and its security scan two (the scans, and `Security Summary`).
+
+When the queue drops a group, because a group ahead of it failed or timed out
+or its pull request left the queue, it deletes the group's
+`gh-readonly-queue/` branch and builds the groups behind it again. The dropped
+group's runs carry on, since each group's ref is its own concurrency group and
+GitHub does not cancel them. `merge-queue-cleanup.yml` runs for each new merge
+group, hourly, and on demand, and cancels every queued or in-progress
+`ci.yml` and `security.yml` run of a merge group whose branch no longer
+exists. Its one job holds `actions: write`, which no other workflow has. It
+keeps any run whose branch lookup fails, and cancels nothing if it cannot see
+`main`.
 
 ## Main Branch Workflow
 

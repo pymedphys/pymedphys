@@ -131,6 +131,7 @@ from typing import TypeAlias
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .annotation_drawing import undrawn_objects
 from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
 from .clean_graphics import CLEAN_GRAPHICS, overlay_in_pixel_data
 from .content_items import content_item_actions, log_dummy_datetimes
@@ -144,10 +145,18 @@ from .descriptor_cleaning import (
     clean_descriptors,
     entity_descriptors,
     fallback_policy,
+    identifiers_of,
     kept_descriptors,
 )
 from .dummy_values import ICC_PROFILE
-from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
+from .edits import (
+    COLOUR_SPACE_IODS,
+    Edit,
+    EditKind,
+    InstanceEdits,
+    edit_instance,
+    read_values,
+)
 from .element_rules import ElementRules
 from .safe_private import SafePrivateList
 from .elements import (
@@ -163,7 +172,10 @@ from .face_review import (
     DEFORMABLE_REGISTRATION_SEQUENCE,
     GRID_TAGS,
     PIXEL_DATA_TAGS,
+    SURFACE_POINTS,
+    SURFACE_PRIMITIVES,
     SURFACE_SEGMENTATION,
+    SURFACE_SEQUENCE,
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
@@ -173,9 +185,17 @@ from .face_review import (
     is_rt_dose,
     is_segmentation,
     pixel_data_sha256,
+    surface_data_sha256,
     registration_frames,
 )
 from .file_layout import ElementPath
+from .graphic_annotations import (
+    AnnotationMaterial,
+    AnnotationPlan,
+    annotation_plan,
+    kept_as_one,
+    with_annotations,
+)
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
@@ -195,6 +215,7 @@ from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import (
     DoseChoice,
+    HeldAnnotation,
     HeldDescriptor,
     HeldPixelData,
     HeldVisualFeatures,
@@ -202,10 +223,28 @@ from .reasons import (
     VisualFeaturesReason,
 )
 from .pixel_region_rules import PixelRegionRules
+from .document_cleaning import (
+    DocumentRedaction,
+    clean_document,
+    document_problem,
+    holds_document,
+)
+from .encapsulated_documents import (
+    ENCAPSULATED_DOCUMENT,
+    ENCAPSULATED_DOCUMENT_LENGTH,
+    releases_document,
+)
 from .redaction_review import RedactionReview, Regions
+from .residual_review import ResidualReview
 from .readiness import ReadinessReview
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
+from .reviewed_annotations import (
+    AnnotationReviewQueue,
+    ReviewedAnnotations,
+    review_annotation,
+)
+from .reviewed_annotations import Outcome as AnnotationOutcome
 from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
     Coverage,
@@ -218,7 +257,12 @@ from .release_gate import (
     release_condition,
 )
 from .residual_exemptions import standard_code_meanings
-from .residuals import NotSearched, has_written_constant, not_searched_of
+from .residuals import (
+    NotSearched,
+    ReviewedFinding,
+    has_written_constant,
+    not_searched_of,
+)
 from .retained_uids import output_name_uid, retained_uid_paths, retained_uid_tags
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
 from .codestreams import CodestreamRefused, without_metadata
@@ -284,7 +328,7 @@ from .run_qc import (
 )
 from .release_report import PUBLIC_RELEASE
 from .run_report import ReleaseReporter
-from .scope import Classification, classify
+from .scope import SECONDARY_CAPTURE_IODS, Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome, normalise_uid
 from .values import value_problem
@@ -476,21 +520,34 @@ class HeldEvidence:
     another option's attribute, such as Allergies under Retain Patient
     Characteristics (D-038), held for review, a pixel option one whose pixel
     data await review, and the face review one that can show a face without
-    a verdict of absent for its source file.
+    a verdict of absent for its source file. It also carries, held or not,
+    the residual findings that a reviewer cleared in its source file.
 
     Attributes
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, or HeldVisualFeatures
+    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, HeldVisualFeatures, or HeldAnnotation
         Each ROI Name held, by path and reason, then each value of another
         option's attribute held, by element and reason, then why its visual
         features hold it, if they do, and why a pixel option holds it, if
-        one does.
+        one does; empty where nothing holds it.
+    reviewed : frozenset of ReviewedFinding
+        The residual findings that a reviewer cleared in its source file
+        (:class:`~.residual_review.ResidualReview`), which the gate exempts
+        where its search finds them again; empty by default.
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName | HeldDescriptor | HeldPixelData | HeldVisualFeatures, ...]
+    held: tuple[
+        HeldRoiName
+        | HeldDescriptor
+        | HeldPixelData
+        | HeldVisualFeatures
+        | HeldAnnotation,
+        ...,
+    ]
+    reviewed: frozenset[ReviewedFinding] = frozenset()
 
 
 def omissions_of(
@@ -540,6 +597,7 @@ def coverage_of(
     retained: frozenset[ElementPath] = frozenset(),
     options: tuple[str, ...] = (),
     safe_private_list: SafePrivateList | None = None,
+    digest: str | None = None,
 ) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
@@ -560,7 +618,9 @@ def coverage_of(
     replace, keep, or leave to come is not (D-042).
     ``safe_private_list``, the list that the run chose under the Retain Safe
     Private Option, says which kept private creators can explain a finding
-    in them (D-042).
+    in them (D-042). ``digest``, the method digest that the run's markers
+    write into De-identification Method (0012,0063), explains a finding that
+    lies wholly inside it (D-032).
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     planned = frozenset(
@@ -597,6 +657,7 @@ def coverage_of(
         options=options,
         removed=frozenset(value for value in collected if value.source in removing),
         safe_private_list=safe_private_list,
+        method_digest=digest,
     )
 
 
@@ -909,6 +970,23 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.redaction_review.read_redaction_review`,
         which only a policy selecting Clean Pixel Data takes; without one,
         no instance with Pixel Data satisfies that option.
+    reviewed_annotations : ReviewedAnnotations, optional
+        The reviewed annotations list, whose decisions Clean Graphics
+        applies to the graphic annotations of softcopy Presentation States
+        (:mod:`~pymedphys._dicom.deidentify.graphic_annotations`, D-062),
+        which only a policy selecting Clean Graphics takes. The transform
+        applies the list as it stands when it is made. Without one, Graphic
+        Annotation Sequence takes its Basic Profile action, D, which
+        sequesters a Presentation State that holds it (D-041).
+    residual_review : ResidualReview, optional
+        The clearings of residual findings in an earlier run's attested QC
+        pack, from
+        :func:`~pymedphys._dicom.deidentify.residual_review.read_residual_review`,
+        which any policy takes: an instance whose source file, by its
+        SHA-256, has findings cleared gives them to the gate with its
+        evidence (:attr:`HeldEvidence.reviewed`), so that a finding that
+        would hold its file for review, and that the pack showed at the same
+        place in a value with the same SHA-256, does not (D-042).
     pixel_region_rules : PixelRegionRules, optional
         The reviewed region rules whose regions Clean Pixel Data blacks out
         beside the finder's, in every frame of each instance whose key a
@@ -970,9 +1048,15 @@ class InstanceTransform:
 
     Attributes
     ----------
+    method_digest : str
+        The method digest that the markers and the release report record
+        (:func:`~.method_digest.method_digest`).
     review_queue : ReviewQueue
         The distinct ROI Names that the run's instances held for review,
         for the confidential QC material; empty without ``cleaning``.
+    annotation_queue : AnnotationReviewQueue
+        The graphic annotations of the run's instances, and the distinct
+        ones held for review; empty without ``reviewed_annotations``.
     reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
         The release report of a run with this transform, under its policy
         and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
@@ -1041,7 +1125,10 @@ class InstanceTransform:
     without top-level pixel data has nothing for the option to clean, so it
     satisfies it. Each instance that satisfies the option is marked with its
     code and Burned In Annotation (0028,0301) set to NO, which PS3.15 E.3.1
-    adds whether or not its IOD defines the attribute.
+    adds whether or not its IOD defines the attribute. Under a policy
+    without the option, an instance of a Secondary Capture IOD, whose pixel
+    data commonly carry text, is sequestered
+    (:attr:`~.reasons.TransformReason.SECONDARY_CAPTURE_NOT_CLEANED`).
 
     Under Clean Recognizable Visual Features, :meth:`prepare` finds the face
     block of each series of CT Image, Enhanced CT Image, and Legacy
@@ -1117,12 +1204,17 @@ class InstanceTransform:
     Source Frame of Reference, names one that cannot be read, or refers to
     a defaced slice, is held whatever its verdict
     (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-    since the run does not clean its grids of the face. A Surface
-    Segmentation, or any instance that holds a surface mesh
-    (:func:`~.face_review.holds_surface_mesh`), whose points can trace the
-    skin, never satisfies it, since no preview of the pack draws a mesh
-    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), in a defaced
-    series' Frame of Reference or not. Each is marked with
+    since the run does not clean its grids of the face. An instance that
+    holds a surface mesh (:func:`~.face_review.holds_surface_mesh`), such as
+    a Surface Segmentation, whose points can trace the skin, satisfies it
+    only where the meshes that it is written with are also those that the
+    reviewed run wrote, every one of which the pack's surfaces sheet showed
+    (:attr:`~.reasons.VisualFeaturesReason.OTHER_SURFACES` otherwise); one
+    in a defaced series' Frame of Reference, naming none, or referring to a
+    defaced slice, is held whatever its series' verdict
+    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    since the run does not cut its meshes, unless the face review gives it
+    a verdict of its own. Each is marked with
     the option's code and Recognizable Visual Features (0028,0302) set to
     NO, which PS3.15 E.3.2 adds whether or not its IOD defines the
     attribute. Any other instance that can show a face is written without
@@ -1141,7 +1233,9 @@ class InstanceTransform:
         finder: TextFinder | None = None,
         face_review: FaceReview | None = None,
         redaction_review: RedactionReview | None = None,
+        residual_review: ResidualReview | None = None,
         pixel_region_rules: PixelRegionRules | None = None,
+        reviewed_annotations: ReviewedAnnotations | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         profiles: ProfileStore | None = None,
         readiness_review: ReadinessReview | None = None,
@@ -1177,6 +1271,7 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._redaction_review = redaction_review
+        self._residual_review = residual_review
         if pixel_region_rules is not None and CLEAN_PIXEL_DATA not in policy.options:
             raise PolicyError(
                 "pixel region rules are given only when the policy selects Clean "
@@ -1189,6 +1284,19 @@ class InstanceTransform:
         region_rules = (
             None if self._region_rules is None else self._region_rules.keyed_digest(key)
         )
+        if reviewed_annotations is not None and CLEAN_GRAPHICS not in policy.options:
+            raise PolicyError(
+                "a reviewed annotations list is given only when the policy "
+                "selects Clean Graphics"
+            )
+        # One version of the list, for both its decisions and its digest.
+        self._annotations = (
+            None if reviewed_annotations is None else reviewed_annotations.snapshot()
+        )
+        annotations_digest = (
+            None if self._annotations is None else self._annotations.keyed_digest(key)
+        )
+        self.annotation_queue = AnnotationReviewQueue()
         if readiness_review is not None and policy.preset != PUBLIC_RELEASE:
             raise PolicyError(
                 "a readiness review is given only under the public-release preset"
@@ -1260,8 +1368,10 @@ class InstanceTransform:
             technique_vocabulary=technique,
             text_finder=finder_method,
             pixel_region_rules=region_rules,
+            reviewed_annotations=annotations_digest,
             safe_private_list=safe_private_list,
         )
+        self.method_digest = digest
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
         # can satisfy.
@@ -1288,6 +1398,7 @@ class InstanceTransform:
             technique_vocabulary=technique,
             text_finder=finder_method,
             pixel_region_rules=region_rules,
+            reviewed_annotations=annotations_digest,
             face_review=None if face_review is None else face_review.reference,
             redaction_review=(
                 None if redaction_review is None else redaction_review.reference
@@ -1302,6 +1413,9 @@ class InstanceTransform:
                     mode.value: count for mode, count in redaction_review.modes.items()
                 }
             ),
+            residual_review=(
+                None if residual_review is None else residual_review.reference
+            ),
             safe_private_list=safe_private_list,
             face_blocks=self._face_block_counts,
             project_key=key.key_id if profiles.persistent else None,
@@ -1312,11 +1426,25 @@ class InstanceTransform:
                 None if cleaning is None else cleaning.reviewed,
                 None if cleaning is None else cleaning.reviewed_descriptors,
                 self._region_rules,
+                self._annotations,
             ),
         )
 
     def __repr__(self) -> str:
         return "InstanceTransform()"
+
+    @property
+    def face_block_counts(self) -> FaceBlockCounts | None:
+        """The CT series that :meth:`prepare` found a face block of, and
+        those it did not, by why; ``None`` without a face review."""
+        return self._face_block_counts
+
+    @property
+    def dose_block_frames(self) -> int:
+        """How many Frames of Reference :meth:`prepare` found a dose block
+        in, where the run cleans the RT Doses, RT Structure Sets, PET
+        images, and Segmentations of a defaced series' frame."""
+        return len(self._dose_blocks)
 
     def prepare(
         self,
@@ -1401,10 +1529,20 @@ class InstanceTransform:
                 source,
                 self._rules,
                 iod,
-                content_item_actions(source, self._policy, iod),
+                with_annotations(
+                    content_item_actions(source, self._policy, iod),
+                    annotation_plan(
+                        source, dataset, self._policy, iod, self._annotations
+                    ),
+                ),
             )
             edits = edit_instance(
-                source, plan, self._key, record.patient, record.series_numberings
+                source,
+                plan,
+                self._key,
+                record.patient,
+                record.series_numberings,
+                colour_space_required=iod.name in COLOUR_SPACE_IODS,
             )
             if edits.sequestrations:
                 return
@@ -1518,15 +1656,13 @@ class InstanceTransform:
         since only they show its doses as they could show a face, and a
         Segmentation, by its IOD, SOP Class UID, or Modality, where it has
         more than its segments sheet showed, since only that shows the
-        surfaces that its segments trace (D-017). A Surface Segmentation, or
-        any instance that holds a surface mesh, is held whatever its
-        verdict, since no preview of the pack draws a mesh.
+        surfaces that its segments trace (D-017). An instance that holds a
+        surface mesh is held where it has other meshes than the pack's
+        surfaces sheet showed.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
-        if iod.name == SURFACE_SEGMENTATION or holds_surface_mesh(dataset):
-            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
@@ -1535,6 +1671,7 @@ class InstanceTransform:
             dose=iod.name == RT_DOSE or is_rt_dose(dataset),
             grids=_grid_digest(writing, dataset),
             segmentation=iod.name == SEGMENTATION or is_segmentation(dataset),
+            surfaces=_surface_digest(writing, dataset),
         )
         return None if reason is None else HeldVisualFeatures(reason)
 
@@ -1556,7 +1693,10 @@ class InstanceTransform:
         cleaned in. An instance holding a deformation grid remains held
         where it names a defaced frame as its own or as a Source Frame of
         Reference (:func:`~.face_review.registration_frames`), names one
-        that cannot be read, or refers to a defaced slice.
+        that cannot be read, or refers to a defaced slice, and so does an
+        instance holding a surface mesh, whatever its IOD, as a Surface
+        Segmentation is (:meth:`~.face_blocks.Defaced.holds`), since the run
+        does not cut its meshes.
         """
         if holds_deformation_grid(dataset) and self._defaced.frames:
             frames = registration_frames(dataset)
@@ -1576,7 +1716,9 @@ class InstanceTransform:
         if dose is not None:
             if not dose.holds(self._defaced, record):
                 return None
-        elif not self._defaced.holds(iod.name, record):
+        elif not self._defaced.holds(
+            SURFACE_SEGMENTATION if holds_surface_mesh(dataset) else iod.name, record
+        ):
             return None
         return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
@@ -1644,6 +1786,53 @@ class InstanceTransform:
         if iod.name not in CT_IODS or record.series is None:
             return None
         return self._face_blocks.get(record.series)
+
+    def _document(
+        self, data: bytes, source: SourceEvidence, iod: IOD
+    ) -> tuple[DocumentRedaction | None, bool]:
+        """Return an Encapsulated PDF's document rendered and cleaned under
+        Clean Pixel Data, and whether a reviewer approved its regions.
+
+        None where the policy does not release a document, or the instance
+        holds none. As for Pixel Data (:meth:`_black_out`), the regions are
+        those that the redaction review approved for the source file, on
+        pages that render to the SHA-256 that it records, and otherwise the
+        finder's, when the instance is held again (D-061).
+
+        Raises
+        ------
+        _Refused
+            With :attr:`~.reasons.TransformReason.REDACTION_REJECTED` where
+            the review rejected the source file, or the reason of
+            :class:`~.pixel_cleaning.PixelDataRefused`.
+        """
+        if (
+            self._finder is None
+            or not releases_document(self._policy.options, iod.name)
+            or not holds_document(source)
+        ):
+            return None, False
+        approved = decoded = None
+        if self._redaction_review is not None:
+            digest = hashlib.sha256(data).digest()
+            if digest in self._redaction_review.rejected:
+                raise _Refused(TransformReason.REDACTION_REJECTED)
+            approved = self._redaction_review.approved.get(digest)
+            decoded = self._redaction_review.decoded.get(digest)
+        try:
+            if approved is not None:
+                try:
+                    return (
+                        clean_document(
+                            source, None, reviewed=approved, decoded_sha256=decoded
+                        ),
+                        True,
+                    )
+                except PixelsNotReviewed:
+                    pass
+            return clean_document(source, self._finder), False
+        except PixelDataRefused as refused:
+            raise _Refused(refused.reason) from None
 
     def _black_out(
         self,
@@ -1886,6 +2075,47 @@ class InstanceTransform:
             return None
         return redaction
 
+    def _reviewed_annotations(
+        self, plan: AnnotationPlan, edits: InstanceEdits
+    ) -> tuple[AnnotationMaterial, ...]:
+        """Return each annotation's material, once checked for echoes.
+
+        The plan kept each annotation that the list keeps, alone and with
+        the others; one whose text echoes one of the identifiers that the
+        edits collected is held, so that its instance is not released, and
+        the annotations are decided on together again (D-062). The material
+        of each set of annotations shown together, if any, is last.
+        """
+        assert self._annotations is not None
+        identifiers = identifiers_of(edits)
+        each = [material for material in plan.material if not material.together]
+        results = [
+            review_annotation(
+                material.digest,
+                material.texts,
+                self._annotations,
+                identifiers,
+                drawn=undrawn_objects(material.item) == 0,
+            )
+            if material.result.outcome is AnnotationOutcome.KEPT
+            else material.result
+            for material in each
+        ]
+        results, as_one = kept_as_one(
+            [material.item for material in each],
+            [material.digest for material in each],
+            [material.texts for material in each],
+            results,
+            self._annotations,
+            plan.layers,
+            plan.images,
+        )
+        found = tuple(
+            dataclasses.replace(material, result=result)
+            for material, result in zip(each, results)
+        )
+        return (*found, *as_one)
+
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
     ) -> frozenset[ElementPath]:
@@ -1939,18 +2169,32 @@ class InstanceTransform:
             else 0
         )
         content_items = content_item_actions(source, self._policy, iod)
-        plan = plan_instance(source, self._rules, iod, content_items)
+        annotations = annotation_plan(
+            source, dataset, self._policy, iod, self._annotations
+        )
+        plan = plan_instance(
+            source, self._rules, iod, with_annotations(content_items, annotations)
+        )
         edits = edit_instance(
             source,
             plan,
             self._key,
             record.patient,
             record.series_numberings,
-            log_dummy_datetimes(source, self._policy, iod, content_items),
+            {
+                **log_dummy_datetimes(source, self._policy, iod, content_items),
+                **content_items.dummy_texts,
+            },
+            colour_space_required=iod.name in COLOUR_SPACE_IODS,
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
         evidence: Coverage | HeldEvidence = coverage_of(
-            plan, edits, kept_uids, self._options, self._safe_private_list
+            plan,
+            edits,
+            kept_uids,
+            self._options,
+            self._safe_private_list,
+            self.method_digest,
         )
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
@@ -1960,6 +2204,7 @@ class InstanceTransform:
                 edits.sequestrations
                 or (() if undecoded is None else (undecoded,))
                 or overlay_in_pixel_data(self._rules.policy, overlays)
+                or _uncleaned_secondary_capture(iod.name, self._policy)
                 or self._birth_date_conflict(record)
             )
         if reasons:
@@ -1968,7 +2213,12 @@ class InstanceTransform:
             withheld = kept_uids | self._kept_descriptors(plan, edits)
             if withheld != kept_uids:
                 evidence = coverage_of(
-                    plan, edits, withheld, self._options, self._safe_private_list
+                    plan,
+                    edits,
+                    withheld,
+                    self._options,
+                    self._safe_private_list,
+                    self.method_digest,
                 )
             return Sequestered(
                 reasons,
@@ -1986,7 +2236,12 @@ class InstanceTransform:
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
             evidence = coverage_of(
-                plan, edits, retained, self._options, self._safe_private_list
+                plan,
+                edits,
+                retained,
+                self._options,
+                self._safe_private_list,
+                self.method_digest,
             )
         names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
@@ -1996,11 +2251,17 @@ class InstanceTransform:
                 actions = content_item_actions(source, fallback.policy, iod)
                 return edit_instance(
                     source,
-                    plan_instance(source, fallback, iod, actions),
+                    plan_instance(
+                        source, fallback, iod, with_annotations(actions, annotations)
+                    ),
                     self._key,
                     record.patient,
                     record.series_numberings,
-                    log_dummy_datetimes(source, fallback.policy, iod, actions),
+                    {
+                        **log_dummy_datetimes(source, fallback.policy, iod, actions),
+                        **actions.dummy_texts,
+                    },
+                    colour_space_required=iod.name in COLOUR_SPACE_IODS,
                 )
 
             try:
@@ -2020,7 +2281,12 @@ class InstanceTransform:
                 withheld = retained | self._kept_descriptors(plan, edits)
                 if withheld != retained:
                     evidence = coverage_of(
-                        plan, edits, withheld, self._options, self._safe_private_list
+                        plan,
+                        edits,
+                        withheld,
+                        self._options,
+                        self._safe_private_list,
+                        self.method_digest,
                     )
                 return Sequestered(
                     (refused.reason,),
@@ -2031,10 +2297,31 @@ class InstanceTransform:
             retained |= cleaned.retained
             names = cleaned.qc
             evidence = coverage_of(
-                plan, edits, retained, self._options, self._safe_private_list
+                plan,
+                edits,
+                retained,
+                self._options,
+                self._safe_private_list,
+                self.method_digest,
             )
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
+        if annotations.material:
+            reviewed = self._reviewed_annotations(annotations, edits)
+            each = [material for material in reviewed if not material.together]
+            held = tuple(
+                HeldAnnotation(material.path, material.result.held_because)
+                for material in each
+                if material.result.held_because is not None
+            )
+            if held:
+                evidence = _held_all(evidence, held)
+            self.annotation_queue.add(
+                [material.digest for material in each],
+                [material.texts for material in each],
+                [material.result for material in each],
+            )
+            names = (*names, *reviewed)
         if self._birth_dates is not None:
             edits = with_birth_date(edits, self._birth_dates.value(record.patient))
         defacing = self._defacing(iod, record)
@@ -2063,6 +2350,11 @@ class InstanceTransform:
                 overlays=overlays or 0,
                 zero_beyond=chosen_dose is DoseChoice.SET_TO_ZERO,
             )
+            # Under Clean Pixel Data, an Encapsulated PDF's document is
+            # written as its pages rendered and cleaned (D-061).
+            document, document_reviewed = self._document(data, source, iod)
+            if document is not None:
+                edits = _with_document(edits, document)
             # An RT Dose with too much dose in its block: held without a
             # choice, written as received on one, or set to zero on the
             # other, and recorded for the QC pack and the release report.
@@ -2107,6 +2399,10 @@ class InstanceTransform:
                     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
             if defacing is not None and defacing.hold is not None:
                 face = HeldVisualFeatures(_HELD_SERIES[defacing.hold])
+            elif document is not None and self._face_review is not None:
+                # A document's pages can show a photograph of a face, and
+                # no face review covers them yet (D-061).
+                face = HeldVisualFeatures(VisualFeaturesReason.DOCUMENT_PAGES)
             else:
                 face = self._face_hold(data, dataset, iod, writing)
             if (
@@ -2170,7 +2466,10 @@ class InstanceTransform:
             # Under Clean Pixel Data, a redaction that no reviewer approved is
             # held for review, whether or not the finder found text; a slice
             # that is only defaced is not.
-            if redaction is not None and self._finder is not None and not reviewed:
+            if document is not None and not document_reviewed:
+                evidence = _held(evidence, HeldPixelData(document.reason))
+                qc = (*qc, _document_material(document, source, _sop_class(dataset)))
+            elif redaction is not None and self._finder is not None and not reviewed:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
                 qc = (
                     *qc,
@@ -2178,14 +2477,20 @@ class InstanceTransform:
                 )
             elif self._finder is not None:
                 # A reviewer approved the regions, or there are no pixel data
-                # to clean.
+                # or document to clean.
                 chosen.add(CLEAN_PIXEL_DATA)
             writing = with_markers(
                 writing, source, dataset, self._markers[frozenset(chosen)]
             )
             identifiers = self._identifiers(writing, dataset, source)
+            if self._residual_review is not None:
+                evidence = _reviewed(
+                    evidence, self._residual_review.of(hashlib.sha256(data).digest())
+                )
             return Transformed(
-                *_written(source, writing, iod, identifiers, redaction), evidence, qc
+                *_written(source, writing, iod, identifiers, redaction, document),
+                evidence,
+                qc,
             )
         except _Refused as refused:
             reasons = tuple(
@@ -2210,6 +2515,35 @@ def _pixel_risk(
         *((PixelRiskMaterial(assessment),) if assessment.findings else ()),
         SeriesEvidence(record.series, series_evidence(dataset)),
     )
+
+
+def _uncleaned_secondary_capture(
+    iod: str, policy: Policy
+) -> tuple[TransformReason, ...]:
+    """Why a Secondary Capture instance is sequestered under ``policy``, if it is.
+
+    A Secondary Capture image is captured from a screen, a video signal, or
+    a scanned document or film, such as a planning system's dose screen or a
+    scanned request form, so its pixel data commonly carry burned-in text,
+    such as the patient's name, which the Basic Profile and every option but
+    Clean Pixel Data leave in place. Under a policy that does not select
+    Clean Pixel Data, each instance of a Secondary Capture IOD is
+    sequestered, whatever its Burned In Annotation (0028,0301) says, since a
+    received NO is not evidence of safety (D-015). Under Clean Pixel Data it
+    is cleaned and held for review as any other image is, and released only
+    on a reviewer's verdict (D-037, D-048).
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify.policy import compose_policy
+    >>> _uncleaned_secondary_capture("Secondary Capture Image", compose_policy("basic"))
+    (<TransformReason.SECONDARY_CAPTURE_NOT_CLEANED: 'secondary-capture-not-cleaned'>,)
+    >>> _uncleaned_secondary_capture("CT Image", compose_policy("basic"))
+    ()
+    """
+    if iod in SECONDARY_CAPTURE_IODS and CLEAN_PIXEL_DATA not in policy.options:
+        return (TransformReason.SECONDARY_CAPTURE_NOT_CLEANED,)
+    return ()
 
 
 def transform_for(
@@ -2309,12 +2643,16 @@ def _written(
     iod: IOD,
     identifiers: _Identifiers,
     redaction: Redaction | None = None,
+    document: DocumentRedaction | None = None,
 ) -> tuple[PurePosixPath, bytes]:
     """Return the output's path and bytes, verified against the source and IOD.
 
     Pixel Data that the plan replaces must decode to the source's pixels, or,
     where Clean Pixel Data blacked out ``redaction``'s regions, differ from
-    the source's only as that redaction planned.
+    the source's only as that redaction planned. An Encapsulated Document is
+    written only as ``document``'s image-only PDF, which must read back as
+    its pages (:func:`~.document_cleaning.document_problem`): one that the
+    plan keeps, or replaces otherwise, refuses the instance.
     """
     path = _output_path(identifiers.names)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
@@ -2359,6 +2697,13 @@ def _written(
             raise _Refused(TransformReason.REDACTION_MISMATCH)
     elif _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
         raise _Refused(TransformReason.CUT_CHANGED_PIXELS)
+    # A document is never written as received, nor otherwise than as its
+    # reviewed rendering (D-061).
+    if ENCAPSULATED_DOCUMENT in writing.kept or (
+        ENCAPSULATED_DOCUMENT in writing.replacements
+        and (document is None or document_problem(output, document))
+    ):
+        raise _Refused(TransformReason.REDACTION_MISMATCH)
     return path, data
 
 
@@ -2473,6 +2818,65 @@ def _grid_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
     # raises ValueError for a grid that it cannot.
     except Exception:  # pylint: disable = broad-exception-caught
         return None
+
+
+def _surface_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
+    """Return the SHA-256 of the surface meshes that the writer's plan
+    writes.
+
+    As :func:`~.face_review.surface_data_sha256` gives it of the file
+    written, each sequence and element of a mesh being the plan's
+    replacement, or the source's where the plan keeps it; None where a value
+    cannot be read.
+    """
+    try:
+        planned = _planned(writing, dataset, (), _SURFACE_TREE)
+        return surface_data_sha256(planned)
+    # pydicom raises many types for an item it cannot read, and the digest
+    # raises ValueError for a mesh that it cannot.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+
+
+# The sequences and elements of a surface mesh that its digest takes, each
+# sequence with those of its items.
+_PRIMITIVE_TREE: dict[int, object] = {tag: None for tag in SURFACE_PRIMITIVES[3]}
+_SURFACE_TREE: dict[int, object] = {
+    SURFACE_SEQUENCE: {
+        SURFACE_POINTS[0]: {tag: None for tag in SURFACE_POINTS[1]},
+        SURFACE_PRIMITIVES[0]: {
+            **{tag: None for tag in SURFACE_PRIMITIVES[1]},
+            **{tag: _PRIMITIVE_TREE for tag in SURFACE_PRIMITIVES[2]},
+        },
+    }
+}
+
+
+def _planned(
+    writing: WriterPlan,
+    dataset: pydicom.Dataset,
+    within: tuple[tuple[str, int], ...],
+    tree: dict[int, object],
+) -> pydicom.Dataset:
+    """The elements of ``tree`` that the writer's plan writes of a data set
+    or an item at ``within``, each sequence's items with theirs: the plan's
+    replacement, or the source's where the plan keeps it."""
+    planned = pydicom.Dataset()
+    for tag, nested in tree.items():
+        path = ElementPath(within, _tag_text(tag))
+        if path in writing.replacements:
+            planned.add(writing.replacements[path])
+        elif path in writing.kept and tag in dataset:
+            if nested is None:
+                planned.add(dataset[tag])
+                continue
+            assert isinstance(nested, dict)
+            items = [
+                _planned(writing, item, (*within, (path.tag, index)), nested)
+                for index, item in enumerate(dataset[tag].value or ())
+            ]
+            planned[tag] = pydicom.DataElement(tag, "SQ", items)
+    return planned
 
 
 def _planned_grids(
@@ -2723,6 +3127,69 @@ def _redaction_material(
     )
 
 
+def _held_all(
+    evidence: Coverage | HeldEvidence, held: tuple[HeldAnnotation, ...]
+) -> HeldEvidence:
+    """Return the evidence of an instance that review holds, with each of ``held``."""
+    if isinstance(evidence, HeldEvidence):
+        return dataclasses.replace(evidence, held=(*evidence.held, *held))
+    return HeldEvidence(evidence, held)
+
+
+def _with_document(edits: InstanceEdits, document: DocumentRedaction) -> InstanceEdits:
+    """Return the edits with the document's D settled by its rendering.
+
+    Encapsulated Document's pending D takes the image-only PDF, and
+    Encapsulated Document Length, where an edit keeps or replaces it, that
+    PDF's length, so that the length describes the document written.
+    """
+    settled = []
+    for edit in edits.edits:
+        if edit.path == ENCAPSULATED_DOCUMENT and edit.kind is EditKind.PENDING:
+            edit = Edit(edit.path, edit.action, EditKind.REPLACE, (document.value,))
+        elif edit.path == ENCAPSULATED_DOCUMENT_LENGTH and edit.kind in (
+            EditKind.KEEP,
+            EditKind.REPLACE,
+        ):
+            edit = Edit(
+                edit.path, edit.action, EditKind.REPLACE, (len(document.value),)
+            )
+        settled.append(edit)
+    return dataclasses.replace(edits, edits=tuple(settled))
+
+
+def _document_material(
+    document: DocumentRedaction, source: SourceEvidence, sop_class: str = ""
+) -> RedactionMaterial:
+    """The QC material of what Clean Pixel Data did to a document.
+
+    The source is kept, whether or not a page has regions, since its pages
+    are shown only by rendering it again for the previews.
+    """
+    return RedactionMaterial(
+        document.reason,
+        document.layout.frames,
+        document.layout.rows,
+        document.layout.columns,
+        tuple((regions.frame, regions.boxes) for regions in document.regions),
+        source.data,
+        document.decoded_sha256,
+        sop_class_uid=sop_class,
+    )
+
+
+def _reviewed(
+    evidence: Coverage | HeldEvidence, reviewed: frozenset[ReviewedFinding]
+) -> Coverage | HeldEvidence:
+    """Return the evidence of an instance with the findings cleared in its
+    source file, if there are any."""
+    if not reviewed:
+        return evidence
+    if isinstance(evidence, HeldEvidence):
+        return dataclasses.replace(evidence, reviewed=reviewed)
+    return HeldEvidence(evidence, (), reviewed)
+
+
 def _held(
     evidence: Coverage | HeldEvidence, held: HeldPixelData | HeldVisualFeatures
 ) -> HeldEvidence:
@@ -2844,7 +3311,9 @@ def _text(
     return values[0] if len(values) == 1 else None
 
 
-_Condition = Callable[[Coverage, bytes], ReleaseCondition]
+# (coverage, written) -> ReleaseCondition, which also takes reviewed= where a
+# reviewer cleared findings in the file's source.
+_Condition = Callable[..., ReleaseCondition]
 
 
 class ReleaseGate:
@@ -2895,7 +3364,16 @@ class ReleaseGate:
     ) -> Release | HoldForReview | Sequestered:
         given = tuple(each for each in subject if each is not NO_EVIDENCE)
         coverages = tuple(_coverage(each) for each in (evidence, *given))
-        condition = self._condition(self._subjects.merge(coverages[1:]), written)
+        merged = self._subjects.merge(coverages[1:])
+        reviewed = (
+            evidence.reviewed if isinstance(evidence, HeldEvidence) else frozenset()
+        )
+        # A condition given for tests takes no review unless there is one.
+        condition = (
+            self._condition(merged, written, reviewed=reviewed)
+            if reviewed
+            else self._condition(merged, written)
+        )
         held = evidence.held if isinstance(evidence, HeldEvidence) else ()
         # Each value's omissions are its own instance's material, from the
         # transform, so the pooled search's are left out here.

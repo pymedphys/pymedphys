@@ -326,7 +326,7 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
     assert attestation.redactions == _recorded(_verdicts(positions))
     assert qc_attestation.attested_pack(pack)[0] == attestation
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
-    assert written["format"] == "pymedphys-deid-qc-attestation/7"
+    assert written["format"] == "pymedphys-deid-qc-attestation/8"
     assert {
         "position": positions[_REVISED],
         "redaction": "revised",
@@ -1054,24 +1054,41 @@ def test_the_statement_gives_the_code_only_after_review():
         "Continuous RT Image, RT Segment Annotation, RT Radiation Set, C-Arm "
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
-        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
-        "Spectroscopy, Spatial Registration, "
-        "Deformable Spatial Registration, Surface Segmentation, X-Ray Radiation "
-        "Dose SR, Enhanced X-Ray "
+        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
+        "Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
+        "Registration, Deformable Spatial Registration, Surface Segmentation, "
+        "X-Ray Radiation Dose SR, Enhanced X-Ray "
         "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
         "Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
         "Prescription Report, Macular Grid Thickness and Volume Report, Waveform "
-        "Annotation SR, Real World Value Mapping, Grayscale Softcopy Presentation "
-        "State, Color Softcopy Presentation State, Pseudo-Color Softcopy "
-        "Presentation State, Blending Softcopy Presentation State, XA/XRF "
-        "Grayscale Softcopy Presentation State, and Variable Modality LUT "
-        "Softcopy Presentation State."
+        "Annotation SR, Implantation Plan SR Document, Simplified Adult Echo SR, "
+        "Planned Imaging Agent Administration SR, Performed Imaging Agent "
+        "Administration SR, Acquisition Context SR, Real World Value Mapping, "
+        "Grayscale Softcopy Presentation State, Color Softcopy Presentation State, "
+        "Pseudo-Color Softcopy Presentation State, Blending Softcopy Presentation "
+        "State, XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, Advanced Blending Presentation "
+        "State, Waveform Presentation State, and Waveform Acquisition Presentation "
+        "State."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
-        "data or whose regions a reviewer approved"
+        "data or an encapsulated document, or whose regions a reviewer approved"
+    ) in text
+    assert (
+        "An Encapsulated PDF's document is rendered page by page, at 150 pixels "
+        "per inch, its pages searched and blacked out as RGB frames are, and "
+        "written as an image-only PDF that holds the pages' images and nothing "
+        "else"
     ) in text
 
 
@@ -1099,6 +1116,14 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "RT Radiation Record Set",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -1120,6 +1145,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
@@ -1127,6 +1157,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     }
 
 
@@ -1585,7 +1620,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
         "review_modes": {"every-frame": 3, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
-    assert report["format"] == "pymedphys-deid-release-report/69"
+    assert report["format"] == "pymedphys-deid-release-report/87"
 
 
 class _Blind(Finder):

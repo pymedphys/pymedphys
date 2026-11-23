@@ -14,8 +14,10 @@
 
 """The analytic head, the synthetic collection around it, and the two runs
 under Clean Recognizable Visual Features that the CT defacing run modules,
-test_deidentify_ct_defacing_run.py and
-test_deidentify_ct_defacing_review_runs.py, review: the RT Structure Set
+test_deidentify_ct_defacing_run.py,
+test_deidentify_ct_defacing_variant_runs.py,
+test_deidentify_ct_defacing_review_runs.py, and
+test_deidentify_ct_defacing_dose_runs.py, review: the RT Structure Set
 replaced by one of the head, one RT Dose by a grid over the head, the PET
 Image by two slices of the head, and the BINARY Segmentation by one of the
 head's body. Every UID and value here is invented."""
@@ -32,7 +34,7 @@ import tempfile
 from pathlib import Path
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom, shapely
+from pymedphys._imports import pydicom, pytest, shapely
 
 from pymedphys._dicom.deidentify import dose_defacing, face_blocks, run
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
@@ -139,11 +141,19 @@ _REGISTRATIONS = (*_TIED, _UNTIED)
 # The collection's own deformable registration, of the PET Image to the
 # head's Frame of Reference, which no series of its own marks absent.
 _COLLECTION_REGISTRATION = "19-registration-deformable.dcm"
+# The collection's Surface Segmentation, whose mesh is in the head CT's
+# frame, which no run cleans.
+_SURFACE = corpus_module.SURFACE_SEGMENTATION_FILE
 # The instances that the run with the deformable registrations does not
 # clean in the head's defaced frame: the PET instances, the Nuclear Medicine
-# image, and each registration tied to that frame, each of which its pack
-# shows whole.
-_UNDEFACED_WITH_REGISTRATIONS = (*_UNDEFACED, *_TIED, _COLLECTION_REGISTRATION)
+# image, each registration tied to that frame, and the Surface Segmentation,
+# each of which its pack shows whole.
+_UNDEFACED_WITH_REGISTRATIONS = (
+    *_UNDEFACED,
+    *_TIED,
+    _COLLECTION_REGISTRATION,
+    _SURFACE,
+)
 
 
 def _dose(low):
@@ -932,3 +942,19 @@ def _output_name(dataset):
         f"{dataset.PatientID}/{dataset.StudyInstanceUID}/"
         f"{dataset.SeriesInstanceUID}/{dataset.SOPInstanceUID}.dcm"
     )
+
+
+# The run that most of the CT defacing tests review, with the dose low
+# enough to set to zero in the face block, and the defaced run it reviews.
+# test_deidentify_ct_defacing_run.py reviews them again in its own runs, and
+# test_deidentify_ct_defacing_variant_runs.py compares its runs with the
+# defaced one, so each of those modules makes them, once.
+@pytest.fixture(name="reviewed_low", scope="module")
+def fixture_reviewed_low():
+    with _reviewed(first=(), dose=_dose(_LOW), registrations=True) as found:
+        yield found
+
+
+@pytest.fixture(name="defaced", scope="module")
+def fixture_defaced(reviewed_low):
+    return _second(reviewed_low, name="d")

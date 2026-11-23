@@ -33,8 +33,11 @@ jobs:
   # PR scans follow their inputs. Main pushes, merge groups, scheduled and
   # manual runs always scan, because vulnerabilities can appear without changes.
   # Draft PRs run no jobs, as in ci.yml; marking one ready starts its scans.
+  # A merge group scans everything whatever it changes, so, as in ci.yml, it
+  # skips this job and each scan runs on its event instead, without waiting
+  # for a runner twice.
   changes:
-    if: github.event.pull_request.draft != true
+    if: github.event_name != 'merge_group' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -54,7 +57,7 @@ jobs:
   # and platform marker is covered and nothing has to be installed.
   dependency-audit:
     needs: [changes]
-    if: needs.changes.outputs.run-dependency-audit == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-dependency-audit == 'true') }}
     name: Dependency Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -66,7 +69,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: "0.13.4"
           enable-cache: false
@@ -117,7 +120,7 @@ jobs:
   # event: fix the finding or add a justified "nosec" comment.
   python-security:
     needs: [changes]
-    if: needs.changes.outputs.run-python-security == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-python-security == 'true') }}
     name: Python Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -129,7 +132,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: "0.13.4"
           enable-cache: false
@@ -153,7 +156,7 @@ jobs:
           ${{ !cancelled() &&
               (github.event_name != 'pull_request' ||
                github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: bandit.sarif
           category: bandit
@@ -171,7 +174,7 @@ jobs:
   # severity are style advice and do not block.
   workflow-audit:
     needs: [changes]
-    if: needs.changes.outputs.run-workflow-audit == 'true'
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.run-workflow-audit == 'true') }}
     name: Workflow Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -183,7 +186,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: "0.13.4"
           enable-cache: false
@@ -219,7 +222,7 @@ jobs:
           ${{ !cancelled() &&
               (github.event_name != 'pull_request' ||
                github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: zizmor.sarif
           category: zizmor
@@ -242,6 +245,7 @@ jobs:
         run: >-
           python .github/scripts/check_workflow_status.py
           --title 'Security Scan Results'
+          --merge-group-runs-every-check
           --conditional dependency-audit=run-dependency-audit
           --conditional python-security=run-python-security
           --conditional workflow-audit=run-workflow-audit

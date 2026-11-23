@@ -45,16 +45,25 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
+from . import (
+    birth_dates,
+    conformance_content_values,
+    dates,
+    dummy_values,
+    pixel_risk,
+    pseudonyms,
+    residuals,
+    uids,
+)
 from . import release_report as report
+from . import conformance_items
 from .conformance import ConformanceStatement
-from .content_items import OBSERVATION_DATETIME
+from .conformance_prose import code, join
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
 from .policy import (
     CLEAN_PIXEL_DATA,
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
-    CLEAN_STRUCTURED_CONTENT,
     FULL_DATES,
     MODIFIED_DATES,
 )
@@ -69,7 +78,6 @@ from .residuals import _KINDS
 from .residuals import _NUMBERS as _NUMBER_VRS
 from .residuals import _PIXEL_DATA
 from .values import CHECKED_VRS
-from .walker import REVIEWED_DUMMY_SEQUENCES
 
 TEMPORAL_MODIFIED = "(0028,0303)"  # Longitudinal Temporal Information Modified
 # How the statement names the attributes of each temporal role, by its name in
@@ -110,19 +118,6 @@ def unsearched_vrs() -> Mapping[residuals.Omission, tuple[str, ...]]:
             residuals.Omission.NOT_DISTINCTIVE: tuple(sorted(others - _BINARY_VRS)),
         }
     )
-
-
-def join(values: Iterable[str], conjunction: str = "and") -> str:
-    """Join ``values`` as prose: ``"a"``, ``"a and b"``, or ``"a, b, and c"``."""
-    values = list(values)
-    if len(values) <= 2:
-        return f" {conjunction} ".join(values)
-    return ", ".join(values[:-1]) + f", {conjunction} " + values[-1]
-
-
-def code(action: str) -> str:
-    """Return ``action`` as inline code."""
-    return f"`{action}`"
 
 
 # Why a form of a value, or a spelling of it, is not searched.
@@ -247,6 +242,12 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
             "run does not clean, or an RT Dose beside one with too much dose "
             "in the region set to air to set that dose to zero"
         ),
+        "annotations": (
+            "under Clean Graphics, a graphic annotation of a Presentation "
+            "State has no decision in the custodian's reviewed annotations "
+            "list, or the list keeps it but its text echoes one of the "
+            "instance's patient or other person identifiers"
+        ),
         "release": (
             "the release gate requires QC review, for other text that the "
             "residual search found inside the data set, a person name that it "
@@ -257,132 +258,6 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
         ),
     }
 )
-
-
-def _reviewed_items(named: Callable[[str], str]) -> list[str]:
-    """Describe what D writes where a reviewed rule gives the value (D-021)."""
-    lines = []
-    for tag, compared in REVIEWED_DUMMY_SEQUENCES.items():
-        if tag == dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
-            lines.append(_procedure_step_items(named, tag, compared))
-            continue
-        within = _reviewed_place(tag)
-        (first,) = dummy_values.items_for_d(tag, [], within=within)
-        source = {e.tag: e.value for e in first if e.tag in compared}
-        (second,) = dummy_values.items_for_d(tag, [source], within=within)
-        changed = [
-            f"{named(element.tag)} `{element.value}`"
-            for element, before in zip(second, first)
-            if element.value != before.value
-        ]
-        place = "".join(f" in an item of {named(each)}" for each in within)
-        elsewhere = (
-            " Elsewhere, D on it has no reviewed rule, so the instance is sequestered."
-            if within
-            else ""
-        )
-        lines.append(
-            f"D on {named(tag)}{place} writes one item, with "
-            + join(f"{named(element.tag)} `{element.value}`" for element in first)
-            + ". Where a source item's "
-            + join((named(t) for t in sorted(compared)), "or")
-            + " equals the item's, as D compares values, the item has "
-            + join(changed)
-            + " instead."
-            + elsewhere
-        )
-    lines.append(_icc_profile(named))
-    return lines
-
-
-def _reviewed_place(tag: str) -> tuple[str, ...]:
-    """Return the sequence whose items alone hold a sequence's reviewed rule.
-
-    It is empty for a sequence whose rule holds everywhere.
-    """
-    return tuple(sorted(dummy_values.REVIEWED_WITHIN.get(tag, frozenset())))
-
-
-def _procedure_step_items(
-    named: Callable[[str], str], tag: str, compared: frozenset[str]
-) -> str:
-    """Describe the items that D writes in Referenced Performed Procedure Step Sequence."""
-    (uid,) = compared
-    return (
-        f"D on {named(tag)} writes, for each source item, one item, with "
-        f"{named('(0008,1150)')} "
-        f"`{dummy_values.MODALITY_PERFORMED_PROCEDURE_STEP}`, the Modality "
-        f"Performed Procedure Step SOP Class, and {named(uid)} the keyed "
-        "replacement of the source item's, as D writes for a UI attribute. "
-        f"Where the sequence has no item, or an item has no {named(uid)}, "
-        "the instance is sequestered."
-    )
-
-
-def _icc_profile(named: Callable[[str], str]) -> str:
-    """Describe the profile that D writes in place of ICC Profile."""
-    first, second = dummy_values.CONSTANTS["LO"]
-    return (
-        f"D on {named(dummy_values.ICC_PROFILE)} writes the source profile "
-        "cleaned of everything but its colorimetry: it keeps the tags that "
-        "map device values to the profile connection space and back, the "
-        "media white and black points, luminance, chromatic adaptation, "
-        "coding-independent code points, chromaticity, measurement and "
-        "viewing conditions, the colorimetric intent image state, and the "
-        "rendering intent gamuts, each parsed and written again, and removes "
-        "every text tag, private tag, and other tag. Its header keeps the "
-        "source's version, profile connection space, illuminant, rendering "
-        "intent, and embedded-profile flags, names no CMM, platform, device, "
-        "or creator, gives 1 January 1900 as its date, and makes it an input "
-        "device profile; a version 4 profile's profile ID is computed again. "
-        f"Its description and copyright are `{first}`, or `{second}` where "
-        "the source has the same bytes. Where the source is not of ICC version "
-        "2 or 4, not an input, display, or colour space profile, has another "
-        "illuminant than D50, holds a colorimetric tag that does not parse "
-        "as its version defines it, or is a version 2 display profile whose "
-        "media white point is not D50, which colour management modules read "
-        "by class, D writes instead a fixed ICC version 2.4 "
-        "input profile of the sRGB colour space of IEC 61966-2.1, described "
-        f"`{first} sRGB`; pixel values are preserved, but the source "
-        "profile's colorants and tone curves are not, so colour rendering can "
-        "then change substantially. PS3.3 Section C.11.15.1.1 requires the "
-        "profile's data colour space to be RGB, so where the source is not "
-        "an RGB profile, the instance is sequestered."
-    )
-
-
-def _kept_items(
-    statement: ConformanceStatement, named: Callable[[str], str]
-) -> list[str]:
-    """Describe the items that D keeps where a reviewed rule keeps them (D-021)."""
-    actions = {entry.tag: entry.action for entry in statement.attributes}
-    return [
-        f"D on {named(tag)} keeps each source item, and in it only these "
-        "attributes, each under the action that the policy gives it: "
-        + "; ".join(f"{named(each)}, {code(actions[each])}" for each in sorted(kept))
-        + ". The item's other attributes are removed, and none of these is "
-        "added to an item that lacks it."
-        for tag, kept in dummy_values.KEPT_ITEM_ATTRIBUTES.items()
-    ]
-
-
-def _naming_pymedphys(named: Callable[[str], str]) -> dict[str, list[str]]:
-    """Name each value that a reviewed rule writes and that names PyMedPhys.
-
-    Each is listed by the sequence whose item holds it.
-    """
-    found = {
-        tag: [
-            f"{named(element.tag)} `{element.value}`"
-            for item in dummy_values.items_for_d(tag, [], within=_reviewed_place(tag))
-            for element in item
-            if "PYMEDPHYS" in element.value.upper()
-        ]
-        for tag in REVIEWED_DUMMY_SEQUENCES
-        # The procedure step's items hold only UIDs, written for the source.
-        if tag != dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
-    }
-    return {tag: values for tag, values in found.items() if values}
 
 
 def values_written(
@@ -397,7 +272,7 @@ def values_written(
     patient_id_length = len(pseudonyms.PATIENT_ID_PREFIX) + code_length
     # A replacement UID is the root and the decimal form of a 128-bit UUID.
     uid_length = len(uids.UID_ROOT) + len(str(2**128 - 1))
-    exceptions = _naming_pymedphys(named)
+    exceptions = conformance_items.naming_pymedphys(named)
     pseudonym_tags = join(named(tag) for tag in sorted(PSEUDONYM_TAGS))
     rows = [
         f"| {vr} | `{first}` | `{second}` |"
@@ -421,8 +296,16 @@ def values_written(
         "D on an attribute of any other VR, such as CS or SQ, "
         "needs a reviewed rule for that attribute; without one, the instance "
         "is sequestered.",
-        *(item for line in _reviewed_items(named) for item in ("", line)),
-        *(item for line in _kept_items(statement, named) for item in ("", line)),
+        *(
+            item
+            for line in conformance_items.reviewed_items(named)
+            for item in ("", line)
+        ),
+        *(
+            item
+            for line in conformance_items.kept_items(statement, named)
+            for item in ("", line)
+        ),
         "",
         f"At the top level of the data set, {pseudonym_tags} take the "
         "subject's keyed pseudonyms wherever Z or D applies to them; "
@@ -449,7 +332,7 @@ def values_written(
         "has no rank, as where the run holds no instance of its series, is "
         "emptied under Z and takes D's constant under D. The numbering spans "
         "one run.",
-        *(("", _log_datetimes(named)) if _writes_log_datetimes(statement) else ()),
+        *conformance_content_values.paragraphs(statement, named),
         "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "
@@ -476,32 +359,6 @@ def values_written(
             else "."
         ),
     ]
-
-
-def _writes_log_datetimes(statement: ConformanceStatement) -> bool:
-    """Return whether D writes the ranked datetimes of a Procedure Log's entries."""
-    return CLEAN_STRUCTURED_CONTENT in statement.options and not {
-        FULL_DATES,
-        MODIFIED_DATES,
-    }.intersection(statement.options)
-
-
-def _log_datetimes(named: Callable[[str], str]) -> str:
-    """Return the paragraph on the datetimes that D writes in a Procedure Log."""
-    first = dummy_values.CONSTANTS["DT"][0]
-    return (
-        f"D on {named(OBSERVATION_DATETIME)} of each entry of a Procedure "
-        "Log, an item of its Content Sequence that is a target of CONTAINS, "
-        "writes in place of "
-        "the constant the dummy datetime of its rank among the entries' "
-        f"distinct source values: `{first}` for the earliest, and one second "
-        "more for each later one, so entries with equal source values share "
-        "one and the log keeps the increasing order that PS3.3 Section "
-        "A.35.7.3.1.2 requires. Where any of these would equal an entry's "
-        "source value, as D compares them, the series moves on by its own "
-        "length until none does. A log whose entries are not in increasing "
-        "order is sequestered."
-    )
 
 
 def _birth_dates(named: Callable[[str], str]) -> str:
@@ -796,12 +653,14 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         )
         return f"The engine writes Pixel Data (7FE0,0010) unchanged{face} and " + claims
     claims = "claims Clean Pixel Data only for an instance " + (
-        "without top-level pixel data or whose regions a reviewer approved, "
+        "without top-level pixel data or an encapsulated document, or whose "
+        "regions a reviewer approved, "
         "and Clean Recognizable Visual Features only for one that cannot show "
         "a face or whose source file a reviewer found free of one. "
         if visual
-        else "without top-level pixel data or whose regions a reviewer "
-        "approved, and never Clean Recognizable Visual Features. "
+        else "without top-level pixel data or an encapsulated document, or "
+        "whose regions a reviewer approved, and never Clean Recognizable "
+        "Visual Features. "
     )
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
@@ -840,7 +699,14 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "other than in those regions. It writes other Pixel Data "
         f"unchanged{face or ','} and "
         + claims
-        + "A run's method digest also covers its text finder's class and "
+        + "An Encapsulated PDF's document is rendered page by page, at 150 "
+        "pixels per inch, its pages searched and blacked out as RGB frames "
+        "are, and written as an image-only PDF that holds the pages' images "
+        "and nothing else, so no text, metadata, or attached file of the "
+        "source document is written; it is held for review, and released, as "
+        "above, only once a reviewer approves its pages. A document that "
+        "cannot be rendered, such as an encrypted one, is sequestered. "
+        "A run's method digest also covers its text finder's class and "
         "description of its method, such as the text detector's model, ONNX "
         "Runtime, NumPy, and SciPy versions, and parameters, and the keyed "
         "digest of its region rules, so it is not the digest that this "

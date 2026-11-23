@@ -273,6 +273,9 @@ def plot_and_save_results(
             diff, vmin=-largest_diff, vmax=largest_diff
         ),
     )
+    # Gamma is NaN at the reference points that were not analysed. They are
+    # written as 0, the same pixel value as a gamma of 0, whereas the gamma
+    # plot in the report leaves them blank.
     imageio.imwrite(
         gamma_filepath,
         st_misc.normalize_and_convert_to_uint8(gamma, vmin=0, vmax=2),

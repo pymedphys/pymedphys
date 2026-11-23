@@ -73,6 +73,11 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.7": "RT Treatment Summary Record",
     "1.2.840.10008.5.1.4.1.1.481.8": "RT Ion Plan",
     "1.2.840.10008.5.1.4.1.1.481.9": "RT Ion Beams Treatment Record",
+    "1.2.840.10008.5.1.4.1.1.481.16": "RT Radiation Record Set",
+    "1.2.840.10008.5.1.4.1.1.481.17": "RT Radiation Salvage Record",
+    "1.2.840.10008.5.1.4.1.1.481.18": "Tomotherapeutic Radiation Record",
+    "1.2.840.10008.5.1.4.1.1.481.19": "C-Arm Photon-Electron Radiation Record",
+    "1.2.840.10008.5.1.4.1.1.481.20": "Robotic-Arm Radiation Record",
     "1.2.840.10008.5.1.4.1.1.481.23": "Enhanced RT Image",
     "1.2.840.10008.5.1.4.1.1.481.24": "Enhanced Continuous RT Image",
     "1.2.840.10008.5.1.4.1.1.1": "Computed Radiography Image",
@@ -87,6 +92,9 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.21": "RT Radiation Set Delivery Instruction",
     "1.2.840.10008.5.1.4.34.7": "RT Beams Delivery Instruction",
     "1.2.840.10008.5.1.4.34.10": "RT Brachy Application Setup Delivery Instruction",
+    "1.2.840.10008.5.1.4.1.1.481.10": "RT Physician Intent",
+    "1.2.840.10008.5.1.4.1.1.481.22": "RT Treatment Preparation",
+    "1.2.840.10008.5.1.4.1.1.481.25": "RT Patient Position Acquisition Instruction",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
@@ -111,6 +119,16 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
     "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.7": "Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.1": "Multi-frame Single Bit Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.2": "Multi-frame Grayscale Byte Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.3": "Multi-frame Grayscale Word Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.4": "Multi-frame True Color Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.88.70": "Implantation Plan SR Document",
+    "1.2.840.10008.5.1.4.1.1.88.72": "Simplified Adult Echo SR",
+    "1.2.840.10008.5.1.4.1.1.88.74": "Planned Imaging Agent Administration SR",
+    "1.2.840.10008.5.1.4.1.1.88.75": "Performed Imaging Agent Administration SR",
+    "1.2.840.10008.5.1.4.1.1.88.71": "Acquisition Context SR",
     "1.2.840.10008.5.1.4.1.1.30": "Parametric Map",
     "1.2.840.10008.5.1.4.1.1.67": "Real World Value Mapping",
     "1.2.840.10008.5.1.4.1.1.11.1": "Grayscale Softcopy Presentation State",
@@ -121,6 +139,14 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.11.12": (
         "Variable Modality LUT Softcopy Presentation State"
     ),
+    "1.2.840.10008.5.1.4.1.1.11.6": "Planar MPR Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.7": "Planar MPR Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.8": "Advanced Blending Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.9": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.10": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.11": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.9.100.1": "Waveform Presentation State",
+    "1.2.840.10008.5.1.4.1.1.9.100.2": "Waveform Acquisition Presentation State",
     "1.2.840.10008.5.1.4.1.1.104.1": "Encapsulated PDF",
 }
 
@@ -152,12 +178,20 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
         "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
         "RT Treatment Summary Record",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "RT Radiation Record Set",
         "Segmentation",
         "Surface Segmentation",
         "Spatial Registration",
@@ -181,6 +215,16 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Parametric Map",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
@@ -189,8 +233,14 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
         "Encapsulated PDF",
     }
+    assert scope.SECONDARY_CAPTURE_IODS < scope.SUPPORTED_IODS
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
 
@@ -248,25 +298,8 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # The other Structured Reports, which the design always sequesters,
-        # and the volumetric, advanced blending, and waveform Presentation
-        # States, which later changes are to bring into scope.
-        ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
-        (
-            "1.2.840.10008.5.1.4.1.1.11.6",
-            "Planar MPR Volumetric Presentation State",
-        ),
-        (
-            "1.2.840.10008.5.1.4.1.1.11.9",
-            "Volume Rendering Volumetric Presentation State",
-        ),
-        ("1.2.840.10008.5.1.4.1.1.11.8", "Advanced Blending Presentation State"),
-        ("1.2.840.10008.5.1.4.1.1.9.100.1", "Waveform Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, height map segmentations, spatial fiducials,
-        # and the second-generation RT objects not yet supported, such as RT
-        # Physician Intent and the radiation records.
+        # that are not images, height map segmentations, and spatial fiducials.
         # The projection radiographs of IODs of their own, beside Computed
         # Radiography Image and Digital X-Ray Image.
         ("1.2.840.10008.5.1.4.1.1.1.2", "Digital Mammography X-Ray Image"),
@@ -276,8 +309,6 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
-        ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
-        ("1.2.840.10008.5.1.4.1.1.481.18", "Tomotherapeutic Radiation Record"),
         # The encapsulated documents other than PDF: a CDA document, whose
         # XML is text throughout, and the 3D models and their materials.
         ("1.2.840.10008.5.1.4.1.1.104.2", "Encapsulated CDA"),
@@ -472,13 +503,30 @@ def test_pydicom_names_the_same_uids():
         uid.SpectaclePrescriptionReportStorage,
         uid.MacularGridThicknessAndVolumeReportStorage,
         uid.WaveformAnnotationSRStorage,
+        uid.SecondaryCaptureImageStorage,
+        uid.MultiFrameSingleBitSecondaryCaptureImageStorage,
+        uid.MultiFrameGrayscaleByteSecondaryCaptureImageStorage,
+        uid.MultiFrameGrayscaleWordSecondaryCaptureImageStorage,
+        uid.MultiFrameTrueColorSecondaryCaptureImageStorage,
+        uid.ImplantationPlanSRStorage,
+        uid.SimplifiedAdultEchoSRStorage,
+        uid.PlannedImagingAgentAdministrationSRStorage,
+        uid.PerformedImagingAgentAdministrationSRStorage,
+        uid.AcquisitionContextSRStorage,
         uid.GrayscaleSoftcopyPresentationStateStorage,
         uid.ColorSoftcopyPresentationStateStorage,
         uid.PseudoColorSoftcopyPresentationStateStorage,
         uid.BlendingSoftcopyPresentationStateStorage,
         uid.XAXRFGrayscaleSoftcopyPresentationStateStorage,
         uid.VariableModalityLUTSoftcopyPresentationStateStorage,
+        uid.GrayscalePlanarMPRVolumetricPresentationStateStorage,
+        uid.CompositingPlanarMPRVolumetricPresentationStateStorage,
+        uid.AdvancedBlendingPresentationStateStorage,
+        uid.VolumeRenderingVolumetricPresentationStateStorage,
+        uid.SegmentedVolumeRenderingVolumetricPresentationStateStorage,
+        uid.MultipleVolumeRenderingVolumetricPresentationStateStorage,
         uid.EncapsulatedPDFStorage,
+        # pydicom 3.0.2 names neither waveform Presentation State SOP Class.
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED

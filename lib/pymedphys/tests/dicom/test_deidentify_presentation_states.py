@@ -30,10 +30,13 @@ import io
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    dummy_values,
     icc_cleaning,
     icc_profiles,
     iods,
+    pixel_risk,
     policy,
+    release_gate,
     run,
     scope,
 )
@@ -41,12 +44,14 @@ from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.face_review import FaceReview
 from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.icc_cleaning import Refusal
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
+from . import _synthetic_icc as icc
 from . import _synthetic_references as synthetic
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
@@ -61,6 +66,8 @@ PRESENTATION_CREATION_DATE = "(0070,0082)"
 PRESENTATION_CREATION_TIME = "(0070,0083)"
 GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"
 REFERENCED_SERIES_SEQUENCE = "(0008,1115)"
+OVERLAY_ACTIVATION_LAYER = 0x60001001
+CLEAN_GRAPHICS_CODE = "113103"
 # The presets that select a Retain Longitudinal Temporal Information Option,
 # under which Presentation Creation Date and Time are kept or shifted.
 DATED_PRESETS = ("tps-import", "public-release")
@@ -280,6 +287,94 @@ def test_every_preset_sequesters_a_presentation_state_with_graphic_annotations(
     )
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize("options", [[], [policy.CLEAN_GRAPHICS]], ids=["", "graphics"])
+def test_a_presentation_state_that_activates_an_overlay_holds_no_overlay(options):
+    # The Overlay Activation Module (PS3.3 C.11.7) shows an overlay of the
+    # referenced image on one of the state's graphic layers, by its group.
+    # That group holds no overlay of the state's own, and the state has no
+    # Pixel Data, so Clean Graphics has nothing to clear and releases it
+    # with its code, as the run without the option releases it.
+    dataset = _presentation_state()
+    dataset.GraphicLayerSequence = [
+        synthetic.item(GraphicLayer="OVERLAY", GraphicLayerOrder=1)
+    ]
+    dataset.add_new(OVERLAY_ACTIVATION_LAYER, "CS", "OVERLAY")
+    transform = InstanceTransform(
+        policy.compose_custom_policy([policy.MODIFIED_DATES, *options]),
+        KEY,
+        unvalidated_policy=True,
+    )
+    data = synthetic.written(dataset)
+
+    result = transform(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written[OVERLAY_ACTIVATION_LAYER].value == "OVERLAY"
+    codes = [item.CodeValue for item in written.DeidentificationMethodCodeSequence]
+    assert (CLEAN_GRAPHICS_CODE in codes) == bool(options)
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "options",
+    [
+        *([preset] for preset in DATED_PRESETS),
+        [policy.MODIFIED_DATES, policy.CLEAN_GRAPHICS],
+    ],
+    ids=[*DATED_PRESETS, "graphics"],
+)
+def test_a_kept_overlay_activation_layer_is_searched_for_residuals(options):
+    # Overlay Activation Layer is kept wherever the state is released, so
+    # the second pass still searches its value: the patient's name typed
+    # into it, and into the layer that it names, withholds the file.
+    family = synthetic.PATIENTS_NAME.split("^", maxsplit=1)[0]
+    dataset = _presentation_state()
+    dataset.GraphicLayerSequence = [
+        synthetic.item(GraphicLayer=family, GraphicLayerOrder=1)
+    ]
+    dataset.add_new(OVERLAY_ACTIVATION_LAYER, "CS", family)
+    composed = (
+        policy.compose_policy(options[0])
+        if len(options) == 1
+        else policy.compose_custom_policy(options)
+    )
+    transform = InstanceTransform(
+        composed,
+        KEY,
+        cleaning=(
+            DescriptorCleaning(None, ReviewedNames.empty())
+            if CLEAN_DESCRIPTORS in composed.options
+            else None
+        ),
+        face_review=(
+            NO_FACE_VERDICTS
+            if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in composed.options
+            else None
+        ),
+        unvalidated_policy=True,
+    )
+    data = synthetic.written(dataset)
+
+    result = transform(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written[OVERLAY_ACTIVATION_LAYER].value == family
+    coverage = getattr(result.evidence, "coverage", result.evidence)
+    condition = release_gate.release_condition(coverage, result.data)
+    assert condition.decision is release_gate.Decision.WITHHOLD
+    assert release_gate.ReasonCode.RESIDUAL_PERSON_NAME in [
+        reason.code for reason in condition.reasons
+    ]
+    assert any(
+        reason.location.element == ElementPath((), "(6000,1001)")
+        for reason in condition.reasons
+    ), condition.reasons
+
+
 @pytest.mark.parametrize("preset", policy.PRESETS)
 def test_the_referenced_series_sequence_is_kept_where_a_presentation_state_requires_it(
     preset,
@@ -295,3 +390,319 @@ def test_the_referenced_series_sequence_is_kept_where_a_presentation_state_requi
         for definition in iod.definitions
         if definition.tag == REFERENCED_SERIES_SEQUENCE and not definition.path
     } == {("Presentation State Relationship", "1")}
+
+
+GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
+    "1.2.840.10008.5.1.4.1.1.11.6"
+)
+COMPOSITING_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
+    "1.2.840.10008.5.1.4.1.1.11.7"
+)
+COLOR_SPACE = "(0028,2002)"
+INPUT_SET = "2.25.702"
+VOLUMETRIC_ANNOTATION_SEQUENCE = "(0070,1901)"
+VOLUMETRIC_PRESENTATION_INPUT_ANNOTATION_SEQUENCE = "(0070,1905)"
+
+
+def _planar_mpr(*, annotation=None, color=False, profile=None):
+    """Return a Planar MPR Volumetric Presentation State of the CT.
+
+    It is a Grayscale one, or, where ``color`` is true, a Compositing one
+    whose true colour display holds ICC Profile and Color Space, or, where
+    ``profile`` is given, a Compositing one whose true colour display holds
+    that ICC Profile, of a custom colour space, and no Color Space.
+    ``annotation`` names a sequence of the Volumetric Graphic Annotation
+    Module to hold one text annotation.
+    """
+    dataset = synthetic.instance(
+        COMPOSITING_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE
+        if color or profile is not None
+        else GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        PRESENTATION_STATE,
+        PRESENTATION_STATE_SERIES,
+        VolumetricPresentationInputSetSequence=[
+            synthetic.item(
+                VolumetricPresentationInputSetUID=INPUT_SET,
+                PresentationInputType="VOLUME",
+                ReferencedImageSequence=[
+                    synthetic.reference(synthetic.CT_IMAGE_STORAGE, slice_uid)
+                    for slice_uid in synthetic.CT_SLICES
+                ],
+            )
+        ],
+        VolumetricPresentationStateInputSequence=[
+            synthetic.item(
+                VolumetricPresentationInputNumber=1,
+                VolumetricPresentationInputSetUID=INPUT_SET,
+                Crop="NO",
+            )
+        ],
+    )
+    dataset.Modality = "PR"
+    dataset.InstanceNumber = 1
+    dataset.ContentLabel = "MPR"
+    dataset.ContentDescription = "SENTINEL DESCRIPTION"
+    dataset.PresentationCreationDate = SOURCE_DATE
+    dataset.PresentationCreationTime = SOURCE_TIME
+    dataset.MultiPlanarReconstructionStyle = "PLANAR"
+    dataset.MPRThicknessType = "THIN"
+    dataset.MPRTopLeftHandCorner = [0.0, 0.0, 0.0]
+    dataset.MPRViewWidthDirection = [1.0, 0.0, 0.0]
+    dataset.MPRViewWidth = 100.0
+    dataset.MPRViewHeightDirection = [0.0, 1.0, 0.0]
+    dataset.MPRViewHeight = 100.0
+    if color:
+        dataset.PixelPresentation = "TRUE_COLOR"
+        dataset.add_new(
+            ICC_PROFILE, "OB", icc_profiles.srgb_profile("A display's profile")
+        )
+        dataset.ColorSpace = "SRGB"
+    if profile is not None:
+        dataset.PixelPresentation = "TRUE_COLOR"
+        dataset.add_new(ICC_PROFILE, "OB", profile)
+    if annotation is not None:
+        setattr(
+            dataset,
+            annotation,
+            [
+                synthetic.item(
+                    VolumetricPresentationInputNumber=1,
+                    TextObjectSequence=[
+                        synthetic.item(UnformattedTextValue="SENTINEL NAME")
+                    ],
+                )
+            ],
+        )
+    return dataset
+
+
+def test_the_volumetric_and_advanced_blending_presentation_states_are_supported():
+    assert {
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+    } <= scope.SUPPORTED_IODS
+    for sop_class in range(6, 12):
+        assert not scope.classify(
+            f"1.2.840.10008.5.1.4.1.1.11.{sop_class}",
+            synthetic.EXPLICIT_VR_LITTLE_ENDIAN,
+        ).sequestered, sop_class
+
+
+def test_the_waveform_presentation_states_are_supported():
+    assert {
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
+    } <= scope.SUPPORTED_IODS
+    for sop_class in ("1", "2"):
+        assert not scope.classify(
+            f"1.2.840.10008.5.1.4.1.1.9.100.{sop_class}",
+            synthetic.EXPLICIT_VR_LITTLE_ENDIAN,
+        ).sequestered, sop_class
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", UNDATED_PRESETS)
+def test_the_basic_profile_sequesters_a_volumetric_presentation_state(preset):
+    result = _transformed(preset, _planar_mpr())
+
+    assert isinstance(result, run.Sequestered)
+    assert {reason.path for reason in result.reasons} == {
+        ElementPath((), PRESENTATION_CREATION_DATE),
+        ElementPath((), PRESENTATION_CREATION_TIME),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_date_option_releases_a_volumetric_presentation_state(preset):
+    result = _transformed(preset, _planar_mpr())
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert b"SENTINEL" not in result.data
+    assert written.PresentationCreationDate != SOURCE_DATE
+    assert written.MultiPlanarReconstructionStyle == "PLANAR"
+    assert written.MPRViewWidth == 100.0
+    (input_set,) = written.VolumetricPresentationInputSetSequence
+    (presentation_input,) = written.VolumetricPresentationStateInputSequence
+    # The input set's UID is replaced by the run's key, the same way in both
+    # sequences, so the input still names its set, and so are the CT slices'
+    # UIDs, as the slices' own are, so the written state names the written
+    # slices.
+    assert input_set.VolumetricPresentationInputSetUID != INPUT_SET
+    assert presentation_input.VolumetricPresentationInputSetUID == (
+        input_set.VolumetricPresentationInputSetUID
+    )
+    images = [
+        image.ReferencedSOPInstanceUID for image in input_set.ReferencedImageSequence
+    ]
+    assert len(images) == len(synthetic.CT_SLICES)
+    assert not set(images) & set(synthetic.CT_SLICES)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize("preset", policy.PRESETS)
+@pytest.mark.parametrize(
+    "annotation",
+    ["VolumetricAnnotationSequence", "VolumetricPresentationInputAnnotationSequence"],
+)
+def test_every_preset_sequesters_a_volumetric_presentation_state_with_annotations(
+    preset, annotation
+):
+    result = _transformed(preset, _planar_mpr(annotation=annotation))
+
+    assert isinstance(result, run.Sequestered)
+    tag = {
+        "VolumetricAnnotationSequence": VOLUMETRIC_ANNOTATION_SEQUENCE,
+        "VolumetricPresentationInputAnnotationSequence": (
+            VOLUMETRIC_PRESENTATION_INPUT_ANNOTATION_SEQUENCE
+        ),
+    }[annotation]
+    assert (
+        Sequestration(ElementPath((), tag), "D", "SQ", SequesterReason.NO_DUMMY_VALUE)
+        in result.reasons
+    )
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_volumetric_presentation_states_color_space_sequesters_it(preset):
+    # Color Space is Type 1C beside ICC Profile in the MPR Volumetric
+    # Presentation State Display Module, and X/Z/D resolves to D there, which
+    # a code string has no dummy value for (D-021, D-022). ICC Profile itself
+    # is cleaned, so it is not among the reasons.
+    result = _transformed(preset, _planar_mpr(color=True))
+
+    assert isinstance(result, run.Sequestered)
+    assert set(result.reasons) == {
+        Sequestration(
+            ElementPath((), COLOR_SPACE), "D", "CS", SequesterReason.NO_DUMMY_VALUE
+        )
+    }
+
+
+WAVEFORM_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.9.100.1"
+TWELVE_LEAD_ECG_WAVEFORM_STORAGE = "1.2.840.10008.5.1.4.1.1.9.1.1"
+WAVEFORM = "2.25.703"
+WAVEFORM_SERIES = "2.25.704"
+WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE = 0x0040B033
+
+
+def _waveform_presentation_state():
+    """Return a Waveform Presentation State of an ECG, with a text annotation."""
+    dataset = synthetic.instance(
+        WAVEFORM_PRESENTATION_STATE_STORAGE,
+        PRESENTATION_STATE,
+        PRESENTATION_STATE_SERIES,
+        ReferencedSeriesSequence=[
+            synthetic.item(
+                SeriesInstanceUID=WAVEFORM_SERIES,
+                ReferencedWaveformSequence=[
+                    synthetic.reference(TWELVE_LEAD_ECG_WAVEFORM_STORAGE, WAVEFORM)
+                ],
+            )
+        ],
+    )
+    # pydicom 3.0.2 does not know Waveform Textual Annotation Sequence.
+    dataset.add_new(
+        WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE,
+        "SQ",
+        [
+            synthetic.item(
+                ReferencedWaveformSequence=[
+                    synthetic.item(
+                        ReferencedSOPClassUID=TWELVE_LEAD_ECG_WAVEFORM_STORAGE,
+                        ReferencedSOPInstanceUID=WAVEFORM,
+                        ReferencedWaveformChannels=[1, 1],
+                    )
+                ],
+                TemporalRangeType="POINT",
+                ReferencedSamplePositions=[1],
+                TextObjectSequence=[
+                    synthetic.item(UnformattedTextValue="SENTINEL NAME")
+                ],
+            )
+        ],
+    )
+    dataset.Modality = "PR"
+    dataset.InstanceNumber = 1
+    dataset.ContentLabel = "ECG"
+    dataset.PresentationCreationDate = SOURCE_DATE
+    dataset.PresentationCreationTime = SOURCE_TIME
+    return dataset
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", UNDATED_PRESETS)
+def test_the_basic_profile_sequesters_a_waveform_presentation_state(preset):
+    result = _transformed(preset, _waveform_presentation_state())
+
+    assert isinstance(result, run.Sequestered)
+    assert {reason.path for reason in result.reasons} == {
+        ElementPath((), PRESENTATION_CREATION_DATE),
+        ElementPath((), PRESENTATION_CREATION_TIME),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_waveform_presentation_state_keeps_its_annotation_with_dummy_text(preset):
+    result = _transformed(preset, _waveform_presentation_state())
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert b"SENTINEL" not in result.data
+    # The annotation is kept, with where it points on the waveform, and its
+    # text, Type 1 there, takes D's dummy value.
+    (annotation,) = written[WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE].value
+    assert annotation.TemporalRangeType == "POINT"
+    (text,) = annotation.TextObjectSequence
+    assert text.UnformattedTextValue
+    (waveform,) = annotation.ReferencedWaveformSequence
+    assert waveform.ReferencedSOPInstanceUID != WAVEFORM
+    (series,) = written.ReferencedSeriesSequence
+    (referenced,) = series.ReferencedWaveformSequence
+    assert referenced.ReferencedSOPInstanceUID == waveform.ReferencedSOPInstanceUID
+
+
+# A matrix RGB profile of a custom colour space, which needs no Color Space,
+# and the same profile as an ICC version 3 one, which the cleaner refuses.
+CUSTOM_PROFILE = icc.profile(icc.Header(), icc.matrix_tags(4))
+REFUSED_CUSTOM_PROFILE = icc.profile(
+    icc.Header(version=bytes([3, 0, 0, 0])), icc.matrix_tags(4)
+)
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_volumetric_presentation_states_custom_profile_is_cleaned(preset):
+    result = _transformed(preset, _planar_mpr(profile=CUSTOM_PROFILE))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.PixelPresentation == "TRUE_COLOR"
+    assert written.ICCProfile == icc_cleaning.clean_profile(
+        CUSTOM_PROFILE, "DEIDENTIFIED"
+    )
+    assert "ColorSpace" not in written
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_volumetric_presentation_state_whose_profile_falls_back_is_sequestered(
+    preset,
+):
+    # The fixed sRGB profile that D writes in place of a profile that it
+    # cannot clean is a standard colour space, so Color Space would be
+    # required beside it (PS3.3 Tables C.11.27-1 and C.11.32-1), and a code
+    # string has no dummy value, as where the source holds Color Space.
+    assert dummy_values.icc_profile_outcome(REFUSED_CUSTOM_PROFILE).refusal is (
+        Refusal.VERSION
+    )
+
+    result = _transformed(preset, _planar_mpr(profile=REFUSED_CUSTOM_PROFILE))
+
+    assert isinstance(result, run.Sequestered), result
+    assert set(result.reasons) == {
+        Sequestration(
+            ElementPath((), COLOR_SPACE), "D", "CS", SequesterReason.NO_DUMMY_VALUE
+        )
+    }

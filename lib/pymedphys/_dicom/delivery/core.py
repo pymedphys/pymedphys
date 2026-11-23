@@ -107,6 +107,59 @@ def _check_for_supported_collimation_device(
         )
 
 
+def _check_control_points_that_leave_out_a_device(
+    beam_limiting_device_position_sequences, beam_limiting_device_sequence
+):
+    """Validate the control points that leave out a beam limiting device.
+
+    After the first control point, an RT Plan lists only the devices
+    whose positions change during the beam (PS3.3 C.8.8.14), so
+    ``pymedphys.Delivery.from_dicom`` gives a device that is left out
+    the positions it was last given. That reading holds only for a list
+    of devices that the beam defines. A control point that lists every
+    device of the beam is read as it always was.
+
+    Parameters
+    ----------
+    beam_limiting_device_position_sequences
+        The ``BeamLimitingDevicePositionSequence`` that applies at each
+        control point of a beam, in control point order.
+    beam_limiting_device_sequence
+        The ``BeamLimitingDeviceSequence`` of that beam.
+
+    Raises
+    ------
+    ValueError
+        If a control point that leaves out one of the beam's devices
+        has an empty ``BeamLimitingDevicePositionSequence``, or lists a
+        device that the beam does not define.
+
+    """
+    defined_types = {
+        item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
+    }
+
+    for index, sequence in enumerate(beam_limiting_device_position_sequences):
+        listed_types = {item.RTBeamLimitingDeviceType for item in sequence}
+
+        if defined_types <= listed_types:
+            continue
+
+        if not listed_types:
+            raise ValueError(
+                "The Beam Limiting Device Position Sequence of control point "
+                f"{index}, counting from 0, is empty. A control point at "
+                "which no beam limiting device moves leaves the sequence out."
+            )
+
+        if not listed_types <= defined_types:
+            raise ValueError(
+                f"Control point {index}, counting from 0, leaves out a beam "
+                "limiting device and lists one that the Beam Limiting Device "
+                "Sequence of its beam does not define."
+            )
+
+
 class DeliveryDicom(DeliveryBase):
     @classmethod
     def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_group_number=None):
@@ -313,6 +366,9 @@ class DeliveryDicom(DeliveryBase):
             _pmp_rtplan.get_cp_attribute_leaning_on_prior(
                 control_points, "BeamLimitingDevicePositionSequence"
             )
+        )
+        _check_control_points_that_leave_out_a_device(
+            beam_limiting_device_position_sequences, beam_limiting_device_sequence
         )
 
         dicom_mlcs = _pmp_rtplan.get_leaf_jaw_positions_for_type(

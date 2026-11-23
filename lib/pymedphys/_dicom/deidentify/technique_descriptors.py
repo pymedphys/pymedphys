@@ -205,11 +205,43 @@ class TechniqueVocabulary:
         """
         if tag not in self.attributes:
             return Rejection.NOT_AUTOMATIC
+        return self.word_rejection(value)
+
+    def word_rejection(self, value: str) -> Rejection | None:
+        """Return why the rules reject ``value`` as words, whatever its attribute.
+
+        The rules of :meth:`rejection` without its test of the attribute,
+        which the release gate applies to a kept Code Meaning (D-032).
+
+        Parameters
+        ----------
+        value : str
+            One value, without padding. The echo check is the caller's.
+        """
         return _text_rejection(value) or self._word_rejection(value)
 
     def keeps(self, tag: str, value: str) -> bool:
         """Return whether the tier keeps ``value``, before the echo check."""
         return self.rejection(tag, value) is None
+
+    def word_kind(self, word: str) -> str:
+        """Return how the vocabulary reads one word, by a value-free name.
+
+        The name is ``named exception``, ``name``, ``unit``, ``bare
+        number``, ``kernel``, ``vocabulary word`` (one, or a compound of
+        them), or ``other``, in that order of precedence, so that a reviewer
+        can tell what kind of kept word a finding holds without the word.
+        """
+        word = word.upper()
+        kinds = (
+            ("named exception", word in self.named_exceptions),
+            ("name", word in self.names),
+            ("unit", word in self.units),
+            ("bare number", _BARE_NUMBER.fullmatch(word) is not None),
+            ("kernel", self._is_kernel(word)),
+            ("vocabulary word", self._is_vocabulary(word)),
+        )
+        return next((kind for kind, matches in kinds if matches), "other")
 
     def _word_rejection(self, value: str) -> Rejection | None:
         found_word = False

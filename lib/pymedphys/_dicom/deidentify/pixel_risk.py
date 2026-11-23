@@ -50,7 +50,10 @@ The indicators are:
 - An overlay group, (6000,eeee) to (601E,eeee), without Overlay Data
   (60xx,3000). PS3.3 before 2004 let an overlay lie in unused bits of Pixel
   Data (Section C.9.2), so its graphics and text stay in the pixel data when
-  the Basic Profile removes the overlay's attributes.
+  the Basic Profile removes the overlay's attributes. A group whose only
+  attribute is Overlay Activation Layer (60xx,1001), with which a softcopy
+  Presentation State shows an overlay of the image that it references
+  (Section C.11.7), holds no overlay, so it is not one.
 - In an RT Structure Set, an ROI that has contours and whose RT ROI
   Interpreted Type (3006,00A4) or ROI Name (3006,0026) is EXTERNAL, BODY,
   or SKIN, the patient's outline, or BOLUS or FIXATION, the Defined Terms
@@ -331,6 +334,11 @@ READ_VRS = {
 
 _PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
 _OVERLAY_DATA_ELEMENT = 0x3000
+# Overlay Activation Layer (60xx,1001), the only attribute of a softcopy
+# Presentation State's Overlay Activation Module (PS3.3 C.11.7), names an
+# overlay of the referenced image, or of the state's own Overlay Plane
+# Module, by its group, to show on a graphic layer: it describes no overlay.
+_OVERLAY_ACTIVATION_LAYER_ELEMENT = 0x1001
 _UNDEFINED_LENGTH = 0xFFFFFFFF
 # An IS value: an optional sign and digits (PS3.5 Table 6.2-1).
 _INTEGER = re.compile(r"[+-]?[0-9]+")
@@ -545,11 +553,29 @@ def overlay_groups_without_data(dataset: pydicom.Dataset) -> dict[int, int]:
 
     These are the groups whose overlay may lie in unused bits of Pixel Data,
     which :func:`assess_pixel_risk` reports as
-    :attr:`Indicator.EMBEDDED_OVERLAY`.
+    :attr:`Indicator.EMBEDDED_OVERLAY`. A group is an overlay group by any
+    element but its group length and Overlay Activation Layer (60xx,1001),
+    with which a softcopy Presentation State shows an overlay of the image
+    that it references on one of its graphic layers (PS3.3 C.11.7): a group
+    that holds only that attribute places no overlay in this instance.
+
+    >>> from pymedphys._imports import pydicom
+    >>> dataset = pydicom.Dataset()
+    >>> dataset.add_new(0x60001001, "CS", "LAYER")
+    >>> overlay_groups_without_data(dataset)
+    {}
+    >>> dataset.add_new(0x60000102, "US", 15)
+    >>> overlay_groups_without_data(dataset) == {0x6000: 0x0102}
+    True
     """
     groups: dict[int, int] = {}
     for tag in dataset.keys():
-        if 0x6000 <= tag.group <= 0x601E and tag.group % 2 == 0 and tag.element:
+        if (
+            0x6000 <= tag.group <= 0x601E
+            and tag.group % 2 == 0
+            and tag.element
+            and tag.element != _OVERLAY_ACTIVATION_LAYER_ELEMENT
+        ):
             groups.setdefault(tag.group, tag.element)
     return {
         group: first
@@ -848,8 +874,8 @@ _RADIOGRAPH_SOP_CLASSES = frozenset(
 # traces the profile, and its label or code need not say that it is one, so
 # each instance is reported, whatever its segments. A Surface Segmentation
 # holds meshes, not pixel data, so it is none of them: the face review
-# holds each one under Clean Recognizable Visual Features
-# (face_review.holds_surface_mesh).
+# releases one under Clean Recognizable Visual Features only on a verdict on
+# the QC pack's surfaces sheet of its meshes (face_review.holds_surface_mesh).
 SEGMENTATION_SOP_CLASSES = frozenset(
     {"1.2.840.10008.5.1.4.1.1.66.4", "1.2.840.10008.5.1.4.1.1.66.7"}
 )

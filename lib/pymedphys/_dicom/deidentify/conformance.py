@@ -80,13 +80,17 @@ from .cleaners import cleaners_for
 from .codes import load_context_group
 from .content_items import CONTENT_ITEM_SEQUENCES
 from .content_items import METHOD as CONTENT_ITEMS_METHOD
+from .graphic_annotations import GRAPHIC_ANNOTATION_SEQUENCE
+from .graphic_annotations import METHOD as ANNOTATIONS_METHOD
 from .descriptor_cleaning import fallback_policy
 from .dummy_values import (
     DUMMY_VRS,
     ICC_PROFILE,
     INSTITUTION_CODE_SEQUENCE,
+    OPERATOR_IDENTIFICATION_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    REFERENCED_STUDY_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
     reviewed_within,
 )
@@ -103,6 +107,7 @@ from .iods import IOD, load_iod_tables
 from .method_digest import digest_inputs, method_digest
 from .policy import (
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    CLEAN_GRAPHICS,
     CLEAN_PIXEL_DATA,
     CLEAN_STRUCTURED_CONTENT,
     SAFE_PRIVATE,
@@ -144,7 +149,8 @@ UID_DEFINITION = "UID role: definition"
 # The action at a place where the instance is sequestered rather than written.
 SEQUESTER = "sequester"
 # The attributes whose dummy value a reviewed rule gives, whatever their VR
-# (D-021); Institution Code Sequence's, only where reviewed_within says.
+# (D-021); Institution Code Sequence's and Operator Identification
+# Sequence's, only where reviewed_within says.
 _REVIEWED_DUMMY_ATTRIBUTES = frozenset(
     {
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
@@ -152,6 +158,8 @@ _REVIEWED_DUMMY_ATTRIBUTES = frozenset(
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
         ICC_PROFILE,
         VERIFYING_OBSERVER_SEQUENCE,
+        REFERENCED_STUDY_SEQUENCE,
+        OPERATOR_IDENTIFICATION_SEQUENCE,
     }
 )
 # What a plain X on Overlay Data removes with it: every attribute of its
@@ -603,7 +611,7 @@ def _removed_with_a_sequence(
             action = compound_actions.resolve_plain_in_iod(
                 iod, sequence, within, action
             )
-        if not descends(sequence, action):
+        if not descends(sequence, action, within):
             return True
     return False
 
@@ -657,6 +665,10 @@ def _attribute(  # pylint: disable=too-many-arguments
         # The engine cleans the sequence's content items by their concept
         # names, and gives it its Basic Profile action where it cannot keep
         # them (D-047).
+        return AttributeAction(tag, name, rule, given)
+    if rules is not None and given == "C" and tag == GRAPHIC_ANNOTATION_SEQUENCE:
+        # The engine cleans its annotations by a reviewer's decisions, and
+        # gives it its Basic Profile action without them (D-062).
         return AttributeAction(tag, name, rule, given)
     if rules is not None and _CONCRETE_TAG.fullmatch(concrete):
         applied = rules.rule(concrete)
@@ -844,7 +856,9 @@ def _cleaned(
 
     Under Clean Structured Content, the content items of the sequences that
     hold them are cleaned by their concept names (D-047), after the
-    cleaners of the options before it in Table E.1-1.
+    cleaners of the options before it in Table E.1-1. Under Clean Graphics,
+    the annotations of Graphic Annotation Sequence are cleaned by a
+    reviewer's decisions (D-062).
     """
     given_c = {entry.tag for entry in attributes if entry.action == "C"}
     cleaned = [
@@ -859,6 +873,12 @@ def _cleaned(
         cleaned.append(
             CleanedAttributes(
                 CLEAN_STRUCTURED_CONTENT, tuple(sorted(sequences)), CONTENT_ITEMS_METHOD
+            )
+        )
+    if CLEAN_GRAPHICS in policy.options and GRAPHIC_ANNOTATION_SEQUENCE in given_c:
+        cleaned.append(
+            CleanedAttributes(
+                CLEAN_GRAPHICS, (GRAPHIC_ANNOTATION_SEQUENCE,), ANNOTATIONS_METHOD
             )
         )
     return tuple(cleaned)

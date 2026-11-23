@@ -102,6 +102,7 @@ from . import qc_store, release_report
 from .qc_attestation import _pack_bytes, _read, _reference_of
 from .pixel_region_rules import PixelRegionRules
 from .qc_pack import Disposition, ListsDigest, QcPackError
+from .reviewed_annotations import ReviewedAnnotations
 from .reviewed_descriptors import ReviewedDescriptors
 from .reviewed_roi_names import ReviewedNames
 
@@ -127,6 +128,7 @@ _KEYED = (
     "reviewed_roi_names",
     "reviewed_descriptors",
     "pixel_region_rules",
+    "reviewed_annotations",
 )
 # How many random bytes salt the lists' digest.
 _SALT_BYTES = 32
@@ -602,6 +604,7 @@ def bind_lists(
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
     pixel_region_rules: PixelRegionRules | None,
+    reviewed_annotations: ReviewedAnnotations | None = None,
 ) -> ListsDigest:
     """Return the digest of a run's reviewed lists under a new salt, for its pack.
 
@@ -618,6 +621,9 @@ def bind_lists(
     pixel_region_rules : PixelRegionRules or None
         The reviewed region rules that the run's Clean Pixel Data applied,
         as the version that it applied, or None without any.
+    reviewed_annotations : ReviewedAnnotations, optional
+        The reviewed annotations list that the run's Clean Graphics applied,
+        as it read it, or None, the default, without one.
 
     Raises
     ------
@@ -633,7 +639,13 @@ def bind_lists(
     salt = new_salt()
     return ListsDigest(
         salt,
-        lists_digest(salt, reviewed_names, reviewed_descriptors, pixel_region_rules),
+        lists_digest(
+            salt,
+            reviewed_names,
+            reviewed_descriptors,
+            pixel_region_rules,
+            reviewed_annotations,
+        ),
     )
 
 
@@ -642,6 +654,7 @@ def lists_digest(
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
     pixel_region_rules: PixelRegionRules | None,
+    reviewed_annotations: ReviewedAnnotations | None = None,
 ) -> str:
     """Return the digest of the reviewed lists and region rules that a run applied.
 
@@ -652,7 +665,11 @@ def lists_digest(
     :meth:`~.reviewed_descriptors.ReviewedDescriptors.canonical_bytes`,
     :meth:`~.pixel_region_rules.PixelRegionRules.canonical_bytes`), in that
     order, or of None for each not given, as without Clean Descriptors or
-    without rules. Any change to a decision or a name in either list, or to
+    without rules, followed, only where Clean Graphics applied a reviewed
+    annotations list, by the SHA-256 of its canonical form
+    (:meth:`~.reviewed_annotations.ReviewedAnnotations.canonical_bytes`), so
+    that the digest of a run without one is as it was before the list
+    existed. Any change to a decision or a name in either list, or to
     a rule's key or regions, gives another digest, and an empty list or
     store differs from none. The lists hold source names and values, and
     the rules manufacturers' and model names, so their digest is salted, and
@@ -666,6 +683,7 @@ def lists_digest(
     reviewed_names : ReviewedNames or None
     reviewed_descriptors : ReviewedDescriptors or None
     pixel_region_rules : PixelRegionRules or None
+    reviewed_annotations : ReviewedAnnotations, optional
 
     Raises
     ------
@@ -686,10 +704,18 @@ def lists_digest(
         pixel_region_rules, PixelRegionRules
     ):
         raise TypeError("pixel_region_rules must be PixelRegionRules or None")
+    if reviewed_annotations is not None and not isinstance(
+        reviewed_annotations, ReviewedAnnotations
+    ):
+        raise TypeError("reviewed_annotations must be ReviewedAnnotations or None")
     digests = [
         None if each is None else hashlib.sha256(each.canonical_bytes()).hexdigest()
         for each in (reviewed_names, reviewed_descriptors, pixel_region_rules)
     ]
+    if reviewed_annotations is not None:
+        digests.append(
+            hashlib.sha256(reviewed_annotations.canonical_bytes()).hexdigest()
+        )
     text = json.dumps(digests, separators=(",", ":"))
     return hmac.new(
         bytes.fromhex(salt), text.encode("ascii"), hashlib.sha256
@@ -908,6 +934,7 @@ def statistical_gate(
     reviewed_descriptors: ReviewedDescriptors | None,
     pixel_region_rules: PixelRegionRules | None,
     subjects: int,
+    reviewed_annotations: ReviewedAnnotations | None = None,
 ) -> StatisticalGate:
     """Decide a run's statistical gate from a risk assessment record.
 
@@ -926,6 +953,9 @@ def statistical_gate(
     pixel_region_rules : PixelRegionRules or None
         The reviewed region rules that the run's Clean Pixel Data applied,
         or None without any.
+    reviewed_annotations : ReviewedAnnotations, optional
+        The reviewed annotations list that the run's Clean Graphics
+        applied, or None, the default, without one.
     subjects : int
         The number of distinct subjects of the instances that the run
         releases.
@@ -947,7 +977,12 @@ def statistical_gate(
     if not isinstance(subjects, int) or isinstance(subjects, bool) or subjects < 0:
         raise RiskAssessmentError("the run's subjects must be a whole number")
     # Checks the lists' and rules' types, whether or not a record was given.
-    applied = (reviewed_names, reviewed_descriptors, pixel_region_rules)
+    applied = (
+        reviewed_names,
+        reviewed_descriptors,
+        pixel_region_rules,
+        reviewed_annotations,
+    )
     lists_digest(new_salt(), *applied)
     if record is None:
         return StatisticalGate(None, StatisticalReason.NO_ASSESSMENT)

@@ -108,7 +108,7 @@ from ._corpus_run import (
     structure_set,
     with_a_second_roi,
 )
-from .corpus_runs import CORPUS_RUNS
+from .corpus_runs import CORPUS_RUNS, FIRST_HALF, FIRST_LETTERS, SECOND_HALF
 
 pytestmark = pytest.mark.pydicom
 
@@ -151,6 +151,7 @@ PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
 FRAME_OF_REFERENCE = "(0020,0052)"
 REFERENCED_SOP_INSTANCE = "(0008,1155)"
 IMAGE_COMMENTS = "(0020,4000)"
+DEIDENTIFICATION_METHOD = "(0012,0063)"
 SOP_INSTANCE_UID = "(0008,0018)"
 MEDIA_STORAGE_UID = "(0002,0003)"
 
@@ -169,18 +170,6 @@ UNREVIEWED = CorpusRun(
     preset=CLEAN_DESCRIPTORS,
     corpus=_unreviewed_corpus,
     reviewed_roi_names=_no_reviewed_names,
-)
-
-
-# The policies' runs take most of this module's time, so CI shares them
-# between two parts by the first letter of each policy's name. The letters
-# are listed, as in the workflow's glob of de-identification modules.
-FIRST_LETTERS = frozenset("abcdefghijklmno")
-FIRST_HALF = tuple(
-    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] in FIRST_LETTERS
-)
-SECOND_HALF = tuple(
-    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] not in FIRST_LETTERS
 )
 
 
@@ -417,12 +406,15 @@ def _instances(result, released):
     }
 
 
-def _markers_in(spec, corpus, instances, published):
+def _markers_in(spec, corpus, instances, published, digest):
     """Return where the published files hold a marker that they may not.
 
     A released instance may hold the markers that the run keeps at their
     place, which are blanked, once for each place that holds one, before the
-    instance is searched like every other published file.
+    instance is searched like every other published file. So is the run's
+    method ``digest`` where the markers write it, the first value of
+    De-identification Method, whose digits can hold a date marker's by
+    chance, as the release gate lets them (D-032).
     """
     searched = [
         (file.name, placement.path, _forms(placement))
@@ -435,6 +427,7 @@ def _markers_in(spec, corpus, instances, published):
     found = []
     for name, data in published.items():
         if name in instances:
+            data = _without_digest(data, digest)
             data = _without_kept(data, corpus.files[instances[name]], spec)
         else:
             data = SHA256_HEX.sub(lambda digest: b"-" * 64, data)
@@ -451,6 +444,19 @@ def _markers_in(spec, corpus, instances, published):
             if any(_holds(data, grams, form) for form in forms)
         )
     return found
+
+
+def _without_digest(data, digest):
+    """Return an instance's bytes with its first De-identification Method blanked.
+
+    That value must be ``digest``, and only it is blanked, so the same digits
+    anywhere else, including in the element's other values, are still found.
+    """
+    value = _raw_value_at(_read(data), ElementPath((), DEIDENTIFICATION_METHOD))
+    first = value.split(b"\\")[0]
+    assert first == digest.encode("ascii")
+    assert data.count(value) == 1
+    return data.replace(value, b"-" * len(first) + value[len(first) :])
 
 
 def _without_kept(data, file, spec):
@@ -583,7 +589,11 @@ def test_no_published_file_holds_a_marker(policy_run):
     # published file, but for those that a released instance keeps at their
     # place.
     assert not _markers_in(
-        policy_run.spec, corpus, _instances(result, released), published
+        policy_run.spec,
+        corpus,
+        _instances(result, released),
+        published,
+        policy_run.method_digest,
     )
 
 
@@ -593,7 +603,8 @@ def test_a_kept_marker_anywhere_but_its_place_is_found(policy_run):
 
     One released instance has a removed marker put back at its place. A run
     that keeps that row too passes the search; a copy of the marker in the
-    release report, or in another attribute of the instance, does not.
+    release report, beside the method digest in De-identification Method, or
+    in another attribute of the instance, does not.
     """
     spec, corpus = policy_run.spec, policy_run.corpus
     instances = _instances(policy_run.result, policy_run.released)
@@ -612,16 +623,27 @@ def test_a_kept_marker_anywhere_but_its_place_is_found(policy_run):
     dataset = _read(policy_run.released[position])
     dataset.add_new(_number(placement.path.tag), placement.vr, value)
     published = {**policy_run.published, name: _written(dataset)}
+    digest = policy_run.method_digest
 
-    assert _markers_in(spec, corpus, instances, published)
-    assert not _markers_in(keeping, corpus, instances, published)
+    assert _markers_in(spec, corpus, instances, published, digest)
+    assert not _markers_in(keeping, corpus, instances, published, digest)
     report = published[RELEASE_REPORT_MARKDOWN] + value.encode("ascii")
     assert _markers_in(
-        keeping, corpus, instances, {**published, RELEASE_REPORT_MARKDOWN: report}
+        keeping,
+        corpus,
+        instances,
+        {**published, RELEASE_REPORT_MARKDOWN: report},
+        digest,
+    )
+    # Beside the run's method digest, in De-identification Method.
+    method = _read(published[name])
+    method.DeidentificationMethod = [*_multi(method.DeidentificationMethod), value]
+    assert _markers_in(
+        keeping, corpus, instances, {**published, name: _written(method)}, digest
     )
     dataset.add_new(_number(IMAGE_COMMENTS), "LT", value)
     assert _markers_in(
-        keeping, corpus, instances, {**published, name: _written(dataset)}
+        keeping, corpus, instances, {**published, name: _written(dataset)}, digest
     )
 
 
@@ -923,6 +945,14 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
+        "RT Radiation Record Set",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the
@@ -1388,6 +1418,148 @@ def test_the_brachy_records_source_manufacturer_is_emptied_or_kept(policy_run):
             assert source_item[keyword].value, keyword
 
 
+def _first_item_at(dataset, path):
+    """Return the first item of each sequence of ``path``, by tag, in turn."""
+    item = dataset
+    for tag in path:
+        item = item[tag].value[0]
+    return item
+
+
+# The places of the RT Physician Intent and RT Patient Position Acquisition
+# Instruction where Referenced Study Sequence (0008,1110) is Type 1, by the
+# sequences that enclose it.
+STUDY_REFERENCE_PLACES = {
+    corpus_module.PHYSICIAN_INTENT: (
+        (0x30100057, 0x3010005F),
+        (0x3010006B, 0x30100076),
+    ),
+    corpus_module.POSITION_ACQUISITION_INSTRUCTION: (
+        (0x30020118, 0x3002011A, 0x30020132),
+    ),
+}
+# The attributes that D keeps in such an item (D-021).
+KEPT_STUDY_ITEM_ATTRIBUTES = frozenset({0x00081115, 0x0020000D, 0x30100052})
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_intent_preparation_and_position_instruction_name_what_they_reference(
+    policy_run,
+):
+    # The RT Physician Intent names the first CT slice as an input instance,
+    # the RT Treatment Preparation names the RT Plan, and the RT Patient
+    # Position Acquisition Instruction names the RT Treatment Preparation,
+    # by the UIDs that the run's key gives the referenced instances' own, so
+    # each written instance still names the written instances that it
+    # references; each has the Modality that PS3.3 gives its IOD.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    references = {
+        corpus_module.PHYSICIAN_INTENT: (
+            "RTINTENT",
+            (0x30100057, 0x30100055),
+            corpus_module.CT_SLICES[0],
+        ),
+        corpus_module.TREATMENT_PREPARATION: (
+            "PLAN",
+            (0x300A0784, 0x300C0002),
+            corpus_module.PLAN,
+        ),
+        corpus_module.POSITION_ACQUISITION_INSTRUCTION: (
+            "PLAN",
+            (0x0008114A,),
+            corpus_module.TREATMENT_PREPARATION,
+        ),
+    }
+    for source, (modality, path, target) in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == modality
+        reference = _first_item_at(dataset, path)
+        assert reference.ReferencedSOPInstanceUID == expected(target), path
+        if target in written:
+            assert expected(target) == written[target].SOPInstanceUID, path
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_a_type_1_referenced_study_sequence_keeps_its_items_keyed(policy_run):
+    # Referenced Study Sequence, which Table E.1-1 gives X/Z, is Type 1 in
+    # these items, so it resolves to D, and a reviewed rule keeps each source
+    # item with only Study Instance UID, replaced by the run's key, Pertinent
+    # SOP Classes in Study, and Referenced Series Sequence, whose Series
+    # Instance UID is replaced too, so the written instance names the written
+    # study and series (D-021). Under Retain UIDs the sequence is kept.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    retained = REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows()
+
+    def expected(target):
+        return target if retained else uids.replacement_uid(KEY, target)
+
+    for source, places in STUDY_REFERENCE_PLACES.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        for path in places:
+            (item,) = _first_item_at(dataset, path)[0x00081110].value
+            assert item.StudyInstanceUID == expected(corpus_module.STUDY), path
+            assert dataset.StudyInstanceUID == item.StudyInstanceUID, path
+            if not retained:
+                assert {element.tag for element in item} <= (
+                    KEPT_STUDY_ITEM_ATTRIBUTES
+                ), path
+            if 0x00081115 in item:
+                (series,) = item.ReferencedSeriesSequence
+                assert series.SeriesInstanceUID == expected(corpus_module.CT_SERIES), (
+                    path
+                )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_the_required_preparation_and_prescription_descriptions_are_emptied(
+    policy_run,
+):
+    # Patient Treatment Preparation Procedure Parameter Description, Type 2
+    # in the Type 2 Patient Treatment Preparation Procedure Sequence of the
+    # RT Treatment Preparation, and Prior Treatment Dose Description, Type 2
+    # in the Type 1 RT Prescription Sequence of the RT Physician Intent, which
+    # Table E.1-1 gives X, are emptied there rather than sequester the
+    # instance (D-020); Clean Descriptors' C falls back to that X (D-009).
+    corpus, released = policy_run.corpus, policy_run.released
+    for name, path, tag in (
+        (corpus_module.TREATMENT_PREPARATION_FILE, (0x300A0790,), 0x300A078E),
+        (corpus_module.PHYSICIAN_INTENT_FILE, (0x3010006B,), 0x30100061),
+    ):
+        position = next(
+            index for index, file in enumerate(corpus.files) if file.name == name
+        )
+        if position not in released:
+            assert name in policy_run.spec.withheld
+            continue
+        source = _first_item_at(_read(corpus.files[position].data), path)
+        item = _first_item_at(_read(released[position]), path)
+        assert source[tag].value, name
+        assert tag in item, name
+        assert item[tag].value in ("", None), name
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     policy_run,
@@ -1583,7 +1755,7 @@ def test_each_option_of_table_e1_1_has_its_code_and_temporal_value():
 
 
 def test_each_run_is_in_one_half():
-    """Every policy's run is checked in this module or in the second half's."""
+    """Every policy's run is in one half, which a module or its second half checks."""
     first = [corpus_run.name for corpus_run in FIRST_HALF]
     second = [corpus_run.name for corpus_run in SECOND_HALF]
 

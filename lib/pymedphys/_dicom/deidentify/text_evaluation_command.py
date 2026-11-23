@@ -28,12 +28,23 @@ before the first supported release.
     selects series of IDC's phantom collections alone;
 ``idc-measure``
     measures the downloaded series with a model at today's settings or its
-    publishers', and writes the counts-only summary
+    publishers', or, for a tuning run, under one of the named detector
+    variants and post-processing grids of
+    :mod:`~.text_evaluation_search` (``--variant`` and ``--grid``), and writes the counts-only summary
     (``summary.json`` and ``summary.md``), the per-case report
     (``cases.json``), and the assessment against the chosen criteria
-    (``assessment.json``); with ``--converted``, it measures the classic
+    (``assessment.json``), in which, for any detector but today's, the rule
+    of no loss against today's detector is not assessed, and fails; with
+    ``--converted``, it measures the classic
     CT, MR, and PET series alone, each read as the Legacy Converted
-    Enhanced instances that its images convert to;
+    Enhanced instances that its images convert to; with ``--shard k/n``,
+    it measures shard ``k`` of ``n`` of the cases alone
+    (:mod:`~.text_evaluation_shards`) and writes that shard's record
+    (``shard.json``) in their place;
+``idc-merge``
+    merges the records of every shard of a run, as ``idc-measure
+    --shard`` wrote them, and writes what ``idc-measure`` writes of the
+    run measured whole;
 ``idc-parity``
     counts what the resize alone changes for a model at its publishers'
     settings (``parity.json``);
@@ -75,12 +86,12 @@ from .text_evaluation import (
     split_of,
     subject_of,
     summarise,
+    summary_of,
 )
 from .text_evaluation_cases import cases_report
 from .text_evaluation_converted import ConvertedCase
 from .text_evaluation_criteria import CHOSEN_CRITERIA, HELD_OUT_COLLECTIONS, assess
 from .text_evaluation_detector import (
-    DetectorVariant,
     EvaluationDetector,
     PostProcessing,
     published_point,
@@ -111,6 +122,13 @@ from .text_evaluation_phantom_report import (
     write_phantom_reports,
 )
 from .text_evaluation_phantoms import phantom_cases
+from .text_evaluation_search import GRIDS, VARIANTS
+from .text_evaluation_shards import (
+    case_groups,
+    merged,
+    shard_positions,
+    shard_record,
+)
 from .text_evaluation_sources import DicomCase, SkippedFiles
 from .text_evaluation_archives import (
     ARCHIVES,
@@ -210,6 +228,18 @@ def _parser() -> argparse.ArgumentParser:
         command.set_defaults(run=run)
         if name in ("idc-measure", "phantom-report"):
             command.add_argument("--settings", choices=SETTINGS, default="today")
+            command.add_argument(
+                "--variant",
+                choices=sorted(VARIANTS),
+                default="today",
+                help="A named detector variant, with today's settings alone.",
+            )
+            command.add_argument(
+                "--grid",
+                choices=sorted(GRIDS),
+                default="today",
+                help="A named post-processing grid, with today's settings alone.",
+            )
             command.add_argument("--workers", type=int, default=1)
         if name == "idc-measure":
             command.add_argument(
@@ -217,6 +247,16 @@ def _parser() -> argparse.ArgumentParser:
                 action="store_true",
                 help="Read classic CT, MR, and PET series as converted.",
             )
+            command.add_argument(
+                "--shard",
+                type=_shard,
+                help="k/n: measure shard k of n alone, and write its record.",
+            )
+    merge = commands.add_parser(
+        "idc-merge", help="Merge the records of every shard of a run."
+    )
+    merge.add_argument("records", nargs="+", help="Each shard's shard.json.")
+    merge.set_defaults(run=_merge)
     for command in commands.choices.values():
         command.add_argument(
             "--out", required=True, help="A directory, which must not exist."
@@ -300,27 +340,119 @@ def _detector(
     arguments: argparse.Namespace,
 ) -> tuple[functools.partial[EvaluationDetector], EvaluationSettings]:
     """The detector that a run measures, made in each worker, and its
-    settings, by the model and settings that the arguments name."""
+    settings, by the model, settings, variant, and grid that the arguments
+    name.
+
+    Raises
+    ------
+    EvaluationRefused
+        For a variant or grid other than today's with the publishers'
+        settings, which are their own variant and point.
+    """
     model = MODELS[arguments.model]
+    variant_name = getattr(arguments, "variant", "today")
+    grid_name = getattr(arguments, "grid", "today")
     if arguments.settings == "published":
+        if (variant_name, grid_name) != ("today", "today"):
+            raise EvaluationRefused(
+                "A variant or grid is measured with today's settings alone."
+            )
         variant = published_variant(model)
         points: tuple[PostProcessing, ...] = (published_point(model),)
     else:
-        variant = DetectorVariant()
-        points = (PostProcessing(),)
+        variant = VARIANTS[variant_name]
+        points = GRIDS[grid_name]
     detector = functools.partial(EvaluationDetector, variant, model)
     return detector, _settings(points, arguments.evaluated)
 
 
+def todays_detector(arguments: argparse.Namespace) -> bool:
+    """Whether the arguments name today's detector, today's model at the
+    settings that D-037 describes, whose point of today's post-processing
+    is then the baseline that the rule of no loss compares with."""
+    return (
+        arguments.model == PP_OCRV6_SMALL.name
+        and arguments.settings == "today"
+        and getattr(arguments, "variant", "today") == "today"
+    )
+
+
+def _shard(text: str) -> tuple[int, int]:
+    """A shard, ``k/n``, as shard ``k`` of ``n``, counting from zero."""
+    shard, _, shards = text.partition("/")
+    if not (shard.isdigit() and shards.isdigit() and int(shard) < int(shards)):
+        raise argparse.ArgumentTypeError("A shard is k/n, for k from 0 to n - 1.")
+    return int(shard), int(shards)
+
+
+# What names a run beside its settings, which every shard's record of it
+# holds, so that idc-merge needs nothing else.
+_RUN = ("model", "settings", "variant", "grid", "evaluated", "converted")
+
+
 def _measure(arguments: argparse.Namespace) -> dict[str, str]:
     detector, settings = _detector(arguments)
-    run = evaluate(_cases(arguments), detector, settings, workers=arguments.workers)
-    summary = summarise(run)
+    cases = _cases(arguments)
+    if arguments.shard is not None:
+        shard, shards = arguments.shard
+        groups = case_groups(cases)
+        positions = shard_positions(groups, shard, shards)
+        run = evaluate(
+            [cases[place] for place in positions],
+            detector,
+            settings,
+            workers=arguments.workers,
+        )
+        named = {key: getattr(arguments, key) for key in _RUN}
+        record = shard_record(
+            run, positions, len(cases), shard=shard, shards=shards, run=named
+        )
+        return {"shard.json": _json(record)}
+    run = evaluate(cases, detector, settings, workers=arguments.workers)
+    return _written(summarise(run), cases_report(run), arguments)
+
+
+def _merge(arguments: argparse.Namespace) -> dict[str, str]:
+    records = []
+    for path in arguments.records:
+        try:
+            records.append(json.loads(pathlib.Path(path).read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            raise EvaluationRefused("Each record must be a shard's record.") from None
+    named = records[0].get("run") if isinstance(records[0], dict) else None
+    if not (
+        isinstance(named, dict)
+        and set(named) == set(_RUN)
+        and named["model"] in MODELS
+        and named["settings"] in SETTINGS
+        and named["variant"] in VARIANTS
+        and named["grid"] in GRIDS
+        and named["evaluated"] in EVALUATED
+        and isinstance(named["converted"], bool)
+    ):
+        raise EvaluationRefused("Each record must be a shard's record.")
+    run_arguments = argparse.Namespace(**named)
+    _, settings = _detector(run_arguments)
+    found = merged(records, settings)
+    summary = summary_of(found.settings, found.detector, found.totals)
+    report = cases_report(found.named, withheld=found.withheld)
+    return _written(summary, report, run_arguments)
+
+
+def _written(
+    summary: dict[str, object],
+    report: dict[str, object],
+    arguments: argparse.Namespace,
+) -> dict[str, str]:
+    """What idc-measure writes of a run measured whole."""
+    assessment = assess(
+        summary, CHOSEN_CRITERIA, todays_baseline=todays_detector(arguments)
+    )
     return {
         "summary.json": _json(summary),
-        "summary.md": markdown(summary),
-        "cases.json": _json(cases_report(run)),
-        "assessment.json": _json(assess(summary, CHOSEN_CRITERIA)),
+        "summary.md": markdown(summary, assessment),
+        "cases.json": _json(report),
+        "assessment.json": _json(assessment),
     }
 
 

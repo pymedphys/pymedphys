@@ -28,12 +28,14 @@ env:
   MKL_NUM_THREADS: '1'
   VECLIB_MAXIMUM_THREADS: '1'
   # Every cell of the unit-test matrix and the run at the dependency floors
-  # run in six parts on six runners, as does the dicom extra's run alone,
+  # run in eight parts on eight runners, as does the dicom extra's run alone,
   # since on a slow runner the whole suite, or these modules together, can
   # reach the time limit. These modules run the
   # synthetic collection through the engine and take about half the suite's
-  # time: the ct-defacing part runs CT_DEFACING_RUN_TEST and the
-  # ct-defacing-reviews part runs CT_DEFACING_REVIEW_TEST, the two halves of
+  # time: the ct-defacing part runs CT_DEFACING_RUN_TEST, the
+  # ct-defacing-variants part runs CT_DEFACING_VARIANT_TEST, the
+  # ct-defacing-reviews part runs CT_DEFACING_REVIEW_TEST, and the
+  # ct-defacing-doses part runs CT_DEFACING_DOSE_TEST, the four shares of
   # the CT defacing runs; the corpus-end-to-end-p-z part runs
   # CORPUS_END_TO_END_P_Z_TEST, the policies' end-to-end runs from p to z;
   # and the corpus-runs part runs the others, with the runs from a to o. The
@@ -43,14 +45,18 @@ env:
   # any module added later outside them.
   CORPUS_RUN_TESTS: >-
     lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
+    lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_variant_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
+    lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_dose_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end.py
     lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end_p_z.py
     lib/pymedphys/tests/dicom/test_deidentify_conformance.py
     lib/pymedphys/tests/dicom/test_deidentify_project_key_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_redaction_review.py
   CT_DEFACING_RUN_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
+  CT_DEFACING_VARIANT_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_variant_runs.py
   CT_DEFACING_REVIEW_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
+  CT_DEFACING_DOSE_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_dose_runs.py
   CORPUS_END_TO_END_P_Z_TEST: lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end_p_z.py
 
 jobs:
@@ -63,9 +69,9 @@ jobs:
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
         python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
-        # Each cell runs in six parts, which the combined-report job
+        # Each cell runs in eight parts, which the combined-report job
         # combines.
-        part: [ct-defacing, ct-defacing-reviews, corpus-runs, corpus-end-to-end-p-z, deidentify-a-o, others]
+        part: [ct-defacing, ct-defacing-variants, ct-defacing-reviews, ct-defacing-doses, corpus-runs, corpus-end-to-end-p-z, deidentify-a-o, others]
     runs-on: ${{ matrix.os }}
     env:
       # The parts' reports have names that the release's junit-*-latest-*
@@ -80,7 +86,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          # The four corpus parts and deidentify-a-o download no data, so
+          # The five corpus parts and deidentify-a-o download no data, so
           # they neither restore nor save the data cache, which the parts
           # would otherwise share.
           cache-data: ${{ matrix.part == 'others' }}
@@ -98,9 +104,9 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p test-results
-          # Each part runs its share of the suite: each half of CT defacing
-          # and the second half of the policies' end-to-end runs run alone,
-          # corpus-runs runs the other CORPUS_RUN_TESTS modules,
+          # Each part runs its share of the suite: the three CT defacing
+          # modules and the second half of the policies' end-to-end runs each
+          # run alone, corpus-runs runs the other CORPUS_RUN_TESTS modules,
           # deidentify-a-o runs the other de-identification modules whose
           # names go on with a letter from a to o, and others ignores the
           # modules of every other part. Missing paths fail every part. Expand
@@ -115,7 +121,7 @@ jobs:
               fi
             done
             # The listed modules that each run alone, in a part of their own.
-            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
+            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_VARIANT_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CT_DEFACING_DOSE_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
             for module in "${alone[@]}"; do
               if [[ " ${listed[*]} " != *" ${module} "* ]]; then
                 echo "::error::Each module that runs alone must belong to CORPUS_RUN_TESTS."
@@ -141,7 +147,9 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
+              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
+              ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
                 for path in "${listed[@]}"; do
                   if [[ " ${alone[*]} " != *" ${path} "* ]]; then
@@ -191,7 +199,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # Combine the six parts of each cell into that cell's one report, such as
+  # Combine the eight parts of each cell into that cell's one report, such as
   # junit-ubuntu-latest-3.14: the release's requirements matrix reads each as
   # that environment, and the pydicom-versions job reuses the Ubuntu/Python
   # 3.14 cell's when the locked pydicom is the version it would test. It runs
@@ -258,7 +266,7 @@ jobs:
   # Install one extra alone, with only the test runner, and run that feature's
   # tests: a missing package fails them. Tests of other features that sit in
   # the same folders skip themselves when their packages are missing. The
-  # dicom extra's tests run in the same six parts on six runners, as
+  # dicom extra's tests run in the same eight parts on eight runners, as
   # CORPUS_RUN_TESTS describes, since its others part alone came within four
   # minutes of the limit; the other extras' tests take about a minute and run
   # whole.
@@ -279,7 +287,15 @@ jobs:
             marks: not slow
             paths: tests/dicom
           - extra: dicom
+            part: ct-defacing-variants
+            marks: not slow
+            paths: tests/dicom
+          - extra: dicom
             part: ct-defacing-reviews
+            marks: not slow
+            paths: tests/dicom
+          - extra: dicom
+            part: ct-defacing-doses
             marks: not slow
             paths: tests/dicom
           - extra: dicom
@@ -319,7 +335,7 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           # Only others and the extras that run whole read downloaded data:
-          # the four corpus parts and deidentify-a-o do not, as in the test job.
+          # the five corpus parts and deidentify-a-o do not, as in the test job.
           cache-data: ${{ !matrix.part || matrix.part == 'others' }}
           extras: ${{ matrix.extra }}
           groups: 'test-runner'
@@ -340,8 +356,8 @@ jobs:
           mkdir -p test-results
           read -ra selection <<< "${TEST_PATHS}"
           # A part runs its share of the feature's tests, as in the test job:
-          # each half of CT defacing and the second half of the policies'
-          # end-to-end runs run alone, corpus-runs runs the other
+          # the three CT defacing modules and the second half of the
+          # policies' end-to-end runs each run alone, corpus-runs runs the other
           # CORPUS_RUN_TESTS modules and deidentify-a-o the other
           # de-identification modules from a to o, both in place of the
           # feature's paths, and others ignores the modules of every other
@@ -355,7 +371,7 @@ jobs:
               fi
             done
             # The listed modules that each run alone, in a part of their own.
-            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
+            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_VARIANT_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CT_DEFACING_DOSE_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
             for module in "${alone[@]}"; do
               if [[ " ${listed[*]} " != *" ${module} "* ]]; then
                 echo "::error::Each module that runs alone must belong to CORPUS_RUN_TESTS."
@@ -381,7 +397,9 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
+              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
+              ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
                 selection=()
                 for path in "${listed[@]}"; do
@@ -420,7 +438,7 @@ jobs:
   # The declared minimum versions of NumPy (2.0) and pandas (2.2.2) are
   # checked together, whichever matrix runs. Python 3.12 is the only supported
   # version with wheels for both: neither has any for Python 3.13 or later.
-  # The two halves of CT defacing, the second half of the policies'
+  # The four shares of CT defacing, the second half of the policies'
   # end-to-end runs, the remaining corpus modules, and the
   # de-identification modules from a to o run separately, alongside all other
   # tests, as in the test job, to keep each part within its time limit.
@@ -431,7 +449,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [ct-defacing, ct-defacing-reviews, corpus-runs, corpus-end-to-end-p-z, deidentify-a-o, others]
+        part: [ct-defacing, ct-defacing-variants, ct-defacing-reviews, ct-defacing-doses, corpus-runs, corpus-end-to-end-p-z, deidentify-a-o, others]
     runs-on: ubuntu-latest
     env:
       # PyMedPhys's extras to install, whose requirements the check below counts.
@@ -515,9 +533,9 @@ jobs:
           print("\n".join(unmet) or "Every installed package's requirements are met")
           sys.exit(bool(unmet))
           EOF
-          # Each part runs its share of the suite: each half of CT defacing
-          # and the second half of the policies' end-to-end runs run alone,
-          # corpus-runs runs the other CORPUS_RUN_TESTS modules,
+          # Each part runs its share of the suite: the three CT defacing
+          # modules and the second half of the policies' end-to-end runs each
+          # run alone, corpus-runs runs the other CORPUS_RUN_TESTS modules,
           # deidentify-a-o runs the other de-identification modules whose
           # names go on with a letter from a to o, and others ignores the
           # modules of every other part. Missing paths fail every part. Expand
@@ -532,7 +550,7 @@ jobs:
               fi
             done
             # The listed modules that each run alone, in a part of their own.
-            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
+            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_VARIANT_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CT_DEFACING_DOSE_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
             for module in "${alone[@]}"; do
               if [[ " ${listed[*]} " != *" ${module} "* ]]; then
                 echo "::error::Each module that runs alone must belong to CORPUS_RUN_TESTS."
@@ -558,7 +576,9 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
+              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
+              ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
                 for path in "${listed[@]}"; do
                   if [[ " ${alone[*]} " != *" ${path} "* ]]; then
@@ -708,12 +728,19 @@ jobs:
   # synthetic corpus, and its input, under each preset. A finding that an
   # output introduces must be explained in dicom_validation_known.toml. The
   # reports go to the job summary and an artefact; they hold no value or path.
+  # Each policy's run and validation takes about a minute, so the runs are
+  # halved by the first letter of each policy's name, as in the corpus parts
+  # of the test job, and each half runs on a runner of its own.
   dicom-validators:
-    name: DICOM validation of de-identified output
+    name: DICOM validation of de-identified output (${{ matrix.policies }})
     timeout-minutes: 30
     # The dicom3tools package that setup-dicom-validators pins is Ubuntu
     # 24.04's.
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        policies: [a-o, p-z]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -736,19 +763,29 @@ jobs:
           PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
           PYMEDPHYS_DICOM_VALIDATORS: required
           PYMEDPHYS_DICOM_VALIDATOR_STANDARD: ${{ steps.validators.outputs.standard-path }}
+          POLICIES: ${{ matrix.policies }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
           export PYMEDPHYS_DICOM_VALIDATION_REPORT="${GITHUB_WORKSPACE}/test-results/dicom-validation"
+          # The policies from a to o are validated in the first module, and
+          # the text detector evaluation's Legacy Converted Enhanced
+          # instances are checked with dciodvfy beside them; the second
+          # module validates the policies from p to z.
+          case "${POLICIES}" in
+            a-o)
+              selection=(
+                lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py
+                lib/pymedphys/tests/dicom/test_deidentify_text_evaluation_lce.py
+              ) ;;
+            p-z) selection=(lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus_p_z.py) ;;
+            *) echo "::error::Unknown policies ${POLICIES}."; exit 1 ;;
+          esac
           # One process: each policy's run and validation is a module-scoped
           # fixture, which workers would each repeat.
-          # The text detector evaluation's Legacy Converted Enhanced
-          # instances are checked with dciodvfy too.
-          uv run -- pymedphys dev tests --dicom-validators \
-            lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
-            lib/pymedphys/tests/dicom/test_deidentify_text_evaluation_lce.py \
+          uv run -- pymedphys dev tests --dicom-validators "${selection[@]}" \
             --durations=15 \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/dicom-validation.xml"
+            --junitxml="${GITHUB_WORKSPACE}/test-results/dicom-validation-${POLICIES}.xml"
 
       - name: Summarise the validation reports
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
@@ -785,7 +822,7 @@ jobs:
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: dicom-validation
+          name: dicom-validation-${{ matrix.policies }}
           path: test-results/*
           if-no-files-found: error
           retention-days: 30

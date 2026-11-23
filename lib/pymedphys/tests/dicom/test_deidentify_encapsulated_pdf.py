@@ -17,8 +17,10 @@
 The Basic Profile gives Encapsulated Document (0042,0011) D, no option of
 Table E.1-1 gives it another action, and no reviewed rule gives a document a
 dummy value, so every Encapsulated PDF that holds one is sequestered, under
-every policy, with that attribute and action as its reason, and nothing of
-it is written.
+every policy without the Clean Pixel Data Option, which no preset selects,
+with that attribute and action as its reason, and nothing of it is written.
+Under that option, the document is released as its reviewed rendering
+(D-061), as ``test_deidentify_encapsulated_pdf_release`` tests.
 """
 
 import io
@@ -179,9 +181,20 @@ def test_an_encapsulated_pdf_is_supported():
 
 @pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
 @pytest.mark.parametrize(
-    "composed", _policies(), ids=lambda composed: ",".join(composed.options)
+    "composed",
+    [
+        composed
+        for composed in _policies()
+        if policy.CLEAN_PIXEL_DATA not in composed.options
+    ],
+    ids=lambda composed: ",".join(composed.options),
 )
-def test_every_policy_sequesters_an_encapsulated_pdf_at_its_document(composed):
+def test_every_policy_without_clean_pixel_data_sequesters_an_encapsulated_pdf_at_its_document(
+    composed,
+):
+    """Under Clean Pixel Data, the document is held as its rendering (D-061),
+    which ``test_deidentify_encapsulated_pdf_release`` tests for each policy
+    of ``_policies`` that selects it."""
     data = synthetic.written(_encapsulated_pdf())
     transform = InstanceTransform(
         composed,
@@ -191,7 +204,6 @@ def test_every_policy_sequesters_an_encapsulated_pdf_at_its_document(composed):
             if "clean_descriptors" in composed.options
             else None
         ),
-        finder=_NoText() if policy.CLEAN_PIXEL_DATA in composed.options else None,
         face_review=_corpus_run.face_review_for(composed),
         unvalidated_policy=True,
     )
