@@ -46,3 +46,13 @@ def test_convert_exceptional_patient_name():
 
     resulting_patient_name = convert_patient_name("^".join(full_name_as_list))
     assert resulting_patient_name == expected_patient_name
+
+
+def test_invalid_patient_name_error_omits_identifiers():
+    # An exception message may be forwarded to central logs or telemetry.
+    sensitive = "SENSITIVE_PATIENT_NAME:123456789"
+    with pytest.raises(ValueError, match="LASTNAME") as captured:
+        convert_patient_name(sensitive)
+
+    assert sensitive not in str(captured.value)
+    assert "123456789" not in str(captured.value)
