@@ -15,7 +15,7 @@ This project adheres to
 ### Protect pseudonymisation pepper persistence and reuse
 
 Legacy plaintext pseudonymisation now has regression tests for its secret pepper lifecycle. Generated secrets must survive clearing the in-memory cache, existing secrets must not be replaced, and a persistence failure must not leave an unsaved secret cached.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security/pepper-lifecycle-regression)
+[PR #2705](https://github.com/pymedphys/pymedphys/pull/2705)
 
 ### RT Plans written by `Delivery.to_dicom`
 
