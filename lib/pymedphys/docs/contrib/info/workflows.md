@@ -940,8 +940,12 @@ Standardised project setup for all workflows.
 
 ### `actions/cache-data/action.yml`
 
-Restores and saves the PyMedPhys data cache. Keys are per job and per manifest,
-and never restore across a change to `hashes.json`. The key hashes
+Restores and saves the PyMedPhys data cache. Keys are per job, per `name`, and
+per manifest, and never restore across a change to `hashes.json`. `setup-project`
+passes its extras as the `name`, so the combinations of one matrix that install
+different extras, such as the narrow-extras job's, each keep the files they
+read. An exact hit saves nothing, so with a shared key every combination but
+the first to save would download its files on each run. The key hashes
 `lib/pymedphys/_data/hashes.json` by its exact path: the step runs after
 `uv sync`, so a `**` pattern would walk the whole virtual environment and also
 match pydicom's own `hashes.json`. Jobs that decide later whether they need
