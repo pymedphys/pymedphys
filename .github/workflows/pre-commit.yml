@@ -84,6 +84,13 @@ jobs:
       # Fork PRs are skipped: neither the bot token nor GITHUB_TOKEN can push
       # to a fork. The push targets the head repository, the same one checked
       # out above, which the guard makes equal to this repository.
+      - name: Reapply auto-fixes
+        if: |
+          steps.pre-commit.outcome == 'failure' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        run: uv run --no-sync pre-commit run --all-files || true
+
       - name: Push auto-fixes
         if: |
           steps.pre-commit.outcome == 'failure' &&
@@ -95,9 +102,6 @@ jobs:
           PUSH_TOKEN: ${{ steps.bot-token.outputs.token || github.token }}
           REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          # Re-run pre-commit to apply auto-fixes (formatters, trailing whitespace, etc.)
-          uv run --no-sync pre-commit run --all-files || true
-
           if [[ -n "$(git status --porcelain)" ]]; then
             git config user.email "bot@pymedphys.com"
             git config user.name "PyMedPhys Bot"
