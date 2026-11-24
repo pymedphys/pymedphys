@@ -1,10 +1,12 @@
 """Tests of midi_b_tcia_answer_keys.py's fetch and network record."""
 
+import os
 import socket
+import sqlite3
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import closing, redirect_stdout
 from io import BytesIO, StringIO
 from pathlib import Path
 from unittest import mock
@@ -27,6 +29,53 @@ UNAVAILABLE_REASON = (
 
 def _resolved(address):
     return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))]
+
+
+class AnswerKeyFileSafetyTests(unittest.TestCase):
+    def test_sqlite_filenames_are_not_interpreted_as_uri_parameters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            unrelated = root / "answer"
+            with closing(sqlite3.connect(unrelated)) as database, database:
+                database.execute("CREATE TABLE private_neighbour(value)")
+            filenames = ["answer#key.db", "answer%20key.db"]
+            if os.name != "nt":  # Windows does not allow '?' in a filename.
+                filenames.append("answer?key.db")
+            for filename in filenames:
+                with self.subTest(filename=filename):
+                    intended = root / filename
+                    with closing(sqlite3.connect(intended)) as database, database:
+                        database.execute("CREATE TABLE expected(value)")
+                        database.execute("INSERT INTO expected VALUES (1)")
+                    self.assertEqual(
+                        keys._tables(intended), ["    table expected: 1 rows"]
+                    )
+
+    def test_listing_refuses_links_before_reading_their_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            package = root / "packages" / "1"
+            package.mkdir(parents=True)
+            outside = root / "private.db"
+            outside.write_bytes(b"private data")
+            link = package / "answer.db"
+            try:
+                link.symlink_to(outside)
+            except OSError:
+                self.skipTest("symbolic links are unavailable")
+            with mock.patch.object(keys, "_sha256") as hashed:
+                with self.assertRaisesRegex(ValueError, "symbolic link"):
+                    keys.listing(package.parent)
+            hashed.assert_not_called()
+
+    def test_regular_package_files_are_still_listed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "1"
+            package.mkdir()
+            (package / "answer.txt").write_bytes(b"safe")
+            lines = keys.listing(package.parent)
+        self.assertEqual(len(lines), 1)
+        self.assertIn("package 1: answer.txt 4 bytes sha256", lines[0])
 
 
 class PageFetchSafetyTests(unittest.TestCase):
