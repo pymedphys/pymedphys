@@ -240,9 +240,13 @@ new names. The old names are not accepted.
     }
     gamma = by_criteria[(3, 1)].gamma
 
-A result is not an array. Code that passes it to a NumPy function, compares
-it with an array, or indexes it raises a ``TypeError`` that says to use
-``result.gamma``.
+A result is not an array. Code that passes it to most NumPy functions, such
+as ``np.nanmax``, or does arithmetic or comparisons between it and a NumPy
+array raises a ``TypeError`` that says to use ``result.gamma``. Converting it
+with ``np.asarray`` or ``np.array`` instead gives an object array holding the
+result, so that results can be collected in an array. Indexing a result, and
+arithmetic or order comparisons with a Python number, such as ``result > 1``,
+raise Python's own ``TypeError``, which does not mention ``result.gamma``.
 
 A list of criteria now gives, for each pair, exactly what a separate call
 with that pair gives. Before version 0.42.0 the pairs of a list were searched
