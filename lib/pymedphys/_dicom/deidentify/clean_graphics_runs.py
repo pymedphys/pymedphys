@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """The runs and expectations of the check of the Clean Graphics Option on
 public human DICOM (:mod:`.clean_graphics_check`).
 
@@ -30,7 +32,11 @@ each annotation removed; each annotation that holds a text object removed,
 the rest and their sets kept; and, where keeping them all holds an
 annotation for echoing an identifier, those removed, the rest and their
 sets kept. An image, and a Presentation State without annotations, are run
-without a list alone, and their two written files are compared.
+without a list alone, and their two written files are compared. An image
+with an overlay in unused bits of Pixel Data, an overlay group without
+Overlay Data, is also run with Clean Graphics and Clean Pixel Data, whose
+text finder the caller gives, since only Clean Pixel Data can release a
+Secondary Capture (D-060).
 
 For each run, :func:`instance_summary` counts the outcome and its reasons,
 as the release report names them, what is decided for each annotation and
@@ -40,17 +46,21 @@ against what Table E.1-1 and the design give the option
 which sequesters a Presentation State, since the Type 1 sequence has no
 dummy value (D-021); with a list, each annotation is kept as received but
 for its UIDs, removed, or held, as the list decides, and kept annotations
-shown together need a decision on them together; curves are removed, as
-under the Basic Profile; an overlay group whose only attribute is Overlay
-Activation Layer (60xx,1001), with which a Presentation State shows an
-overlay of the image that it references, places no overlay in the state, so
-it is kept and the state is released; and every file written under the
-option claims it (D-041). A run that raises is counted by the exception's
-type and place, never its message.
+shown together need a decision on them together; curve groups and
+overlay groups that hold Overlay Data are removed whole, as under the Basic
+Profile (D-020); the bit plane of an overlay in unused bits of Pixel Data
+is cleared, so that each stored value holds only its sign above High Bit
+(:func:`unused_bits`), and its group is removed, in the write that blacks
+out text, which holds the image for review; an overlay group whose only
+attribute is Overlay Activation Layer (60xx,1001), with which a
+Presentation State shows an overlay of the image that it references, places
+no overlay in the state, so it is kept and the state is released; and every
+file written under the option claims it (D-041). A run that raises is
+counted by the exception's type and place, never its message.
 
 The annotations' digests, which the reviewed annotations list keeps
-confidential, the Overlay Activation Layers, and the written files stay in
-memory: no summary holds them.
+confidential, the Overlay Activation Layers, Pixel Data, and the written
+files stay in memory: no summary holds them.
 """
 
 from __future__ import annotations
@@ -61,6 +71,7 @@ import io
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from . import policy
@@ -76,6 +87,8 @@ from .instance_transform import InstanceTransform, ReleaseGate
 from .keys import DeidKey
 from .midi_benchmark_errors import uid_name
 from .midi_benchmark_graphics import graphics_of
+from .pixel_cleaning import TextFinder
+from .reasons import PixelDataReason, TransformReason
 from .references import InstanceRecord
 from .release_report import held_for_review, sequestration_reason
 from .reviewed_annotations import (
@@ -93,6 +106,13 @@ GRAYSCALE_SOFTCOPY_PRESENTATION_STATE = "1.2.840.10008.5.1.4.1.1.11.1"
 PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE = "1.2.840.10008.5.1.4.1.1.11.3"
 PRESENTATION_STATES = frozenset(
     {GRAYSCALE_SOFTCOPY_PRESENTATION_STATE, PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE}
+)
+# The five Secondary Capture SOP Classes, Secondary Capture Image Storage
+# and its four multi-frame forms, each sequestered without Clean Pixel Data
+# (D-060).
+SECONDARY_CAPTURE = "1.2.840.10008.5.1.4.1.1.7"
+SECONDARY_CAPTURES = frozenset(
+    SECONDARY_CAPTURE + suffix for suffix in ("", ".1", ".2", ".3", ".4")
 )
 CLEAN_GRAPHICS_CODE = "113103"
 
@@ -112,13 +132,22 @@ RUNS: Mapping[str, str] = {
         "Clean Graphics, each annotation held for echoing an identifier "
         "removed, the rest and their sets kept"
     ),
+    "with_pixel_data": "Clean Graphics and Clean Pixel Data, without a list",
 }
 # The runs without a list, which are the only runs of an image and of a
 # Presentation State without annotations.
 WITHOUT_A_LIST = ("modified_dates", "no_list")
+# The runs of an image whose overlay lies in unused bits of Pixel Data: those
+# without a list, and one with Clean Pixel Data too, which cleans its pixels.
+WITH_PIXEL_DATA = (*WITHOUT_A_LIST, "with_pixel_data")
 # The reason that the walker gives for sequestering a Presentation State
 # whose Graphic Annotation Sequence takes D, as the release report names it.
 NO_DUMMY_VALUE = "walker: no-dummy-value at (0070,0001), D"
+# The reason that the transform gives for sequestering a Secondary Capture
+# whose Pixel Data no option cleans, as the release report names it.
+UNCLEANED_SECONDARY_CAPTURE = (
+    f"transform: {TransformReason.SECONDARY_CAPTURE_NOT_CLEANED.value}"
+)
 # The tags in which a file written with Clean Graphics may differ from one
 # written without it: De-identification Method and its Code Sequence.
 MARKERS = ("(0012,0063)", "(0012,0064)")
@@ -132,8 +161,13 @@ REMOVED_GRAPHICS = frozenset(
 _KEY = DeidKey(bytes(range(32)))
 _BASELINE = (policy.MODIFIED_DATES,)
 _OPTION = (policy.MODIFIED_DATES, policy.CLEAN_GRAPHICS)
+_PIXEL_OPTIONS = (policy.MODIFIED_DATES, policy.CLEAN_GRAPHICS, policy.CLEAN_PIXEL_DATA)
 _GRAPHIC_ANNOTATION_SEQUENCE = 0x00700001
 _METHOD_CODES = 0x00120064
+_PIXEL_DATA = 0x7FE00010
+# The first of the repeating groups of curves, 50xx, and of overlays, 60xx.
+_CURVE_GROUPS = 0x5000
+_OVERLAY_GROUPS = 0x6000
 # Overlay Activation Layer (60xx,1001), the only attribute of a softcopy
 # Presentation State's Overlay Activation Module (PS3.3 C.11.7).
 _OVERLAY_ACTIVATION_LAYER = 0x1001
@@ -146,6 +180,19 @@ _HELD_CODES = frozenset(
     f"annotations: {reason.value}"
     for reason in (Held.NOT_REVIEWED_TOGETHER, *_HELD_FOR_ITSELF)
 )
+# The graphics, as midi_benchmark_graphics names them, of which an image in
+# the check holds one or both: those that the Basic Profile removes by their
+# groups.
+_HELD_GROUPS = frozenset({"curve_data", "overlay_data"})
+# Why Clean Pixel Data holds an image that it cleans, as the release report
+# names it: whether its detector found text or not, review looks for text
+# that it missed (D-037).
+_PIXEL_DATA_CODES = frozenset(
+    f"pixel-data: {reason.value}" for reason in PixelDataReason
+)
+# Implicit and Explicit VR Little Endian: the transfer syntaxes whose Pixel
+# Data is read here, as stored words.
+_NATIVE = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -183,6 +230,9 @@ class _Written:
     text_objects: int
     graphic_objects: int
     graphics: frozenset[str]
+    curve_groups: int
+    overlay_groups: int
+    unused_bits: int | None
     nested_graphics: int
     claims_clean_graphics: bool
     activation_layers: tuple[pydicom.DataElement, ...]
@@ -275,12 +325,28 @@ class InstanceRuns:
         """Whether it is a softcopy Presentation State."""
         return self.sop_class in PRESENTATION_STATES
 
+    @property
+    def embedded(self) -> bool:
+        """Whether it is an image with an overlay in unused bits of Pixel
+        Data: an overlay group without Overlay Data, as
+        :func:`~.midi_benchmark_graphics.graphics_of` finds it."""
+        return not self.presentation_state and "overlay_in_pixel_data" in (
+            self.holds.get("graphics", ())
+        )
 
-def run_instance(label: str, sop_class: str, data: bytes) -> InstanceRuns:
+
+def run_instance(
+    label: str,
+    sop_class: str,
+    data: bytes,
+    finder: Callable[[], TextFinder] | None = None,
+) -> InstanceRuns:
     """Run one instance, a Presentation State or an image, as the module
-    describes."""
+    describes. ``finder`` gives the text finder of the run with Clean Pixel
+    Data, which only an image with an overlay in unused bits of Pixel Data
+    takes."""
     try:
-        dataset = pydicom.dcmread(io.BytesIO(data), stop_before_pixels=True)
+        dataset = pydicom.dcmread(io.BytesIO(data))
         annotations = _annotations(data) if sop_class in PRESENTATION_STATES else None
         layers = _activation_layers(dataset)
         holds = _holds(dataset, annotations, layers)
@@ -292,8 +358,8 @@ def run_instance(label: str, sop_class: str, data: bytes) -> InstanceRuns:
         label, sop_class, holds, annotations, {}, activation_layers=layers
     )
     if annotations is None or not annotations.digests:
-        for name in WITHOUT_A_LIST:
-            ran.runs[name] = _run(data, name, None, None)
+        for name in WITH_PIXEL_DATA if ran.embedded else WITHOUT_A_LIST:
+            ran.runs[name] = _run(data, name, None, None, finder)
         return ran
     count = len(annotations.digests)
     plans: list[tuple[str, dict[int, Review] | None]] = [
@@ -368,14 +434,12 @@ def _holds(
     value."""
     holds: dict[str, Any] = {
         "graphics": sorted(graphics_of(dataset)),
-        "curve_groups": len(
-            {
-                tag.group
-                for tag in dataset.keys()
-                if 0x5000 <= tag.group <= 0x501E and tag.group % 2 == 0 and tag.element
-            }
-        ),
+        "curve_groups": _groups(dataset, _CURVE_GROUPS),
+        "overlay_groups": _groups(dataset, _OVERLAY_GROUPS),
     }
+    unused = unused_bits(dataset)
+    if unused is not None:
+        holds["unused_bits"] = unused
     if annotations is None:
         return holds
     element = dataset.get(_GRAPHIC_ANNOTATION_SEQUENCE)
@@ -400,17 +464,70 @@ def _objects(items: Iterable[pydicom.Dataset], keyword: str) -> int:
     return sum(len(item.get(keyword) or ()) for item in items)
 
 
+def unused_bits(dataset: pydicom.Dataset) -> int | None:
+    """How many stored values of a data set's Pixel Data hold more than
+    their sign in the bits above High Bit, as an overlay in unused bits of
+    Pixel Data does; or None where it has no Pixel Data that is native and
+    little endian, in words of 8, 16, or 32 bits.
+
+    The words are read as stored, never through pydicom's pixel handlers,
+    which may mask the bits above High Bit. Each unused bit of a value holds
+    its sign where Pixel Representation is 1, and zero otherwise, as Clean
+    Graphics clears an overlay's bit plane (D-041).
+    """
+    meta = getattr(dataset, "file_meta", None)
+    syntax = None if meta is None else meta.get("TransferSyntaxUID")
+    element = dataset.get(_PIXEL_DATA)
+    if syntax not in _NATIVE or element is None or element.value is None:
+        return None
+    try:
+        allocated = int(dataset.BitsAllocated)
+        high = int(dataset.HighBit)
+        signed = int(dataset.get("PixelRepresentation", 0)) == 1
+    except (AttributeError, TypeError, ValueError):
+        return None
+    if allocated not in (8, 16, 32) or not 0 <= high < allocated:
+        return None
+    width = allocated // 8
+    data = bytes(element.value)
+    words = np.frombuffer(data, dtype=f"<u{width}", count=len(data) // width)
+    if high == allocated - 1:
+        return 0
+    above = words >> (high + 1)
+    unused = (1 << (allocated - high - 1)) - 1
+    expected = ((words >> high) & 1) * unused if signed else np.zeros_like(above)
+    return int(np.count_nonzero(above != expected))
+
+
+def _groups(dataset: pydicom.Dataset, first: int) -> int:
+    """How many of the repeating groups ``first`` to ``first`` + 0x1E, those
+    of curves or of overlays, hold an attribute but their group length."""
+    return len(
+        {
+            tag.group
+            for tag in dataset.keys()
+            if first <= tag.group <= first + 0x1E and tag.group % 2 == 0 and tag.element
+        }
+    )
+
+
 def _run(
     data: bytes,
     name: str,
     annotations: _Annotations | None,
     decisions: Mapping[int, Review] | None,
+    finder: Callable[[], TextFinder] | None = None,
 ) -> _Ran:
     """Run an instance once, or twice where the run keeps the sets that its
     first pass holds, and count what the run decides and writes."""
-    options = _BASELINE if name == "modified_dates" else _OPTION
+    options = {"modified_dates": _BASELINE, "with_pixel_data": _PIXEL_OPTIONS}.get(
+        name, _OPTION
+    )
     keeps_sets = name in ("each_and_sets_kept", "text_removed", "echoes_removed")
     try:
+        # A run with Clean Pixel Data needs a text finder, and the transform
+        # refuses one without it.
+        found = finder() if finder is not None and name == "with_pixel_data" else None
         reviewed = None
         counted: collections.Counter[str] | None = None
         if decisions is not None and annotations is not None:
@@ -420,7 +537,9 @@ def _run(
                 reviewed.record(annotations.digests[index], review)
                 counted[review.value] += 1
         passes = 1
-        result = _transform(options, reviewed)(data, InstanceRecord.from_file(data))
+        result = _transform(options, reviewed, found)(
+            data, InstanceRecord.from_file(data)
+        )
         while keeps_sets and reviewed is not None and counted is not None:
             held = sorted(
                 {
@@ -437,7 +556,9 @@ def _run(
                 reviewed.record(digest, Review.KEEP)
             counted["keep together"] += len(held)
             passes += 1
-            result = _transform(options, reviewed)(data, InstanceRecord.from_file(data))
+            result = _transform(options, reviewed, found)(
+                data, InstanceRecord.from_file(data)
+            )
         ran = _outcome(result)
         ran.passes = passes if reviewed is not None else 0
         ran.decisions = counted
@@ -454,11 +575,14 @@ def _run(
 
 
 def _transform(
-    options: Sequence[str], reviewed: ReviewedAnnotations | None
+    options: Sequence[str],
+    reviewed: ReviewedAnnotations | None,
+    finder: TextFinder | None = None,
 ) -> InstanceTransform:
     return InstanceTransform(
         policy.compose_custom_policy(options),
         _KEY,
+        finder=finder,
         reviewed_annotations=reviewed,
         unvalidated_policy=True,
     )
@@ -501,7 +625,7 @@ def _sequestering(reasons: Iterable[object]) -> collections.Counter[str]:
 def _written(data: bytes) -> _Written:
     """What a written file holds, by counts; its annotations' digests stay in
     memory."""
-    dataset = pydicom.dcmread(io.BytesIO(data), stop_before_pixels=True)
+    dataset = pydicom.dcmread(io.BytesIO(data))
     element = dataset.get(_GRAPHIC_ANNOTATION_SEQUENCE)
     items = list(element.value) if element is not None and element.value else []
     codes = dataset.get(_METHOD_CODES)
@@ -516,6 +640,9 @@ def _written(data: bytes) -> _Written:
         _objects(items, "TextObjectSequence"),
         _objects(items, "GraphicObjectSequence"),
         graphics_of(dataset),
+        _groups(dataset, _CURVE_GROUPS),
+        _groups(dataset, _OVERLAY_GROUPS),
+        unused_bits(dataset),
         _nested_graphics(dataset),
         claims,
         _activation_layers(dataset),
@@ -614,9 +741,13 @@ def _written_summary(ran: _Ran, source: _Annotations | None) -> dict[str, Any]:
             "kept_as_received": ran.kept_as_received(source),
             "activation_only_overlay_groups": len(written.activation_layers),
         }
+    if written.unused_bits is not None:
+        found["unused_bits"] = written.unused_bits
     return {
         **found,
         "graphics": sorted(written.graphics),
+        "curve_groups": written.curve_groups,
+        "overlay_groups": written.overlay_groups,
         "nested_graphics": written.nested_graphics,
         "claims_clean_graphics": written.claims_clean_graphics,
     }
@@ -648,11 +779,23 @@ EXPECTATIONS: tuple[str, ...] = (
     "and holds none of the rest that keeping them all did not; each kept one "
     "is written as received but for its UIDs, and the Presentation State is "
     "released unless one is held.",
-    "Each image is released with its curves removed, under Modified Dates "
-    "alone and with Clean Graphics.",
-    "Clean Graphics changes nothing in an image's written file but its "
-    "De-identification Method (0012,0063) and De-identification Method Code "
-    "Sequence (0012,0064).",
+    "Each image without an overlay in unused bits of Pixel Data holds curves "
+    "or Overlay Data, and is released with each of its curve and overlay "
+    "groups removed whole, under Modified Dates alone and with Clean "
+    "Graphics.",
+    "Clean Graphics changes nothing in the written file of an image without "
+    "an overlay in unused bits of Pixel Data but its De-identification "
+    "Method (0012,0063) and De-identification Method Code Sequence "
+    "(0012,0064).",
+    "Each image with an overlay in unused bits of Pixel Data is a Secondary "
+    "Capture, and is sequestered as one whose Pixel Data is not cleaned, and "
+    "for that alone, under Modified Dates alone and with Clean Graphics.",
+    "With Clean Graphics and Clean Pixel Data, each image with an overlay in "
+    "unused bits of Pixel Data, whose stored values hold more than their "
+    "sign above High Bit, is written with none that does and with each of "
+    "its overlay groups removed, claims Clean Graphics, and is held for "
+    "review for its Pixel Data alone, as Clean Pixel Data holds each image "
+    "that it cleans.",
     "Each Presentation State without annotations has an overlay group whose "
     "only attribute is Overlay Activation Layer (60xx,1001), and is released "
     "under Modified Dates alone and with Clean Graphics, with each such group "
@@ -673,7 +816,10 @@ def evaluate(members: Sequence[InstanceRuns]) -> list[tuple[str, list[str]]]:
     states = [
         each for each in members if each.presentation_state and not _unannotated(each)
     ]
-    images = [each for each in members if not each.presentation_state]
+    images = [
+        each for each in members if not each.presentation_state and not each.embedded
+    ]
+    embedded = [each for each in members if each.embedded]
     tests: list[tuple[Sequence[InstanceRuns], Callable[[InstanceRuns], bool]]] = [
         (states, _sequestered_without_a_list),
         (states, _held_with_an_empty_list),
@@ -682,8 +828,10 @@ def evaluate(members: Sequence[InstanceRuns]) -> list[tuple[str, list[str]]]:
         (states, _sequestered_with_each_removed),
         (states, _released_without_the_text),
         (states, _released_without_the_echoes),
-        (images, _curves_removed),
+        (images, _groups_removed),
         (images, _only_the_markers_change),
+        (embedded, _sequestered_as_uncleaned),
+        (embedded, _cleared_and_held),
         (unannotated, _released_keeping_the_activation),
         (members, _claimed_and_clean),
         (members, _nothing_raised),
@@ -868,14 +1016,18 @@ def _gated(ran: _Ran) -> bool:
     )
 
 
-def _curves_removed(member: InstanceRuns) -> bool:
-    if "curve_data" not in member.holds.get("graphics", ()):
+def _groups_removed(member: InstanceRuns) -> bool:
+    """Whether an image that holds curves or Overlay Data is released under
+    each run without a list, with no attribute of a curve or overlay group
+    left but a group length, at the top level or nested."""
+    if not _HELD_GROUPS & set(member.holds.get("graphics", ())):
         return False
     for name in WITHOUT_A_LIST:
         ran = member.runs.get(name)
         if ran is None or ran.outcome != "released" or ran.written is None:
             return False
-        if "curve_data" in ran.written.graphics or ran.written.nested_graphics:
+        written = ran.written
+        if written.curve_groups or written.overlay_groups or written.nested_graphics:
             return False
     return True
 
@@ -891,6 +1043,33 @@ def _only_the_markers_change(member: InstanceRuns) -> bool:
         "removed": [],
         "differ": list(MARKERS),
     }
+
+
+def _sequestered_as_uncleaned(member: InstanceRuns) -> bool:
+    if member.sop_class not in SECONDARY_CAPTURES:
+        return False
+    for name in WITHOUT_A_LIST:
+        ran = member.runs.get(name)
+        if ran is None or ran.outcome != "sequestered" or ran.written is not None:
+            return False
+        if ran.reasons != collections.Counter({UNCLEANED_SECONDARY_CAPTURE: 1}):
+            return False
+    return True
+
+
+def _cleared_and_held(member: InstanceRuns) -> bool:
+    ran = member.runs.get("with_pixel_data")
+    if not member.holds.get("unused_bits") or ran is None or ran.written is None:
+        return False
+    written = ran.written
+    return (
+        written.unused_bits == 0
+        and written.overlay_groups == 0
+        and written.claims_clean_graphics
+        and ran.outcome == "held"
+        and sum(ran.reasons.values()) == 1
+        and set(ran.reasons) <= _PIXEL_DATA_CODES
+    )
 
 
 def _released_keeping_the_activation(member: InstanceRuns) -> bool:
