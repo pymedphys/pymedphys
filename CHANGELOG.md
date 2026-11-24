@@ -17,7 +17,7 @@ This project adheres to
 The DICOM listener command sleeps while its background server handles requests,
 instead of continuously spinning in the main thread. The existing SIGINT and
 SIGTERM handlers still stop the server and exit.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/dicom-listener-idle-cpu)
+[PR #2708](https://github.com/pymedphys/pymedphys/pull/2708)
 
 ### RT Plans written by `Delivery.to_dicom`
 
