@@ -15,7 +15,7 @@ This project adheres to
 ### Workflow summary evidence
 
 Workflow summaries reject empty dependency results instead of reporting that all required checks passed.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security-summary-empty-evidence-20261124)
+[PR #2710](https://github.com/pymedphys/pymedphys/pull/2710)
 
 ### RT Plans written by `Delivery.to_dicom`
 
