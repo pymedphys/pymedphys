@@ -15,7 +15,7 @@ This project adheres to
 ### Withhold downloads for failed pseudonymisation batches
 
 The pseudonymisation app now has regression tests ensuring a failed batch is never offered as a download, even when a converter has already written a partial archive into memory.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security/pseudo-download-regression)
+[PR #2720](https://github.com/pymedphys/pymedphys/pull/2720)
 
 ### RT Plans written by `Delivery.to_dicom`
 
