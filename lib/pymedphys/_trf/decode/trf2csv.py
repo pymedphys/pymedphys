@@ -23,6 +23,11 @@ from glob import glob
 from .trf2pandas import trf2pandas
 
 
+def _redact_progress_paths():
+    """Opt in when conversion logs may leave a clinical workstation."""
+    return os.environ.get("PYMEDPHYS_REDACT_TRF_PATHS") == "1"
+
+
 def trf2csv_by_directory(input_directory, output_directory):
     filepaths = glob(os.path.join(input_directory, "*.trf"))
 
@@ -33,7 +38,10 @@ def trf2csv_by_directory(input_directory, output_directory):
         header_csv_filepath = "{}.header.csv".format(new_filename)
         table_csv_filepath = "{}.table.csv".format(new_filename)
 
-        print("Converting {}".format(filepath))
+        if _redact_progress_paths():
+            print("Converting TRF file")
+        else:
+            print("Converting {}".format(filepath))
 
         header, table = trf2pandas(filepath)
         header.to_csv(header_csv_filepath)
@@ -56,7 +64,10 @@ def trf2csv(trf_filepath, output_directory=None):
         for contents in ["header", "table"]
     }
 
-    logging.info("Converting %(trf_filepath)s", {"trf_filepath": trf_filepath})
+    if _redact_progress_paths():
+        logging.info("Converting TRF file")
+    else:
+        logging.info("Converting %(trf_filepath)s", {"trf_filepath": trf_filepath})
 
     dataframes = dict()
     dataframes["header"], dataframes["table"] = trf2pandas(trf_filepath)

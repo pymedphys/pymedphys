@@ -32,12 +32,17 @@ Each introduced finding is then:
 
 - **explained**, where an entry of the known differences
   (:data:`KNOWN_DIFFERENCES`, :func:`read_known_differences`) matches it.
-  Each entry gives the reason, under one of three categories
+  Each entry gives the reason, under one of four categories
   (:class:`Category`): a consequence of the profile's own actions, a
-  limitation of the validator, or a defect of the engine that is recorded
-  until it is fixed. An entry whose reason rests on a property of the output
-  names it (:data:`PREMISES`), and explains a finding only in an output
-  that has it (:func:`output_premises`);
+  limitation of the validator, a defect of the input that the
+  de-identification cannot repair, or a defect of the engine that is
+  recorded until it is fixed. An entry whose reason rests on a property of
+  the output, or of the output with its input, names it (:data:`PREMISES`),
+  and explains a finding only in an output that has it
+  (:func:`output_premises`), or, for ``dcentvfy``, only for the
+  occurrences of an attribute's finding that a series whose inputs and
+  outputs hold it gives
+  (:mod:`~pymedphys._dicom.deidentify.dicom_validation_series`);
 - **not comparable**, where it lies below an attribute that the validator
   could not parse in the input, because its dictionary lacks it and the
   input is in Implicit VR or gives it the VR UN, while it could parse it in
@@ -74,6 +79,7 @@ from . import dicom_validators as validators
 from . import run
 from .diagnostics import redacted_diagnostics
 from .dicom_validation_markdown import render_markdown
+from .dicom_validation_series import series_allowances
 from .dicom_validators import Finding, Status, Validation
 
 SCHEMA = "pymedphys-dicom-validation/1"
@@ -97,8 +103,9 @@ THIS_STUDY_REFERENCED = "instances-of-this-study-referenced-elsewhere"
 OTHER_STUDIES_REFERENCED = "instances-of-other-studies-referenced-elsewhere"
 PIXEL_DATA_CLAIMED = "clean-pixel-data-claimed"
 VISUAL_FEATURES_CLAIMED = "clean-recognizable-visual-features-claimed"
-# The properties of an output that a known difference can require, each
-# with what it means.
+MIXED_MODALITY_SERIES = "each-iod-decides-in-a-series-of-mixed-modalities"
+# The properties of an output, or of a patient's outputs with their inputs,
+# that a known difference can require, each with what it means.
 PREMISES = {
     THIS_STUDY_REFERENCED: (
         "an instance that Referenced Series Sequence (0008,1115) lists is "
@@ -117,7 +124,15 @@ PREMISES = {
         "De-identification Method Code Sequence (0012,0064) holds DCM 113102, "
         "the Clean Recognizable Visual Features Option's code"
     ),
+    MIXED_MODALITY_SERIES: (
+        "the outputs of a series whose inputs give more than one Modality "
+        "(0008,0060) hold the attribute or lack it by SOP Class alone, and "
+        "every input of the series holds it"
+    ),
 }
+# The premises that hold for one attribute of one series of a patient, rather
+# than for an output as a whole (dicom_validation_series).
+ATTRIBUTE_PREMISES = frozenset({MIXED_MODALITY_SERIES})
 
 
 class Category(enum.Enum):
@@ -128,6 +143,9 @@ class Category(enum.Enum):
     PROFILE = "profile"
     # A limitation or heuristic of the validator.
     VALIDATOR = "validator"
+    # A defect of the input that the de-identification cannot repair, where
+    # each output conforms to its own IOD.
+    SOURCE = "source"
     # A defect of the engine's output, recorded until it is fixed.
     ENGINE = "engine"
 
@@ -168,7 +186,8 @@ class KnownDifference:
         The explanation, in a sentence or two.
     requires : str
         One of :data:`PREMISES` that the output must have for this entry to
-        explain the finding, or ``""``.
+        explain the finding, or ``""``. One of :data:`ATTRIBUTE_PREMISES`
+        must hold for the finding's attribute.
     """
 
     validator: str
@@ -182,15 +201,30 @@ class KnownDifference:
     def matches(self, finding: Finding, premises: Collection[str] = ()) -> bool:
         """Return whether this entry explains a finding in an output.
 
-        ``premises`` are those of :data:`PREMISES` that the output has.
+        ``premises`` are those of :data:`PREMISES` that the output has, and
+        :func:`attribute_premise` of those of :data:`ATTRIBUTE_PREMISES`
+        that hold for an attribute.
         """
+        if self.requires in ATTRIBUTE_PREMISES:
+            held = attribute_premise(self.requires, finding.path) in premises
+        else:
+            held = not self.requires or self.requires in premises
         return (
             finding.validator == self.validator
             and finding.severity == self.severity
             and finding.message == self.message
             and any(fnmatch.fnmatchcase(finding.path, path) for path in self.paths)
-            and (not self.requires or self.requires in premises)
+            and held
         )
+
+
+def attribute_premise(premise: str, path: str) -> str:
+    """Return the premise of :data:`ATTRIBUTE_PREMISES` as it holds for an attribute.
+
+    >>> attribute_premise(MIXED_MODALITY_SERIES, "(0008,0021)")
+    'each-iod-decides-in-a-series-of-mixed-modalities (0008,0021)'
+    """
+    return f"{premise} {path}"
 
 
 def read_known_differences(
@@ -704,7 +738,13 @@ def compare(  # pylint: disable = too-many-locals
     tallies: dict[str, _Tally] = collections.defaultdict(_Tally)
     introduced: dict[_Kind, list[tuple[int, int, str]]] = collections.defaultdict(list)
     # Only an entry that requires a premise needs the output read again.
-    required = any(difference.requires for difference in known)
+    required = any(
+        difference.requires and difference.requires not in ATTRIBUTE_PREMISES
+        for difference in known
+    )
+    by_attribute = any(
+        difference.requires in ATTRIBUTE_PREMISES for difference in known
+    )
     for index, sop_class in enumerate(sop_classes):
         premises = output_premises(outputs[index]) if required else frozenset()
         for source, output in zip(checked[index], checked[len(pairs) + index]):
@@ -730,7 +770,16 @@ def compare(  # pylint: disable = too-many-locals
             output = validators.run_dcentvfy(
                 toolset.dcentvfy, [outputs[index] for index in group]
             )
-            for kind, count in _introduced(source, output, tallies, known):
+            # The patient's files are read again only where its outputs
+            # gave a finding more often than its inputs.
+            allowances = (
+                series_allowances([pairs[index] for index in group], toolset.dcentvfy)
+                if by_attribute and _gained(source, output)
+                else {}
+            )
+            for kind, count in _introduced(
+                source, output, tallies, known, allowances=allowances
+            ):
                 introduced[kind].append((count, group[0], ""))
     return Comparison(
         versions=toolset.versions(),
@@ -774,6 +823,14 @@ def _patients(
     return [group for group in groups.values() if len(group) > 1]
 
 
+def _gained(source: Validation, output: Validation) -> bool:
+    """Whether the output gave a finding more often than the input."""
+    return any(
+        count > source.findings.get(finding, 0)
+        for finding, count in output.findings.items()
+    )
+
+
 def _status(validation: Validation) -> str:
     return validation.status.value
 
@@ -789,11 +846,19 @@ def _introduced(
     tallies: Mapping[str, _Tally],
     known: Sequence[KnownDifference],
     premises: Collection[str] = (),
+    *,
+    allowances: Mapping[Finding, int] | None = None,
 ) -> Iterable[tuple[_Kind, int]]:
     """Tally one comparison, and yield what the output introduced.
 
-    ``premises`` are those of :data:`PREMISES` that the output has.
+    ``premises`` are those of :data:`PREMISES` that the output has. For
+    ``dcentvfy``, ``allowances`` gives how many occurrences of a finding the
+    patient's mixed-modality series give on their own
+    (:func:`~pymedphys._dicom.deidentify.dicom_validation_series.series_allowances`):
+    :data:`MIXED_MODALITY_SERIES` holds for at most that many of its
+    introduced occurrences, and the rest are counted without it.
     """
+    allowances = allowances or {}
     tally = tallies[source.validator]
     tally.statuses[f"input {_status(source)}, output {_status(output)}"] += 1
     for finding, count in source.findings.items():
@@ -813,10 +878,18 @@ def _introduced(
     gained = collections.Counter(output.findings)
     gained.subtract(source.findings)
     for finding, count in sorted(gained.items()):
-        if count > 0:
-            yield (finding, *_outcome(finding, source, known, premises)), count
-        else:
+        if count <= 0:
             tally.resolved -= count
+            continue
+        allowed = min(count, allowances.get(finding, 0))
+        if allowed:
+            held = {*premises, attribute_premise(MIXED_MODALITY_SERIES, finding.path)}
+            yield (finding, *_outcome(finding, source, known, held)), allowed
+        if count > allowed:
+            yield (
+                (finding, *_outcome(finding, source, known, premises)),
+                count - allowed,
+            )
 
 
 def _outcome(
