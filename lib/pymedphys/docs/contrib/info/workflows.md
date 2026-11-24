@@ -21,6 +21,7 @@ Manual run -> docs.yml
 security.yml <- schedule, manual run, main push, ready PR, merge_group
   |-- dependency audit / Bandit / zizmor (selected PRs; every merge group)
   `-- Security Summary
+merge_group / hourly schedule / manual run -> merge-queue-cleanup.yml
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
@@ -53,7 +54,8 @@ Coordinates all CI checks based on file changes, labels, and event types.
   push to `main` starts no run, as "Main Branch Workflow" below explains. See
   "Draft pull requests" below
 - **Jobs**:
-  - `changes`: Tests the selection/gating policy and reads the tested merge diff
+  - `changes`: Tests the selection/gating policy and reads the tested merge diff;
+    skipped in merge groups, as "Merge Queue Workflow" below explains
   - `pre-commit`: Auto-formatting and basic checks
   - `lint`: Code quality
   - `type-check`: Static type checking
@@ -81,7 +83,8 @@ any fallback.
 | Package Python modules | Lint, type checks, unit tests, generated documentation and all security scans |
 | Python tests only | Lint, type checks, unit tests and all security scans |
 | Other CI configuration or any unclassified path | Every standard check: lint, type checks, unit tests, script tests, documentation and all security scans |
-| Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests |
+| Dependency or build metadata (`pyproject.toml`, `uv.lock`, the exported requirements, `pyproject.hash`, `dependency-extra.txt`, `_version.py`), `ci.yml` or `.github/actions/` | Standard checks, plus integration and database tests and the dependency corpus |
+| `unit-tests.yml`, `_extras.py`, `_imports/` or `_vendor/` | Adds the dependency corpus (`_imports/` and `_extras.py` also add integration and database tests) |
 | Reviewed `.github/scripts/` tooling | Standard checks, plus Windows/macOS tooling tests; `check_distributions.py` also selects packaging |
 | `examples/` | Adds doctests and example tests |
 | Modules with doctests | Adds doctests, example tests and slow regressions |
@@ -91,7 +94,7 @@ any fallback.
 | Any path naming Mosaiq or a database (except documentation) | Adds database tests |
 | `conftest.py`, top-level package modules, or `_imports/`, `_data/`, `_utilities/` and `_base/` | Adds integration and database tests |
 | A symlink, a submodule or an unverifiable merge diff | Every check a changed path can select, including integration and database tests |
-| `full-test` label | Every check and the full unit-test matrix |
+| `full-test` label | Every check, the full unit-test matrix and the dependency corpus |
 | `database` label | Adds database tests |
 
 Only recognised documentation inputs under `lib/pymedphys/docs/` are exempt
@@ -124,8 +127,8 @@ links and unverifiable diffs enable every component.
 
 Unit runs skip the slow tests and never run doctests. `SLOW_TEST_FILES` and
 `DOCTEST_FILES` in `select_checks.py` list the package modules that apply the
-slow marker or hold doctests. The policy tests in the always-required `changes`
-job scan the package and fail unless each list equals what they find, naming
+slow marker or hold doctests. The policy tests in the `changes` job, which
+every pull request runs, and in `script-tests` scan the package and fail unless each list equals what they find, naming
 each module to add or remove, so update the list in the PR that adds, removes
 or renames such a module. Shared test data, including `_data/urls.json` and
 `_data/hashes.json`, also selects integration tests because ordinary unit runs
@@ -162,7 +165,10 @@ cancels any run still in progress for that pull request. Labels such as
 
 Only the jobs that start a run (`changes` and `pre-commit` in `ci.yml`,
 `changes` in `security.yml`) and the two summaries carry the draft condition;
-every other job needs `changes`, so it is skipped with it. The selector and
+every other job needs `changes`, so it is skipped with it. A selected job also
+runs in a merge group, where `changes` is skipped, so it carries
+`!cancelled()`; on a draft its selection output is empty and it is skipped
+all the same. The selector and
 the summaries' conditional checks are unchanged. GitHub counts a skipped
 required check as passing, so a draft shows `CI Summary` and `Security Summary`
 as skipped rather than pending. When a draft is marked ready without a new
@@ -333,9 +339,40 @@ validation of de-identified output` job.
 The run at the dependency floors runs in the same eight parts. Each part
 retains its job limit (60 minutes for `corpus-runs`, 30 for the others), two
 pytest workers and the 900-second
-per-test limit. Only `others` uses the data cache. All eight JUnit reports must
-arrive and all eight parts must pass; the required summary continues to depend
+per-test limit. Only `others` uses the data cache. Every part that runs must
+upload its JUnit report and pass; the required summary continues to depend
 on the whole reusable unit-test workflow.
+
+#### The dependency corpus
+
+The dependency floors and the `dicom` extra's run alone each run six parts of
+de-identification corpus tests (the four CT defacing shares, `corpus-runs` and
+`corpus-end-to-end-p-z`), as the Ubuntu/Python 3.14 matrix does. Those twelve
+jobs took about 316 of a merge group's roughly 500 runner-minutes in November
+2026, while the risks they add to the Python 3.14 run, a package missing from
+the `dicom` extra and a behaviour that differs at the declared minimum
+versions, change mainly with dependency inputs. The `dependency-corpus` input
+of `unit-tests.yml` (default true) therefore decides whether they run, and
+`ci.yml` sets it from the selector's `run-dependency-corpus` output:
+
+- the nightly and manual runs, releases, `full-test` pull requests, and pull
+  requests that change dependency or build metadata, `ci.yml`,
+  `unit-tests.yml`, `.github/actions/`, `_extras.py`, `_imports/` or
+  `_vendor/` run them; so do links and unverifiable diffs;
+- merge groups and other pull requests run only the `deidentify-a-o` and
+  `others` parts of both jobs, so the de-identification modules outside the
+  corpus still run at the floors and with the `dicom` extra alone.
+
+A change that relies on a package outside the `dicom` extra, or on behaviour
+newer than the declared minimum versions, in code that only the corpus
+reaches, can therefore merge and fail first in the nightly run. Two things
+narrow that gap. `tests/imports/test_dicom_extra.py`, which every unit-test run
+includes, fails when a module under `pymedphys._dicom` imports an optional
+package that neither the `dicom` extra nor the base install provides, unless
+it is one of the reviewed packages whose features work without it
+(`dicom-validator`, `imagecodecs`, `matplotlib` and `pypdfium2`). And a pull
+request that changes what is installed runs the whole corpus at the floors and
+with the extra alone before it merges.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
 as `junit-py3.14-corpus-runs-ubuntu-latest`, which the release's
@@ -397,7 +434,8 @@ extra's tests run in the same eight parts as the unit-test matrix, on eight
 runners, since together they can reach the time limit on a slow runner;
 `corpus-runs` has 60 minutes and the other parts 30. Its `others` part holds
 only `tests/dicom`, but the de-identification modules alone bring it near the
-limit, so it is halved as in the unit-test matrix. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+limit, so it is halved as in the unit-test matrix. Its six corpus parts follow
+the dependency corpus selection above. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
 per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
@@ -925,14 +963,42 @@ GitHub builds a prospective integrated state against the current `main` and
 earlier queued PRs, then starts `ci.yml` and `security.yml` on `merge_group`.
 The selector uses the quick Ubuntu/Python 3.14 unit matrix and enables every
 other check, including integration and database tests, the documentation build,
-and all security scans. The nightly run on `main` and releases run the full
-12-environment unit matrix. Platform failures first discovered on main can be
+and all security scans, except the dependency corpus, which "The dependency
+corpus" above describes, and the Windows and macOS tooling tests. Those test
+only `.github/scripts`, which the PRs that change it test on both platforms
+before they merge, and a shortage of macOS runners on 23 Nov 2026 dropped a
+merge group whose macOS job never got a runner; Ubuntu's tooling tests still
+run in every merge group. The nightly run on `main` and releases run the full
+12-environment unit matrix and the Windows and macOS tooling tests. Platform failures first discovered on main can be
 reverted or corrected there; the maintainers accept that cost to avoid
 running the full matrix before each merge and to keep it from delaying the
 merges after it.
 `CI Summary` and `Security Summary` must pass on that state before it merges.
 The queue may test up to three prospective states concurrently and merges PRs
 individually with merge commits.
+
+A merge group skips the `changes` job of both workflows. The selector would
+choose every check, with the quick unit matrix, whatever the group changes, so
+each selected job runs on the `merge_group` event instead and the summaries,
+given `--merge-group-runs-every-check`, require `changes` to be skipped and
+every other job to succeed. This matters when runners are scarce: the
+repository's account runs at most 20 jobs at once, a job that waits for
+another joins the back of the runner queue when it is ready, and on 22 Nov
+2026 the selector alone waited about an hour for a runner in each merge group.
+A merge group's CI run therefore has three stages that each wait for runners
+(the checks with pre-commit, the combined reports of the unit-test parts, and
+`CI Summary`) and its security scan two (the scans, and `Security Summary`).
+
+When the queue drops a group, because a group ahead of it failed or timed out
+or its pull request left the queue, it deletes the group's
+`gh-readonly-queue/` branch and builds the groups behind it again. The dropped
+group's runs carry on, since each group's ref is its own concurrency group and
+GitHub does not cancel them. `merge-queue-cleanup.yml` runs for each new merge
+group, hourly, and on demand, and cancels every queued or in-progress
+`ci.yml` and `security.yml` run of a merge group whose branch no longer
+exists. Its one job holds `actions: write`, which no other workflow has. It
+keeps any run whose branch lookup fails, and cancels nothing if it cannot see
+`main`.
 
 ## Main Branch Workflow
 
@@ -1118,8 +1184,9 @@ request broader coverage and trigger another CI run.
 
 - Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
   full OS/Python matrix runs nightly on `main`, on manual runs, on releases
-  and on `full-test` PRs. Merge groups use the quick unit matrix and run every
-  integration and database check. Integration tests also run on PRs that
+  and on `full-test` PRs. Merge groups use the quick unit matrix, without the
+  dependency corpus, and run every integration and database check but the
+  Windows and macOS tooling tests. Integration tests also run on PRs that
   change their inputs. A green merge-group summary therefore establishes the
   selected unit suite on Ubuntu/Python 3.14; the nightly run on `main`
   supplies the comprehensive platform validation.

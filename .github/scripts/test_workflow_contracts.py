@@ -141,15 +141,28 @@ class WorkflowContractTests(unittest.TestCase):
                     for job, body in workflow.items()
                 }
                 # Jobs without needs start the run, so each must skip drafts;
-                # the jobs that need them are then skipped too.
+                # the jobs that need them are then skipped too. The selector
+                # also skips merge groups, which select every check.
                 for job, body in workflow.items():
                     if not needs(body):
                         with self.subTest(job=job):
-                            self.assertEqual(conditions[job], [not_draft])
+                            self.assertEqual(
+                                conditions[job],
+                                [f"github.event_name != 'merge_group' && {not_draft}"]
+                                if job == "changes"
+                                else [not_draft],
+                            )
                 self.assertEqual(conditions[summary_id], [f"always() && {not_draft}"])
                 # A status function would run a job after its needs were
-                # skipped, so only the summary and main-only jobs may use one.
-                # No pull request or merge group runs on refs/heads/main.
+                # skipped, so only the summary, main-only jobs, and selected
+                # jobs may use one. No pull request or merge group runs on
+                # refs/heads/main. A selected job runs after the skipped
+                # selector only in a merge group: on a draft its output is
+                # empty, so it is skipped with the selector.
+                selected = re.compile(
+                    r"\$\{\{ !cancelled\(\) && \(github\.event_name == 'merge_group' "
+                    r"\|\| needs\.changes\.outputs\.[a-z-]+ == 'true'\) \}\}"
+                )
                 for job, condition in conditions.items():
                     if re.search(
                         r"\b(always|cancelled|failure)\(\)", "".join(condition)
@@ -158,6 +171,10 @@ class WorkflowContractTests(unittest.TestCase):
                             self.assertTrue(
                                 job == summary_id
                                 or "github.ref == 'refs/heads/main'" in condition[0]
+                                or (
+                                    selected.fullmatch(condition[0]) is not None
+                                    and needs(workflow[job]) == {"changes"}
+                                )
                             )
 
     def test_merge_group_dependency_audit_is_advisory(self):
@@ -271,10 +288,92 @@ class WorkflowContractTests(unittest.TestCase):
             workflow["changes"],
         )
         self.assertIn("run-full-matrix", OUTPUTS)
+        # A merge group, which skips the selector, takes the quick matrix, as
+        # the selector would choose for it.
         self.assertRegex(
             workflow["unit-tests"],
-            r"\n      quick: \$\{\{ needs\.changes\.outputs\.run-full-matrix "
-            r"== 'false' \}\}\n",
+            r"\n      quick: \$\{\{ github\.event_name == 'merge_group' \|\| "
+            r"needs\.changes\.outputs\.run-full-matrix == 'false' \}\}\n",
+        )
+        self.assertFalse(select_checks([], event_name="merge_group")["run-full-matrix"])
+
+    def test_merge_groups_skip_the_selector_and_run_what_it_selects(self):
+        # The selector chooses every check for a merge group, with the quick
+        # matrix; the workflows encode that choice without waiting for it.
+        chosen = select_checks([], event_name="merge_group")
+        self.assertEqual(
+            {output for output, value in chosen.items() if not value},
+            {"run-full-matrix", "run-dependency-corpus", "run-integration-scripts"},
+        )
+        self.assertIn(
+            "      dependency-corpus: ${{ github.event_name != 'merge_group' && "
+            "needs.changes.outputs.run-dependency-corpus != 'false' }}\n",
+            jobs("ci.yml")["unit-tests"],
+        )
+        self.assertIn(
+            "      run-scripts: ${{ github.event_name != 'merge_group' && "
+            "needs.changes.outputs.run-integration-scripts != 'false' }}\n",
+            jobs("ci.yml")["integration-tests"],
+        )
+        for filename, summary_id in (
+            ("ci.yml", "summary"),
+            ("security.yml", "security-summary"),
+        ):
+            workflow = jobs(filename)
+            conditional = dict(
+                re.findall(r"--conditional ([a-z-]+)=([a-z-]+)", workflow[summary_id])
+            )
+            self.assertTrue(conditional)
+            for job, output in conditional.items():
+                with self.subTest(workflow=filename, job=job):
+                    self.assertIn(
+                        "    if: ${{ !cancelled() && (github.event_name == "
+                        f"'merge_group' || needs.changes.outputs.{output} == "
+                        "'true') }}\n",
+                        workflow[job],
+                    )
+            # The summary then requires every job but the skipped selector.
+            self.assertIn("--merge-group-runs-every-check", workflow[summary_id])
+        # Integration components run unless the selector explicitly said
+        # false, so a merge group, with no selector output, runs them all,
+        # except the Windows and macOS tooling tests, which ci.yml leaves to
+        # the nightly run as the selector chooses (pinned above).
+        integration = jobs("ci.yml")["integration-tests"]
+        for component in ("doctests", "slow", "packaging"):
+            with self.subTest(component=component):
+                self.assertRegex(
+                    integration,
+                    rf"run-{component}: \$\{{\{{ needs\.changes\.outputs\."
+                    rf"run-[a-z-]+ != 'false' \}}\}}",
+                )
+
+    def test_dropped_merge_groups_runs_are_cancelled_by_one_job(self):
+        import cancel_dropped_merge_groups as cleanup
+
+        text = (WORKFLOWS / "merge-queue-cleanup.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers),
+            ["merge_group", "schedule", "workflow_dispatch"],
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        workflow = jobs("merge-queue-cleanup.yml")
+        self.assertEqual(set(workflow), {"cancel-dropped"})
+        job = workflow["cancel-dropped"]
+        self.assertIn(
+            "    permissions:\n      actions: write\n      contents: read\n", job
+        )
+        self.assertIn("python .github/scripts/cancel_dropped_merge_groups.py", job)
+        self.assertIn("          DEFAULT_BRANCH: main\n", job)
+        # No other workflow may cancel runs.
+        for path in sorted(WORKFLOWS.glob("*.yml")):
+            if path.name != "merge-queue-cleanup.yml":
+                with self.subTest(workflow=path.name):
+                    self.assertNotIn("actions: write", path.read_text(encoding="utf-8"))
+        # It watches exactly the workflows that report the required summaries.
+        self.assertEqual(
+            cleanup.WATCHED_PATHS,
+            {f".github/workflows/{name}" for name in ("ci.yml", "security.yml")},
         )
 
     def test_publishing_waits_for_all_original_quality_gates(self):
@@ -312,9 +411,16 @@ class WorkflowContractTests(unittest.TestCase):
             ("script-tests", "run-scripts", "run-integration-scripts"),
             ("packaging", "run-packaging", "run-packaging"),
         ):
+            # Merge groups leave the Windows and macOS tooling tests to PRs
+            # that change the tooling and to the nightly run.
+            guard = (
+                "github.event_name != 'merge_group' && "
+                if output == "run-integration-scripts"
+                else ""
+            )
             with self.subTest(job=job):
                 self.assertIn(
-                    f"      {input_name}: ${{{{ needs.changes.outputs.{output} != 'false' }}}}",
+                    f"      {input_name}: ${{{{ {guard}needs.changes.outputs.{output} != 'false' }}}}",
                     workflow["integration-tests"],
                 )
                 self.assertIn(
@@ -527,7 +633,30 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertTrue((WORKFLOWS.parents[1] / path).is_file())
         workflow = jobs("unit-tests.yml")
         floors, test = workflow["dependency-floors"], workflow["test"]
-        self.assertIn(f"        part: [{', '.join(pydicom_coverage.PARTS)}]\n", floors)
+        # The dependency floors and the dicom extra's run alone run every
+        # part when the dependency corpus is selected, and otherwise only the
+        # parts outside the corpus.
+        everywhere = ("deidentify-a-o", "others")
+        self.assertTrue(set(everywhere) < set(pydicom_coverage.PARTS))
+        every_part = ", ".join(f'"{part}"' for part in pydicom_coverage.PARTS)
+        kept = ", ".join(f'"{part}"' for part in everywhere)
+        dependency_parts = (
+            "        part: ${{ inputs.dependency-corpus && "
+            f"fromJSON('[{every_part}]') || fromJSON('[{kept}]') }}}}\n"
+        )
+        self.assertIn(dependency_parts, floors)
+        self.assertIn(
+            "      dependency-corpus:\n        required: false\n"
+            "        type: boolean\n        default: true\n",
+            text,
+        )
+        # Only CI narrows it; the release runs every part.
+        for caller in sorted(WORKFLOWS.glob("*.yml")):
+            if caller.name not in ("unit-tests.yml", "ci.yml"):
+                with self.subTest(caller=caller.name):
+                    self.assertNotIn(
+                        "dependency-corpus", caller.read_text(encoding="utf-8")
+                    )
         # The growing corpus gets an hour in both matrices; other floor
         # parts keep thirty minutes, while Windows already gets an hour.
         self.assertIn(
@@ -609,18 +738,18 @@ class WorkflowContractTests(unittest.TestCase):
         # place of the paths, and its others part adds the other parts'
         # ignores to them.
         narrow = workflow["narrow-extras"]
-        part = (
-            "          - extra: dicom\n"
-            "            part: {}\n"
-            "            marks: not slow\n"
-            "            paths: tests/dicom\n"
+        self.assertIn(
+            "        extra: [dicom]\n"
+            + dependency_parts
+            + "        marks: [not slow]\n"
+            "        paths: [tests/dicom]\n",
+            narrow,
         )
-        for name in pydicom_coverage.PARTS:
-            with self.subTest(narrow_part=name):
-                self.assertEqual(narrow.count(part.format(name)), 1)
-        self.assertEqual(
-            narrow.count("            part: "), len(pydicom_coverage.PARTS)
-        )
+        # The other extras run whole; each names its own extra, so none can
+        # join a dicom combination.
+        included = narrow.split("        include:\n", 1)[1]
+        self.assertNotIn("part:", included)
+        self.assertNotIn("extra: dicom", included)
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
             *ALONE_SELECTION,

@@ -67,11 +67,15 @@ def dataframe_to_sql(
 
     """
 
-    connection_str = (
-        f"mssql+pymssql://{utilities.SA_USER}:{utilities.SA_PASSWORD}@"
-        f"{utilities.MSQ_SERVER}:{utilities.MSQ_PORT}/{database}"
+    connection_url = sqlalchemy.engine.URL.create(
+        "mssql+pymssql",
+        username=utilities.SA_USER,
+        password=utilities.SA_PASSWORD,
+        host=utilities.MSQ_SERVER,
+        port=utilities.MSQ_PORT,
+        database=database,
     )
-    engine = sqlalchemy.create_engine(connection_str, echo=False)
+    engine = sqlalchemy.create_engine(connection_url, echo=False)
 
     with engine.connect() as con:
         # now SQLAlchemy to populate table

@@ -27,7 +27,10 @@ def config_dir_path() -> pathlib.Path:
 
 def get_config_dir() -> pathlib.Path:
     config_dir = config_dir_path()
-    config_dir.mkdir(exist_ok=True)
+    # A newly created per-user configuration directory should not be
+    # traversable by other local users. Keep existing modes unchanged for
+    # installations that deliberately share a configuration directory.
+    config_dir.mkdir(mode=0o700, exist_ok=True)
 
     return config_dir
 

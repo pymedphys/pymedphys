@@ -416,10 +416,13 @@ def test_a_run_measured_in_shards_merges_to_the_run_measured_whole(
     )
     downloads = tmp_path / "downloads"
     for number in range(1, 6):
-        # Classic CT images that convert, three slices of each series.
+        # Classic CT images that convert, three slices of each series but the
+        # fourth, which has nine.
         folder = downloads / UUID.format(number)
         folder.mkdir(parents=True)
-        for index, dataset in enumerate(classic.classic_series("CT", series=number)):
+        slices = 9 if number == 4 else 3
+        series = classic.classic_series("CT", slices, series=number)
+        for index, dataset in enumerate(series):
             dataset.SeriesInstanceUID = f"2.25.{number}"
             (folder / f"{index}.dcm").write_bytes(classic.encoded(dataset))
     extra = ["--converted"] if converted else []
@@ -441,11 +444,13 @@ def test_a_run_measured_in_shards_merges_to_the_run_measured_whole(
         assert not any(name in text for name in ("INVENTED", *subjects))
         found = json.loads(text)
         held.append(len(found["named"]) + found["withheld"])
-    # Four subjects in three shards, numbered in the series' order: the
-    # patient's two series stay together.
-    numbers = {name: index for index, name in enumerate(dict.fromkeys(subjects))}
-    assert len(numbers) == 4
-    assert held == [sum(numbers[name] % 3 == k for name in subjects) for k in range(3)]
+    # Four subjects in three shards, by their frames: the fourth series'
+    # subject, of nine frames, fills the first shard; the patient's two
+    # series, of six, stay together in the second; and the two subjects of
+    # three frames each go to the third. Counted by cases alone, the two
+    # series would fill the first shard instead.
+    assert len(set(subjects)) == 4
+    assert held == [1, 2, 2]
     out = tmp_path / "merged"
     assert command.main(["idc-merge", *map(str, records), "--out", str(out)]) == 0
     names = sorted(each.name for each in whole.iterdir())
@@ -453,7 +458,7 @@ def test_a_run_measured_in_shards_merges_to_the_run_measured_whole(
     for name in names:
         assert (out / name).read_text() == (whole / name).read_text()
     summary = json.loads((out / "summary.json").read_text())
-    assert sum(summary["frames"].values()) == 15
+    assert sum(summary["frames"].values()) == 21
     assert not summary["skipped"]
 
 
