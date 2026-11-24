@@ -25,6 +25,7 @@
 import pytest
 
 from pymedphys._constraints.head_neck_dvh import (
+    REIRRADIATION_REGIMENS,
     HEAD_NECK_CONSTRAINTS,
     Modality,
     bed,
@@ -461,3 +462,74 @@ class TestSourceApplicability:
             screen_reirradiation(float("nan"), 30, 1)  # non-finite dose
         # valid input still works
         assert len(screen_reirradiation(60, 30, 1)) >= 1
+
+
+class TestSourceAttributionRound3:
+    """Round-3 review: schedule/gap provenance, SER ranges, brainstem contour."""
+
+    def test_quad_shot_schedule_from_trial_protocol(self):
+        """The returned prescription matches NCT04454489 sections 4.3.3/4.3.6."""
+        quad = REIRRADIATION_REGIMENS["quad_shot_io"]
+        p = quad["prescription"]
+        assert "14.8 Gy in 4 fractions per cycle" in p
+        assert "3.7 Gy BID" in p
+        assert "44.4 Gy in 12 fx" in p
+        assert "pembrolizumab cycles 2-3, 6-7 and 11-12" in p
+        assert "Q4w" not in p  # the weekly interval was unsupported
+        assert "NCT04454489" in p
+        # schedule and gap carry explicit, separate provenance
+        assert "NCT04454489 protocol v2023-06-26" in quad["evidence"]
+        assert "departmental selection policy" in quad["evidence"]
+        assert "no three-year minimum" in quad["evidence"]
+        assert "departmental" in quad["gap_basis"]
+
+    def test_quad_shot_gap_boundary_and_gap_basis_echoed(self):
+        """The three-year filter is a departmental policy and is echoed out."""
+        below = [r["regimen"] for r in screen_reirradiation(60, 30, 2.9)]
+        assert "Quad-Shot + Pembrolizumab" not in below
+        at = {r["regimen"]: r for r in screen_reirradiation(60, 30, 3.0)}
+        assert "Quad-Shot + Pembrolizumab" in at
+        for r in at.values():
+            assert "gap_basis" in r
+        assert "departmental" in at["Quad-Shot + Pembrolizumab"]["gap_basis"]
+
+    def test_ser_docstring_states_no_numeric_range(self):
+        """Unsupported published SER ranges were removed (round-3 P2)."""
+        doc = ser_adjusted_dose.__doc__
+        assert "1.1-1.3" not in doc
+        assert "1.2-1.5" not in doc
+        assert "no recommended value" in doc
+
+    def test_brainstem_required_structure_mapping(self):
+        """UK SABR brainstem row applies to the contour excluding medulla."""
+        bs = HEAD_NECK_CONSTRAINTS["brainstem"]
+        mapping = bs["required_structure"]
+        assert "whole organ" in mapping["conventional"]
+        for key in ("sbrt_1fx", "sbrt_3fx", "sbrt_5fx"):
+            assert "excluding medulla" in mapping[key]
+        r = check_constraint("brainstem", Modality.SBRT_5FX, {"d0_035cc": 24.0})
+        assert "excluding medulla" in r["structure"]
+        r2 = check_constraint("brainstem", Modality.CONVENTIONAL, {"dmax": 52.0})
+        assert "whole organ" in r2["structure"]
+
+    def test_out_of_domain_measurements_are_incomplete(self):
+        """Negative doses and out-of-range volume percentages never pass."""
+        r = check_plan(Modality.CONVENTIONAL, {"spinal_cord": {"dmax": -1.0}})
+        assert r["plan_pass"] is False
+        assert r["plan_status"] == "incomplete"
+
+        r2 = check_plan(
+            Modality.CONVENTIONAL, {"mandible": {"dmax": -1.0, "v60": 10.0}}
+        )
+        assert r2["plan_pass"] is False
+        assert r2["plan_status"] == "incomplete"
+
+        r3 = check_plan(
+            Modality.CONVENTIONAL, {"mandible": {"dmax": 60.0, "v60": 105.0}}
+        )
+        assert r3["plan_pass"] is False
+        assert r3["plan_status"] == "incomplete"
+
+        # in-domain boundary values are accepted
+        r4 = check_plan(Modality.CONVENTIONAL, {"mandible": {"dmax": 60.0, "v60": 0.0}})
+        assert r4["plan_pass"] is True

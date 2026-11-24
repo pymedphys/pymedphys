@@ -71,6 +71,12 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
         "sbrt_3fx": {"d0_035cc": 23.1},
         "sbrt_5fx": {"d0_035cc": 31.0},
         "source": "conventional 54 Gy: QUANTEC 2010 (Dmax <54 Gy); SBRT 15/23.1/31 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
+        "required_structure": {
+            "conventional": "brainstem (whole organ)",
+            "sbrt_1fx": "brainstem excluding medulla (UK SABR 2022 Table 6)",
+            "sbrt_3fx": "brainstem excluding medulla (UK SABR 2022 Table 6)",
+            "sbrt_5fx": "brainstem excluding medulla (UK SABR 2022 Table 6)",
+        },
     },
     "optic_chiasm": {
         "level": "hard",
@@ -200,10 +206,15 @@ def ser_adjusted_dose(physical_dose: float, ser: float = 1.0) -> float:
     physical_dose : float
         Physical dose in Gy.
     ser : float, optional
-        Enhancement ratio supplied by the caller. Published ranges are
-        model-specific: 1.1-1.3 for cisplatin/cetuximab (phase III tumour
-        data); 1.2-1.5 for ADC/IO (preclinical only, e.g. PMID:34074654, a
-        single anti-TIP1 ADC in NSCLC cell lines and xenografts).
+        Enhancement ratio supplied by the caller. Published dose-modifying
+        factors exist for named agents in specific experimental models
+        (e.g. the anti-TIP1 ADC of PMID:34074654, in A549/H1299 NSCLC
+        models), but no class-wide SER range is established for
+        cisplatin, cetuximab, immunotherapy or ADCs, in particular none
+        for head-and-neck normal tissues. Clinical outcome improvements
+        do not determine a physical-dose multiplier, so this module
+        states no recommended value: callers must supply and cite their
+        own assumption.
 
     Returns
     -------
@@ -272,6 +283,13 @@ def cumulative_bed(
 
 
 # ── Constraint Checking ───────────────────────────────────
+
+
+def _out_of_domain(metric_key: str, value: float) -> bool:
+    """Doses are non-negative; volume percentages lie in [0, 100]."""
+    if metric_key.startswith("v"):  # e.g. v60 is a volume percentage
+        return value < 0 or value > 100
+    return value < 0
 
 
 def _is_valid_number(value) -> bool:
@@ -353,6 +371,9 @@ def check_constraint(
         measured = metrics[metric_key]
         if not _is_valid_number(measured):
             missing.append(f"{metric_key} (invalid value: {measured!r})")
+            continue
+        if _out_of_domain(metric_key, measured):
+            missing.append(f"{metric_key} (out of range: {measured!r})")
             continue
         if measured > limit_value:
             excess_pct = (measured - limit_value) / limit_value * 100
@@ -542,12 +563,13 @@ def check_plan(
 REIRRADIATION_REGIMENS = {
     "quad_shot_io": {
         "name": "Quad-Shot + Pembrolizumab",
-        "prescription": "3.7 Gy/fx x 4 per cycle BID, Q4w x 3 cycles",
+        "prescription": "14.8 Gy in 4 fractions per cycle (3.7 Gy BID, >=6 h apart, over 2 consecutive days); up to 3 cycles = 44.4 Gy in 12 fx, placed between pembrolizumab cycles 2-3, 6-7 and 11-12 (never on ICI infusion day); later cycles at the treating radiation oncologist's discretion (NCT04454489 v2023-06-26, sections 4.3.3/4.3.6)",
         "dose_per_fx": 3.7,
         "fractions_per_cycle": 4,
         "cycles": 3,  # 12 fx, 44.4 Gy total
-        "evidence": "JAMA Otolaryngol 2026 (PMID:42313403)",
+        "evidence": "Schedule: NCT04454489 protocol v2023-06-26 sections 4.3.3/4.3.6; fraction dose and twice-daily delivery also in JAMA Otolaryngol 2026 (PMID:42313403). The >=3-year gap filter is a departmental selection policy: the trial excludes radiotherapy to the target region within 30 days and prior head & neck radiotherapy precluding safe delivery per physician judgment (sections 3.2.1-3.2.2), with no three-year minimum",
         "min_gap_years": 3.0,
+        "gap_basis": "departmental selection policy (conservative local filter)",
         "screening_threshold_eqd2": 50.0,
     },
     "q3w_io": {
@@ -558,6 +580,7 @@ REIRRADIATION_REGIMENS = {
         "cycles": 6,  # 6 fx, 21.0 Gy total
         "evidence": "Institutional regimen, unpublished (Shanghai Ninth People's Hospital)",
         "min_gap_years": 0.5,
+        "gap_basis": "departmental practice (unpublished regimen)",
         "screening_threshold_eqd2": 50.0,
     },
     "conventional": {
@@ -568,6 +591,7 @@ REIRRADIATION_REGIMENS = {
         "cycles": 1,  # 15 fx, 30.0 Gy total
         "evidence": "Standard clinical practice",
         "min_gap_years": 0.0,
+        "gap_basis": "none - this option is always eligible",
         "screening_threshold_eqd2": 60.0,  # cumulative BED3 = 100 Gy
     },
     "sbrt_continuous": {
@@ -583,6 +607,7 @@ REIRRADIATION_REGIMENS = {
             "cisplatin, a different schedule"
         ),
         "min_gap_years": 2.0,
+        "gap_basis": "published review preference: Tham et al. 2024 section 5.1 prefers more than two years (PMID:38892731)",
         "screening_threshold_eqd2": 50.0,
     },
 }
@@ -611,7 +636,7 @@ def screen_reirradiation(
         One entry per eligible regimen, sorted by ``cumulative_eqd2``:
         ``regimen``, ``prescription``, ``new_course_total_dose_gy``,
         ``new_course_eqd2``, ``prior_residual_eqd2``, ``cumulative_eqd2``,
-        ``screening_threshold_eqd2``, ``below_screening_threshold`` and
+        ``screening_threshold_eqd2``, ``gap_basis``, ``below_screening_threshold`` and
         ``evidence``.
 
     Raises
@@ -693,6 +718,7 @@ def screen_reirradiation(
                 "prior_residual_eqd2": round(residual_eqd2, 1),
                 "cumulative_eqd2": round(cumulative_eqd2, 1),
                 "screening_threshold_eqd2": threshold,
+                "gap_basis": regimen["gap_basis"],
                 "below_screening_threshold": cumulative_eqd2 < threshold,
                 "evidence": regimen["evidence"],
             }

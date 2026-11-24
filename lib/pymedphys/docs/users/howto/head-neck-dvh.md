@@ -29,6 +29,13 @@ the tool and how to read its output; it does not duplicate the numbers.
   fractionation the limit applies to the anatomical cord. Each check
   reports which structure it expects in the result's `structure` field;
   supply the measurement for that structure.
+* For brainstem under SBRT, the cited UK SABR 2022 row applies to the
+  **brainstem excluding the medulla**; under conventional fractionation it
+  applies to the whole brainstem. This is likewise reported in the
+  result's `structure` field.
+* Doses must be non-negative and volume percentages between 0 and 100.
+  A measurement outside those ranges is reported as `incomplete` rather
+  than checked against the limit.
 * Fractionation is selected with `Modality`: `CONVENTIONAL` (1.8-2.0
   Gy/fx), `SBRT_1FX`, `SBRT_3FX` or `SBRT_5FX`. A modality without a
   defined limit returns `not_evaluated` rather than borrowing another
