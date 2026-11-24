@@ -20,6 +20,8 @@ import json
 
 import pytest
 
+from pymedphys._imports import pydicom
+
 from pymedphys._dicom.deidentify import text_evaluation as evaluation
 from pymedphys._dicom.deidentify import text_evaluation_shards as shards
 from pymedphys._dicom.deidentify.text_evaluation_cases import cases_report
@@ -30,7 +32,10 @@ from pymedphys._dicom.deidentify.text_evaluation_criteria import (
 from pymedphys._dicom.deidentify.text_evaluation_detector import PostProcessing
 from pymedphys._dicom.deidentify.text_evaluation_frames import EvaluationRefused
 from pymedphys._dicom.deidentify.text_evaluation_idc import OPEN_COLLECTIONS
-from pymedphys._dicom.deidentify.text_evaluation_sources import SkippedFiles
+from pymedphys._dicom.deidentify.text_evaluation_sources import (
+    DicomCase,
+    SkippedFiles,
+)
 
 from ._text_evaluation_stand_ins import (
     SECRET,
@@ -186,8 +191,10 @@ def test_a_subjects_cases_are_numbered_by_order_alone_and_kept_in_one_shard():
     # The subject "z" is one in collection c, another in d, and the first
     # again where d's case names c as where its subject is named.
     assert groups == (0, 1, 0, 2, 0)
-    assert shards.shard_positions(groups, 0, 2) == [0, 2, 3, 4]
-    assert shards.shard_positions(groups, 1, 2) == [1]
+    # Unweighted, "z" of c, with three cases, fills one shard, and the
+    # other two subjects the other.
+    assert shards.shard_positions(groups, 0, 2) == [0, 2, 4]
+    assert shards.shard_positions(groups, 1, 2) == [1, 3]
     # The numbers follow from the order alone, not from what the subjects
     # are named.
     renamed = [
@@ -195,6 +202,48 @@ def test_a_subjects_cases_are_numbered_by_order_alone_and_kept_in_one_shard():
         for each in cases
     ]
     assert shards.case_groups(renamed) == groups
+
+
+def test_subjects_go_heaviest_first_to_the_least_loaded_shard():
+    # Subjects 0 to 4 weigh 2, 9, 4, 4, and 3: 9 alone, then 4 and 4 apart,
+    # then 3 and 2 onto the lighter of those, then the lighter again.
+    groups = (0, 1, 2, 3, 4, 0)
+    weights = (1, 9, 4, 4, 3, 1)
+    found = [shards.shard_positions(groups, k, 3, weights) for k in range(3)]
+    assert found == [[1], [2, 4], [0, 3, 5]]
+    # Every case is in exactly one shard, for any count of shards.
+    for count in range(1, 8):
+        places = [
+            place
+            for k in range(count)
+            for place in shards.shard_positions(groups, k, count, weights)
+        ]
+        assert sorted(places) == list(range(len(groups)))
+
+
+def test_a_shard_needs_each_cases_weight():
+    with pytest.raises(EvaluationRefused, match="weight"):
+        shards.shard_positions((0, 1), 0, 2, (1,))
+
+
+def test_a_cases_weight_is_its_files_frames(tmp_path):
+    multiframe = tmp_path / "multiframe.dcm"
+    dataset = pydicom.Dataset()
+    dataset.NumberOfFrames = 7
+    dataset.SOPClassUID = "1.2.840.10008.5.1.4.1.1.7"
+    dataset.SOPInstanceUID = "1.2.826.0.1.3680043.2.1125.7"
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    dataset.file_meta.MediaStorageSOPClassUID = dataset.SOPClassUID
+    dataset.file_meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
+    dataset.save_as(multiframe, enforce_file_format=True)
+    other = tmp_path / "other.dcm"
+    other.write_bytes(b"not DICOM")
+    case = DicomCase("c", "case", (str(multiframe), str(other), str(tmp_path / "gone")))
+    # Seven frames, one for the file that is not DICOM, and one for the
+    # file that is missing.
+    assert shards.case_weight(case) == 9
+    assert shards.case_weight(SkippedFiles("c", "s", "not-asked-for", 3)) == 1
 
 
 @pytest.mark.parametrize("shard, count", [(-1, 2), (2, 2), (0, 0)])

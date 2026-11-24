@@ -441,11 +441,11 @@ def test_a_run_measured_in_shards_merges_to_the_run_measured_whole(
         assert not any(name in text for name in ("INVENTED", *subjects))
         found = json.loads(text)
         held.append(len(found["named"]) + found["withheld"])
-    # Four subjects in three shards, numbered in the series' order: the
-    # patient's two series stay together.
-    numbers = {name: index for index, name in enumerate(dict.fromkeys(subjects))}
-    assert len(numbers) == 4
-    assert held == [sum(numbers[name] % 3 == k for name in subjects) for k in range(3)]
+    # Four subjects in three shards, by their frames: the patient's two
+    # series, of six frames, stay together in the first shard, and the
+    # three other subjects, of three frames each, fill the others.
+    assert len(set(subjects)) == 4
+    assert held == [2, 2, 1]
     out = tmp_path / "merged"
     assert command.main(["idc-merge", *map(str, records), "--out", str(out)]) == 0
     names = sorted(each.name for each in whole.iterdir())

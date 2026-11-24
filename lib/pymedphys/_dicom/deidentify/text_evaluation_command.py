@@ -125,6 +125,7 @@ from .text_evaluation_phantoms import phantom_cases
 from .text_evaluation_search import GRIDS, VARIANTS
 from .text_evaluation_shards import (
     case_groups,
+    case_weight,
     merged,
     shard_positions,
     shard_record,
@@ -396,7 +397,8 @@ def _measure(arguments: argparse.Namespace) -> dict[str, str]:
     if arguments.shard is not None:
         shard, shards = arguments.shard
         groups = case_groups(cases)
-        positions = shard_positions(groups, shard, shards)
+        weights = [case_weight(each) for each in cases]
+        positions = shard_positions(groups, shard, shards, weights)
         run = evaluate(
             [cases[place] for place in positions],
             detector,
