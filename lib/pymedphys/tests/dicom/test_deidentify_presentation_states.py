@@ -34,7 +34,9 @@ from pymedphys._dicom.deidentify import (
     icc_cleaning,
     icc_profiles,
     iods,
+    pixel_risk,
     policy,
+    release_gate,
     run,
     scope,
 )
@@ -64,6 +66,8 @@ PRESENTATION_CREATION_DATE = "(0070,0082)"
 PRESENTATION_CREATION_TIME = "(0070,0083)"
 GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"
 REFERENCED_SERIES_SEQUENCE = "(0008,1115)"
+OVERLAY_ACTIVATION_LAYER = 0x60001001
+CLEAN_GRAPHICS_CODE = "113103"
 # The presets that select a Retain Longitudinal Temporal Information Option,
 # under which Presentation Creation Date and Time are kept or shifted.
 DATED_PRESETS = ("tps-import", "public-release")
@@ -281,6 +285,94 @@ def test_every_preset_sequesters_a_presentation_state_with_graphic_annotations(
         )
         in result.reasons
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize("options", [[], [policy.CLEAN_GRAPHICS]], ids=["", "graphics"])
+def test_a_presentation_state_that_activates_an_overlay_holds_no_overlay(options):
+    # The Overlay Activation Module (PS3.3 C.11.7) shows an overlay of the
+    # referenced image on one of the state's graphic layers, by its group.
+    # That group holds no overlay of the state's own, and the state has no
+    # Pixel Data, so Clean Graphics has nothing to clear and releases it
+    # with its code, as the run without the option releases it.
+    dataset = _presentation_state()
+    dataset.GraphicLayerSequence = [
+        synthetic.item(GraphicLayer="OVERLAY", GraphicLayerOrder=1)
+    ]
+    dataset.add_new(OVERLAY_ACTIVATION_LAYER, "CS", "OVERLAY")
+    transform = InstanceTransform(
+        policy.compose_custom_policy([policy.MODIFIED_DATES, *options]),
+        KEY,
+        unvalidated_policy=True,
+    )
+    data = synthetic.written(dataset)
+
+    result = transform(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written[OVERLAY_ACTIVATION_LAYER].value == "OVERLAY"
+    codes = [item.CodeValue for item in written.DeidentificationMethodCodeSequence]
+    assert (CLEAN_GRAPHICS_CODE in codes) == bool(options)
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "options",
+    [
+        *([preset] for preset in DATED_PRESETS),
+        [policy.MODIFIED_DATES, policy.CLEAN_GRAPHICS],
+    ],
+    ids=[*DATED_PRESETS, "graphics"],
+)
+def test_a_kept_overlay_activation_layer_is_searched_for_residuals(options):
+    # Overlay Activation Layer is kept wherever the state is released, so
+    # the second pass still searches its value: the patient's name typed
+    # into it, and into the layer that it names, withholds the file.
+    family = synthetic.PATIENTS_NAME.split("^", maxsplit=1)[0]
+    dataset = _presentation_state()
+    dataset.GraphicLayerSequence = [
+        synthetic.item(GraphicLayer=family, GraphicLayerOrder=1)
+    ]
+    dataset.add_new(OVERLAY_ACTIVATION_LAYER, "CS", family)
+    composed = (
+        policy.compose_policy(options[0])
+        if len(options) == 1
+        else policy.compose_custom_policy(options)
+    )
+    transform = InstanceTransform(
+        composed,
+        KEY,
+        cleaning=(
+            DescriptorCleaning(None, ReviewedNames.empty())
+            if CLEAN_DESCRIPTORS in composed.options
+            else None
+        ),
+        face_review=(
+            NO_FACE_VERDICTS
+            if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in composed.options
+            else None
+        ),
+        unvalidated_policy=True,
+    )
+    data = synthetic.written(dataset)
+
+    result = transform(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written[OVERLAY_ACTIVATION_LAYER].value == family
+    coverage = getattr(result.evidence, "coverage", result.evidence)
+    condition = release_gate.release_condition(coverage, result.data)
+    assert condition.decision is release_gate.Decision.WITHHOLD
+    assert release_gate.ReasonCode.RESIDUAL_PERSON_NAME in [
+        reason.code for reason in condition.reasons
+    ]
+    assert any(
+        reason.location.element == ElementPath((), "(6000,1001)")
+        for reason in condition.reasons
+    ), condition.reasons
 
 
 @pytest.mark.parametrize("preset", policy.PRESETS)

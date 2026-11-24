@@ -1,0 +1,49 @@
+name: Merge Queue Cleanup
+
+# The merge queue drops a merge group when a group ahead of it fails or times
+# out, or its pull request leaves the queue, and builds the groups behind it
+# again. The dropped group's CI and security runs carry on: each group's ref
+# is its own concurrency group, and GitHub does not cancel them. On 22 Nov
+# 2026 such runs took 42% of the merge groups' runner time while the rebuilt
+# groups waited for runners and timed out in turn. So each new merge group,
+# which is when groups have just been dropped, cancels the unfinished runs of
+# every group whose branch is gone. The hourly run catches a group dropped
+# with no group behind it, and a manual run does the same on demand.
+on:
+  merge_group:
+  schedule:
+    - cron: '23 * * * *'  # Hourly; staggered to avoid top-of-hour congestion
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One cleanup at a time; a later trigger waits, and GitHub keeps only the
+# newest waiting run, which sees every group dropped by then.
+concurrency:
+  group: merge-queue-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cancel-dropped:
+    name: Cancel runs of dropped merge groups
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Cancelling a workflow run needs actions: write; reading the branches
+    # needs contents: read. Nothing else in this repository's workflows holds
+    # actions: write.
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Cancel the runs of merge groups whose branch is gone
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          # Must exist; a token that cannot see it cancels nothing.
+          DEFAULT_BRANCH: main
+        run: python .github/scripts/cancel_dropped_merge_groups.py
