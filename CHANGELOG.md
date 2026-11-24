@@ -18,7 +18,7 @@ The DICOM sender releases an established association even when an input file
 cannot be read, an input has the wrong type, or an echo or storage request
 raises an exception. Repeated failed operations no longer leave these
 connections open until their network timeout.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/dicom-sender-association-cleanup)
+[PR #2712](https://github.com/pymedphys/pymedphys/pull/2712)
 
 ### RT Plans written by `Delivery.to_dicom`
 
