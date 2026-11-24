@@ -882,7 +882,7 @@ full, with crops.
   run a detector variant and a post-processing grid named in
   `text_evaluation_search`, the part of the split, and the most series or
   folders from one collection and in all for each source; runs of different
-  variants and grids run side by side
+  models, variants, and grids run side by side
 - **Steps**: two jobs, each of which installs the project with the `user`
   and `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
   `.github/text-evaluation/requirements.txt` with `--require-hashes
