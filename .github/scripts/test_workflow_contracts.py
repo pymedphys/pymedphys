@@ -1013,9 +1013,20 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn(
             "\nconcurrency:\n"
             "  group: text-detector-evaluation-${{ github.ref }}-"
-            "${{ inputs.model }}-${{ inputs.variant }}-${{ inputs.grid }}\n"
+            "${{ inputs.model || 'PP-OCRv6 small' }}-${{ inputs.variant }}-"
+            "${{ inputs.grid }}\n"
             "  cancel-in-progress: false\n",
             text,
+        )
+        # The model is one of the adapters, by name, so a misspelt name is
+        # refused at dispatch, not after the downloads; the library's tests
+        # check that the options are its adapters.
+        self.assertIn(
+            "\n      model:\n"
+            "        description: The model's adapter, by name.\n"
+            "        type: choice\n"
+            "        options:\n",
+            triggers,
         )
         # Each of its three jobs can only read.
         self.assertEqual(
