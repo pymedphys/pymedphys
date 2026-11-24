@@ -793,6 +793,11 @@ class WorkflowContractTests(unittest.TestCase):
     def test_each_set_of_extras_keeps_its_own_data_cache(self):
         actions = WORKFLOWS.parent / "actions"
         cache = (actions / "cache-data/action.yml").read_text(encoding="utf-8")
+        # The key can read only a declared input, and an empty one, as in
+        # deps.yml, keeps the key per job.
+        declared = cache.split("\nruns:\n", 1)[0]
+        self.assertRegex(declared, r"(?m)^inputs:\n  name:\n")
+        self.assertIn("\n    default: ''\n", declared.split("\n  name:\n", 1)[1])
         # An exact hit saves nothing, so combinations of one matrix that read
         # different files must not share an exact key; the prefix still lets
         # a cold combination start from any cache of the same manifest.
