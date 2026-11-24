@@ -91,17 +91,12 @@ def test_the_search_rejects_a_normalisation_it_does_not_know(normalisation):
 
 
 @pytest.mark.parametrize(
-    ("distance_criterion_mm", "search_step_fraction", "steps"),
-    [(3, 0.1, 10), (3, 0.05, 20), (1.5, 0.2, 5)],
+    ("distance_criterion_mm", "search_step_fraction"),
+    [(3, 0.1), (0.7, 0.1), (3, 0.05), (1.5, 0.2), (2, 0.3)],
 )
-def test_the_search_step_is_the_distance_criterion_divided_by_a_number_of_steps(
-    distance_criterion_mm, search_step_fraction, steps, monkeypatch
+def test_the_search_step_is_the_fraction_of_the_distance_criterion(
+    distance_criterion_mm, search_step_fraction, monkeypatch
 ):
-    # The search has always divided the distance criterion by a number of
-    # steps. Multiplying by the step fraction rounds differently in each of
-    # these cases: 3 * 0.1 is not 3 / 10. A step that differs in its last
-    # digit moves every shell, and so changes the gamma values returned.
-    assert distance_criterion_mm / steps != distance_criterion_mm * search_step_fraction
     recorded = []
     original = createshells.calculate_coordinates_shell
 
@@ -123,4 +118,4 @@ def test_the_search_step_is_the_distance_criterion_divided_by_a_number_of_steps(
     )
 
     assert len(recorded) > 1
-    assert set(recorded) == {distance_criterion_mm / steps}
+    assert set(recorded) == {distance_criterion_mm * search_step_fraction}

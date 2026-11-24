@@ -355,17 +355,6 @@ class GammaInternalFixedOptions:
         return self.dose_criterion_percent / 100 * self.normalisation_dose
 
     @property
-    def steps_per_distance_criterion(self):
-        """The number of search steps in one distance criterion.
-
-        The search divides a distance criterion by this number and never
-        multiplies it by ``search_step_fraction``. The two round differently:
-        ``3 / 10`` is not ``3 * 0.1``. A step that differs in its last digit
-        moves every shell, which changes gamma values.
-        """
-        return 1 / self.search_step_fraction
-
-    @property
     def free_axes_evaluation(self):
         return tuple(self.axes_evaluation[axis] for axis in self.free_axes)
 
@@ -554,9 +543,7 @@ class GammaInternalFixedOptions:
             flat_mesh_axes_reference,
             reference_points_to_calc,
             axes_evaluation,
-            resolution=(
-                np.min(distance_criterion_mm) / options.steps_per_distance_criterion
-            ),
+            resolution=np.min(distance_criterion_mm) * search_step_fraction,
         )
 
         return options
@@ -609,8 +596,7 @@ def _gamma_loop_for_one_distance(
     maximum_test_distance = min(
         distance_criterion_mm * options.gamma_cap, options.maximum_test_distance
     )
-    steps = options.steps_per_distance_criterion
-    distance_step_size = distance_criterion_mm / steps
+    distance_step_size = distance_criterion_mm * options.search_step_fraction
 
     still_searching_for_gamma = np.full(current_gamma.shape, True)
     to_be_checked = options.reference_points_to_calc
@@ -651,8 +637,8 @@ def _gamma_loop_for_one_distance(
 
         distance_step_size = np.max(
             [
-                distance / steps / options.gamma_cap,
-                distance_criterion_mm / steps,
+                distance * options.search_step_fraction / options.gamma_cap,
+                distance_criterion_mm * options.search_step_fraction,
             ]
         )
 
