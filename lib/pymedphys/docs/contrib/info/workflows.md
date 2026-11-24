@@ -242,8 +242,7 @@ Fast unit tests with smart matrix strategy.
     scheduling instead: its module puts every test in one of two classes, by
     the module-scoped defacing runs the tests share, so each worker builds
     only its own class's runs, and only the defaced run that both classes need
-    is built twice. The `xdist_group` mark that `loadgroup` reads groups
-    nothing under pytest 9.2 with pytest-xdist 3.8.0
+    is built twice
   - Keeps Numba's parallel kernels on two threads per worker and other
     numerical thread pools on one thread, bounding contention on the runner
   - Reports the 15 slowest tests to help investigate future runtime growth
