@@ -77,7 +77,7 @@ from .text_evaluation_frames import EvaluationRefused
 from .text_evaluation_idc import IdcSeriesCase
 from .text_evaluation_sources import DicomCase
 
-SHARD_FORMAT = "pymedphys-deid-text-detector-shard/1"
+SHARD_FORMAT = "pymedphys-deid-text-detector-shard/2"
 
 
 @dataclasses.dataclass
