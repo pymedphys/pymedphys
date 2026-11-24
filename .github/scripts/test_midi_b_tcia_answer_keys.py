@@ -36,14 +36,28 @@ class PageFetchSafetyTests(unittest.TestCase):
         ):
             self.assertEqual(keys._page(attempts=1), PAGE)
 
+    def test_accepts_a_page_at_the_exact_byte_limit(self):
+        payload = "é".encode("utf-8") * (keys.MAX_PAGE_BYTES // 2)
+        response = BytesIO(payload)
+        with mock.patch.object(keys.urllib.request, "urlopen", return_value=response):
+            self.assertEqual(keys._page(attempts=1), payload.decode("utf-8"))
+        self.assertTrue(response.closed)
+
     def test_rejects_unbounded_remote_html_response(self):
-        oversized_page = b"x" * (keys.MAX_PAGE_BYTES + 1)
-        with mock.patch.object(
-            keys.urllib.request, "urlopen", return_value=BytesIO(oversized_page)
-        ) as request:
+        response = BytesIO(b"x" * (keys.MAX_PAGE_BYTES + 100))
+        with (
+            mock.patch.object(response, "read", wraps=response.read) as read,
+            mock.patch.object(
+                keys.urllib.request, "urlopen", return_value=response
+            ) as request,
+            mock.patch.object(keys.time, "sleep") as sleep,
+        ):
             with self.assertRaisesRegex(ValueError, "HTML size limit"):
-                keys._page(attempts=1)
+                keys._page(attempts=3)
+            read.assert_called_once_with(keys.MAX_PAGE_BYTES + 1)
             request.assert_called_once()
+            sleep.assert_not_called()
+        self.assertTrue(response.closed)
 
 
 class AscliFailureTests(unittest.TestCase):
