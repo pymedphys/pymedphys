@@ -26,11 +26,27 @@ from dataclasses import dataclass
 
 from pymedphys._imports import numpy as np
 
+RESULT_IS_NOT_AN_ARRAY = (
+    "pymedphys.gamma returns a result, not an array. Use result.gamma for the "
+    "gamma values, and result.passed, result.analysed and "
+    "result.percent_passed for the summary."
+)
+
 _NO_ANALYSED_POINTS = (
     "No reference point was analysed, so there is no percentage passed. Every "
     "gamma value is NaN or masked; check the lower dose cutoff, random_subset, "
     "and any mask."
 )
+
+
+class ResultMarker:
+    """Marks an object that holds gamma values without being an array.
+
+    The counting functions accept arrays. Given one of these, they say where
+    the array and the counts are instead of failing inside NumPy.
+    """
+
+    __slots__ = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +132,8 @@ def gamma_pass_counts(gamma) -> GammaPassCounts:
     ------
     TypeError
         If ``gamma`` is the dict that :func:`pymedphys.gamma` returns for
-        several thresholds, rather than one of its values.
+        several thresholds, rather than one of its values, or is a gamma
+        result object, which carries its own counts.
     ValueError
         If any gamma value is negative.
 
@@ -124,6 +141,12 @@ def gamma_pass_counts(gamma) -> GammaPassCounts:
     --------
     pymedphys.gamma_percent_passed : The percentage alone.
     """
+    if isinstance(gamma, ResultMarker) or (
+        isinstance(gamma, (list, tuple))
+        and any(isinstance(item, ResultMarker) for item in gamma)
+    ):
+        raise TypeError(RESULT_IS_NOT_AN_ARRAY)
+
     if isinstance(gamma, Mapping):
         raise TypeError(
             "gamma holds results for several thresholds, keyed by (dose, "
