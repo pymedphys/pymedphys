@@ -41,7 +41,12 @@ import time
 from pathlib import Path
 
 import numpy as np
-from gamma_performance import checked_checkout, machine_description
+from gamma_performance import (
+    REVISION_ABSOLUTE_TOLERANCE,
+    checked_checkout,
+    compare_revisions,
+    machine_description,
+)
 from gamma_scaling_process import StudyStopped, run_command
 
 PREVIOUS = "866f83edad8586a42a739094e488f45242b72c95"
@@ -88,8 +93,20 @@ def case_id(dimension, profile, scale):
     return f"{dimension}d-{profile}-{scale:g}x"
 
 
-def compare_arrays(paths, atol=1e-10):
-    """Compare every value in bounded-memory chunks; no checksums substitute."""
+def compare_arrays(paths, atol=1e-10, revision_atol=REVISION_ABSOLUTE_TOLERANCE):
+    """Compare every value in bounded-memory chunks; no checksums substitute.
+
+    Old and new gamma for each interpolator must agree as
+    gamma_performance.compare_revisions requires: the same NaN and infinite
+    positions and pass or fail, and values within ``revision_atol``. The
+    result records whether they were also equal. PyMedPhys and SciPy gamma
+    from the new source must have the same NaN positions and agree within
+    ``atol``.
+    """
+    revision = {
+        algorithm: {"exact": True, "max_abs_difference": 0.0}
+        for algorithm in ("pymedphys", "scipy")
+    }
     arrays = {
         key: np.load(path, mmap_mode="r", allow_pickle=False)
         for key, path in paths.items()
@@ -106,9 +123,18 @@ def compare_arrays(paths, atol=1e-10):
                 key: array.reshape(-1)[start : start + 1_000_000]
                 for key, array in arrays.items()
             }
-            for algorithm in ("pymedphys", "scipy"):
-                np.testing.assert_array_equal(
-                    chunks[f"previous-{algorithm}"], chunks[f"current-{algorithm}"]
+            for algorithm, compared in revision.items():
+                try:
+                    checked = compare_revisions(
+                        chunks[f"previous-{algorithm}"],
+                        chunks[f"current-{algorithm}"],
+                        revision_atol,
+                    )
+                except AssertionError as error:
+                    raise AssertionError(f"Old/new {algorithm}: {error}") from None
+                compared["exact"] &= checked["exact"]
+                compared["max_abs_difference"] = max(
+                    compared["max_abs_difference"], checked["max_abs_difference"]
                 )
             left, right = chunks["current-pymedphys"], chunks["current-scipy"]
             np.testing.assert_array_equal(np.isnan(left), np.isnan(right))
@@ -123,7 +149,14 @@ def compare_arrays(paths, atol=1e-10):
             )
             np.testing.assert_allclose(left, right, rtol=0, atol=atol, equal_nan=True)
         return {
-            "revision_equality": "exact",
+            "revision_equality": "exact"
+            if all(compared["exact"] for compared in revision.values())
+            else "within_tolerance",
+            "revision_max_abs_difference": max(
+                compared["max_abs_difference"] for compared in revision.values()
+            ),
+            "revision_absolute_tolerance": revision_atol,
+            "revision_pass_disagreements": 0,
             "nan_pattern_equal": True,
             "algorithm_max_abs_difference": maximum,
             "algorithm_rmse": float(np.sqrt(squared_error / finite_count))
@@ -136,6 +169,36 @@ def compare_arrays(paths, atol=1e-10):
     finally:
         for array in arrays.values():
             array._mmap.close()
+
+
+def revisions_agree(comparison):
+    """Whether a saved four-way comparison shows old and new gamma agreeing.
+
+    Comparisons saved before the cross-revision allowance required equality.
+    """
+    if not comparison["nan_pattern_equal"]:
+        return False
+    if comparison["revision_equality"] == "exact":
+        return True
+    tolerance = comparison.get("revision_absolute_tolerance", np.inf)
+    return (
+        comparison["revision_equality"] == "within_tolerance"
+        and comparison.get("revision_pass_disagreements") == 0
+        and tolerance <= REVISION_ABSOLUTE_TOLERANCE
+        and comparison.get("revision_max_abs_difference", np.inf) <= tolerance
+    )
+
+
+def revision_note(comparisons):
+    """Say how old and new gamma agreed, for logs and figures."""
+    comparisons = list(comparisons)
+    if all(c["revision_equality"] == "exact" for c in comparisons):
+        return "Old/new arrays equal exactly"
+    largest = max(c.get("revision_max_abs_difference", 0.0) for c in comparisons)
+    return (
+        f"Old/new arrays agree within {REVISION_ABSOLUTE_TOLERANCE:g} (largest "
+        f"difference {largest:.1e}), with equal NaN positions and pass/fail"
+    )
 
 
 def study_groups(config):
@@ -348,7 +411,7 @@ def run_study(config, roots, output, result, stop_file=None, deadline=None):
             for record in group_records:
                 record["verified"] = True
             print(
-                "  Exact old/new arrays; PyMedPhys/SciPy checked across every element",
+                f"  {revision_note([comparison])}; PyMedPhys/SciPy checked across every element",
                 flush=True,
             )
             write_json(output / "results.json", result)
@@ -439,10 +502,7 @@ def validate_records(result):
             raise ValueError("A verified group must contain all four implementations")
         if len({r["input_sha256"] for r in selected}) != 1:
             raise ValueError("Four-way comparison used different inputs")
-        if (
-            comparison["revision_equality"] != "exact"
-            or not comparison["nan_pattern_equal"]
-        ):
+        if not revisions_agree(comparison):
             raise ValueError(
                 "Incorrect gamma results cannot be plotted as a speed gain"
             )
@@ -863,7 +923,7 @@ def save_report(result, output):
             f"{environment_note}\n"
             f"Up to {count} observed rounds per case; medians and min–max, not confidence intervals. Ratios paired within runners; full warm-ups excluded.\n"
             f"Rounds at ascending grid sizes: {'; '.join(round_counts)}.\n"
-            f"{field_note} Old/new arrays equal exactly; PyMedPhys/SciPy checked to 1e-10.\n"
+            f"{field_note} {revision_note(result['comparisons'].values())}; PyMedPhys/SciPy checked to 1e-10.\n"
             f"Verified groups: {len(result['comparisons'])}; incomplete groups: {len(set(result['incomplete_groups']))}."
         )
         cloud = measured["cloud"]

@@ -29,6 +29,7 @@ from gamma_scaling import (
     VARIANTS,
     compare_arrays,
     paired_ratios,
+    revisions_agree,
     run_study,
     shape_for,
     study_groups,
@@ -172,16 +173,66 @@ class ScalingIntegrityTests(unittest.TestCase):
         self.assertGreater(result["algorithm_max_abs_difference"], 0)
         self.assertEqual(result["algorithm_pass_disagreements"], 0)
 
-    def test_changed_revision_value_is_rejected(self):
-        with self.assertRaises(AssertionError):
+    def test_rounding_difference_between_revisions_is_accepted_and_recorded(self):
+        old, new = np.array([0.5, np.nan]), np.array([0.5 + 3e-13, np.nan])
+        result = self.check_arrays([old, new, old, old])
+        self.assertEqual(result["revision_equality"], "within_tolerance")
+        self.assertAlmostEqual(
+            result["revision_max_abs_difference"], 3e-13, delta=1e-15
+        )
+        self.assertEqual(result["revision_pass_disagreements"], 0)
+        self.assertTrue(revisions_agree(result))
+
+    def test_revision_difference_above_the_allowance_is_rejected(self):
+        with self.assertRaisesRegex(AssertionError, "more than 1e-10"):
             self.check_arrays(
-                [
-                    np.array([1.0]),
-                    np.array([1.0 + 1e-12]),
-                    np.array([1.0]),
-                    np.array([1.0]),
-                ]
+                [np.array([0.5]), np.array([0.5 + 2e-10])] + [np.array([0.5])] * 2
             )
+
+    def test_revision_pass_fail_disagreement_is_rejected(self):
+        # Within the allowance, but one revision passes the point and the other
+        # fails it.
+        with self.assertRaisesRegex(AssertionError, "1 points pass in one"):
+            self.check_arrays(
+                [np.array([1.0]), np.array([1.0 + 1e-12])] + [np.array([1.0])] * 2
+            )
+
+    def test_revision_nan_or_infinite_change_is_rejected(self):
+        for old, new in (
+            ([np.nan, 0.5], [0.5, 0.5]),
+            ([np.inf, 0.5], [3.0, 0.5]),
+        ):
+            with self.subTest(old=old, new=new):
+                with self.assertRaisesRegex(AssertionError, "NaN or infinite"):
+                    self.check_arrays(
+                        [np.array(old), np.array(new)] + [np.array(old)] * 2
+                    )
+
+    def test_saved_revision_comparisons_must_show_agreement(self):
+        agreed = {
+            "revision_equality": "within_tolerance",
+            "revision_max_abs_difference": 3e-13,
+            "revision_absolute_tolerance": 1e-10,
+            "revision_pass_disagreements": 0,
+            "nan_pattern_equal": True,
+        }
+        self.assertTrue(revisions_agree(agreed))
+        # Comparisons saved before the allowance record equality alone.
+        self.assertTrue(
+            revisions_agree({"revision_equality": "exact", "nan_pattern_equal": True})
+        )
+        for change in (
+            {"nan_pattern_equal": False},
+            {"revision_pass_disagreements": 1},
+            {"revision_absolute_tolerance": 1e-6},
+            {"revision_max_abs_difference": 2e-10},
+            {"revision_equality": "unknown"},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(revisions_agree({**agreed, **change}))
+        missing = dict(agreed)
+        del missing["revision_pass_disagreements"]
+        self.assertFalse(revisions_agree(missing))
 
     def test_changed_nan_position_is_rejected(self):
         with self.assertRaises(AssertionError):
