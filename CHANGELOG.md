@@ -17,7 +17,7 @@ This project adheres to
 Removing Mosaiq credentials now attempts to delete the password even when
 deleting its separate username entry fails. Keyring errors still propagate
 so the caller can report incomplete removal.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/mosaiq-password-deletion-cleanup)
+[PR #2715](https://github.com/pymedphys/pymedphys/pull/2715)
 
 ### RT Plans written by `Delivery.to_dicom`
 
