@@ -15,7 +15,7 @@ This project adheres to
 ### MIDI-B answer-key inspection boundaries
 
 MIDI-B answer-key inspection refuses symbolic links and correctly escapes SQLite filenames so it reads the intended received database.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security-answer-key-file-boundaries-20261124)
+[PR #2711](https://github.com/pymedphys/pymedphys/pull/2711)
 
 ### RT Plans written by `Delivery.to_dicom`
 
