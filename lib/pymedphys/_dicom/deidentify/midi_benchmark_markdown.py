@@ -306,8 +306,10 @@ def render_markdown(document: Mapping[str, object]) -> str:
         "",
         "Checks that asked for a text to be removed and failed only on a value "
         "that the engine writes in the source's place, a constant such as "
-        "`DEIDENTIFIED` or a keyed pseudonym or token, which holds nothing of "
-        "the source: a word of the answer key's text is within it by chance:",
+        "`DEIDENTIFIED`, a keyed pseudonym or token, or, under Modified Dates, "
+        "the nominal UTC offset `+0000` in Timezone Offset From UTC, which "
+        "holds nothing of the source: a word of the answer key's text is "
+        "within it by chance:",
         "",
     ]
     lines += _rows_or_none(
