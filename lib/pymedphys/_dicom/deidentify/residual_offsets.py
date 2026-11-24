@@ -91,6 +91,25 @@ def writes_nominal_offset(tag: str) -> bool:
     return _action(tag) is not None
 
 
+def takes_nominal_offset(tag: str) -> bool:
+    """Return whether Modified Dates writes the nominal offset as an attribute's value.
+
+    It does in Timezone Offset From UTC (0008,0201), every value of which
+    becomes the nominal offset whatever the source held (D-007, D-039). In
+    an attribute of VR DT it writes the nominal offset only at the end of
+    a value whose date and time come from the source, so such an attribute
+    does not take it as its value.
+
+    Examples
+    --------
+    >>> takes_nominal_offset("(0008,0201)")
+    True
+    >>> takes_nominal_offset("(0008,002A)")  # Acquisition DateTime
+    False
+    """
+    return _action(tag) is TemporalAction.NOMINAL_OFFSET
+
+
 def in_nominal_offset(
     finding: Finding,
     kept: KeptValues,

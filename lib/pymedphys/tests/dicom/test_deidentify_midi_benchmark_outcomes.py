@@ -28,7 +28,12 @@ from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.midi_answer_key import parse_check
 from pymedphys._dicom.deidentify.midi_benchmark_values import is_engine_replacement
-from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.policy import (
+    FULL_DATES,
+    MODIFIED_DATES,
+    compose_custom_policy,
+    compose_policy,
+)
 from pymedphys._dicom.deidentify.pseudonyms import (
     FAMILY_NAME,
     PATIENT_ID_PREFIX,
@@ -438,6 +443,95 @@ def test_a_removed_text_found_only_within_a_pseudonym_is_a_replacement_match(
             released,
             MAPPING,
             ElementRules(compose_policy("basic")),
+            load_iod_tables().iods[CT_IOD],
+        )
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    "value, options, expected",
+    [
+        # Modified Dates writes the nominal offset in every Timezone Offset
+        # From UTC, whatever the source held.
+        ("+0000", (MODIFIED_DATES,), True),
+        ("+0000 ", (MODIFIED_DATES,), True),
+        (["+0000", "", "+0000"], (MODIFIED_DATES,), True),
+        # Under any other run a kept offset is the source's own.
+        ("+0000", (), False),
+        ("+0000", (FULL_DATES,), False),
+        # Another value could be the source's.
+        ("+1000", (MODIFIED_DATES,), False),
+        (["+0000", "+1000"], (MODIFIED_DATES,), False),
+        ("0000", (MODIFIED_DATES,), False),
+        ("", (MODIFIED_DATES,), False),
+    ],
+)
+def test_the_nominal_offset_is_a_replacement_only_under_modified_dates(
+    value, options, expected
+):
+    element = pydicom.DataElement(0x00080201, "SH", value)
+
+    assert is_engine_replacement(element, options) is expected
+
+
+@pytest.mark.parametrize(
+    "tag, vr, value",
+    [
+        # The option writes the nominal offset only at the end of a moved
+        # datetime, whose date and time come from the source.
+        (0x0008002A, "DT", "20200102123456+0000"),
+        # Nor does a kept text that happens to equal it count.
+        (0x00081090, "LO", "+0000"),
+    ],
+)
+def test_the_nominal_offset_elsewhere_is_not_a_replacement(tag, vr, value):
+    element = pydicom.DataElement(tag, vr, value)
+
+    assert not is_engine_replacement(element, (MODIFIED_DATES,))
+
+
+@pytest.mark.parametrize(
+    "policy, offsets, expected",
+    [
+        (
+            compose_policy("public-release"),
+            "+0000",
+            benchmark.Scored(
+                benchmark.Result.FAILED,
+                "written in the source's place",
+                replacement_match=True,
+            ),
+        ),
+        (
+            compose_policy("tps-import"),
+            "+0000",
+            benchmark.Scored(
+                benchmark.Result.FAILED,
+                "written in the source's place",
+                replacement_match=True,
+            ),
+        ),
+        # Full Dates keeps the source's offset, which is then a finding.
+        (compose_custom_policy([FULL_DATES]), "+0000", FAILED),
+        (compose_policy("public-release"), ["+0000", "+1000"], FAILED),
+    ],
+)
+def test_a_removed_offset_found_only_in_the_nominal_offset_is_a_replacement_match(
+    policy, offsets, expected
+):
+    # The source was acquired at UTC, so its offset is the nominal offset
+    # that Modified Dates writes in every instance.
+    released = _released_ct()
+    released.TimezoneOffsetFromUTC = offsets
+    check = read_answer_check("text_removed", "<(0008,0201)>", text="+0000")
+
+    assert (
+        benchmark.score_check(
+            check,
+            released,
+            MAPPING,
+            ElementRules(policy),
             load_iod_tables().iods[CT_IOD],
         )
         == expected
