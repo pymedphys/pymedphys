@@ -15,7 +15,7 @@ This project adheres to
 ### Guard MOSAIQ CSV query allowlists and parameter binding
 
 The experimental MOSAIQ CSV exporter now has regression tests protecting its database query boundary. A value such as a quoted SQL fragment stays a bound value, and unapproved table or column names are rejected before any database access.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security/csv-query-regression)
+[PR #2704](https://github.com/pymedphys/pymedphys/pull/2704)
 
 ### RT Plans written by `Delivery.to_dicom`
 
