@@ -263,7 +263,7 @@ jobs:
           # The runner's memory and swap alone, every five minutes, so that
           # a slow shard shows whether it was swapping. Nothing of the data.
           (
-            while sleep 300 </dev/null >/dev/null 2>&1; do
+            while sleep 300 >/dev/null 2>&1; do
               free --mebi | awk -v at="$(date -u +%H:%M)" '
                 /^Mem:/ { memory = $3 " MiB used, " $7 " MiB available" }
                 /^Swap:/ { swap = $3 " of " $2 " MiB" }
@@ -299,7 +299,7 @@ jobs:
           # The runner's memory and swap alone, every five minutes, so that
           # a slow shard shows whether it was swapping. Nothing of the data.
           (
-            while sleep 300 </dev/null >/dev/null 2>&1; do
+            while sleep 300 >/dev/null 2>&1; do
               free --mebi | awk -v at="$(date -u +%H:%M)" '
                 /^Mem:/ { memory = $3 " MiB used, " $7 " MiB available" }
                 /^Swap:/ { swap = $3 " of " $2 " MiB" }
