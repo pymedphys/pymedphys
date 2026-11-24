@@ -15,7 +15,7 @@ This project adheres to
 ### Pre-commit push-token scope
 
 Pre-commit auto-fix hooks run before the repository push token enters their environment.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security-precommit-token-scope-20261124)
+[PR #2706](https://github.com/pymedphys/pymedphys/pull/2706)
 
 ### RT Plans written by `Delivery.to_dicom`
 
