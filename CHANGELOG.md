@@ -18,7 +18,7 @@ The iCOM listener applies its ten-second socket timeout before connecting,
 so connection attempts use the same bound as reads. A failed or interrupted
 connection attempt closes the newly allocated socket before propagating
 the error to the existing retry handler.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/icom-connect-timeout-cleanup)
+[PR #2718](https://github.com/pymedphys/pymedphys/pull/2718)
 
 ### RT Plans written by `Delivery.to_dicom`
 
