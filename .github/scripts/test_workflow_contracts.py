@@ -790,6 +790,32 @@ class WorkflowContractTests(unittest.TestCase):
                         "python-matrix", caller.read_text(encoding="utf-8")
                     )
 
+    def test_each_set_of_extras_keeps_its_own_data_cache(self):
+        actions = WORKFLOWS.parent / "actions"
+        cache = (actions / "cache-data/action.yml").read_text(encoding="utf-8")
+        # An exact hit saves nothing, so combinations of one matrix that read
+        # different files must not share an exact key; the prefix still lets
+        # a cold combination start from any cache of the same manifest.
+        self.assertIn(
+            "        key: pymedphys-data-v4-${{ runner.os }}-"
+            "${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-"
+            "${{ github.job }}${{ inputs.name && format('-{0}', inputs.name) "
+            "|| '' }}\n",
+            cache,
+        )
+        self.assertIn(
+            "        restore-keys: |\n"
+            "          pymedphys-data-v4-${{ runner.os }}-"
+            "${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-\n",
+            cache,
+        )
+        setup = (actions / "setup-project/action.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "      uses: ./.github/actions/cache-data\n      with:\n",
+            setup,
+        )
+        self.assertIn("        name: ${{ inputs.extras }}\n", setup)
+
     def test_pydicom_reuse_keeps_its_proof_inside_the_unit_workflow(self):
         workflow = jobs("unit-tests.yml")
         # Reuse saves suite executions; the only job it waits for combines
