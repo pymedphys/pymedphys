@@ -18,7 +18,7 @@ The experimental iCOM Streamlit helpers now cache decoded records and derived
 results within each browser session. One session no longer receives another
 session's cached result for the same path, while repeated reads within a session
 retain caching. This does not add user authentication or filesystem access control.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:privacy/experimental-icom-cache)
+[PR #2702](https://github.com/pymedphys/pymedphys/pull/2702)
 
 ### RT Plans written by `Delivery.to_dicom`
 
