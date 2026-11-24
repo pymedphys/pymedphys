@@ -18,7 +18,7 @@ When a DICOM input file disappears before it can be opened, anonymisation
 and experimental pseudonymisation raise a path-free `FileNotFoundError`.
 The ordinary exception traceback no longer prints the missing filename,
 which may contain a patient's identifiers. Other read and write errors are
-unchanged. [Issue #2663](https://github.com/pymedphys/pymedphys/issues/2663)
+unchanged. [PR #2695](https://github.com/pymedphys/pymedphys/pull/2695)
 
 ### RT Plans written by `Delivery.to_dicom`
 
