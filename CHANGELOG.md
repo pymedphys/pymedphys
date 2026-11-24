@@ -18,7 +18,7 @@ A remote closure of an iCOM connection raises `ConnectionError` and closes
 the local socket. The command-line listener then uses its existing delayed
 reconnection path. A closed connection no longer leaves the receive loop
 running continuously without new data.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/icom-stop-on-socket-eof)
+[PR #2707](https://github.com/pymedphys/pymedphys/pull/2707)
 
 ### RT Plans written by `Delivery.to_dicom`
 
