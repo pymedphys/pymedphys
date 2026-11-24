@@ -50,9 +50,9 @@ name: Text Detector Evaluation
 # A tuning run (D-056, step 3) names one detector variant and one
 # post-processing grid, each by its name in text_evaluation_search, in both
 # jobs: the variant needs a pass of the network of its own, and one pass
-# measures every point of the grid. Runs of different variants and grids
-# can run side by side. Only the tuning part is measured until a candidate
-# is chosen.
+# measures every point of the grid. Runs of different models, variants,
+# and grids can run side by side. Only the tuning part is measured until a
+# candidate is chosen.
 on:
   workflow_dispatch:
     inputs:
@@ -133,10 +133,10 @@ on:
 permissions:
   contents: read
 
-# Runs of different variants and grids search side by side; a second run of
-# the same ones waits for the first.
+# Runs of different models, variants, and grids search side by side; a
+# second run of the same ones waits for the first.
 concurrency:
-  group: text-detector-evaluation-${{ github.ref }}-${{ inputs.variant }}-${{ inputs.grid }}
+  group: text-detector-evaluation-${{ github.ref }}-${{ inputs.model }}-${{ inputs.variant }}-${{ inputs.grid }}
   cancel-in-progress: false
 
 jobs:

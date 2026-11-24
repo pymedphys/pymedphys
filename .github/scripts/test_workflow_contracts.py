@@ -1008,6 +1008,15 @@ class WorkflowContractTests(unittest.TestCase):
             re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
         )
         self.assertIn("\npermissions:\n  contents: read\n", text)
+        # Runs of different models, variants, or grids go side by side, and
+        # a second run of the same ones waits for the first, never cancels.
+        self.assertIn(
+            "\nconcurrency:\n"
+            "  group: text-detector-evaluation-${{ github.ref }}-"
+            "${{ inputs.model }}-${{ inputs.variant }}-${{ inputs.grid }}\n"
+            "  cancel-in-progress: false\n",
+            text,
+        )
         # Each of its three jobs can only read.
         self.assertEqual(
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
