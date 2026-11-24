@@ -190,6 +190,14 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             metadata,
         )
 
+    def test_passing_cases_may_coexist_with_skipped_cases(self):
+        self.report(
+            text='<testsuite><testcase name="passed" />'
+            '<testcase name="skipped"><skipped /></testcase></testsuite>'
+        )
+        metadata = coverage.record_baseline(LOCK, "3.0.2", COMMIT, self.results)
+        self.assertEqual(metadata["actual_version"], "3.0.2")
+
     def test_baseline_mismatch_or_bad_sha_cannot_create_metadata(self):
         self.report()
         for actual, commit in (("3.1.0", COMMIT), ("3.0.2", "")):
@@ -205,6 +213,7 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             coverage.record_baseline(LOCK, "3.0.2", COMMIT, self.results)
         for text in (
             "<testsuites />",
+            "<testsuite><testcase><skipped /></testcase></testsuite>",
             "<testsuite><testcase><failure /></testcase></testsuite>",
             "<testsuite><testcase><error /></testcase></testsuite>",
             '<testsuites failures="1"><testcase /></testsuites>',
