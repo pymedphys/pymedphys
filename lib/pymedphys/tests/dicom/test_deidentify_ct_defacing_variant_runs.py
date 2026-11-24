@@ -174,9 +174,10 @@ def _contour_points(dataset):
 
 
 # Each run below takes minutes to make, and a module-scoped fixture is made
-# once in each pytest worker that runs a test needing it. CI runs this module
-# on two workers with --dist loadscope, which keeps the tests of each class on
-# one worker, so that only the defaced run is made on both: the phases, the
+# once in each pytest worker that runs a test needing it. CI's
+# ct-defacing-variants part runs this module on two workers with --dist
+# loadscope, which keeps the tests of each class on one worker, so that only
+# the defaced run is made on both: the phases, the
 # time points, and the multi-frame head CT written as air on one, and the eyes
 # drawn away from the globes and the multi-frame series on the other, which
 # take about the same time. With tests spread freely, as worksteal does, any
