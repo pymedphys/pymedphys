@@ -15,7 +15,7 @@ This project adheres to
 ### Merge-queue API credential scope
 
 Merge-queue cleanup keeps its GitHub API credential off redirected requests.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security-cleanup-redirect-auth-20261124)
+[PR #2716](https://github.com/pymedphys/pymedphys/pull/2716)
 
 ### RT Plans written by `Delivery.to_dicom`
 
