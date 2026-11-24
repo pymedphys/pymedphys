@@ -492,10 +492,11 @@ def test_the_nominal_offset_elsewhere_is_not_a_replacement(tag, vr, value):
 
 
 @pytest.mark.parametrize(
-    "policy, offsets, expected",
+    "policy, offsets, source, expected",
     [
         (
             compose_policy("public-release"),
+            "+0000",
             "+0000",
             benchmark.Scored(
                 benchmark.Result.FAILED,
@@ -506,6 +507,19 @@ def test_the_nominal_offset_elsewhere_is_not_a_replacement(tag, vr, value):
         (
             compose_policy("tps-import"),
             "+0000",
+            "+0000",
+            benchmark.Scored(
+                benchmark.Result.FAILED,
+                "written in the source's place",
+                replacement_match=True,
+            ),
+        ),
+        # An unsigned source offset is not valid, so it too becomes the
+        # nominal offset, a word of which it is.
+        (
+            compose_policy("public-release"),
+            "+0000",
+            "0000",
             benchmark.Scored(
                 benchmark.Result.FAILED,
                 "written in the source's place",
@@ -513,18 +527,18 @@ def test_the_nominal_offset_elsewhere_is_not_a_replacement(tag, vr, value):
             ),
         ),
         # Full Dates keeps the source's offset, which is then a finding.
-        (compose_custom_policy([FULL_DATES]), "+0000", FAILED),
-        (compose_policy("public-release"), ["+0000", "+1000"], FAILED),
+        (compose_custom_policy([FULL_DATES]), "+0000", "+0000", FAILED),
+        (compose_policy("public-release"), ["+0000", "+1000"], "+0000", FAILED),
     ],
 )
 def test_a_removed_offset_found_only_in_the_nominal_offset_is_a_replacement_match(
-    policy, offsets, expected
+    policy, offsets, source, expected
 ):
     # The source was acquired at UTC, so its offset is the nominal offset
     # that Modified Dates writes in every instance.
     released = _released_ct()
     released.TimezoneOffsetFromUTC = offsets
-    check = read_answer_check("text_removed", "<(0008,0201)>", text="+0000")
+    check = read_answer_check("text_removed", "<(0008,0201)>", text=source)
 
     assert (
         benchmark.score_check(
