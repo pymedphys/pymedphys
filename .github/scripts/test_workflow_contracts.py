@@ -33,7 +33,9 @@ WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 # The lines that give each listed corpus module that runs alone a part of its
 # own, the four shares of the CT defacing runs and the second half of the
 # policies' end-to-end runs, and the other listed modules to the corpus-runs
-# part, in every job that runs in parts.
+# part, in every job that runs in parts. The ct-defacing-variants part keeps
+# each class of its tests on one worker, so that no worker makes the runs of
+# both classes.
 ALONE_SELECTION = (
     "            alone=("
     '"${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_VARIANT_TEST}" '
@@ -46,8 +48,10 @@ ALONE_SELECTION = (
     '            if [[ "$(printf \'%s\\n\' "${alone[@]}" | sort -u | wc -l)" '
     "-ne ${#alone[@]} ]]; then\n",
     '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
-    "              ct-defacing-variants) "
-    'selection=("${CT_DEFACING_VARIANT_TEST}") ;;\n',
+    "              ct-defacing-variants)\n"
+    '                selection=("${CT_DEFACING_VARIANT_TEST}")\n'
+    "                dist=loadscope\n"
+    "                ;;\n",
     '              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;\n',
     '              ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;\n',
     '                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then\n',
@@ -762,6 +766,20 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(narrow_line=line):
                 self.assertIn(line, narrow)
         self.assertNotIn("\n    if:", narrow)
+        # Every part's workers take the next test as each frees up, except
+        # that ct-defacing-variants keeps each class of its tests on one
+        # worker; its module puts every test in one of two classes.
+        for name, job in (
+            ("dependency-floors", floors),
+            ("test", test),
+            ("narrow-extras", narrow),
+        ):
+            with self.subTest(scheduled=name):
+                head, rest = job.split('          if [[ -n "${PART}" ]]; then\n', 1)
+                self.assertTrue(head.endswith("          dist=worksteal\n"))
+                self.assertEqual(rest.count("dist="), 1)
+                self.assertEqual(job.count("--dist"), 1)
+                self.assertIn(' --dist "${dist}" --durations=15 \\\n', job)
         # The release expects a report from every Python version that
         # python-matrix holds by default, so no caller may narrow it.
         self.assertIn('        default: \'["3.12", "3.13", "3.14"]\'\n', text)
