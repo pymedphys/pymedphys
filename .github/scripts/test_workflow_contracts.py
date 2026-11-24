@@ -1034,10 +1034,28 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("\n      max-parallel: 4\n", shards)
         self.assertEqual(shards.count(" idc-measure \\\n"), 2)
         self.assertEqual(shards.count('--shard "${SHARD}/${SHARDS}"'), 2)
-        # Both measurements log the runner's memory and swap alone, from
-        # free, and stop logging when they end.
-        self.assertEqual(shards.count("free --mebi | awk"), 2)
-        self.assertEqual(shards.count("trap 'kill \"${watcher}\"' EXIT"), 2)
+        # Each measurement logs the runner's memory and swap alone, from
+        # free, in a loop started before it measures, and kills that loop,
+        # by its own process number, when the step's shell exits.
+        measurements = re.findall(
+            r"(?ms)^      - name: (Measure the series(?: as converted)?)\n(.*?)(?=^      - |\Z)",
+            shards,
+        )
+        self.assertEqual(
+            [name for name, _ in measurements],
+            ["Measure the series", "Measure the series as converted"],
+        )
+        for name, step in measurements:
+            with self.subTest(step=name):
+                self.assertEqual(step.count("free --mebi | awk"), 1)
+                self.assertEqual(step.count("watcher=$!"), 1)
+                self.assertEqual(step.count("trap 'kill \"${watcher}\"' EXIT"), 1)
+                self.assertRegex(
+                    step,
+                    r"(?s)\(\n *while sleep 300 .*?free --mebi \| awk.*?\n *\) &\n"
+                    r" *watcher=\$!\n *trap 'kill \"\$\{watcher\}\"' EXIT\n"
+                    r".* idc-measure \\\n",
+                )
         # A shard's records are written outside the uploaded results, and
         # only their encrypted copies join them, uploaded only once every
         # record is encrypted.
