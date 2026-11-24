@@ -257,10 +257,21 @@ def anonymise_file(
     ``str``
         The path of the file written. Without ``output_filepath``, it
         is written beside the original.
+
+    Raises
+    ------
+    FileNotFoundError
+        The input file could not be found when opened. The error message
+        omits its path, which may contain identifying information.
     """
     dicom_filepath = str(dicom_filepath)
 
-    ds = pydicom.dcmread(dicom_filepath, force=True)
+    try:
+        ds = pydicom.dcmread(dicom_filepath, force=True)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            "The supplied DICOM input file was not found when opened."
+        ) from None
 
     anonymise_dataset(
         ds=ds,
