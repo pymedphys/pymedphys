@@ -30,8 +30,12 @@ def get_start_location_from_date_span(span):
 
 def initialise_socket(ip):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((ip, ICOM_PORT))
-    s.settimeout(10)
+    try:
+        s.settimeout(10)
+        s.connect((ip, ICOM_PORT))
+    except BaseException:
+        s.close()
+        raise
     logging.info(s)
 
     return s
