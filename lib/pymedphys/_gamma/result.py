@@ -191,8 +191,10 @@ class GammaResult(ResultMarker):
     Results are created by :func:`pymedphys.gamma`. Creating one directly is
     not supported, so that attributes can be added in later versions.
 
-    A result is not an array. Use ``gamma`` for the values. NumPy functions
-    given the result itself raise a ``TypeError`` that says so.
+    A result is not an array. Use ``gamma`` for the values. Given the result
+    itself, most NumPy functions, and arithmetic or comparisons with a NumPy
+    array, raise a ``TypeError`` that says so; ``numpy.asarray`` and
+    ``numpy.array`` give an object array that holds it.
 
     Attributes
     ----------
