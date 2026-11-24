@@ -18,7 +18,7 @@ The iCOM recorder keeps only the latest message from each connection for
 sequence and duplicate checks. Long-running listeners no longer retain an
 additional copy of every earlier message in that history. Complete active
 deliveries are still collected separately for archiving.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/icom-bounded-sequence-history)
+[PR #2713](https://github.com/pymedphys/pymedphys/pull/2713)
 
 ### RT Plans written by `Delivery.to_dicom`
 
