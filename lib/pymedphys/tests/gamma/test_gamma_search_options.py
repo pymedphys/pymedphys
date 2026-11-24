@@ -119,3 +119,72 @@ def test_the_search_step_is_the_fraction_of_the_distance_criterion(
 
     assert len(recorded) > 1
     assert set(recorded) == {distance_criterion_mm * search_step_fraction}
+
+
+def _samples(shell_points, point):
+    x, y = shell_points
+    return np.any(np.hypot(x - point[0], y - point[1]) < 1e-12)
+
+
+def test_the_rounding_of_the_step_can_change_which_points_a_shell_samples():
+    # The default step for 3 mm is 3 * 0.1 = 0.30000000000000004 mm; v0.41.0
+    # divided by interp_fraction, 3 / 10 = 0.3 mm. A 2D shell of radius r has
+    # ceil(2 pi r / step) + 1 points, so a step that differs only in its last
+    # digit can change how many points a shell has and where they lie, and
+    # with them gamma and pass or fail.
+    #
+    # The evaluation dose, 10 + x + y Gy on the square [-a, a] x [-a, a],
+    # equals the reference dose, 10 + 2a Gy at the origin, only at the corner
+    # (a, a). The last shell has the corners' radius, sqrt(2) a, at which
+    # 2 pi r / step is exactly 15 with this step and 15.000000000000004 with
+    # v0.41.0's. The 16 points of this step include the corner, at 45 degrees.
+    # The 17 points of v0.41.0's miss it, and its search gave gamma 1.55, a
+    # fail.
+    a = 0.5064279278383723
+    corner = (a, a)
+    corner_distance = np.hypot(a, a)
+    distance_criterion_mm = 3
+    step = distance_criterion_mm * shell.DEFAULT_SEARCH_STEP_FRACTION
+    divided_step = distance_criterion_mm / 10
+
+    assert step != divided_step
+    shell_points = createshells.calculate_coordinates_shell_2d(corner_distance, step)
+    assert len(shell_points[0]) == 16
+    assert _samples(shell_points, corner)
+    divided_points = createshells.calculate_coordinates_shell_2d(
+        corner_distance, divided_step
+    )
+    assert len(divided_points[0]) == 17
+    assert not _samples(divided_points, corner)
+
+    axis = np.array([-a, a])
+    reference_dose = 10 + 2 * a
+    result = pymedphys.gamma(
+        (np.array([0.0]), np.array([0.0])),
+        np.array([[reference_dose]]),
+        (axis, axis),
+        10 + axis[:, None] + axis[None, :],
+        1,
+        distance_criterion_mm,
+    )
+    gamma = result.gamma.ravel()
+
+    # At the corner the dose difference is zero, so gamma is the corner's
+    # distance divided by the distance criterion. The tolerance allows for
+    # rounding in the shell point's position and in the interpolated dose,
+    # each of order 1e-15 or less here. It is far below the 8e-5 by which this sample
+    # exceeds the exact minimum, and the 1.3 by which v0.41.0's exceeded it.
+    np.testing.assert_allclose(
+        gamma, [corner_distance / distance_criterion_mm], rtol=0, atol=1e-12
+    )
+
+    # The search can only overestimate the exact minimum. With a dose gradient
+    # of (1, 1) Gy/mm and the dose criterion c, 1% of the reference dose, the
+    # minimum is at a point inside the square and is
+    # sqrt(2) a / sqrt(3^2 + c^2 / 2).
+    dose_criterion = 0.01 * reference_dose
+    minimum = (
+        np.sqrt(2) * a / np.hypot(distance_criterion_mm, dose_criterion / np.sqrt(2))
+    )
+    assert gamma[0] >= minimum
+    assert (result.analysed, result.passed) == (1, 1)
