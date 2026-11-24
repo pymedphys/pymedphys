@@ -22,8 +22,9 @@ this Study", and Studies Containing Other Referenced Instances Sequence
 (0008,1200), "Required if this Instance references Instances in other
 Studies". Neither says "May be present otherwise", so PS3.5 Section 7.4.2
 does not allow either once its condition fails. Every IOD of the first
-supported release but the Structured Reports, whose SR Document General
-Module references their evidence instead, includes the module, as
+supported release but the Structured Reports and the Key Object Selection
+Document, whose SR Document General and Key Object Document Modules
+reference their evidence instead, includes the module, as
 user-optional but for Spatial Registration and Deformable Spatial
 Registration, which make it mandatory; since both sequences are
 conditional, the module holds neither once both conditions fail, whatever
@@ -38,6 +39,14 @@ holds, so both sequences are removed, with their items. Where one remains,
 both are kept: telling a reference to an instance of this study from one to
 an instance of another study needs the UIDs' values, and the engine decides
 its actions from the data set's structure alone.
+
+The Presentation State Relationship Module (PS3.3 Section C.11.11) of the
+softcopy Presentation State IODs, which do not include the Common Instance
+Reference Module, makes Referenced Series Sequence (0008,1115) Type 1 at the
+top level, with the images the presentation applies to in its items. There
+it is not the Common Instance Reference Module's sequence, and never lapses:
+given an IOD, :func:`is_common_instance_reference` counts the sequence as the
+module's only where no other module of the IOD defines it there.
 
 A reference to an instance is a Referenced SOP Instance UID (0008,1155) or
 Multi-frame Source SOP Instance UID (0008,1167) with a value, in an item of
@@ -66,7 +75,11 @@ True
 from __future__ import annotations
 
 from .file_layout import ElementPath
+from .iods import IOD
 from .references import STUDY_SEQUENCES
+
+# The module, as PS3.3 Section C.12.2 names it.
+MODULE = "Common Instance Reference"
 
 # Referenced Series Sequence and Studies Containing Other Referenced
 # Instances Sequence, at the top level of the data set.
@@ -75,13 +88,18 @@ SEQUENCES = frozenset({"(0008,1115)", "(0008,1200)"})
 INSTANCE_REFERENCE_TAGS = frozenset({"(0008,1155)", "(0008,1167)"})
 
 
-def is_common_instance_reference(path: ElementPath) -> bool:
+def is_common_instance_reference(path: ElementPath, iod: IOD | None = None) -> bool:
     """Return whether ``path`` is one of the module's two sequences.
 
     Parameters
     ----------
     path : ElementPath
         An element's place in the data set.
+    iod : IOD, optional
+        The instance's IOD. Where given, a sequence that another of its
+        modules defines at the top level, as the Presentation State
+        Relationship Module defines Referenced Series Sequence, is not the
+        module's.
 
     Returns
     -------
@@ -92,7 +110,11 @@ def is_common_instance_reference(path: ElementPath) -> bool:
         tags within another sequence's items, as in the Hierarchical SOP
         Instance Reference Macro, are not the module's.
     """
-    return not path.items and path.tag in SEQUENCES
+    if path.items or path.tag not in SEQUENCES:
+        return False
+    return iod is None or all(
+        definition.module == MODULE for definition in iod.lookup(path.tag)
+    )
 
 
 def is_instance_reference(path: ElementPath) -> bool:

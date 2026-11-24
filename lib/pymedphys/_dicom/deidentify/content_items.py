@@ -40,9 +40,15 @@ the engine cleans three of them (D-047):
   documents, and in the Encapsulated Document Module. The data set that
   holds the outermost one, such as a Structured Report's root, is a content
   item too where it has a Value Type (PS3.3 Section C.17.3). Of the IODs of
-  the first supported release, the X-Ray Radiation Dose SR,
-  Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR,
-  Comprehensive SR, Comprehensive 3D SR, and Extensible SR define it.
+  the first supported release, the X-Ray Radiation Dose SR, Enhanced X-Ray
+  Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient
+  Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR,
+  Comprehensive 3D SR, Extensible SR, Key Object Selection Document,
+  Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle
+  Prescription Report, Macular Grid Thickness and Volume Report, Waveform
+  Annotation SR, Implantation Plan SR Document, Simplified Adult Echo SR,
+  Planned and Performed Imaging Agent Administration SR, Acquisition Context
+  SR, and Encapsulated PDF define it.
 
 Under the option, :func:`content_item_actions` gives the walker an action for
 each such sequence and for the value of each content item in it, from the
@@ -92,7 +98,11 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   name, such as an image reference, and has none, is not listed, and an item
   of a by-reference relationship, which has a Referenced Content Item
   Identifier in place of a Value Type and a concept name, is not a content
-  item itself, since its target is cleaned where it is;
+  item itself, since its target is cleaned where it is. A Procedure Log's
+  outermost Content Sequence also takes its Basic Profile action where the
+  options neither keep nor modify the Observation DateTime (0040,A032) of
+  its entries and their source values are not in increasing order, as
+  :func:`log_dummy_datetimes` describes;
 - an item whose concept name Table E.3.4-1 lists, which can be kept, gives
   its value attribute the action that the selected options give the concept,
   K, D, or C, as Table E.1-1's options give an attribute. So does an item
@@ -130,7 +140,23 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   Name (0040,A123), Date (0040,A121), Time (0040,A122), and DateTime
   (0040,A120) D, and UID (0040,A124) U; Text Value (0040,A160) has a
   supplementary rule; and codes and numbers are kept, as in any kept
-  sequence (D-022).
+  sequence (D-022). The exceptions are the Observation DateTime of a
+  Procedure Log's entries, which D gives the dummy datetime of its rank
+  (:func:`log_dummy_datetimes`), and the Text Value of an Imaging Agent
+  Administration Phase Identifier (130203, DCM), the ordinal that TID 11008
+  row 2 requires, which is kept where it is one or two digits; where it is
+  three or more, the outermost Content Sequence takes its Basic Profile
+  action instead, which sequesters the report (:data:`PHASE_IDENTIFIER`).
+  The Text Value of an Imaging Agent Identifier (130254, DCM) and of a
+  Referenced Imaging Agent Identifier (130255, DCM), and of the Component
+  ID (112347, DCM) of a Selected Implant Component (112346, DCM) and of a
+  Connected Implantation Plan Component (112374, DCM), takes D under every
+  option, writing a dummy value of the rank of the agent or component that
+  it identifies or names in place of D's constant, so that each activity
+  still names its own agent, and each connection its own components; where
+  an identifier is not unique in its tree, or a reference names no kept
+  agent or component, the outermost Content Sequence takes its Basic
+  Profile action (:data:`AGENT_IDENTIFIER`, :attr:`ContentItemPlan.dummy_texts`).
 
 Waveform Annotation Sequence (0040,B020), which only IODs outside the first
 supported release define, takes its Basic Profile action, as any sequence
@@ -140,15 +166,26 @@ given C does (:class:`~.element_rules.ElementRules`).
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import functools
+import re
 import types
 from collections.abc import Collection, Iterator, Mapping
 
+from pymedphys._imports import pydicom
+
 from .codes import RETIRED_SNOMED_DESIGNATORS, snomed_ct_code
+from .dummy_values import CONSTANTS, comparison_key
 from .elements import UndecodableElement, dataset_codecs, read_element
 from .file_layout import ElementPath
 from .iods import IOD
-from .policy import CLEAN_DESCRIPTORS, CLEAN_STRUCTURED_CONTENT, Policy
+from .policy import (
+    CLEAN_DESCRIPTORS,
+    CLEAN_STRUCTURED_CONTENT,
+    FULL_DATES,
+    MODIFIED_DATES,
+    Policy,
+)
 from .removed_items import Item, RemovedItems
 from .source import SourceEvidence
 from .structured_content import (
@@ -173,6 +210,7 @@ CONTENT_ITEM_SEQUENCES: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     }
 )
 VALUE_TYPE = "(0040,A040)"
+TEXT_VALUE = "(0040,A160)"
 CONCEPT_NAME = "(0040,A043)"
 # A content item's modifiers, themselves content items (PS3.3 Table 10.2.1-1).
 MODIFIERS = "(0040,0441)"
@@ -213,7 +251,7 @@ VALUE_ATTRIBUTES: Mapping[str, str] = types.MappingProxyType(
         "TIME": "(0040,A122)",
         "PNAME": "(0040,A123)",
         "UIDREF": "(0040,A124)",
-        "TEXT": "(0040,A160)",
+        "TEXT": TEXT_VALUE,
     }
 )
 # The Content Item Macro's Value Type of a number (PS3.3 Table 10-2), which
@@ -247,6 +285,64 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
         ("DCM", "128470", "UIDREF"),
     }
 )
+# Imaging Agent Administration Phase Identifier, which TID 11008 row 2
+# requires to be the phase's ordinal within its administration step, as
+# numeric text, and which Table E.3.4-1 does not list. TID 11007 is Order
+# Non-Significant, so the ordinal alone gives the phases' order, which Text
+# Value's own rule would replace with its dummy value. A value of one or two
+# digits is kept, as the maintainer decided on 30 October 2026. A value of
+# three or more digits, an ordinal that is not kept, leaves the outermost
+# Content Sequence to take its Basic Profile action, which sequesters the
+# report, since its dummy value would leave that phase without its ordinal.
+# Any other value, which is no ordinal, takes that rule (D-022).
+PHASE_IDENTIFIER = ("DCM", "130203", "TEXT")
+_ORDINAL = re.compile(r"[0-9]{1,2}")
+_LONG_ORDINAL = re.compile(r"[0-9]{3,}")
+# Identifiers by which one item of a tree names another, so that D-021's
+# one constant for Text Value would make every reference name every item
+# that it could. An Imaging Agent Identifier, which TID 11002 row 2 requires
+# to identify its agent "uniquely, within the scope of the root container",
+# is named by a Referenced Imaging Agent Identifier, which TID 11003 row 2
+# requires to "be a value of Row 2 in TID 11002", the agent that an
+# administration activity uses; Table E.3.4-1 lists neither, so each would
+# take Text Value's own rule. A Component ID, which TID 7000 row 9 gives
+# each Selected Implant Component of an implantation plan, is named by the
+# Component ID of each Connected Implantation Plan Component of an
+# assembly's Component Connection, which row 17 requires to be "Defined in
+# the Implant Component List CONTAINER"; the table gives Component ID D.
+# So each takes D, under every option, and D writes, in place of its
+# constant, the dummy value of the rank of the item that it identifies
+# among the tree's items of its kind, in the order of the tree,
+# ``DEIDENTIFIED 1`` for the first, and each reference the value of the item
+# it names (:meth:`_ContentTree.linked_dummies`). Where two items of a kind
+# have the same identifier, or a reference names no item of its kind that
+# is kept, the outermost Content Sequence takes its Basic Profile action,
+# which sequesters the report, since no dummy value would keep what it
+# names. A Component ID anywhere else takes the table's action.
+AGENT_IDENTIFIER = ("DCM", "130254", "TEXT")
+AGENT_REFERENCE = ("DCM", "130255", "TEXT")
+COMPONENT_ID = ("DCM", "112347", "TEXT")
+SELECTED_COMPONENT = ("DCM", "112346")
+CONNECTED_COMPONENT = ("DCM", "112374")
+# D-021's constant for Text Value, UT, with the identified item's rank.
+LINK_DUMMY = CONSTANTS["UT"][0] + " {}"
+# A Procedure Log's entries, the targets of "CONTAINS" from its root, each
+# include Observation DateTime (0040,A032) and are "strictly ordered by
+# monotonically increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where
+# X/D gives it D, D-021's one constant would collapse that order, so each
+# entry's takes the dummy datetime of its rank instead
+# (:func:`log_dummy_datetimes`). Other first-level items, such as
+# observation context, are not entries.
+PROCEDURE_LOG = "Procedure Log"
+OBSERVATION_DATETIME = "(0040,A032)"
+CONTAINS = "CONTAINS"
+# The first dummy datetime of a log's entries, D's constant for DT (D-021).
+_FIRST_DUMMY = datetime.datetime.strptime(str(CONSTANTS["DT"][0]), "%Y%m%d%H%M%S")
+# A DT value of PS3.5 Table 6.2-1: a date and time of 4 to 14 digits, a
+# fraction of a second after all 14, and a UTC offset.
+_DATETIME = re.compile(r"([0-9]{4}(?:[0-9]{2}){0,5})(?:\.([0-9]{1,6}))?([+-][0-9]{4})?")
+# The least value of each component of a DT that may be absent.
+_LEAST = "00000101000000"
 
 # How the conformance statement describes the cleaning, naming no value.
 METHOD = (
@@ -320,8 +416,36 @@ METHOD = (
     "Basic Profile action instead where its root cannot be kept or is left "
     "with no items, where an item's Value Type or concept name cannot be "
     "read as one Value Type and one code, or where an item is removed and "
-    "a Referenced Content Item Identifier has no value or names no item. A "
-    "concept name "
+    "a Referenced Content Item Identifier has no value or names no item. In "
+    "a Procedure Log, whose entries PS3.3 Section A.35.7.3.1.2 orders by "
+    "increasing Observation DateTime (0040,A032), D writes in each entry's "
+    "Observation DateTime the dummy datetime of its rank among the entries' "
+    "source values, one second apart, so that equal values take the same "
+    "dummy and the order is kept; where those source values are not in "
+    "increasing order, cannot be read as datetimes, or have different UTC "
+    "offsets, the Content Sequence takes its Basic Profile action instead. "
+    "An Imaging Agent Administration Phase Identifier (130203, DCM), which "
+    "PS3.16 TID 11008 requires to be the phase's ordinal within its step, "
+    "keeps a value of one or two digits, which gives the phases' order; a "
+    "value of three or more digits leaves the Content Sequence to take its "
+    "Basic Profile action, and any other value takes its own rule. "
+    "The Text Value of an Imaging Agent Identifier (130254, DCM), which "
+    "TID 11002 requires to identify its agent uniquely in the report, and of "
+    "a Referenced Imaging Agent Identifier (130255, DCM), by which TID 11003 "
+    "names the agent of an administration activity, takes D under every "
+    "option, and D writes the dummy value of the agent's rank, so that each "
+    "activity names the same agent in the output; where two agents share an "
+    "identifier, or a reference names no agent that is kept, the Content "
+    "Sequence takes its Basic Profile action. So does the Component ID "
+    "(112347, DCM) of a Selected Implant Component (112346, DCM), which "
+    "TID 7000 lists in an implantation plan, and of a Connected "
+    "Implantation Plan Component (112374, DCM), by which TID 7000 names a "
+    "component that an assembly connects, and D writes the dummy value of "
+    "the component's rank, so that each connection names the same "
+    "components in the output; where two components share an identifier, "
+    "or a reference names no component that is kept, the Content Sequence "
+    "takes its Basic Profile action. "
+    "A concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
 )
@@ -413,12 +537,19 @@ class _Reader:
     """Read the structure and codes of content items against the source.
 
     Each data set is reached once, through the sequences that hold it, as the
-    edits read values (:mod:`.edits`).
+    edits read values (:mod:`.edits`), and each sequence is decoded once:
+    reaching every item of a sequence by decoding the whole sequence again
+    for each would take time that grows with the square of a tree's size.
+    The reader reads only data sets that it read from the source itself,
+    which nothing else holds or changes, so a sequence that it decoded
+    stays as the source has it for the reader's lifetime.
     """
 
     def __init__(self, source: SourceEvidence) -> None:
         self._source = source
         self._holders: dict[tuple, tuple] = {}
+        # The items of each sequence decoded so far, by the sequence's path.
+        self._sequences: dict[ElementPath, tuple[pydicom.Dataset, ...]] = {}
 
     def __contains__(self, path: object) -> bool:
         return path in self._source
@@ -446,9 +577,11 @@ class _Reader:
                 dataset, ancestors, inherited = self._holder(items[:-1])
                 tag, index = items[-1]
                 path = ElementPath(items[:-1], tag)
-                item = read_element(
-                    dataset, path, inherited, ancestors, source=self._source
-                ).items[index]
+                if path not in self._sequences:
+                    self._sequences[path] = read_element(
+                        dataset, path, inherited, ancestors, source=self._source
+                    ).items
+                item = self._sequences[path][index]
                 self._holders[items] = (
                     item,
                     (dataset, *ancestors),
@@ -495,6 +628,10 @@ class _Sequences:
     reader: _Reader
     actions: Mapping[tuple[str, str, str], str]
     iod: IOD
+    # The kind of each linking identifier read, whether it identifies its
+    # item rather than naming another, and its Text Value, by its item
+    # (:data:`AGENT_IDENTIFIER`).
+    links: dict[tuple, tuple[str, bool, str]] = dataclasses.field(default_factory=dict)
 
     def outermost(self, path: ElementPath) -> _Outcome:
         """Return what is done with a kept sequence that no other one holds.
@@ -618,7 +755,62 @@ class _Sequences:
             if mapped is None:
                 raise _Removed
             designator, value = mapped
-        return self.actions.get((designator, value, value_type))
+        key = (designator, value, value_type)
+        if key == PHASE_IDENTIFIER:
+            return self._phase_action(items)
+        if key in (AGENT_IDENTIFIER, AGENT_REFERENCE):
+            return self._linked_action(items, "agent", key == AGENT_IDENTIFIER)
+        if key == COMPONENT_ID:
+            holder = self._holder_concept(items)
+            if holder in (SELECTED_COMPONENT, CONNECTED_COMPONENT):
+                return self._linked_action(
+                    items, "component", holder == SELECTED_COMPONENT
+                )
+        return self.actions.get(key)
+
+    def _holder_concept(self, items: tuple) -> tuple[str | None, str | None]:
+        """Return the designator and code value of the concept name of an item's holder."""
+        code = (*items[:-1], (CONCEPT_NAME, 0))
+        return (
+            self.reader.text(ElementPath(code, DESIGNATOR)),
+            self.reader.text(ElementPath(code, CODE_VALUE)),
+        )
+
+    def _linked_action(self, items: tuple, kind: str, identifies: bool) -> str:
+        """Return D for a linking identifier, recording its value.
+
+        ``identifies`` is whether it identifies its own item of ``kind``,
+        rather than naming one. Its value must be read as one string;
+        otherwise the item raises :class:`_Unkept`, which leaves the
+        outermost Content Sequence to take its Basic Profile action.
+        """
+        text = self.reader.text(ElementPath(items, TEXT_VALUE))
+        if text is None:
+            raise _Unkept
+        self.links[items] = (kind, identifies, text)
+        return DUMMY
+
+    def _phase_action(self, items: tuple) -> str | None:
+        """Return the action of a phase identifier's value, or None if unlisted.
+
+        A value of one or two digits is kept. One of three or more digits is
+        an ordinal that is not kept, and that its dummy value would lose, so
+        the item raises :class:`_Unkept`, which leaves the outermost Content
+        Sequence to take its Basic Profile action. Any other value, including
+        one that cannot be read as one string, takes Text Value's own rule,
+        as any unlisted item's value does.
+        """
+        try:
+            text = self.reader.text(ElementPath(items, TEXT_VALUE))
+        except (_Unkept, UndecodableElement):
+            return None
+        if text is None:
+            return None
+        if _ORDINAL.fullmatch(text):
+            return KEEP
+        if _LONG_ORDINAL.fullmatch(text):
+            raise _Unkept
+        return None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -631,6 +823,7 @@ class _Outcome:
     renumbered: Mapping[ElementPath, tuple[int, ...]] = dataclasses.field(
         default_factory=dict
     )
+    dummy_texts: Mapping[ElementPath, str] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -732,7 +925,58 @@ class _ContentTree:
             removed,
             frozenset(emptied),
             types.MappingProxyType(self._renumbered(references, removed)),
+            types.MappingProxyType(self.linked_dummies()),
         )
+
+    def linked_dummies(self) -> dict[ElementPath, str]:
+        """Return the dummy value of each kept linking identifier.
+
+        The items of each kind are ranked in the order of the tree, from 1,
+        and each identifier of one takes ``DEIDENTIFIED`` and its item's
+        rank, and each reference the value of the identifier it names, by
+        its Text Value. As D's second constant does, a kind's series moves
+        on by its own length where any of its dummy values would equal any
+        of its source values, as D compares them, until none does, so that
+        no source value is written. Two kept identifiers of a kind with the
+        same value, or a kept reference that names none of its kind, raise
+        :class:`_Unkept` (:data:`AGENT_IDENTIFIER`).
+        """
+        kept = sorted(
+            (items, entry)
+            for items, entry in self._sequences.links.items()
+            if items in self._nodes and not self._gone(items)
+        )
+        found = {}
+        for kind in sorted({kind for _, (kind, _, _) in kept}):
+            links = [
+                (items, identifies, text)
+                for items, (each, identifies, text) in kept
+                if each == kind
+            ]
+            names = [text for _, identifies, text in links if identifies]
+            if len(set(names)) != len(names):
+                raise _Unkept
+            if any(
+                not identifies and text not in names for _, identifies, text in links
+            ):
+                raise _Unkept
+            sources = {comparison_key("UT", text) for _, _, text in links}
+            start = 0
+            while True:
+                written = [
+                    LINK_DUMMY.format(start + rank) for rank in range(1, len(names) + 1)
+                ]
+                if sources.isdisjoint(comparison_key("UT", each) for each in written):
+                    break
+                start += len(names)
+            ranks = dict(zip(names, written))
+            found.update(
+                {
+                    ElementPath(items, TEXT_VALUE): ranks[text]
+                    for items, _, text in links
+                }
+            )
+        return found
 
     def _walk(self, sequence: ElementPath) -> tuple[Item, ...]:
         """Read the items of a Content Sequence, at any depth."""
@@ -925,6 +1169,157 @@ def _held(path: ElementPath, sequences: Collection[ElementPath]) -> bool:
     )
 
 
+def _dated_log(policy: Policy, iod: IOD, path: ElementPath) -> bool:
+    """Return whether ``path`` is a Procedure Log's entries, whose datetimes D writes.
+
+    That is where the policy neither keeps nor modifies Observation
+    DateTime (0040,A032), so that X/D gives it D.
+    """
+    return (
+        iod.name == PROCEDURE_LOG
+        and path == ElementPath((), CONTENT_SEQUENCE)
+        and FULL_DATES not in policy.options
+        and MODIFIED_DATES not in policy.options
+    )
+
+
+def _entry_datetimes(reader: _Reader, path: ElementPath) -> dict[ElementPath, str]:
+    """Return the Observation DateTime of each entry of a log that has one.
+
+    The entries are the items of the root's Content Sequence that are
+    targets of "CONTAINS" (PS3.3 Section A.35.7.3.1.2); an item of any
+    other relationship, such as "HAS OBS CONTEXT", may have its own
+    Observation DateTime (PS3.3 Table C.17-6), which is not an entry's.
+    """
+    found = {}
+    for index in range(reader.count(path)):
+        item = ((CONTENT_SEQUENCE, index),)
+        if reader.text(ElementPath(item, RELATIONSHIP_TYPE)) != CONTAINS:
+            continue
+        observed = ElementPath(item, OBSERVATION_DATETIME)
+        text = reader.text(observed)
+        if text is not None:
+            found[observed] = text
+    return found
+
+
+def _instant(text: str) -> tuple[str | None, str, str] | None:
+    """Return a DT value's UTC offset, and its date and time as they sort.
+
+    Absent components take their least values, as D compares a DT (D-021),
+    and the fraction of a second is padded to six digits. Returns ``None``
+    where the value is not a DT.
+    """
+    match = _DATETIME.fullmatch(text.strip(" \x00"))
+    if match is None:
+        return None
+    whole, fraction, offset = match.groups()
+    if fraction is not None and len(whole) != len(_LEAST):
+        return None
+    return offset, whole + _LEAST[len(whole) :], (fraction or "").ljust(6, "0")
+
+
+def _ranked_dummies(
+    datetimes: Mapping[ElementPath, str],
+) -> dict[ElementPath, str] | None:
+    """Return the dummy datetime of each entry by its rank, or None if unordered.
+
+    The entries are in increasing order where each source value, read as
+    :func:`_instant` reads it, is no earlier than the one before it; all
+    must be DT values with the same UTC offset, or none, to be compared.
+    """
+    instants = {}
+    for path, text in datetimes.items():
+        instant = _instant(text)
+        if instant is None:
+            return None
+        instants[path] = instant
+    if len({offset for offset, *_ in instants.values()}) > 1:
+        return None
+    ordered = list(instants.values())
+    if ordered != sorted(ordered):
+        return None
+    distinct = sorted(set(ordered))
+    sources = {comparison_key("DT", text) for text in datetimes.values()}
+    start = 0
+    while True:
+        written = [
+            (_FIRST_DUMMY + datetime.timedelta(seconds=start + rank)).strftime(
+                "%Y%m%d%H%M%S"
+            )
+            for rank in range(len(distinct))
+        ]
+        if sources.isdisjoint(comparison_key("DT", each) for each in written):
+            break
+        start += len(distinct)
+    ranks = dict(zip(distinct, written))
+    return {path: ranks[instant] for path, instant in instants.items()}
+
+
+def log_dummy_datetimes(
+    source: SourceEvidence,
+    policy: Policy,
+    iod: IOD,
+    actions: Mapping[ElementPath, str],
+) -> Mapping[ElementPath, str]:
+    """Return the dummy datetime that D writes in each Procedure Log entry.
+
+    PS3.3 Section A.35.7.3.1.2 has a Procedure Log's entries, the targets
+    of "CONTAINS" from its root, "strictly ordered by monotonically
+    increasing" Observation DateTime (0040,A032). Where the policy neither
+    keeps nor modifies that datetime, X/D gives it D, and D-021's one
+    constant would give every entry the same value. So each entry's Observation DateTime
+    takes, instead, the dummy datetime of its rank among the distinct
+    source values of the entries: D's constant for DT, ``19000101000000``,
+    for the earliest, and one second later for each later value, so that
+    entries with equal source values take the same dummy. As D's second
+    constant does, the series moves on by its own length where any dummy
+    would equal any entry's source value, as D compares them, until none
+    does, so that no source value is written, as a second run over the
+    output would otherwise do.
+
+    :func:`content_item_actions` does not keep a log's tree where its
+    entries' source values are not in increasing order, are not DT values,
+    or have different UTC offsets, or where one is empty or has more than
+    one value, so the log is sequestered rather than written out of order.
+    An entry without Observation DateTime takes no rank.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+        The instance's source.
+    policy : Policy
+        The policy whose actions ``actions`` are.
+    iod : IOD
+        The instance's IOD.
+    actions : Mapping of ElementPath to str
+        :func:`content_item_actions` of the same source, policy, and IOD.
+
+    Returns
+    -------
+    Mapping of ElementPath to str
+        By the path of each entry's Observation DateTime. Empty unless the
+        instance is a Procedure Log whose Content Sequence ``actions`` keeps,
+        under a policy that neither keeps nor modifies the datetimes.
+
+    Raises
+    ------
+    ValueError
+        If ``actions`` keeps a log whose entries are not in order, which
+        :func:`content_item_actions` never does.
+    """
+    path = ElementPath((), CONTENT_SEQUENCE)
+    if actions.get(path) != KEEP or not _dated_log(policy, iod, path):
+        return types.MappingProxyType({})
+    try:
+        dummies = _ranked_dummies(_entry_datetimes(_Reader(source), path))
+    except (_Unkept, UndecodableElement, IndexError):
+        dummies = None
+    if dummies is None:
+        raise ValueError("the actions keep a log whose entries are not in order")
+    return types.MappingProxyType(dummies)
+
+
 @dataclasses.dataclass(frozen=True, eq=False)
 class ContentItemPlan(Mapping[ElementPath, str]):
     """What Clean Structured Content does with one instance's content items.
@@ -948,6 +1343,18 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     renumbered : mapping of ElementPath to tuple of int
         The new values of each kept Referenced Content Item Identifier
         (0040,DB73) whose target an earlier removed item moves.
+    dummy_texts : mapping of ElementPath to str
+        The value that D writes, in place of its constant, in the Text Value
+        of each kept Imaging Agent Identifier and Referenced Imaging Agent
+        Identifier, and Component ID of a Selected Implant Component or
+        Connected Implantation Plan Component: the dummy value of the rank
+        of the agent or component that it identifies or names
+        (:data:`AGENT_IDENTIFIER`).
+    annotations : frozenset of ElementPath
+        The elements among ``actions`` whose action Clean Graphics gives a
+        Presentation State's graphic annotations from a reviewer's decisions
+        (:func:`~.graphic_annotations.with_annotations`, D-062), rather than
+        a content item's concept name.
     """
 
     actions: Mapping[ElementPath, str] = dataclasses.field(
@@ -958,6 +1365,10 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     renumbered: Mapping[ElementPath, tuple[int, ...]] = dataclasses.field(
         default_factory=lambda: types.MappingProxyType({})
     )
+    dummy_texts: Mapping[ElementPath, str] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({})
+    )
+    annotations: frozenset[ElementPath] = frozenset()
 
     def __getitem__(self, path: ElementPath) -> str:
         return self.actions[path]
@@ -1016,6 +1427,7 @@ def content_item_actions(
     removed: set[Item] = set()
     emptied: set[ElementPath] = set()
     renumbered: dict[ElementPath, tuple[int, ...]] = {}
+    dummy_texts: dict[ElementPath, str] = {}
     if candidates:
         sequences = _Sequences(_Reader(source), concept_actions(policy.options), iod)
         held = frozenset(candidates)
@@ -1023,6 +1435,12 @@ def content_item_actions(
             if _held(path, held):
                 continue
             try:
+                if (
+                    _dated_log(policy, iod, path)
+                    and _ranked_dummies(_entry_datetimes(sequences.reader, path))
+                    is None
+                ):
+                    continue
                 outcome = sequences.outermost(path)
             except (_Unkept, UndecodableElement, IndexError):
                 continue
@@ -1030,9 +1448,11 @@ def content_item_actions(
             removed |= outcome.removed_items
             emptied |= outcome.emptied
             renumbered.update(outcome.renumbered)
+            dummy_texts.update(outcome.dummy_texts)
     return ContentItemPlan(
         types.MappingProxyType(found),
         frozenset(removed),
         frozenset(emptied),
         types.MappingProxyType(renumbered),
+        types.MappingProxyType(dummy_texts),
     )

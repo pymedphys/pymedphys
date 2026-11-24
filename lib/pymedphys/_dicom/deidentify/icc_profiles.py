@@ -12,23 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The ICC profile that D writes in place of ICC Profile (0028,2000) (D-021).
+"""The ICC profiles that D writes in place of ICC Profile (0028,2000) (D-021).
 
 PS3.3 Section C.11.15.1.1 makes ICC Profile an ICC Input Device Profile whose
 input colour space is RGB, whatever the image's Photometric Interpretation,
-with a PCS of CIEXYZ or CIELab. Where D replaces one, it writes the fixed
-profile of :func:`srgb_profile`, the sRGB colour space of IEC 61966-2.1, built
-here the same way every time. It is an ICC version 2.4 input profile
-(ICC.1:2001-04) of the matrix and tone curve model (Section 6.3.1.2), whose PCS
-is CIE XYZ under the D50 illuminant and whose media white point is D50.
+with a PCS of CIEXYZ or CIELab. Where D replaces one, it writes the source
+cleaned of everything but its colorimetry
+(:mod:`~pymedphys._dicom.deidentify.icc_cleaning`), which :func:`assemble`
+writes, or, where the source cannot be cleaned, the fixed profile of
+:func:`srgb_profile`, the sRGB colour space of IEC 61966-2.1, built here the
+same way every time. The fixed profile is an ICC version 2.4 input profile
+(ICC.1:2001-04) of the matrix and tone curve model (Section 6.3.1.2), whose
+PCS is CIE XYZ under the D50 illuminant and whose media white point is D50.
+Nothing of the source profile is written to it.
 
-Nothing of the source profile is written. Only its header's data colour space
-is read, which must be RGB for the profile to be replaced; its contents are
-not otherwise read.
+:func:`data_colour_space` reads only a profile's file signature and data
+colour space, which must be RGB for the profile to be replaced.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import hashlib
 import struct
 
 _HEADER_LENGTH = 128
@@ -48,7 +53,7 @@ _CURVE_ENTRIES = 1024
 _COPYRIGHT = "No copyright, use freely"
 # The date of creation in the header: 1 January 1900, as the dummy dates of
 # D-021 are.
-_CREATED = (1900, 1, 1, 0, 0, 0)
+CREATED = (1900, 1, 1, 0, 0, 0)
 
 
 def data_colour_space(profile: bytes) -> bytes | None:
@@ -77,23 +82,80 @@ def srgb_profile(description: str) -> bytes:
     >>> len(profile) == int.from_bytes(profile[:4], "big")
     True
     """
+    return assemble(SRGB_HEADER, srgb_tags(description))
+
+
+def srgb_tags(description: str) -> list[tuple[bytes, bytes]]:
+    """Return the tags of :func:`srgb_profile`, each signature with its data.
+
+    Examples
+    --------
+    >>> [signature for signature, _ in srgb_tags("DEIDENTIFIED sRGB")][:3]
+    [b'desc', b'cprt', b'wtpt']
+    """
     curve = _curve()
-    tags = [
-        (b"desc", _description(description)),
-        (b"cprt", _text(_COPYRIGHT)),
+    return [
+        (b"desc", text_description(description)),
+        (b"cprt", text_type(_COPYRIGHT)),
         (b"wtpt", _xyz(_D50)),
         *((signature, _xyz(values)) for signature, values in _COLORANTS),
         (b"rTRC", curve),
         (b"gTRC", curve),
         (b"bTRC", curve),
     ]
-    return _profile(tags)
 
 
-def _profile(tags: list[tuple[bytes, bytes]]) -> bytes:
+@dataclasses.dataclass(frozen=True)
+class Header:
+    """The header fields that a written profile takes from its maker.
+
+    Every other header field is fixed: no preferred CMM, platform, device
+    manufacturer, model, attributes, or creator, an input device profile of
+    the RGB data colour space, :data:`CREATED` as its date, and zero in the
+    reserved bytes.
+
+    Attributes
+    ----------
+    version : bytes
+        The profile's version, as the header's four bytes give it.
+    connection_space : bytes
+        The profile connection space's signature, ``XYZ `` or ``Lab ``.
+    rendering_intent : int
+        The rendering intent, from 0 to 3.
+    illuminant : tuple of int
+        The profile connection space's illuminant, as three s15Fixed16Number
+        encodings.
+    flags : int
+        The profile flags.
+    """
+
+    version: bytes
+    connection_space: bytes = b"XYZ "
+    rendering_intent: int = 0
+    illuminant: tuple[int, int, int] = _D50
+    flags: int = 0
+
+
+# The header of the fixed sRGB profile: version 2.4, perceptual.
+SRGB_HEADER = Header(version=bytes([2, 0x40, 0, 0]))
+
+
+def assemble(header: Header, tags: list[tuple[bytes, bytes]]) -> bytes:
     """Return a profile's bytes: its header, tag table, and tag data.
 
-    Tags with the same data share it, as the three tone curves do, and each tag's data starts on a four-byte boundary.
+    Tags with the same data share it, as the three tone curves of a matrix and
+    tone curve profile usually do, and each tag's data starts on a four-byte
+    boundary, padded with zero bytes. In a version 4 profile, the header's
+    profile ID is the MD5 digest of the profile that ICC.1:2022 Section 7.2.18
+    defines, computed with the profile flags, rendering intent, and profile ID
+    fields set to zero; in a version 2 profile, those bytes are reserved and
+    zero.
+
+    Examples
+    --------
+    >>> profile = assemble(Header(version=bytes([4, 0x30, 0, 0])), [])
+    >>> len(profile) == int.from_bytes(profile[:4], "big") == 132
+    True
     """
     table_length = 4 + 12 * len(tags)
     offset = _HEADER_LENGTH + table_length
@@ -107,28 +169,38 @@ def _profile(tags: list[tuple[bytes, bytes]]) -> bytes:
         entries.append(struct.pack(">4sII", signature, placed[element], len(element)))
     table = struct.pack(">I", len(tags)) + b"".join(entries)
     size = _HEADER_LENGTH + len(table) + len(data)
-    header = (
-        struct.pack(">I", size)
-        + b"\0" * 4  # preferred CMM: none
-        + struct.pack(">I", 0x02400000)  # version 2.4
-        + b"scnr"  # an input device profile
-        + RGB
-        + b"XYZ "
-        + struct.pack(">6H", *_CREATED)
-        + _SIGNATURE
-        + b"\0" * 4  # primary platform: none
-        + b"\0" * 4  # flags
-        + b"\0" * 8  # device manufacturer and model: none
-        + b"\0" * 8  # device attributes
-        + struct.pack(">I", 0)  # perceptual rendering intent
-        + struct.pack(">3I", *_D50)
-        + b"\0" * 4  # profile creator: none
-        + b"\0" * 44  # reserved
+
+    def header_bytes(flags: int, intent: int, profile_id: bytes) -> bytes:
+        return (
+            struct.pack(">I", size)
+            + b"\0" * 4  # preferred CMM: none
+            + header.version
+            + b"scnr"  # an input device profile
+            + RGB
+            + header.connection_space
+            + struct.pack(">6H", *CREATED)
+            + _SIGNATURE
+            + b"\0" * 4  # primary platform: none
+            + struct.pack(">I", flags)
+            + b"\0" * 8  # device manufacturer and model: none
+            + b"\0" * 8  # device attributes
+            + struct.pack(">I", intent)
+            + struct.pack(">3I", *header.illuminant)
+            + b"\0" * 4  # profile creator: none
+            + profile_id
+            + b"\0" * 28  # reserved
+        )
+
+    profile_id = bytes(16)
+    if header.version[0] >= 4:
+        unsigned = header_bytes(0, 0, profile_id) + table + data
+        profile_id = hashlib.md5(unsigned, usedforsecurity=False).digest()
+    return (
+        header_bytes(header.flags, header.rendering_intent, profile_id) + table + data
     )
-    return header + table + data
 
 
-def _description(text: str) -> bytes:
+def text_description(text: str) -> bytes:
     """Return a textDescriptionType with ``text`` as its ASCII description."""
     ascii_text = text.encode("ascii") + b"\0"
     return (
@@ -142,7 +214,7 @@ def _description(text: str) -> bytes:
     )
 
 
-def _text(text: str) -> bytes:
+def text_type(text: str) -> bytes:
     """Return a textType holding ``text``."""
     return b"text" + b"\0" * 4 + text.encode("ascii") + b"\0"
 

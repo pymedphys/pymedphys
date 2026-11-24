@@ -41,8 +41,10 @@ applies to it; elsewhere it has no rule. In Referenced Performed Procedure Step
 Sequence (0008,1111), it writes, for each source item, an item that refers
 to a Modality Performed Procedure Step by the keyed replacement of the
 source item's Referenced SOP Instance UID. ICC Profile (0028,2000), of VR
-OB, has a rule too (:func:`icc_profile_for_d`): D writes a fixed sRGB
-profile in place of an RGB one
+OB, has a rule too (:func:`icc_profile_for_d`): D writes an RGB source
+profile cleaned of everything but its colorimetry
+(:mod:`~pymedphys._dicom.deidentify.icc_cleaning`), or a fixed sRGB profile
+where the source cannot be cleaned
 (:mod:`~pymedphys._dicom.deidentify.icc_profiles`).
 
 Verifying Observer Sequence (0040,A073) has a rule of another kind
@@ -54,7 +56,34 @@ take the text constants; Verifying Observer Identification Code Sequence
 (0040,A088) Z, so it is emptied; and Verification DateTime (0040,A030) D,
 which Full Dates gives K and Modified Dates C, so it takes the DT constant
 or is kept or modified with the other dates. A source item without one of
-them stays without it: no value is made up.
+them stays without it: no value is made up. Operator Identification
+Sequence (0008,1072) has a rule of the same kind, but only directly in an
+item of Override Sequence (3008,0060) (:data:`REVIEWED_WITHIN`), where the
+RT Radiation Record Common Module makes it Type 1: D keeps each source
+item, with only the seventeen attributes of PS3.3 Table C.17-3b, the
+Identified Person or Device Macro, each under its own rule, so that Person
+Name (0040,A123) takes the PN constant, Person Identification Code Sequence
+(0040,1101) its dummy item, Device UID (0018,1002) its keyed replacement,
+and Institution Name (0008,0080) and Institution Code Sequence (0008,0082),
+Type 2 there, are emptied (:func:`kept_item_attributes`).
+
+Referenced Study Sequence (0008,1110) has a rule of the same kind, which the
+maintainer decided on 16 November 2026. Table E.1-1 gives it X/Z, which
+resolves to D only where the sequence is Type 1: in the items of an RT
+Physician Intent's RT Physician Intent Input Instance Sequence (3010,005F)
+and Planning Input Information Sequence (3010,0076), and of an RT Patient
+Position Acquisition Instruction's Referenced Position Reference Instance
+Sequence (3002,0132). There its item names a study by Study Instance UID
+(0020,000D), as the Related Information Entities Macro defines it (PS3.3
+Table 10.37-1), rather than by a SOP Instance reference. D keeps each source
+item, with only the three attributes that the macro defines in it, each
+under its own rule: Study Instance UID takes its keyed replacement, as U
+gives it, so that the written instance names the written study; Pertinent
+SOP Classes in Study (3010,0052) names SOP Classes and is kept; and
+Referenced Series Sequence (0008,1115) is kept, with its items' attributes
+under their own rules, so that Series Instance UID (0020,000E) takes its
+keyed replacement and Referenced Image Sequence (0008,1140), which X/Z/U*
+removes where it is Type 3, is removed.
 
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
 D's dummy value, from :func:`values_for_d`, since a zero-length value would
@@ -80,7 +109,7 @@ import types
 from collections.abc import Mapping, Sequence
 from typing import NamedTuple
 
-from . import icc_profiles
+from . import icc_cleaning, icc_profiles
 from .keys import DeidKey
 from .standard import VRS
 from .uids import normalise_uid, replacement_uid
@@ -127,14 +156,25 @@ REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
 # The sequences whose reviewed rule holds only in an item of certain
 # sequences, by the sequences whose items must hold them directly (D-021).
 # Elsewhere D on them has no rule, and sequesters. Read-only.
+OPERATOR_IDENTIFICATION_SEQUENCE = "(0008,1072)"
+OVERRIDE_SEQUENCE = "(3008,0060)"
 REVIEWED_WITHIN: Mapping[str, frozenset[str]] = types.MappingProxyType(
-    {INSTITUTION_CODE_SEQUENCE: frozenset({INTERLOCK_RESOLUTION_USER_SEQUENCE})}
+    {
+        INSTITUTION_CODE_SEQUENCE: frozenset({INTERLOCK_RESOLUTION_USER_SEQUENCE}),
+        OPERATOR_IDENTIFICATION_SEQUENCE: frozenset({OVERRIDE_SEQUENCE}),
+    }
 )
 ICC_PROFILE = "(0028,2000)"
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"
+REFERENCED_STUDY_SEQUENCE = "(0008,1110)"
 # The sequences whose D a reviewed rule gives by keeping each source item,
 # with only these of its attributes, each under its own rule, so that each
-# takes the action that the policy gives it there (D-021). Read-only.
+# takes the action that the policy gives it there (D-021): Verifying
+# Observer Sequence's four attributes of PS3.3 Table C.17-2, and, only
+# directly in an item of Override Sequence, as REVIEWED_WITHIN gives,
+# Operator Identification Sequence's seventeen of Table C.17-3b, the
+# Identified Person or Device Macro, which the RT Radiation Record Common
+# Module includes there. Read-only.
 KEPT_ITEM_ATTRIBUTES: Mapping[str, frozenset[str]] = types.MappingProxyType(
     {
         VERIFYING_OBSERVER_SEQUENCE: frozenset(
@@ -144,7 +184,35 @@ KEPT_ITEM_ATTRIBUTES: Mapping[str, frozenset[str]] = types.MappingProxyType(
                 "(0040,A075)",  # Verifying Observer Name
                 "(0040,A088)",  # Verifying Observer Identification Code Sequence
             }
-        )
+        ),
+        REFERENCED_STUDY_SEQUENCE: frozenset(
+            {
+                "(0008,1115)",  # Referenced Series Sequence
+                "(0020,000D)",  # Study Instance UID
+                "(3010,0052)",  # Pertinent SOP Classes in Study
+            }
+        ),
+        OPERATOR_IDENTIFICATION_SEQUENCE: frozenset(
+            {
+                "(0008,0055)",  # Station AE Title
+                "(0008,0070)",  # Manufacturer
+                "(0008,0080)",  # Institution Name
+                "(0008,0082)",  # Institution Code Sequence
+                "(0008,1010)",  # Station Name
+                "(0008,1040)",  # Institutional Department Name
+                "(0008,1041)",  # Institutional Department Type Code Sequence
+                "(0008,1090)",  # Manufacturer's Model Name
+                "(0018,1000)",  # Device Serial Number
+                "(0018,1002)",  # Device UID
+                "(0018,1020)",  # Software Versions
+                "(0018,1204)",  # Date of Manufacture
+                "(0018,1205)",  # Date of Installation
+                "(0040,1101)",  # Person Identification Code Sequence
+                "(0040,A084)",  # Observer Type
+                "(0040,A123)",  # Person Name
+                "(0044,010A)",  # Organizational Role Code Sequence
+            }
+        ),
     }
 )
 _REFERENCED_SOP_CLASS_UID = "(0008,1150)"
@@ -384,9 +452,10 @@ def items_for_d(
 ) -> tuple[tuple[DummyElement, ...], ...]:
     """Return the items that D writes in a sequence with a reviewed rule.
 
-    Three sequences have one; the rule of Verifying Observer Sequence
-    (0040,A073) keeps its source items instead (:data:`KEPT_ITEM_ATTRIBUTES`),
-    so it gives no items here:
+    Three sequences have one; the rules of Verifying Observer Sequence
+    (0040,A073), and of Operator Identification Sequence (0008,1072) in an
+    item of Override Sequence (3008,0060), keep their source items instead
+    (:func:`kept_item_attributes`), so they give no items here:
 
     - Person Identification Code Sequence (0040,1101): one item, with Code
       Value (0008,0100) ``DEIDENTIFIED``, Coding Scheme Designator
@@ -525,6 +594,36 @@ def reviewed_within(tag: str, within: Sequence[str]) -> bool:
     return parents is None or (bool(within) and within[-1] in parents)
 
 
+def kept_item_attributes(tag: str, within: Sequence[str]) -> frozenset[str] | None:
+    """Return the attributes that D keeps in a sequence's items at a place.
+
+    A sequence of :data:`KEPT_ITEM_ATTRIBUTES` whose reviewed rule holds at
+    the place, as :func:`reviewed_within` says, keeps each source item under
+    D, with only these of its attributes (D-021). ``within`` holds the tags
+    of the sequences that enclose the place, outermost first.
+
+    Returns
+    -------
+    frozenset of str or None
+        The tags of the attributes kept, or ``None`` where no such rule
+        holds, so that D on the sequence has no dummy value there.
+
+    Examples
+    --------
+    >>> override = ("(300A,0731)", "(3008,0060)")
+    >>> "(0040,A123)" in kept_item_attributes("(0008,1072)", override)
+    True
+    >>> kept_item_attributes("(0008,1072)", ("(0018,9506)",)) is None
+    True
+    >>> len(kept_item_attributes("(0040,A073)", ()))
+    4
+    """
+    kept = KEPT_ITEM_ATTRIBUTES.get(tag)
+    if kept is None or not reviewed_within(tag, within):
+        return None
+    return kept
+
+
 def _procedure_step_items(
     source: Sequence[Mapping[str, str]], key: DeidKey
 ) -> tuple[tuple[DummyElement, ...], ...]:
@@ -549,15 +648,77 @@ def _procedure_step_items(
     )
 
 
+class IccProfileOutcome(NamedTuple):
+    """The profile that D writes in place of ICC Profile, and how it was made.
+
+    Attributes
+    ----------
+    profile : bytes
+        The profile written.
+    refusal : Refusal or None
+        None where the profile is the source cleaned of everything but its
+        colorimetry; otherwise why the source could not be cleaned, so the
+        fixed sRGB profile was written instead.
+    """
+
+    profile: bytes
+    refusal: icc_cleaning.Refusal | None
+
+
+def icc_profile_outcome(source: bytes) -> IccProfileOutcome:
+    """Return the profile that D writes in place of ICC Profile (0028,2000).
+
+    PS3.3 Section C.11.15.1.1 requires the profile's data colour space to be
+    RGB, which its header gives, so only an RGB source profile is replaced.
+    The profile written is the source cleaned by
+    :func:`~pymedphys._dicom.deidentify.icc_cleaning.clean_profile`, keeping
+    its colorimetry, with ``DEIDENTIFIED`` as its description and copyright.
+    Where the source cannot be cleaned, it is the fixed sRGB profile of
+    :func:`~pymedphys._dicom.deidentify.icc_profiles.srgb_profile`, described
+    ``DEIDENTIFIED sRGB``, which can itself be cleaned, so it never has the
+    source's bytes. Where the source has the same bytes as its cleaned
+    profile, the profile written takes the second text constant,
+    ``DE-IDENTIFIED``, in place of the first, so the value always changes.
+
+    Raises
+    ------
+    NoDummyValueError
+        If the source is not an ICC profile, or its data colour space is not
+        RGB.
+    TypeError
+        If ``source`` is not bytes.
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify import icc_profiles
+    >>> source = icc_profiles.srgb_profile("A scanner's profile")
+    >>> outcome = icc_profile_outcome(source)
+    >>> outcome.refusal is None
+    True
+    >>> b"scanner" in outcome.profile
+    False
+    """
+    if not isinstance(source, (bytes, bytearray)):
+        raise TypeError("the source ICC Profile must be bytes")
+    source = bytes(source)
+    if icc_profiles.data_colour_space(source) != icc_profiles.RGB:
+        raise NoDummyValueError("OB", "the source ICC Profile is not an RGB profile")
+    try:
+        cleaned = icc_cleaning.clean_profile(source, _TEXT[0])
+    except icc_cleaning.UncleanableProfileError as refused:
+        # The fixed profile can itself be cleaned, so a source that could
+        # not be never has its bytes.
+        fixed = icc_profiles.srgb_profile(f"{_TEXT[0]} sRGB")
+        return IccProfileOutcome(fixed, refused.refusal)
+    if source == cleaned:
+        cleaned = icc_cleaning.clean_profile(source, _TEXT[1])
+    return IccProfileOutcome(cleaned, None)
+
+
 def icc_profile_for_d(source: bytes) -> bytes:
     """Return the profile that D writes in place of ICC Profile (0028,2000).
 
-    The profile is the fixed sRGB profile of
-    :func:`~pymedphys._dicom.deidentify.icc_profiles.srgb_profile`, described
-    ``DEIDENTIFIED sRGB``, or ``DE-IDENTIFIED sRGB`` where the source has the
-    same bytes, so the value always changes. PS3.3 Section C.11.15.1.1
-    requires the profile's data colour space to be RGB, which its header
-    gives, so only an RGB source profile is replaced.
+    The profile is that of :func:`icc_profile_outcome`.
 
     Raises
     ------
@@ -574,11 +735,4 @@ def icc_profile_for_d(source: bytes) -> bytes:
     >>> icc_profiles.data_colour_space(icc_profile_for_d(source))
     b'RGB '
     """
-    if not isinstance(source, (bytes, bytearray)):
-        raise TypeError("the source ICC Profile must be bytes")
-    if icc_profiles.data_colour_space(bytes(source)) != icc_profiles.RGB:
-        raise NoDummyValueError("OB", "the source ICC Profile is not an RGB profile")
-    first = icc_profiles.srgb_profile(f"{_TEXT[0]} sRGB")
-    if bytes(source) == first:
-        return icc_profiles.srgb_profile(f"{_TEXT[1]} sRGB")
-    return first
+    return icc_profile_outcome(source).profile

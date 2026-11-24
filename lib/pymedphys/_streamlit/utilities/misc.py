@@ -7,14 +7,45 @@ from pymedphys._imports import streamlit as st
 
 from . import config as _config
 
+# The pixel value written for NaN, which has no place on the vmin to vmax scale.
+NAN_PIXEL_VALUE = 0
+
 
 def normalize_and_convert_to_uint8(data, vmin, vmax):
+    """Scale data linearly to the pixel values of an 8-bit greyscale image.
+
+    ``vmin`` is written as 0 and ``vmax`` as 255. Values between them are
+    scaled linearly and rounded down to a whole number. Values below ``vmin``
+    are written as 0, and values above ``vmax`` as 255.
+
+    NaN is written as 0 (``NAN_PIXEL_VALUE``), so in the image a NaN point
+    looks the same as a point at or below ``vmin``.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The values to convert, of any shape.
+    vmin, vmax : float
+        The values written as 0 and as 255.
+
+    Returns
+    -------
+    numpy.ndarray
+        The pixel values, as ``uint8`` with the shape of ``data``.
+    """
     # Normalize the data so that when data = vmin, norm=0 and when data=vmax, norm=1
     norm = (data - vmin) / (vmax - vmin)
     # Scale the data to suit a uint8 image
     img = 255 * norm
     # make sure there are no out of bound values
     img = np.clip(img, 0, 255)
+
+    # NaN passes through the clip, and C does not define the result of
+    # converting NaN to an integer: the value can differ between platforms,
+    # and NumPy warns of an invalid value in the cast. Give NaN its pixel
+    # value while the image is still floating point. The clip has already
+    # brought infinities into range, so this replaces NaN alone.
+    img = np.nan_to_num(img, nan=NAN_PIXEL_VALUE)
 
     # Convert the data to uint8 format
     img = img.astype(np.uint8)

@@ -26,7 +26,7 @@ import json
 import re
 import warnings
 
-from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import numpy, pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
@@ -37,6 +37,7 @@ from pymedphys._dicom.deidentify import (
     standard,
     structured_content,
     synthetic_content_trees,
+    supplementary_actions,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.dates import MAX_OFFSET_WEEKS, MIN_OFFSET_WEEKS
@@ -65,9 +66,9 @@ MARKER_PATTERNS = {
     **dict.fromkeys(("AE", "LO", "LT", "SH", "ST", "UC", "UT", "UN", "OB", "OW"), TEXT),
     "AS": r"\d{3}W",
     "CS": r"SYNMK_\d{5}",
-    "DA": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
+    "DA": r"(0[1-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
     "DS": r"8\d{5}\.5",
-    "DT": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
+    "DT": r"(0[1-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
     "IS": r"7\d{5}",
     "PN": r"SYNMK(\d{5})\^M[AÄ]RKER\1",
     "TM": r"([01]\d|2[0-3])[0-5]\d[0-5]\d\.424242",
@@ -79,15 +80,28 @@ MARKER_PATTERNS = {
 TEXT_VRS = frozenset(MARKER_PATTERNS) - {"OB", "OW", "UN", "US"}
 REFERENCED_SOP_CLASS = "(0008,1150)"
 REFERENCED_SOP_INSTANCE = "(0008,1155)"
+CONTENT_SEQUENCE = "(0040,A730)"
 # The kinds that leave a value that the residual search can find.
 MARKERS = frozenset({Kind.PLANTED, Kind.CONTENT})
-# The general SR IODs, whose reports' trees follow TID 2000 or TID 1500.
-GENERAL_SR_IODS = (
-    "Basic Text SR",
-    "Enhanced SR",
-    "Comprehensive SR",
-    "Comprehensive 3D SR",
-    "Extensible SR",
+# The IODs that each name their root template, in the order of their files.
+TEMPLATE_IODS = (
+    "Key Object Selection Document",
+    "Mammography CAD SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
+    "Procedure Log",
+    "Spectacle Prescription Report",
+    "Macular Grid Thickness and Volume Report",
+    "Waveform Annotation SR",
+)
+# The planning, procedure, and acquisition context reports' IODs, in the
+# order of their files.
+PROCEDURE_IODS = (
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
 )
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
@@ -222,8 +236,70 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "26-sr-comprehensive.dcm",
         "27-sr-comprehensive-3d.dcm",
         "28-sr-extensible.dcm",
+        "29-sr-dose-enhanced-x-ray.dcm",
+        "30-sr-dose-patient.dcm",
+        "31-sr-dose-ct.dcm",
+        "32-seg.dcm",
+        "33-seg-label-map.dcm",
+        "34-sr-key-object-selection.dcm",
+        "35-sr-mammography-cad.dcm",
+        "36-sr-chest-cad.dcm",
+        "37-sr-colon-cad.dcm",
+        "38-sr-procedure-log.dcm",
+        "39-sr-spectacle-prescription.dcm",
+        "40-sr-macular-grid.dcm",
+        "41-sr-waveform-annotation.dcm",
+        "42-sr-implantation-plan.dcm",
+        "43-sr-echo.dcm",
+        "44-sr-imaging-agent-planned.dcm",
+        "45-sr-imaging-agent-performed.dcm",
+        "46-sr-acquisition-context.dcm",
         "47-rt-ion-plan.dcm",
         "48-rt-ion-beams-record.dcm",
+        "49-rt-brachy-record.dcm",
+        "50-rt-treatment-summary-record.dcm",
+        "51-parametric-map.dcm",
+        "52-real-world-value-mapping.dcm",
+        "53-nm.dcm",
+        "54-encapsulated-pdf.dcm",
+        "55-seg-surface.dcm",
+        "56-pr-grayscale.dcm",
+        "57-pr-color.dcm",
+        "58-pr-pseudo-color.dcm",
+        "59-pr-blending.dcm",
+        "60-pr-xa-xrf-grayscale.dcm",
+        "61-pr-variable-modality-lut.dcm",
+        "62-cr.dcm",
+        "63-dx-for-processing.dcm",
+        "64-dx-for-presentation.dcm",
+        "65-sc.dcm",
+        "66-sc-single-bit.dcm",
+        "67-sc-grayscale-byte.dcm",
+        "68-sc-grayscale-word.dcm",
+        "69-sc-true-color.dcm",
+        "70-rt-segment-annotation.dcm",
+        "71-rt-radiation-set.dcm",
+        "72-c-arm-radiation.dcm",
+        "73-tomotherapeutic-radiation.dcm",
+        "74-robotic-arm-radiation.dcm",
+        "75-rt-beams-delivery-instruction.dcm",
+        "76-rt-brachy-delivery-instruction.dcm",
+        "77-rt-radiation-set-delivery-instruction.dcm",
+        "78-rt-radiation-record-set.dcm",
+        "79-rt-physician-intent.dcm",
+        "80-rt-treatment-preparation.dcm",
+        "81-rt-position-acquisition-instruction.dcm",
+        "82-c-arm-radiation-record.dcm",
+        "83-tomotherapeutic-radiation-record.dcm",
+        "84-robotic-arm-radiation-record.dcm",
+        "85-rt-radiation-salvage-record.dcm",
+        "86-pr-planar-mpr.dcm",
+        "87-pr-volume-rendering.dcm",
+        "88-pr-advanced-blending.dcm",
+        "89-rt-image-enhanced.dcm",
+        "90-rt-image-enhanced-continuous.dcm",
+        "91-pr-waveform.dcm",
+        "92-pr-waveform-acquisition.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -254,18 +330,133 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        "Enhanced X-Ray Radiation Dose SR",
+        "Patient Radiation Dose SR",
+        "X-Ray Radiation Dose SR",
+        "Segmentation",
+        "Segmentation",
+        *TEMPLATE_IODS,
+        *PROCEDURE_IODS,
         "RT Ion Plan",
         "RT Ion Beams Treatment Record",
+        "RT Brachy Treatment Record",
+        "RT Treatment Summary Record",
+        "Parametric Map",
+        "Real World Value Mapping",
+        "Nuclear Medicine Image",
+        "Encapsulated PDF",
+        "Surface Segmentation",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
+        "Digital X-Ray Image",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+        "RT Beams Delivery Instruction",
+        "RT Brachy Application Setup Delivery Instruction",
+        "RT Radiation Set Delivery Instruction",
+        "RT Radiation Record Set",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     ]
-    assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-9:-2]
+    # Counted from the start, so that a file added at the end moves none.
+    presentation_states = (
+        corpus.files[55:61] + corpus.files[85:88] + corpus.files[90:92]
     )
+    assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
+        file.name for file in corpus.files[21:31] + corpus.files[33:46]
+    )
+    assert corpus_module.SEGMENTATION_FILES == tuple(
+        file.name for file in corpus.files[31:33]
+    )
+    assert corpus_module.TIMEZONE_REPORT_FILE in corpus_module.PROCEDURE_REPORT_FILES
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-2:])
+    ) == tuple(file.name for file in corpus.files[46:48])
+    assert (
+        corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+        corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+    ) == tuple(file.name for file in corpus.files[48:50])
+    assert (
+        corpus_module.PARAMETRIC_MAP_FILE,
+        corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
+    ) == tuple(file.name for file in corpus.files[50:52])
+    assert corpus_module.NM_FILE == corpus.files[52].name
+    assert corpus_module.ENCAPSULATED_PDF_FILE == corpus.files[53].name
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[54].name
+    assert corpus_module.PRESENTATION_STATE_FILES == tuple(
+        file.name for file in presentation_states
+    )
+    assert {file.manifest.sop_class for file in presentation_states} == (
+        corpus_module.PRESENTATION_STATE_STORAGE_CLASSES
+    )
+    assert corpus_module.RADIOGRAPH_FILES == tuple(
+        file.name for file in corpus.files[61:64]
+    )
+    assert corpus_module.SECONDARY_CAPTURE_FILES == tuple(
+        file.name for file in corpus.files[64:69]
+    )
+    assert (
+        corpus_module.ENHANCED_RT_IMAGE_FILE,
+        corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+    ) == tuple(file.name for file in corpus.files[88:90])
+    assert (
+        corpus_module.SEGMENT_ANNOTATION_FILE,
+        corpus_module.RADIATION_SET_FILE,
+        corpus_module.C_ARM_RADIATION_FILE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
+        corpus_module.ROBOTIC_ARM_RADIATION_FILE,
+    ) == tuple(file.name for file in corpus.files[69:74])
+    assert (
+        corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
+        corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
+        corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
+    ) == tuple(file.name for file in corpus.files[74:77])
+    assert (
+        corpus_module.PHYSICIAN_INTENT_FILE,
+        corpus_module.TREATMENT_PREPARATION_FILE,
+        corpus_module.POSITION_ACQUISITION_INSTRUCTION_FILE,
+    ) == tuple(file.name for file in corpus.files[78:81])
+    assert (
+        corpus_module.RADIATION_RECORD_SET_FILE,
+        corpus_module.C_ARM_RADIATION_RECORD_FILE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_RECORD_FILE,
+        corpus_module.ROBOTIC_ARM_RADIATION_RECORD_FILE,
+        corpus_module.RADIATION_SALVAGE_RECORD_FILE,
+    ) == tuple(file.name for file in corpus.files[77:78] + corpus.files[81:85])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
+
+
+def _in_content_tree(path):
+    """Return whether a path is below a report's Content Sequence."""
+    return bool(path.items) and path.items[0][0] == CONTENT_SEQUENCE
 
 
 def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
@@ -277,8 +468,14 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
             path = placement.path
             if placement.kind in (Kind.PRIVATE, Kind.CONTENT, Kind.REVIEW_COPY):
                 continue
-            if placement.concept is not None:
-                # A content item's value, in its report's content tree.
+            if placement.concept is not None or (
+                file.name in corpus_module.STRUCTURED_REPORT_FILES
+                and _in_content_tree(path)
+            ):
+                # A content item's value, or a reference, in its report's
+                # content tree, whose template decides where it is. The
+                # Encapsulated PDF has no template, and its Content Sequence's
+                # places are recorded like any other.
                 continue
             if any(index for _, index in path.items):
                 # The structure set's references to the other slices.
@@ -310,8 +507,58 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         assert max(found.values()) == 1, file.name
 
 
+# The attributes of Table E.1-1 that an instance of the corpus's IODs defines
+# only below the depth cap: five items deep in a functional group of the
+# Enhanced RT Images, Radiation Generation Mode Label and Description, in the
+# items of Radiation Generation Mode Sequence (300A,067B), and Referenced
+# Treatment Position Group UID, in those of Treatment Position Group Sequence
+# (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
+# test_deidentify_instance_transform.py. In the Advanced Blending
+# Presentation State, Referenced Digital Signature Sequence and Referenced
+# SOP Instance MAC Sequence, with its MAC, are defined only in the Referenced
+# SOP Sequence of the Referenced Series Sequence of the Referenced Spatial
+# Registration Sequence of an Advanced Blending Sequence item, four sequences
+# deep, as its Common Instance Reference Module's Referenced Instance
+# Sequence does not define them; other files plant them at a shallower place.
+# In the RT Radiation Set Delivery Instruction, Referenced, Constituent, and
+# Source Conceptual Volume UID lie five or six items deep, in the Conceptual
+# Volume Macro of a task's patient position displacement; the RT Radiation
+# Set and the radiations hold them less deep, and their actions in the
+# instruction are tested apart there too. Five items deep too are the
+# Selector values that RT Patient Position Acquisition Instruction gives a
+# constraint and Source Conceptual Volume UID, in the Conceptual Volumes of
+# RT Physician Intent and RT Treatment Preparation, which
+# test_deidentify_beyond_the_corpus_depth.py tests apart.
+ONLY_BEYOND_THE_DEPTH_CAP = {
+    "(0400,0402)",
+    "(0400,0403)",
+    "(0400,0404)",
+    "(300A,067C)",
+    "(300A,067D)",
+    "(300A,0785)",
+    "(0072,005E)",  # Selector AE Value
+    "(0072,005F)",  # Selector AS Value
+    "(0072,0061)",  # Selector DA Value
+    "(0072,0063)",  # Selector DT Value
+    "(0072,0065)",  # Selector OB Value
+    "(0072,0066)",  # Selector LO Value
+    "(0072,0068)",  # Selector LT Value
+    "(0072,006A)",  # Selector PN Value
+    "(0072,006B)",  # Selector TM Value
+    "(0072,006C)",  # Selector SH Value
+    "(0072,006D)",  # Selector UN Value
+    "(0072,006E)",  # Selector ST Value
+    "(0072,0070)",  # Selector UT Value
+    "(0072,0071)",  # Selector UR Value
+    "(3010,000B)",
+    "(3010,0013)",
+    "(3010,0015)",  # Source Conceptual Volume UID
+}
+
+
 def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
     reasons = collections.Counter()
+    beyond = set()
     for file in corpus.files:
         placed = file.manifest.placements
         planted_tags = {p.path.tag for p in placed if p.kind is not Kind.NOT_PLANTED}
@@ -326,11 +573,15 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
                 ):
                     continue
                 assert depth + (placement.vr == "SQ") > corpus_module.MAX_DEPTH
-                # Each attribute capped is planted at a shallower place.
-                assert placement.path.tag in planted_tags
-            else:
+                # Each attribute capped is planted at a shallower place, but
+                # those that the corpus's IODs define only below the cap.
+                if placement.path.tag not in planted_tags:
+                    beyond.add(placement.path.tag)
+            elif not _in_content_tree(placement.path):
+                # A report's template, not the cap, decides its tree's depth.
                 assert depth <= corpus_module.MAX_DEPTH
 
+    assert beyond == ONLY_BEYOND_THE_DEPTH_CAP
     assert set(reasons) == {
         Reason.DEPTH_CAP,
         Reason.SEQUESTERS_INSTANCE,
@@ -344,12 +595,18 @@ REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)", "(0040,A073)"}
 # Interlock Resolution User Sequence (D-021).
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
 INTERLOCK_RESOLUTION_USER = "(300A,0746)"
+# Operator Identification Sequence's reviewed rule, which keeps its items,
+# holds only directly in an item of Override Sequence (D-021).
+OPERATOR_IDENTIFICATION_SEQUENCE = "(0008,1072)"
+OVERRIDE_SEQUENCE = "(3008,0060)"
 
 
 def _reviewed(tag, path):
     """Return whether a reviewed rule writes D's value for a sequence at a place."""
     if tag == INSTITUTION_CODE_SEQUENCE:
         return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
+    if tag == OPERATOR_IDENTIFICATION_SEQUENCE:
+        return path[-1:] == (OVERRIDE_SEQUENCE,)
     return tag in REVIEWED_DUMMY_SEQUENCES
 
 
@@ -362,6 +619,11 @@ def _resolved(iod, tag, path):
     if action in compound_actions.COMPOUND_ACTIONS:
         return compound_actions.resolve_in_iod(iod, tag, path, action)
     return compound_actions.resolve_plain_in_iod(iod, tag, path, action)
+
+
+# The sequences that a volumetric Presentation State's annotations are in,
+# which Table E.1-1 omits and a supplementary rule gives D.
+VOLUMETRIC_ANNOTATION_SEQUENCES = {"(0070,1901)", "(0070,1905)"}
 
 
 def _sequesters_at(iod, tag, path, row):
@@ -391,13 +653,28 @@ def _sequesters_at(iod, tag, path, row):
 def _sequesters(iod, placement):
     """Return whether the Basic Profile's action on a placement sequesters.
 
-    So it does within a sequence whose own action sequesters.
+    So it does within a sequence whose own action sequesters, whether Table
+    E.1-1 gives it or, for the two annotation sequences of a volumetric
+    Presentation State, a supplementary rule gives it D. A content item's
+    value takes its concept's row of Table E.3.4-1, not a row of Table
+    E.1-1, so only its enclosing sequences are judged here.
     """
     rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
+    rules = supplementary_actions.load_supplementary_actions().rules
     path = tuple(tag for tag, _ in placement.path.items)
-    return _sequesters_at(iod, placement.path.tag, path, placement.profile_tag) or any(
-        path[depth] in rows
-        and _sequesters_at(iod, path[depth], path[:depth], path[depth])
+    own = placement.concept is None and _sequesters_at(
+        iod, placement.path.tag, path, placement.profile_tag
+    )
+    return own or any(
+        (
+            path[depth] in rows
+            and _sequesters_at(iod, path[depth], path[:depth], path[depth])
+        )
+        or (
+            path[depth] in VOLUMETRIC_ANNOTATION_SEQUENCES
+            and rules[path[depth]].action == "D"
+            and compound_actions.strictest_type(iod, path[depth], path[:depth]) == "1"
+        )
         for depth in range(len(path))
     )
 
@@ -421,15 +698,79 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
 
     # Responsible Person and Responsible Organization (D-020), only in the
     # third slice, so that the other instances can be released; and the
-    # Enhanced PET Image's Radiopharmaceutical Start DateTime in no file.
+    # Enhanced PET Image's Radiopharmaceutical Start DateTime in no file; and
+    # the Simplified Adult Echo SR's Timezone Offset From UTC, Type 1 in its
+    # Timezone Module, which only that IOD requires (D-020), in no file.
     # Each report's Verifying Observer Sequence, which a reviewed rule keeps
     # with dummy values (D-021), the Requested Procedure ID of its Referenced
-    # Request Sequence, which a plain X empties there (D-020), and the
+    # Request Sequence, which a plain X empties there (D-020), the
     # Institution Code Sequence of each treatment record's interlock
-    # resolution user, whose dummy item a reviewed rule writes (D-021), are
-    # planted.
+    # resolution user, whose dummy item a reviewed rule writes (D-021), the
+    # Operator Identification Sequence of each radiation record's override,
+    # whose items a reviewed rule keeps (D-021), and Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
+    # Sequence, which a plain X empties there too, are planted.
+    # Each softcopy Presentation State's Graphic Annotation Sequence, whose D
+    # a sequence has no dummy value for (D-021), with what its item holds,
+    # its Presentation Creation Date and Time, which a plain X removes where
+    # they are Type 1 (D-020), and, but in the blending one, whose IOD has no
+    # Overlay Plane Module, its Overlay Data, which a plain X removes where
+    # the module is conditional, are planted in no file. So too in the
+    # volumetric and advanced blending ones, which have no Overlay Plane
+    # Module, and in the volumetric ones what the items of their Volumetric
+    # Annotation Sequence and Volumetric Presentation Input Annotation
+    # Sequence hold, whose supplementary rule's D sequesters them. Overlay
+    # Data is in no Digital X-Ray Image either, whose Overlay Plane Module is
+    # conditional, so that removing it would sequester the instance (D-020).
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
+    annotation = {
+        "(0070,0001)",  # Graphic Annotation Sequence
+        "(0008,1140)",  # Referenced Image Sequence, in its item
+        "(0008,1155)",  # Referenced SOP Instance UID, in that item
+        "(0062,0021)",  # Tracking UID, in its item
+        "(0070,0006)",  # Unformatted Text Value, in its Text Object Sequence
+    }
+    creation = {"(0070,0082)", "(0070,0083)"}
+    overlay = {"(6000,3000)"}
+    pdf = iod_for_sop_class(corpus_module.ENCAPSULATED_PDF_STORAGE)
+    only_in = {
+        "Enhanced PET Image": {"(0018,1078)"},
+        "Simplified Adult Echo SR": {"(0008,0201)"},
+        # The document, Content Sequence and every nested item are omitted.
+        "Encapsulated PDF": {"(0042,0011)", CONTENT_SEQUENCE}
+        | {
+            tag
+            for path, tag in _expected_places(pdf)
+            if path[:1] == (CONTENT_SEQUENCE,)
+        },
+        **dict.fromkeys(
+            (
+                "Grayscale Softcopy Presentation State",
+                "Color Softcopy Presentation State",
+                "Pseudo-Color Softcopy Presentation State",
+                "XA/XRF Grayscale Softcopy Presentation State",
+                "Variable Modality LUT Softcopy Presentation State",
+            ),
+            annotation | creation | overlay,
+        ),
+        "Blending Softcopy Presentation State": annotation | creation,
+        **dict.fromkeys(
+            (
+                "Planar MPR Volumetric Presentation State",
+                "Volume Rendering Volumetric Presentation State",
+                "Advanced Blending Presentation State",
+            ),
+            annotation | creation,
+        ),
+        # The waveform ones define no Graphic Annotation Sequence or overlay.
+        **dict.fromkeys(
+            (
+                "Waveform Presentation State",
+                "Waveform Acquisition Presentation State",
+            ),
+            creation,
+        ),
+        "Digital X-Ray Image": overlay,
+    }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
@@ -501,7 +842,7 @@ def test_dates_are_distinct_valid_dates_before_1900(corpus):
 
     assert dates and len(dates) == len(set(dates))
     assert all(value_problem("DA", date) is None for date in dates)
-    assert all("0900" <= date[:4] <= "1899" for date in dates)
+    assert all("0100" <= date[:4] <= "1899" for date in dates)
 
 
 def test_no_date_shifted_under_modified_dates_is_another_markers(corpus):
@@ -582,8 +923,13 @@ def test_the_reference_graph_has_no_findings(corpus):
     assert {(3, 0), (3, 1), (3, 2), (4, 3), (4, 5), (5, 4), (6, 4)} <= targets
     # The MR and PET Images reference the first slice, each other image the
     # single-frame one of its modality, the treatment record the plan, the RT
-    # Ion Plan the structure set, the dose, and the plan, and the RT Ion
-    # Beams Treatment Record the RT Ion Plan.
+    # Ion Plan the structure set, the dose, and the plan, the RT Ion Beams
+    # Treatment Record the RT Ion Plan, the RT Brachy Treatment Record the
+    # plan and the RT Beams Treatment Record, the RT Treatment Summary Record
+    # the plan and the RT Brachy Treatment Record, the Parametric Map the MR
+    # Image, the Real World Value Mapping the PET Image, the RT Beams and RT
+    # Brachy Application Setup Delivery Instructions the plan, and the RT
+    # Radiation Set Delivery Instruction the RT Radiation Set.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -599,18 +945,34 @@ def test_the_reference_graph_has_no_findings(corpus):
         "17-pet-legacy-enhanced.dcm": "15-pet.dcm",
         "20-rt-beams-record.dcm": "05-rtplan.dcm",
         "48-rt-ion-beams-record.dcm": "47-rt-ion-plan.dcm",
+        "49-rt-brachy-record.dcm": "05-rtplan.dcm",
+        "51-parametric-map.dcm": "10-mr.dcm",
+        "52-real-world-value-mapping.dcm": "15-pet.dcm",
+        "75-rt-beams-delivery-instruction.dcm": "05-rtplan.dcm",
+        "76-rt-brachy-delivery-instruction.dcm": "05-rtplan.dcm",
+        "77-rt-radiation-set-delivery-instruction.dcm": "71-rt-radiation-set.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
     } <= targets
     ion_plan = position("47-rt-ion-plan.dcm")
     assert {(ion_plan, 3), (ion_plan, 4), (ion_plan, 5)} <= targets
+    summary = position("50-rt-treatment-summary-record.dcm")
+    brachy = position("49-rt-brachy-record.dcm")
+    beams = position("20-rt-beams-record.dcm")
+    assert {(brachy, beams), (summary, 4), (summary, brachy)} <= targets
+    # The Surface Segmentation names the first slice, from which its surface
+    # was generated.
+    surface = position(corpus_module.SURFACE_SEGMENTATION_FILE)
+    assert (surface, 0) in targets
 
 
 def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
     # The RT Ion Beams Treatment Record's Referenced RT Plan Sequence names the
     # RT Ion Plan, with its Storage SOP Class, as the RT Beams Treatment
-    # Record's names the RT Plan.
+    # Record's names the RT Plan, and the RT Brachy Treatment Record's and the
+    # RT Treatment Summary Record's name the RT Plan, whose application setups
+    # the brachy record records.
     files = {file.name: file for file in corpus.files}
     for record, plan, sop_class in (
         (
@@ -623,6 +985,16 @@ def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
             corpus_module.ION_PLAN,
             corpus_module.RT_ION_PLAN_STORAGE,
         ),
+        (
+            corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+            corpus_module.PLAN,
+            corpus_module.RT_PLAN_STORAGE,
+        ),
+        (
+            corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+            corpus_module.PLAN,
+            corpus_module.RT_PLAN_STORAGE,
+        ),
     ):
         dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files[record].data))
         (reference,) = dataset.ReferencedRTPlanSequence
@@ -630,6 +1002,189 @@ def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
         assert reference.ReferencedSOPClassUID == sop_class, record
     ion_plan = files[corpus_module.ION_PLAN_FILE].manifest
     assert ion_plan.sop_class == corpus_module.RT_ION_PLAN_STORAGE
+    plan = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files["05-rtplan.dcm"].data))
+    assert "ApplicationSetupSequence" in plan
+
+
+def test_the_brachy_and_summary_records_name_the_records_they_relate_to(corpus):
+    # The RT Treatment Summary Record's Referenced Treatment Record Sequence
+    # names the RT Brachy Treatment Record, and the RT Brachy Treatment
+    # Record's names the RT Beams Treatment Record, each with its Storage SOP
+    # Class, so the collection holds references from a record to a record of
+    # another IOD.
+    files = {file.name: file for file in corpus.files}
+    for record, named, sop_class in (
+        (
+            corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+            corpus_module.BRACHY_TREATMENT_RECORD,
+            corpus_module.RT_BRACHY_TREATMENT_RECORD_STORAGE,
+        ),
+        (
+            corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+            corpus_module.TREATMENT_RECORD,
+            corpus_module.RT_BEAMS_TREATMENT_RECORD_STORAGE,
+        ),
+    ):
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files[record].data))
+        assert dataset.Modality == "RTRECORD", record
+        (reference,) = dataset.ReferencedTreatmentRecordSequence
+        assert reference.ReferencedSOPInstanceUID == named, record
+        assert reference.ReferencedSOPClassUID == sop_class, record
+    for name, sop_class, iod in (
+        (
+            corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+            corpus_module.RT_BRACHY_TREATMENT_RECORD_STORAGE,
+            "RT Brachy Treatment Record",
+        ),
+        (
+            corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+            corpus_module.RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+            "RT Treatment Summary Record",
+        ),
+    ):
+        manifest = files[name].manifest
+        assert (manifest.sop_class, manifest.iod) == (sop_class, iod)
+
+
+def test_the_surface_segmentation_holds_a_closed_mesh_of_its_one_segment(corpus):
+    files = {file.name: file for file in corpus.files}
+    dataset = pydicom.dcmread(
+        pydicom.filebase.DicomBytesIO(
+            files[corpus_module.SURFACE_SEGMENTATION_FILE].data
+        )
+    )
+
+    assert dataset.SOPClassUID == corpus_module.SURFACE_SEGMENTATION_STORAGE
+    assert dataset.Modality == "SEG"
+    assert "PixelData" not in dataset
+    (segment,) = dataset.SegmentSequence
+    (referenced,) = segment.ReferencedSurfaceSequence
+    assert (segment.SurfaceCount, referenced.ReferencedSurfaceNumber) == (1, 1)
+    (source,) = referenced.SegmentSurfaceSourceInstanceSequence
+    assert source.ReferencedSOPInstanceUID == corpus_module.CT_SLICES[0]
+    assert dataset.NumberOfSurfaces == 1
+    (surface,) = dataset.SurfaceSequence
+    assert (surface.FiniteVolume, surface.Manifold) == ("YES", "YES")
+    (points,) = surface.SurfacePointsSequence
+    coordinates = numpy.frombuffer(points.PointCoordinatesData, "<f4")
+    assert points.NumberOfSurfacePoints * 3 == coordinates.size == 12
+    (primitives,) = surface.SurfaceMeshPrimitivesSequence
+    triangles = numpy.frombuffer(primitives.LongTrianglePointIndexList, "<u4")
+    # Four triangles, of points indexed from 1, each edge shared by two.
+    assert triangles.size == 12
+    assert set(triangles.tolist()) == {1, 2, 3, 4}
+    edges = collections.Counter(
+        frozenset(pair)
+        for triangle in triangles.reshape(4, 3).tolist()
+        for pair in (
+            (triangle[0], triangle[1]),
+            (triangle[1], triangle[2]),
+            (triangle[2], triangle[0]),
+        )
+    )
+    assert len(edges) == 6 and set(edges.values()) == {2}
+
+
+def test_the_delivery_instructions_name_what_they_instruct_with_its_class(corpus):
+    # The RT Beams Delivery Instruction names the RT Plan, the RT Beams
+    # Treatment Record of the session that it continues, and the RT Image as
+    # a reference image; the RT Brachy Application Setup Delivery Instruction
+    # names the RT Plan, within the plan's series of its study; and the RT
+    # Radiation Set Delivery Instruction names the RT Radiation Set, and its
+    # C-Arm Photon-Electron Radiation in each task and as omitted. Each is a
+    # PLAN, as PS3.3 Sections A.64.4.1, A.79.4.1, and A.86.1.13.4.1 require.
+    files = {file.name: file for file in corpus.files}
+
+    def item(dataset, keywords):
+        for keyword in keywords:
+            (dataset,) = dataset[keyword].value
+        return dataset
+
+    for name, sop_class, iod, named in (
+        (
+            corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
+            corpus_module.RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
+            "RT Beams Delivery Instruction",
+            (
+                (
+                    ("ReferencedRTPlanSequence",),
+                    corpus_module.PLAN,
+                    corpus_module.RT_PLAN_STORAGE,
+                ),
+                (
+                    ("ReferencedTreatmentRecordSequence",),
+                    corpus_module.TREATMENT_RECORD,
+                    corpus_module.RT_BEAMS_TREATMENT_RECORD_STORAGE,
+                ),
+                (
+                    (
+                        "BeamTaskSequence",
+                        "DeliveryVerificationImageSequence",
+                        "RelatedReferenceRTImageSequence",
+                    ),
+                    corpus_module.RT_IMAGE,
+                    corpus_module.RT_IMAGE_STORAGE,
+                ),
+            ),
+        ),
+        (
+            corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
+            corpus_module.RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE,
+            "RT Brachy Application Setup Delivery Instruction",
+            (
+                (
+                    (
+                        "ReferencedRTPlanSequence",
+                        "ReferencedSeriesSequence",
+                        "ReferencedSOPSequence",
+                    ),
+                    corpus_module.PLAN,
+                    corpus_module.RT_PLAN_STORAGE,
+                ),
+            ),
+        ),
+        (
+            corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
+            corpus_module.RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
+            "RT Radiation Set Delivery Instruction",
+            (
+                (
+                    ("ReferencedRTRadiationSetSequence",),
+                    corpus_module.RADIATION_SET,
+                    corpus_module.RT_RADIATION_SET_STORAGE,
+                ),
+                (
+                    ("RTRadiationTaskSequence", "ReferencedRTRadiationSequence"),
+                    corpus_module.C_ARM_RADIATION,
+                    corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+                ),
+                (
+                    ("OmittedRadiationSequence", "ReferencedRTRadiationSequence"),
+                    corpus_module.C_ARM_RADIATION,
+                    corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+                ),
+            ),
+        ),
+    ):
+        manifest = files[name].manifest
+        assert (manifest.sop_class, manifest.iod) == (sop_class, iod)
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files[name].data))
+        assert dataset.Modality == "PLAN", name
+        for keywords, target, target_class in named:
+            reference = item(dataset, keywords)
+            assert reference.ReferencedSOPInstanceUID == target, keywords
+            assert reference.ReferencedSOPClassUID == target_class, keywords
+    plan = item(
+        pydicom.dcmread(
+            pydicom.filebase.DicomBytesIO(
+                files[corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE].data
+            )
+        ),
+        ("ReferencedRTPlanSequence",),
+    )
+    assert plan.StudyInstanceUID == corpus_module.STUDY
+    (series,) = plan.ReferencedSeriesSequence
+    assert series.SeriesInstanceUID == corpus_module.PLAN_SERIES
 
 
 def test_two_instances_are_in_implicit_vr_and_the_rest_explicit(corpus):
@@ -706,6 +1261,11 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
         for sequence in placed:
             if sequence.kind is not Kind.SEQUENCE:
                 continue
+            if sequence.reason is Reason.CONTENT_TREE:
+                # The tree's items, which hold its own markers, decide what
+                # the sequence holds.
+                tree.add((file.name, sequence.path))
+                continue
             inside = (*sequence.path.items, (sequence.path.tag, 0))
             # Linked UIDs survive a preset that keeps the sequence and
             # remaps its UIDs, so only a marker counts.
@@ -719,9 +1279,6 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
                 continue
             if sequence.reason is Reason.KEPT_SEQUENCE:
                 kept.add(sequence.path.tag)
-                continue
-            if sequence.reason is Reason.CONTENT_TREE:
-                tree.add((file.name, sequence.path))
                 continue
             assert sequence.reason is Reason.NO_MARKER_CARRIER, sequence.path
             path = tuple(tag for tag, _ in inside)
@@ -846,15 +1403,75 @@ def test_each_text_marker_occurs_once_in_its_file(corpus):
                 )
 
 
-def test_every_marker_number_fits_a_signed_short():
-    # SS markers are the negated number.
-    assert corpus_module.MAX_MARKERS <= 2**15
+def test_markers_have_five_digits_and_their_16_bit_integers_are_distinct(corpus):
+    # Markers are numbered within five digits, and SS and US markers, the
+    # negated and plain numbers of their own counts, each within its VR.
+    assert corpus_module.MAX_MARKERS <= 10**5
+    for vr, low, high in (("SS", -(2**15), -1), ("US", 1, 2**16 - 1)):
+        values = [
+            int(value)
+            for _, placement in _placements(corpus, Kind.PLANTED)
+            if placement.vr == vr
+            for value in placement.values
+        ]
+        assert len(values) == len(set(values)), vr
+        assert all(low <= value <= high for value in values), vr
 
 
-def test_every_planted_placement_covers_a_row_of_table_e1_1(corpus):
+# The corpus's private marker numbering and the limits of its kinds.
+_KIND_LIMITS = corpus_module._KIND_LIMITS  # pylint: disable = protected-access
+_MARKERS = corpus_module._Markers  # pylint: disable = protected-access
+
+
+@pytest.mark.parametrize(
+    "vr, limit",
+    [
+        ("SH", corpus_module.MAX_MARKERS - 1),
+        ("DA", _KIND_LIMITS["date"]),
+        ("DT", _KIND_LIMITS["date"]),
+        ("TM", _KIND_LIMITS["time"]),
+        ("SS", _KIND_LIMITS["SS"]),
+        ("US", _KIND_LIMITS["US"]),
+    ],
+)
+def test_markers_of_each_vr_reach_their_limit_and_stop_with_an_error(vr, limit):
+    # A marker of each VR can be given up to its own limit, whatever the
+    # others' limits are, and the next one is refused with a ValueError.
+    markers = _MARKERS()
+    values, texts = markers.values(vr, limit)
+    assert len(set(texts)) == limit
+    if vr in ("DA", "DT"):
+        assert texts[-1][:4] >= "0100"
+    with pytest.raises(ValueError, match="markers than"):
+        markers.values(vr, 1)
+    assert len(values) == limit
+
+
+def test_times_are_distinct(corpus):
+    times = [
+        value
+        for _, placement in _placements(corpus, Kind.PLANTED)
+        if placement.vr == "TM"
+        for value in placement.values
+    ]
+
+    assert times and len(times) == len(set(times))
+
+
+def test_every_planted_placement_covers_a_row_of_table_e1_1_or_e3_4_1(corpus):
+    """A content item's value covers its concept's row of Table E.3.4-1.
+
+    Its Text Value (0040,A160), for one, is not a row of Table E.1-1.
+    """
     rows = set(_profile_rows())
+    concepts = {
+        concept.key for concept in structured_content.load_table_e3_4_1().concepts
+    }
     for _, placement in _placements(corpus, Kind.PLANTED, Kind.SEQUENCE):
-        assert placement.profile_tag in rows, placement.path
+        if placement.concept is not None:
+            assert placement.concept in concepts, placement.path
+        else:
+            assert placement.profile_tag in rows, placement.path
 
 
 def test_every_reference_item_has_its_referenced_sop_class(corpus):
@@ -1004,10 +1621,18 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
 
         if file.manifest.iod == "Enhanced MR Color Image":
             assert dataset.PhotometricInterpretation == "RGB"
-            assert dataset.ICCProfile == icc_profiles.srgb_profile(
-                corpus_module.SOURCE_ICC_DESCRIPTION
+            assert dataset.ICCProfile == corpus_module.SOURCE_ICC_PROFILE
+            assert icc_profiles.data_colour_space(dataset.ICCProfile) == (
+                icc_profiles.RGB
             )
-            assert corpus_module.MARKER_PREFIX.encode() in dataset.ICCProfile
+            # The marker is in the description, the copyright, the device
+            # manufacturer and model descriptions, and a private tag.
+            marker = corpus_module.MARKER_PREFIX.encode()
+            assert dataset.ICCProfile.count(marker) == 5
+        elif file.manifest.iod == "Multi-frame True Color Secondary Capture Image":
+            # The IOD does not require an ICC Profile, which is left out.
+            assert dataset.PhotometricInterpretation == "RGB"
+            assert "ICCProfile" not in dataset
         else:
             assert dataset.PhotometricInterpretation == "MONOCHROME2"
             assert "ICCProfile" not in dataset
@@ -1019,8 +1644,24 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
         "MR Image",
         "Positron Emission Tomography Image",
         "RT Image",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
+        "Secondary Capture Image",
     }
     assert set(frames.values()) == {1, 2}
+
+
+def test_each_secondary_capture_names_its_manufacturer(corpus):
+    # The General Equipment Module is user-optional in these IODs, and its
+    # Type 2 Manufacturer, which every policy keeps, shows that it is there
+    # once the Basic Profile has removed or replaced its other attributes.
+    names = set(corpus_module.SECONDARY_CAPTURE_FILES)
+    captures = [file for file in corpus.files if file.name in names]
+    assert len(captures) == len(names)
+    for file in captures:
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
+        assert dataset.Manufacturer == corpus_module.SECONDARY_CAPTURE_MANUFACTURER
+        assert corpus_module.MARKER_PREFIX not in dataset.Manufacturer
 
 
 def test_the_spectroscopy_instance_holds_spectroscopy_data_only(corpus):
@@ -1039,31 +1680,135 @@ def test_the_spectroscopy_instance_holds_spectroscopy_data_only(corpus):
     assert len(dataset.SpectroscopyData) == 4 * points
 
 
-# The concept name of each content item of a report's tree whose value is
-# recorded, by IOD, with the value's VR: each a row of Table E.3.4-1.
+# The root template of each report's tree, and the concept name of each
+# content item of the tree whose value is recorded, by file, with the
+# value's VR: each a row of Table E.3.4-1.
+_DEVICE_OBSERVER_UID = ("DCM", "121012", "UIDREF")
+_IRRADIATION_EVENT_UID = ("DCM", "113769", "UIDREF")
+_DATETIME_STARTED = ("DCM", "111526", "DATETIME")
+_IDENTIFICATION_OF_THE_X_RAY_SOURCE = ("DCM", "113832", "TEXT")
 _CONTENT_CONCEPTS = {
-    "X-Ray Radiation Dose SR": {
-        ("DCM", "121012", "UIDREF"): "UI",  # Device Observer UID
-        ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
-        ("DCM", "113769", "UIDREF"): "UI",  # Irradiation Event UID
-        ("DCM", "111526", "DATETIME"): "DT",  # DateTime Started
-    },
-    "Radiopharmaceutical Radiation Dose SR": {
-        ("DCM", "113503", "UIDREF"): "UI",  # Administration Event UID
-        ("DCM", "123003", "DATETIME"): "DT",  # Start DateTime
-        ("DCM", "113870", "PNAME"): "PN",  # Person Name
-    },
-    **dict.fromkeys(
-        GENERAL_SR_IODS[:3],
-        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
-    ),
-    **dict.fromkeys(
-        GENERAL_SR_IODS[3:],
+    "22-sr-dose-x-ray.dcm": (
+        "10001",
         {
-            ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
-            ("DCM", "121232", "UIDREF"): "UI",  # Source series for segmentation
+            _DEVICE_OBSERVER_UID: "UI",
+            ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
+            _IRRADIATION_EVENT_UID: "UI",
+            _DATETIME_STARTED: "DT",
         },
     ),
+    "23-sr-dose-radiopharmaceutical.dcm": (
+        "10021",
+        {
+            ("DCM", "113503", "UIDREF"): "UI",  # Administration Event UID
+            ("DCM", "123003", "DATETIME"): "DT",  # Start DateTime
+            ("DCM", "113870", "PNAME"): "PN",  # Person Name
+        },
+    ),
+    **{
+        name: ("2000", {("DCM", "121008", "PNAME"): "PN"})  # Person Observer Name
+        for name in corpus_module.GENERAL_REPORT_FILES[:3]
+    },
+    **{
+        name: (
+            "1500",
+            {
+                ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+                ("DCM", "121232", "UIDREF"): "UI",  # Source series for segmentation
+            },
+        )
+        for name in corpus_module.GENERAL_REPORT_FILES[3:]
+    },
+    "29-sr-dose-enhanced-x-ray.dcm": (
+        "10040",
+        {
+            _DEVICE_OBSERVER_UID: "UI",
+            _IRRADIATION_EVENT_UID: "UI",
+            _DATETIME_STARTED: "DT",
+            ("DCM", "111527", "DATETIME"): "DT",  # DateTime Ended
+            _IDENTIFICATION_OF_THE_X_RAY_SOURCE: "UT",
+            ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+        },
+    ),
+    "30-sr-dose-patient.dcm": (
+        "10030",
+        {
+            _DEVICE_OBSERVER_UID: "UI",
+            ("DCM", "128403", "TEXT"): "UT",  # Radiation Dose Estimate Name
+        },
+    ),
+    corpus_module.CT_DOSE_REPORT_FILE: (
+        "10011",
+        {
+            _DEVICE_OBSERVER_UID: "UI",
+            ("DCM", "113809", "DATETIME"): "DT",  # Start of X-Ray Irradiation
+            ("DCM", "113810", "DATETIME"): "DT",  # End of X-Ray Irradiation
+            ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
+            _IRRADIATION_EVENT_UID: "UI",
+            _IDENTIFICATION_OF_THE_X_RAY_SOURCE: "UT",
+            ("DCM", "113870", "PNAME"): "PN",  # Person Name
+        },
+    ),
+    # A key object selection's and a chest CAD report's required rows, and a
+    # spectacle prescription's, hold no identifying value.
+    "34-sr-key-object-selection.dcm": ("2010", {}),
+    "35-sr-mammography-cad.dcm": (
+        "4000",
+        {
+            ("DCM", "111060", "DATE"): "DA",  # Study Date
+            ("DCM", "111061", "TIME"): "TM",  # Study Time
+        },
+    ),
+    "36-sr-chest-cad.dcm": ("4100", {}),
+    "37-sr-colon-cad.dcm": (
+        "4120",
+        {
+            ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+            ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
+            ("DCM", "111060", "DATE"): "DA",  # Study Date
+            ("DCM", "111061", "TIME"): "TM",  # Study Time
+            ("DCM", "112002", "UIDREF"): "UI",  # Series Instance UID
+        },
+    ),
+    **{
+        name: (template, {("DCM", "121008", "PNAME"): "PN"})  # Person Observer Name
+        for name, template in (
+            ("38-sr-procedure-log.dcm", "3001"),
+            ("40-sr-macular-grid.dcm", "2100"),
+            ("41-sr-waveform-annotation.dcm", "3750"),
+        )
+    },
+    "39-sr-spectacle-prescription.dcm": ("2020", {}),
+    # The implantation plan's component has its own Frame of Reference UID.
+    "42-sr-implantation-plan.dcm": (
+        "7000",
+        {
+            ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+            ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+        },
+    ),
+    **{
+        name: (template, {("DCM", "121008", "PNAME"): "PN"})  # Person Observer Name
+        for name, template in (
+            ("43-sr-echo.dcm", "5300"),
+            ("44-sr-imaging-agent-planned.dcm", "11001"),
+            ("45-sr-imaging-agent-performed.dcm", "11020"),
+            ("46-sr-acquisition-context.dcm", "8101"),
+        )
+    },
+}
+# The content items whose values are the collection's own UIDs, by IOD:
+# the study that the X-ray report's scope of accumulation names, and the
+# colon CAD report's image set and CT series.
+_LINKED_CONCEPTS = {
+    "X-Ray Radiation Dose SR": {
+        ("DCM", "110180", "UIDREF"): corpus_module.STUDY,
+    },
+    "Colon CAD SR": {
+        ("DCM", "112227", "UIDREF"): corpus_module.FRAME_OF_REFERENCE,
+        ("DCM", "110180", "UIDREF"): corpus_module.STUDY,
+        ("DCM", "112002", "UIDREF"): corpus_module.CT_SERIES,
+    },
 }
 
 
@@ -1077,16 +1822,21 @@ def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
         dataset = pydicom.dcmread(io.BytesIO(file.data))
         (template,) = dataset.ContentTemplateSequence
         assert template.MappingResource == "DCMR"
-        assert (
-            template.TemplateIdentifier
-            == synthetic_content_trees.ROOT_TEMPLATES[file.manifest.sop_class]
+        root_template, recorded = _CONTENT_CONCEPTS[name]
+        assert template.TemplateIdentifier == root_template
+        # The CT dose report's TID 10011 is the X-Ray Radiation Dose SR's
+        # other root template.
+        assert root_template == (
+            synthetic_content_trees.CT_RADIATION_DOSE_TEMPLATE
+            if name == corpus_module.CT_DOSE_REPORT_FILE
+            else synthetic_content_trees.ROOT_TEMPLATES[file.manifest.sop_class]
         )
         assert dataset.ValueType == "CONTAINER"
-        assert dataset.Modality == "SR"
+        assert dataset.Modality == (
+            "KO" if file.manifest.iod == "Key Object Selection Document" else "SR"
+        )
         content = [p for p in file.manifest.placements if p.concept is not None]
-        assert {p.concept: p.vr for p in content} == _CONTENT_CONCEPTS[
-            file.manifest.iod
-        ]
+        assert {p.concept: p.vr for p in content} == recorded
         assert {p.concept for p in content} <= concepts
         for placement in content:
             # Each value is read back by its own test; here, its item.
@@ -1104,18 +1854,23 @@ def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
                 item.ValueType,
             ) == placement.concept
             assert placement.profile_tag == placement.path.tag
-            linked = placement.values == (corpus_module.STUDY,)
-            assert placement.kind is (Kind.LINKED_UID if linked else Kind.PLANTED)
-        # Only the scope of accumulation's study is linked, and it names
-        # the collection's.
-        assert [p.concept for p in content if p.kind is Kind.LINKED_UID] == (
-            [("DCM", "110180", "UIDREF")]
-            if file.manifest.iod == "X-Ray Radiation Dose SR"
-            else []
+        # Only the collection's own study, series, and frame are linked.
+        assert {
+            p.concept: p.values[0] for p in content if p.kind is Kind.LINKED_UID
+        } == _LINKED_CONCEPTS.get(file.manifest.iod, {})
+        assert all(
+            p.kind is Kind.PLANTED for p in content if p.kind is not Kind.LINKED_UID
         )
+    assert set(_CONTENT_CONCEPTS) == set(corpus_module.STRUCTURED_REPORT_FILES)
 
 
 def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
+    # The collection's instances, and the implant templates that the
+    # implantation plan names, which the collection does not hold.
+    instances = {file.manifest.sop_instance for file in corpus.files} | {
+        corpus_module.SELECTED_IMPLANT_TEMPLATE,
+        corpus_module.MANUFACTURER_IMPLANT_TEMPLATE,
+    }
     for file in corpus.files:
         if file.name not in corpus_module.STRUCTURED_REPORT_FILES:
             assert all(
@@ -1129,12 +1884,21 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
             if top not in ("(0040,A043)", "(0040,A730)"):
                 assert placement.reason is not Reason.CONTENT_TREE
             elif items and top == "(0040,A730)":
-                # Only the tree's own values are recorded below it, and the
+                # Only the tree's own values are recorded below it, the
                 # frame of reference of a SCOORD3D item, the collection's,
-                # which takes its own row of Table E.1-1.
+                # and the instance that an IMAGE item references or a
+                # COMPOSITE item names, one of the collection's, such as its
+                # CT dose report, or an implant template, each of which takes
+                # its own row of Table E.1-1.
                 if placement.concept is None:
                     assert placement.kind is Kind.LINKED_UID, placement
-                    assert placement.path.tag == "(3006,0024)", placement
+                    if placement.path.tag == REFERENCED_SOP_INSTANCE:
+                        assert set(placement.values) <= instances, placement
+                    else:
+                        assert (placement.path.tag, placement.values) == (
+                            "(3006,0024)",
+                            (corpus_module.FRAME_OF_REFERENCE,),
+                        ), placement
             elif placement.concept is None:
                 assert placement.reason is Reason.CONTENT_TREE, placement
                 assert placement.values == ()

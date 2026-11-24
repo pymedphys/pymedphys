@@ -19,6 +19,7 @@ runtime dependency to CI's bootstrap checks. Actionlint validates YAML and
 GitHub expressions separately through pre-commit.
 """
 
+import ast
 import fnmatch
 import json
 import re
@@ -26,9 +27,60 @@ import unittest
 from pathlib import Path
 
 import pydicom_coverage
-from select_checks import OUTPUTS
+from select_checks import OUTPUTS, select_checks
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
+# The lines that give each listed corpus module that runs alone a part of its
+# own, the four shares of the CT defacing runs and the second half of the
+# policies' end-to-end runs, and the other listed modules to the corpus-runs
+# part, in every job that runs in parts.
+ALONE_SELECTION = (
+    "            alone=("
+    '"${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_VARIANT_TEST}" '
+    '"${CT_DEFACING_REVIEW_TEST}" "${CT_DEFACING_DOSE_TEST}" '
+    '"${CORPUS_END_TO_END_P_Z_TEST}")\n',
+    '            for module in "${alone[@]}"; do\n',
+    '              if [[ " ${listed[*]} " != *" ${module} "* ]]; then\n',
+    '                echo "::error::Each module that runs alone must belong to '
+    'CORPUS_RUN_TESTS."\n',
+    '            if [[ "$(printf \'%s\\n\' "${alone[@]}" | sort -u | wc -l)" '
+    "-ne ${#alone[@]} ]]; then\n",
+    '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
+    "              ct-defacing-variants) "
+    'selection=("${CT_DEFACING_VARIANT_TEST}") ;;\n',
+    '              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;\n',
+    '              ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;\n',
+    '                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then\n',
+    '                    selection+=("${path}")\n',
+    "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
+    '                  echo "::error::The remaining corpus part must not be empty."\n',
+    "              corpus-end-to-end-p-z) "
+    'selection=("${CORPUS_END_TO_END_P_Z_TEST}") ;;\n',
+)
+# The lines that give the de-identification modules from a to o, less the
+# listed corpus modules, to the deidentify-a-o part and ignore them in others,
+# in every job that runs in parts; one glob serves both parts.
+DEIDENTIFY_SELECTION = (
+    "            first_half=()\n",
+    "            for path in "
+    "lib/pymedphys/tests/dicom/test_deidentify_[abcdefghijklmno]*.py; do\n",
+    '              if [[ -f "${path}" && " ${listed[*]} " != *" ${path} "* ]]; then\n',
+    '                first_half+=("${path}")\n',
+    "            if [[ ${#first_half[@]} -eq 0 ]]; then\n",
+    '              echo "::error::The deidentify-a-o part must not be empty."\n',
+    '              deidentify-a-o) selection=("${first_half[@]}") ;;\n',
+    "              others)\n",
+    '                selection+=("${first_half[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n',
+)
+# How others starts from the listed modules' ignores: the test and
+# dependency-floors jobs run the whole suite, and the narrow extras add them
+# to the feature's paths.
+OTHERS_SELECTION = (
+    '                selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n'
+)
+NARROW_OTHERS_SELECTION = (
+    '                selection+=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n'
+)
 
 
 def jobs(filename: str) -> dict[str, str]:
@@ -61,7 +113,7 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(workflow=filename):
                 text = (WORKFLOWS / filename).read_text(encoding="utf-8")
                 triggers = text.split("\npermissions:\n", 1)[0]
-                for event in ("push", "pull_request", "merge_group"):
+                for event in ("pull_request", "merge_group"):
                     self.assertRegex(triggers, rf"(?m)^  {event}:$")
                 self.assertEqual(
                     re.findall(r"(?m)^    name: (.+)$", jobs(filename)[summary_id]),
@@ -89,14 +141,28 @@ class WorkflowContractTests(unittest.TestCase):
                     for job, body in workflow.items()
                 }
                 # Jobs without needs start the run, so each must skip drafts;
-                # the jobs that need them are then skipped too.
+                # the jobs that need them are then skipped too. The selector
+                # also skips merge groups, which select every check.
                 for job, body in workflow.items():
                     if not needs(body):
                         with self.subTest(job=job):
-                            self.assertEqual(conditions[job], [not_draft])
+                            self.assertEqual(
+                                conditions[job],
+                                [f"github.event_name != 'merge_group' && {not_draft}"]
+                                if job == "changes"
+                                else [not_draft],
+                            )
                 self.assertEqual(conditions[summary_id], [f"always() && {not_draft}"])
                 # A status function would run a job after its needs were
-                # skipped, so only the summary and push-only jobs may use one.
+                # skipped, so only the summary, main-only jobs, and selected
+                # jobs may use one. No pull request or merge group runs on
+                # refs/heads/main. A selected job runs after the skipped
+                # selector only in a merge group: on a draft its output is
+                # empty, so it is skipped with the selector.
+                selected = re.compile(
+                    r"\$\{\{ !cancelled\(\) && \(github\.event_name == 'merge_group' "
+                    r"\|\| needs\.changes\.outputs\.[a-z-]+ == 'true'\) \}\}"
+                )
                 for job, condition in conditions.items():
                     if re.search(
                         r"\b(always|cancelled|failure)\(\)", "".join(condition)
@@ -104,7 +170,11 @@ class WorkflowContractTests(unittest.TestCase):
                         with self.subTest(job=job):
                             self.assertTrue(
                                 job == summary_id
-                                or "github.event_name == 'push'" in condition[0]
+                                or "github.ref == 'refs/heads/main'" in condition[0]
+                                or (
+                                    selected.fullmatch(condition[0]) is not None
+                                    and needs(workflow[job]) == {"changes"}
+                                )
                             )
 
     def test_merge_group_dependency_audit_is_advisory(self):
@@ -157,10 +227,12 @@ class WorkflowContractTests(unittest.TestCase):
         reporters = {job for job, body in workflow.items() if "summary" in needs(body)}
         self.assertEqual(reporters, {"report-main-failure"})
         report = workflow["report-main-failure"]
-        # It must never run for pull requests, and needs only to write issues.
+        # It reports only the nightly or a manual run on main, never a pull
+        # request or merge group, and needs only to write issues.
         self.assertIn(
-            "    if: failure() && !cancelled() && github.event_name == 'push' && "
-            "github.ref == 'refs/heads/main'",
+            "    if: failure() && !cancelled() && github.ref == 'refs/heads/main' && "
+            "(github.event_name == 'schedule' || "
+            "github.event_name == 'workflow_dispatch')\n",
             report,
         )
         self.assertIn("    permissions:\n      issues: write\n    steps:", report)
@@ -216,10 +288,92 @@ class WorkflowContractTests(unittest.TestCase):
             workflow["changes"],
         )
         self.assertIn("run-full-matrix", OUTPUTS)
+        # A merge group, which skips the selector, takes the quick matrix, as
+        # the selector would choose for it.
         self.assertRegex(
             workflow["unit-tests"],
-            r"\n      quick: \$\{\{ needs\.changes\.outputs\.run-full-matrix "
-            r"== 'false' \}\}\n",
+            r"\n      quick: \$\{\{ github\.event_name == 'merge_group' \|\| "
+            r"needs\.changes\.outputs\.run-full-matrix == 'false' \}\}\n",
+        )
+        self.assertFalse(select_checks([], event_name="merge_group")["run-full-matrix"])
+
+    def test_merge_groups_skip_the_selector_and_run_what_it_selects(self):
+        # The selector chooses every check for a merge group, with the quick
+        # matrix; the workflows encode that choice without waiting for it.
+        chosen = select_checks([], event_name="merge_group")
+        self.assertEqual(
+            {output for output, value in chosen.items() if not value},
+            {"run-full-matrix", "run-dependency-corpus", "run-integration-scripts"},
+        )
+        self.assertIn(
+            "      dependency-corpus: ${{ github.event_name != 'merge_group' && "
+            "needs.changes.outputs.run-dependency-corpus != 'false' }}\n",
+            jobs("ci.yml")["unit-tests"],
+        )
+        self.assertIn(
+            "      run-scripts: ${{ github.event_name != 'merge_group' && "
+            "needs.changes.outputs.run-integration-scripts != 'false' }}\n",
+            jobs("ci.yml")["integration-tests"],
+        )
+        for filename, summary_id in (
+            ("ci.yml", "summary"),
+            ("security.yml", "security-summary"),
+        ):
+            workflow = jobs(filename)
+            conditional = dict(
+                re.findall(r"--conditional ([a-z-]+)=([a-z-]+)", workflow[summary_id])
+            )
+            self.assertTrue(conditional)
+            for job, output in conditional.items():
+                with self.subTest(workflow=filename, job=job):
+                    self.assertIn(
+                        "    if: ${{ !cancelled() && (github.event_name == "
+                        f"'merge_group' || needs.changes.outputs.{output} == "
+                        "'true') }}\n",
+                        workflow[job],
+                    )
+            # The summary then requires every job but the skipped selector.
+            self.assertIn("--merge-group-runs-every-check", workflow[summary_id])
+        # Integration components run unless the selector explicitly said
+        # false, so a merge group, with no selector output, runs them all,
+        # except the Windows and macOS tooling tests, which ci.yml leaves to
+        # the nightly run as the selector chooses (pinned above).
+        integration = jobs("ci.yml")["integration-tests"]
+        for component in ("doctests", "slow", "packaging"):
+            with self.subTest(component=component):
+                self.assertRegex(
+                    integration,
+                    rf"run-{component}: \$\{{\{{ needs\.changes\.outputs\."
+                    rf"run-[a-z-]+ != 'false' \}}\}}",
+                )
+
+    def test_dropped_merge_groups_runs_are_cancelled_by_one_job(self):
+        import cancel_dropped_merge_groups as cleanup
+
+        text = (WORKFLOWS / "merge-queue-cleanup.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers),
+            ["merge_group", "schedule", "workflow_dispatch"],
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        workflow = jobs("merge-queue-cleanup.yml")
+        self.assertEqual(set(workflow), {"cancel-dropped"})
+        job = workflow["cancel-dropped"]
+        self.assertIn(
+            "    permissions:\n      actions: write\n      contents: read\n", job
+        )
+        self.assertIn("python .github/scripts/cancel_dropped_merge_groups.py", job)
+        self.assertIn("          DEFAULT_BRANCH: main\n", job)
+        # No other workflow may cancel runs.
+        for path in sorted(WORKFLOWS.glob("*.yml")):
+            if path.name != "merge-queue-cleanup.yml":
+                with self.subTest(workflow=path.name):
+                    self.assertNotIn("actions: write", path.read_text(encoding="utf-8"))
+        # It watches exactly the workflows that report the required summaries.
+        self.assertEqual(
+            cleanup.WATCHED_PATHS,
+            {f".github/workflows/{name}" for name in ("ci.yml", "security.yml")},
         )
 
     def test_publishing_waits_for_all_original_quality_gates(self):
@@ -257,9 +411,16 @@ class WorkflowContractTests(unittest.TestCase):
             ("script-tests", "run-scripts", "run-integration-scripts"),
             ("packaging", "run-packaging", "run-packaging"),
         ):
+            # Merge groups leave the Windows and macOS tooling tests to PRs
+            # that change the tooling and to the nightly run.
+            guard = (
+                "github.event_name != 'merge_group' && "
+                if output == "run-integration-scripts"
+                else ""
+            )
             with self.subTest(job=job):
                 self.assertIn(
-                    f"      {input_name}: ${{{{ needs.changes.outputs.{output} != 'false' }}}}",
+                    f"      {input_name}: ${{{{ {guard}needs.changes.outputs.{output} != 'false' }}}}",
                     workflow["integration-tests"],
                 )
                 self.assertIn(
@@ -285,17 +446,37 @@ class WorkflowContractTests(unittest.TestCase):
                         jobs("release.yml")["integration-tests"],
                     )
 
-    def test_new_main_commits_cancel_obsolete_ci_but_label_changes_queue(self):
+    def test_new_pr_commits_cancel_obsolete_ci_but_other_runs_queue(self):
+        # A running label-change, merge-group, nightly or manual run is never
+        # cancelled by a later run in its group. GitHub's replacement of a
+        # waiting run by a newer one is not configurable here.
         text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
         condition = text.split("  cancel-in-progress: >-\n", 1)[1].split("\njobs:", 1)[
             0
         ]
         self.assertEqual(
             " ".join(condition.split()),
-            "${{ (github.event_name == 'pull_request' && github.event.action != 'labeled' && "
-            "github.event.action != 'unlabeled') || (github.event_name == 'push' && "
-            "github.ref == 'refs/heads/main') }}",
+            "${{ github.event_name == 'pull_request' && github.event.action != 'labeled' && "
+            "github.event.action != 'unlabeled' }}",
         )
+
+    def test_main_runs_the_full_matrix_nightly_and_on_demand_not_on_push(self):
+        # The merge group already tests the commit that main receives, so a
+        # push to main would only repeat it; the full matrix runs nightly and
+        # on demand instead. The security scan keeps its own triggers.
+        text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers),
+            ["pull_request", "merge_group", "schedule", "workflow_dispatch"],
+        )
+        self.assertNotRegex(text.split("\njobs:\n", 1)[0], r"(?m)^  push:")
+        # One run a day, at a fixed minute and hour.
+        self.assertRegex(triggers, r"(?m)^    - cron: '\d{1,2} \d{1,2} \* \* \*'")
+        self.assertEqual(len(re.findall(r"(?m)^    - cron: ", triggers)), 1)
+        for event in ("schedule", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertTrue(all(select_checks([], event_name=event).values()))
 
     def test_release_assets_require_published_verification(self):
         workflow = jobs("release.yml")
@@ -367,9 +548,21 @@ class WorkflowContractTests(unittest.TestCase):
         )
         for name in (
             "junit-extra-gamma",
+            "junit-extra-dicom-ct-defacing",
+            "junit-extra-dicom-ct-defacing-variants",
+            "junit-extra-dicom-ct-defacing-reviews",
+            "junit-extra-dicom-ct-defacing-doses",
             "junit-extra-dicom-corpus-runs",
+            "junit-extra-dicom-corpus-end-to-end-p-z",
+            "junit-extra-dicom-deidentify-a-o",
             "junit-extra-dicom-others",
+            "junit-dependency-floors-ct-defacing",
+            "junit-dependency-floors-ct-defacing-variants",
+            "junit-dependency-floors-ct-defacing-reviews",
+            "junit-dependency-floors-ct-defacing-doses",
             "junit-dependency-floors-corpus-runs",
+            "junit-dependency-floors-corpus-end-to-end-p-z",
+            "junit-dependency-floors-deidentify-a-o",
             "junit-dependency-floors-others",
             *(
                 pydicom_coverage.part_artifact(part, os_name, python)
@@ -433,12 +626,64 @@ class WorkflowContractTests(unittest.TestCase):
         text = (WORKFLOWS / "unit-tests.yml").read_text(encoding="utf-8")
         listed = re.search(r"\n  CORPUS_RUN_TESTS: >-\n((?: {4}\S+\n)+)", text)[1]
         self.assertTrue(listed.split())
+        # Each listed module belongs to exactly one part.
+        self.assertEqual(len(set(listed.split())), len(listed.split()))
         for path in listed.split():
             with self.subTest(path=path):
                 self.assertTrue((WORKFLOWS.parents[1] / path).is_file())
         workflow = jobs("unit-tests.yml")
         floors, test = workflow["dependency-floors"], workflow["test"]
-        self.assertIn("        part: [corpus-runs, others]\n", floors)
+        # The dependency floors and the dicom extra's run alone run every
+        # part when the dependency corpus is selected, and otherwise only the
+        # parts outside the corpus.
+        everywhere = ("deidentify-a-o", "others")
+        self.assertTrue(set(everywhere) < set(pydicom_coverage.PARTS))
+        every_part = ", ".join(f'"{part}"' for part in pydicom_coverage.PARTS)
+        kept = ", ".join(f'"{part}"' for part in everywhere)
+        dependency_parts = (
+            "        part: ${{ inputs.dependency-corpus && "
+            f"fromJSON('[{every_part}]') || fromJSON('[{kept}]') }}}}\n"
+        )
+        self.assertIn(dependency_parts, floors)
+        self.assertIn(
+            "      dependency-corpus:\n        required: false\n"
+            "        type: boolean\n        default: true\n",
+            text,
+        )
+        # Only CI narrows it; the release runs every part.
+        for caller in sorted(WORKFLOWS.glob("*.yml")):
+            if caller.name not in ("unit-tests.yml", "ci.yml"):
+                with self.subTest(caller=caller.name):
+                    self.assertNotIn(
+                        "dependency-corpus", caller.read_text(encoding="utf-8")
+                    )
+        # The growing corpus gets an hour in both matrices; other floor
+        # parts keep thirty minutes, while Windows already gets an hour.
+        self.assertIn(
+            "    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}\n",
+            floors,
+        )
+        self.assertIn(
+            "    timeout-minutes: ${{ (matrix.os == 'windows-latest' || "
+            "matrix.part == 'corpus-runs') && 60 || 30 }}\n",
+            test,
+        )
+        # Every split job reads the modules that the workflow names to run
+        # alone, the four shares of the CT defacing runs and the second half
+        # of the policies' end-to-end runs: five different listed modules.
+        keys = (
+            "CT_DEFACING_RUN_TEST",
+            "CT_DEFACING_VARIANT_TEST",
+            "CT_DEFACING_REVIEW_TEST",
+            "CT_DEFACING_DOSE_TEST",
+            "CORPUS_END_TO_END_P_Z_TEST",
+        )
+        alone = [re.search(rf"(?m)^  {key}: (\S+)$", text)[1] for key in keys]
+        self.assertEqual(len(set(alone)), len(keys))
+        for key, module in zip(keys, alone, strict=True):
+            with self.subTest(module=module):
+                self.assertEqual(listed.split().count(module), 1)
+                self.assertEqual(text.count(f"{key}: "), 1)
         # Every cell runs in one job for each part, which the combined
         # report joins; no cell runs whole.
         self.assertIn(
@@ -456,24 +701,26 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(key=key):
                 line = re.search(rf"(?m)^        {key}: .+\n", test)[0]
                 self.assertIn(line, combined)
-        # Both jobs select their parts the same way: the corpus-runs part runs
-        # the listed modules and the others part ignores them, so a module is
-        # in exactly one part, and a listed module that is missing fails both.
+        # In both jobs, each CT defacing module and the second half of the
+        # policies' end-to-end runs run alone, the other listed modules run
+        # together, and deidentify-a-o runs the de-identification modules from
+        # a to o that are not listed. Both others parts ignore every module of
+        # the other parts; missing paths fail every part before pytest starts.
         selections = [
             re.search(
                 r"(?ms)^          # Each part runs its share.*?^          fi\n", job
             )[0]
             for job in (floors, test)
         ]
-        self.assertEqual(selections[0], selections[1])
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
-            '              corpus-runs) selection=("${listed[@]}") ;;\n',
-            "              others) selection="
-            '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
+            *ALONE_SELECTION,
+            *DEIDENTIFY_SELECTION,
+            OTHERS_SELECTION,
         ):
             with self.subTest(line=line):
-                self.assertIn(line, selections[0])
+                for selection in selections:
+                    self.assertIn(line, selection)
         for name, job in (("dependency-floors", floors), ("test", test)):
             with self.subTest(job=name):
                 self.assertIn(
@@ -481,30 +728,36 @@ class WorkflowContractTests(unittest.TestCase):
                 )
                 # A skipped part would count as a success of the workflow.
                 self.assertNotIn("\n    if:", job)
-                # The corpus-runs part reads no data, so it must not save a
-                # partial data cache under the key the parts share.
+                # Parts that read no downloaded data must not save a partial
+                # data cache under the key that every part shares.
                 self.assertIn(
-                    "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n", job
+                    "          cache-data: ${{ matrix.part == 'others' }}\n", job
                 )
-        # The dicom extra's run alone has the same two parts, over the same
-        # paths and marks, and its others part adds the same ignores to them.
+        # The dicom extra's run alone has the same parts, over the same paths
+        # and marks: the corpus parts and deidentify-a-o run their modules in
+        # place of the paths, and its others part adds the other parts'
+        # ignores to them.
         narrow = workflow["narrow-extras"]
-        part = (
-            "          - extra: dicom\n"
-            "            part: {}\n"
-            "            marks: not slow\n"
-            "            paths: tests/dicom\n"
+        self.assertIn(
+            "        extra: [dicom]\n"
+            + dependency_parts
+            + "        marks: [not slow]\n"
+            "        paths: [tests/dicom]\n",
+            narrow,
         )
-        for name in ("corpus-runs", "others"):
-            with self.subTest(narrow_part=name):
-                self.assertEqual(narrow.count(part.format(name)), 1)
-        self.assertEqual(narrow.count("            part: "), 2)
+        # The other extras run whole; each names its own extra, so none can
+        # join a dicom combination.
+        included = narrow.split("        include:\n", 1)[1]
+        self.assertNotIn("part:", included)
+        self.assertNotIn("extra: dicom", included)
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
-            '              corpus-runs) selection=("${listed[@]}") ;;\n',
-            "              others) selection+="
-            '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
-            "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n",
+            *ALONE_SELECTION,
+            *DEIDENTIFY_SELECTION,
+            NARROW_OTHERS_SELECTION,
+            "                selection=()\n",
+            # Only others and the extras that run whole read downloaded data.
+            "          cache-data: ${{ !matrix.part || matrix.part == 'others' }}\n",
         ):
             with self.subTest(narrow_line=line):
                 self.assertIn(line, narrow)
@@ -548,7 +801,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("          PART: ${{ matrix.part }}", parts)
         self.assertIn("          path: test-results/*\n", parts)
         # Each cell's combined report, and the Ubuntu/Python 3.14 cell's
-        # evidence only when both its parts passed.
+        # evidence only when all its parts passed.
         baseline = workflow["combined-report"]
         self.assertEqual(needs(baseline), {"test"})
         self.assertIn("    if: ${{ !cancelled() }}\n", baseline)
@@ -630,6 +883,25 @@ class WorkflowContractTests(unittest.TestCase):
         # The corpus tests skip without the validators unless required.
         self.assertIn("          PYMEDPHYS_DICOM_VALIDATORS: required\n", job)
         self.assertIn("pymedphys dev tests --dicom-validators", job)
+        # The policies' runs are validated in two halves on two runners, each
+        # half's module run by its own cell, with reports of their own; an
+        # unknown half fails rather than run nothing.
+        self.assertIn("        policies: [a-o, p-z]\n", job)
+        self.assertIn("      fail-fast: false\n", job)
+        modules = "lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus"
+        for line in (
+            "            a-o)\n"
+            "              selection=(\n"
+            f"                {modules}.py\n",
+            f"            p-z) selection=({modules}_p_z.py) ;;\n",
+            '            *) echo "::error::Unknown policies ${POLICIES}."; exit 1 ;;\n',
+            '--dicom-validators "${selection[@]}" \\\n',
+            'test-results/dicom-validation-${POLICIES}.xml"\n',
+            "          name: dicom-validation-${{ matrix.policies }}\n",
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, job)
+        self.assertNotIn("\n    if:", job)
         self.assertIn("uses: ./.github/actions/setup-dicom-validators", job)
         # Only the snapshot listing may fail without failing the job.
         self.assertEqual(job.count("continue-on-error: true"), 1)
@@ -678,21 +950,27 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertIn("set -o pipefail", text)
 
-    def test_the_idc_evaluation_reads_only_and_keeps_its_tools_pinned(self):
-        text = (WORKFLOWS / "text-detector-evaluation-idc.yml").read_text(
-            encoding="utf-8"
-        )
+    def test_the_text_detector_evaluation_reads_only_and_keeps_its_tools_pinned(
+        self,
+    ):
+        text = (WORKFLOWS / "text-detector-evaluation.yml").read_text(encoding="utf-8")
         triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
         self.assertEqual(
             re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
         )
         self.assertIn("\npermissions:\n  contents: read\n", text)
+        # Each of its three jobs can only read.
         self.assertEqual(
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
-            ["      contents: read"],
+            ["      contents: read"] * 3,
         )
-        self.assertNotIn("secrets.", text)
-        self.assertIn("persist-credentials: false", text)
+        # One secret, the key of the shards' records, reaches only the step
+        # that encrypts them and the step that decrypts them.
+        self.assertEqual(
+            re.findall(r"(?m)^(.*)\$\{\{ secrets\.([A-Za-z_]+) \}\}$", text),
+            [("          SHARD_RECORD_KEY: ", "TEXT_EVALUATION_SHARD_KEY")] * 2,
+        )
+        self.assertEqual(text.count("persist-credentials: false"), 3)
         # Inputs reach commands only through the environment.
         run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
         self.assertTrue(run_blocks)
@@ -705,11 +983,59 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertIn("sha256sum --check --strict -", text)
         # Only the results leave the runner; never the data or the selection's
-        # series.
+        # series. Each patients' shard's record is kept for a day, and the
+        # merged results, as the phantoms', for 90.
         self.assertEqual(
-            re.findall(r"(?m)^          path: (.*)$", text),
-            ["${{ runner.temp }}/idc/results/"],
+            re.findall(
+                r"upload-artifact@.*\n        with:\n(?:          .*\n)*?"
+                r"          path: (.*)\n",
+                text,
+            ),
+            [
+                "${{ runner.temp }}/idc/results/",
+                "${{ runner.temp }}/idc/merged/",
+                "${{ runner.temp }}/phantoms/results/",
+            ],
         )
+        self.assertEqual(
+            re.findall(r"(?m)^          retention-days: (\d+)$", text),
+            ["1", "90", "90"],
+        )
+        # The phantoms' full reports and crops come only from a selection of
+        # phantom collections, on a runner of their own, and the patients'
+        # jobs never run the phantom report.
+        jobs = text.split("\njobs:\n", 1)[1]
+        patients, phantoms = jobs.split("\n  phantoms:\n", 1)
+        self.assertTrue(patients.startswith("  patients:\n"))
+        self.assertNotIn("phantom-report", patients)
+        self.assertNotIn("--phantoms", patients)
+        # The patients' shards run no more than four at once, and every
+        # shard measures with --shard, so the merge reads every case's
+        # counts; the merge job reads only the shards' records.
+        shards, merge = patients.split("\n  merge:\n", 1)
+        self.assertIn("\n      max-parallel: 4\n", shards)
+        self.assertEqual(shards.count(" idc-measure \\\n"), 2)
+        self.assertEqual(shards.count('--shard "${SHARD}/${SHARDS}"'), 2)
+        # A shard's records are written outside the uploaded results, and
+        # only their encrypted copies join them, uploaded only once every
+        # record is encrypted.
+        self.assertNotIn('--out "${RUNNER_TEMP}/idc/results', shards)
+        self.assertEqual(shards.count('--out "${RUNNER_TEMP}/idc/private/records/'), 2)
+        self.assertIn("openssl enc -aes-256-cbc -pbkdf2", shards)
+        self.assertIn(
+            "if: ${{ !cancelled() && steps.encrypt.outcome == 'success' }}\n"
+            "        uses: actions/upload-artifact@",
+            shards,
+        )
+        self.assertIn("openssl enc -d -aes-256-cbc -pbkdf2", merge)
+        self.assertIn(" idc-merge \\\n", merge)
+        for command in ("idc-select", "idc-measure", "archive-fetch", "s5cmd"):
+            self.assertNotIn(command, merge)
+        self.assertEqual(phantoms.count(" idc-select \\\n"), 1)
+        self.assertIn("            --phantoms \\\n", phantoms)
+        self.assertIn(" phantom-report \\\n", phantoms)
+        self.assertNotIn("idc-measure", phantoms)
+        self.assertNotIn("archive", phantoms)
         self.assertNotIn("actions/cache", text)
         requirements = (
             WORKFLOWS.parent / "text-evaluation/requirements.txt"
@@ -720,6 +1046,84 @@ class WorkflowContractTests(unittest.TestCase):
             [name for name, _ in pins], ["pyarrow", "opencv-python-headless", "s5cmd"]
         )
         self.assertEqual(len(hashes), len(pins))
+
+    def test_the_text_detector_evaluation_offers_exactly_the_named_searches(self):
+        # A tuning run's variant and grid are chosen from the names that
+        # text_evaluation_search gives, read from its source so that this
+        # check needs no installed package.
+        source = (
+            WORKFLOWS.parents[1]
+            / "lib/pymedphys/_dicom/deidentify/text_evaluation_search.py"
+        ).read_text(encoding="utf-8")
+        names = {}
+        for node in ast.parse(source).body:
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                found = [
+                    each
+                    for each in ast.walk(node.value)
+                    if isinstance(each, ast.Dict)
+                    or (
+                        isinstance(each, ast.Call)
+                        and isinstance(each.func, ast.Name)
+                        and each.func.id == "_variant"
+                    )
+                ]
+                constants = [
+                    key
+                    for each in found
+                    for key in (
+                        each.keys if isinstance(each, ast.Dict) else each.args[:1]
+                    )
+                    if isinstance(key, ast.Constant) and isinstance(key.value, str)
+                ]
+                constants.sort(key=lambda key: (key.lineno, key.col_offset))
+                names[node.target.id] = [key.value for key in constants]
+        self.assertEqual(names["VARIANTS"][0], "today")
+        # The parse found more than the default of each.
+        self.assertEqual(names["GRIDS"][0], "today")
+        self.assertGreater(len(names["VARIANTS"]), 1)
+        self.assertGreater(len(names["GRIDS"]), 1)
+        text = (WORKFLOWS / "text-detector-evaluation.yml").read_text(encoding="utf-8")
+        variant = re.search(r"\n      variant:\n(.*?)\n        default:", text, re.S)
+        grid = re.search(r"\n      grid:\n(.*?)\n        default:", text, re.S)
+        self.assertIsNotNone(variant)
+        self.assertIsNotNone(grid)
+        self.assertEqual(
+            re.findall(r"\n          - (.+)", variant.group(1)), names["VARIANTS"]
+        )
+        (options,) = re.findall(r"options: \[(.*)\]", grid.group(1))
+        self.assertEqual([each.strip() for each in options.split(",")], names["GRIDS"])
+
+    def test_the_parametric_map_check_reads_only_and_keeps_its_tools_pinned(self):
+        text = (WORKFLOWS / "parametric-map-check-idc.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertEqual(text.count("persist-credentials: false"), 1)
+        run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
+        self.assertTrue(run_blocks)
+        for block in run_blocks:
+            self.assertNotIn("${{", block)
+        self.assertIn(
+            "uv pip install --require-hashes --no-deps \\\n"
+            "            -r .github/text-evaluation/requirements.txt",
+            text,
+        )
+        self.assertIn("sha256sum --check --strict -", text)
+        # Both commands run redacted, and only the results leave the runner.
+        self.assertEqual(text.count("python .github/scripts/run_redacted.py"), 2)
+        self.assertEqual(
+            re.findall(r"(?m)^          path: (.*)$", text),
+            ["${{ runner.temp }}/maps/results/"],
+        )
+        self.assertNotIn("actions/cache", text)
 
 
 if __name__ == "__main__":

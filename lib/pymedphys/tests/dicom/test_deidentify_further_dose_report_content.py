@@ -18,21 +18,19 @@
 
 """The Clean Structured Content Option on CT, Enhanced X-Ray, and Patient dose reports.
 
-The X-Ray Radiation Dose SR IOD, whose root may be TID 10011, is supported,
-but the Enhanced X-Ray and Patient Radiation Dose SR IODs are not yet, so
-the engine sequesters their instances. These tests show what the option
-does with the content trees of a CT Radiation Dose report (TID 10011, with
-TID 10015), an Enhanced X-Ray Radiation Dose report (TID 10040), and a
-Patient Radiation Dose report (TID 10030), as
+The X-Ray Radiation Dose SR IOD, whose root may be TID 10011, and the
+Enhanced X-Ray and Patient Radiation Dose SR IODs are supported. These tests
+show what the option does with the content trees of a CT Radiation Dose
+report (TID 10011, with TID 10015), an Enhanced X-Ray Radiation Dose report
+(TID 10040), and a Patient Radiation Dose report (TID 10030), as
 :mod:`.test_deidentify_dose_report_content` does for TID 10001 and TID
 10021 (D-047): which option sets, chiefly the option alone, with Retain
 UIDs, and with Retain Device Identity, and which presets, with the option
 added, keep a report that holds only the rows that its templates require;
 the action that its required rows take; which optional rows are removed on
 their own under each option set; the action that each value of a kept tree
-takes; and what is written and released, in the tests that add the two IODs to
-the supported ones for that test alone, as supporting them would. The
-reports are synthetic, built from the templates of PS3.16 2026d by
+takes; and what is written and released. The reports are synthetic, built
+from the templates of PS3.16 2026d by
 :mod:`._synthetic_further_dose_reports`.
 
 A preset with the option added is composed by adding it to every preset's
@@ -131,16 +129,6 @@ def _with_option(monkeypatch):
         ),
     )
     return policy.compose_policy
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the two unsupported IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {reports.ENHANCED_IOD, reports.PATIENT_IOD},
-    )
 
 
 def _report(name, optional=(), **kwargs):
@@ -263,19 +251,16 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_only_the_ct_report_is_of_a_supported_iod():
+def test_each_report_is_of_a_supported_iod():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        if name == CT:
-            assert classification == scope.Classification(
-                scope.Disposition.SUPPORTED, iod
-            ), name
-        else:
-            assert classification.reason == scope.UnsupportedIod(iod), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
         assert load_iod_tables().iods[iod].lookup(VERIFYING_OBSERVER, ()), name
 
@@ -850,7 +835,6 @@ def _written_rows(case):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("case", WRITTEN)
 def test_a_written_report_is_released(case):
     name, options, rows = _written_rows(case)
@@ -907,7 +891,6 @@ def test_a_written_report_is_released(case):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("case", WRITTEN)
 def test_a_report_with_every_optional_row_is_written_without_those_removed(case):
     name, options, rows = _written_rows(case)
@@ -923,7 +906,6 @@ def test_a_report_with_every_optional_row_is_written_without_those_removed(case)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("case, extra", [
     ("CT, option alone", DEVICE_OBSERVER_MAKE),
     ("CT, Retain UIDs", DEVICE_OBSERVER_MAKE),
@@ -989,7 +971,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("case", WRITTEN)
 def test_a_verified_report_is_released_with_a_dummy_verifier(case):
     name, options, rows = _written_rows(case)

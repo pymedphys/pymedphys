@@ -71,6 +71,7 @@ SOURCE_SHA256 = "0f" * 32
 PIXEL_SHA256 = qc_pack.NO_PIXELS_SHA256
 CONTOUR_SHA256 = qc_pack.NO_CONTOURS_SHA256
 GRID_SHA256 = qc_pack.NO_GRIDS_SHA256
+SURFACE_SHA256 = qc_pack.NO_SURFACES_SHA256
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -90,6 +91,7 @@ def _written(
     pixel_sha256=None,
     contour_sha256=None,
     grid_sha256=None,
+    surface_sha256=None,
 ):
     return InstanceEntry(
         position,
@@ -100,6 +102,7 @@ def _written(
         pixel_sha256=pixel_sha256,
         contour_sha256=contour_sha256,
         grid_sha256=grid_sha256,
+        surface_sha256=surface_sha256,
     )
 
 
@@ -140,6 +143,7 @@ def _full_pack():
                 pixel_sha256=PIXEL_SHA256,
                 contour_sha256=CONTOUR_SHA256,
                 grid_sha256=GRID_SHA256,
+                surface_sha256=SURFACE_SHA256,
             ),
             _sequestered(1),
         ),
@@ -250,6 +254,7 @@ _DIGESTS = {
     "pixel_sha256": (PIXEL_SHA256, "pixel data's SHA-256"),
     "contour_sha256": (CONTOUR_SHA256, "contours' SHA-256"),
     "grid_sha256": (GRID_SHA256, "deformation grids' SHA-256"),
+    "surface_sha256": (SURFACE_SHA256, "surface meshes' SHA-256"),
 }
 
 
@@ -581,7 +586,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/27"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/38"
     assert document["reference"] == REFERENCE
     assert document["reviewed_lists"] == {"salt": "5a" * 32, "sha256": "d" * 64}
     assert document["instances"] == [
@@ -596,6 +601,7 @@ def test_the_document_holds_every_section():
             "pixel_sha256": PIXEL_SHA256,
             "contour_sha256": CONTOUR_SHA256,
             "grid_sha256": GRID_SHA256,
+            "surface_sha256": SURFACE_SHA256,
         },
         {
             "position": 1,
@@ -608,6 +614,7 @@ def test_the_document_holds_every_section():
             "pixel_sha256": None,
             "contour_sha256": None,
             "grid_sha256": None,
+            "surface_sha256": None,
         },
     ]
     (residual,) = document["residual_findings"]
@@ -630,6 +637,9 @@ def test_the_document_holds_every_section():
             "after": "Zebedee today",
             "encoding": "utf-8",
         },
+        "value_sha256": None,
+        "value_offset": None,
+        "match_length": None,
     }
     assert document["drops"] == [
         {"position": 0, "source": "(0008,1030)", "reason": "retained"}
@@ -663,6 +673,9 @@ def test_the_document_holds_every_section():
         }
     ]
     assert document["series"] == [{"positions": [0]}]
+    assert document["eye_checks"] == []
+    assert document["dose_checks"] == []
+    assert document["undefaced_instances"] == []
     assert list(document) == [
         "format",
         "reference",
@@ -674,9 +687,13 @@ def test_the_document_holds_every_section():
         "retained_strings",
         "roi_names",
         "descriptors",
+        "annotations",
         "reference_findings",
         "pixel_risks",
         "series",
+        "eye_checks",
+        "dose_checks",
+        "undefaced_instances",
         "series_risks",
         "redactions",
         "previews",
@@ -685,6 +702,7 @@ def test_the_document_holds_every_section():
         "several_patient_studies",
     ]
     assert document["several_patient_studies"] == []
+    assert document["annotations"] == []
 
 
 def test_a_pack_records_its_runs_lists_or_none():
@@ -1176,3 +1194,112 @@ def test_the_pack_uses_the_release_report_and_search_names():
     assert qc_pack.RoiNameOutcome is reviewed_roi_names.Outcome
     with pytest.raises(QcPackError, match="label"):
         _sequestered(label="S-001")
+
+
+# Eye checks: a series held until a reviewer confirms its face block.
+
+_BLOCK_SHA256 = "b1" * 32
+
+
+def _held(position):
+    return InstanceEntry(
+        position,
+        SOURCE_PATH,
+        Disposition.HELD_FOR_REVIEW,
+        reasons=("eyes disagree with rois",),
+        source_sha256=SOURCE_SHA256,
+    )
+
+
+def _sheet(frames, name="P-0001.png"):
+    return qc_pack.Preview(
+        name, qc_pack.PreviewKind.SERIES_EYES, tuple(frames), 3, _PNG
+    )
+
+
+# A PNG of one black pixel.
+_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108000000003a7e9b55"
+    "0000000a49444154789c636000000002000148afa4710000000049454e44ae426082"
+)
+
+
+def _eye_pack(*checks, previews=(), instances=None):
+    return _pack(
+        instances=instances or tuple(_held(position) for position in range(4)),
+        eye_checks=tuple(checks),
+        previews=tuple(previews),
+    )
+
+
+def test_an_eye_check_lists_its_held_instances_and_its_block_digest():
+    check = qc_pack.EyeCheckEntry((0, 1, 2), _BLOCK_SHA256)
+
+    pack = _eye_pack(check, previews=(_sheet(((0, 0), (2, 0))),))
+
+    assert pack.eye_checks == (check,)
+    assert qc_pack.pack_document(pack)["eye_checks"] == [
+        {"positions": [0, 1, 2], "block_sha256": _BLOCK_SHA256}
+    ]
+    assert repr(pack).endswith("eye_checks=1, dose_checks=0, undefaced_instances=0)")
+
+
+@pytest.mark.parametrize(
+    "positions, digest, match",
+    [
+        ((), _BLOCK_SHA256, "run positions"),
+        ([0, 1], _BLOCK_SHA256, "run positions"),
+        ((1, 0), _BLOCK_SHA256, "once, in order"),
+        ((0, 0), _BLOCK_SHA256, "once, in order"),
+        ((-1,), _BLOCK_SHA256, "run position"),
+        ((0,), "B1" * 32, "SHA-256"),
+        ((0,), "b1" * 31, "SHA-256"),
+        ((0,), bytes(32), "SHA-256"),
+    ],
+)
+def test_an_eye_check_entry_is_checked(positions, digest, match):
+    with pytest.raises(QcPackError, match=match):
+        qc_pack.EyeCheckEntry(positions, digest)
+
+
+def test_eye_checks_name_only_instances_held_for_review():
+    released = (_written(0), *(_held(position) for position in (1, 2)))
+
+    with pytest.raises(QcPackError, match="not held for review"):
+        _eye_pack(qc_pack.EyeCheckEntry((0, 1), _BLOCK_SHA256), instances=released)
+
+
+def test_eye_checks_are_in_order_and_share_no_instance():
+    first = qc_pack.EyeCheckEntry((0, 1), _BLOCK_SHA256)
+    second = qc_pack.EyeCheckEntry((2, 3), "c2" * 32)
+
+    _eye_pack(first, second)
+    with pytest.raises(QcPackError, match="in order"):
+        _eye_pack(second, first)
+    with pytest.raises(QcPackError, match="two series"):
+        _eye_pack(first, qc_pack.EyeCheckEntry((1, 2), "c2" * 32))
+
+
+def test_a_sheet_of_eyes_shows_one_eye_checks_frames_once():
+    first = qc_pack.EyeCheckEntry((0, 1), _BLOCK_SHA256)
+    second = qc_pack.EyeCheckEntry((2, 3), "c2" * 32)
+
+    _eye_pack(
+        first, second, previews=(_sheet(((0, 0),)), _sheet(((2, 0),), "P-0002.png"))
+    )
+    with pytest.raises(QcPackError, match="frames of one eye check"):
+        _eye_pack(first, second, previews=(_sheet(((1, 0), (2, 0))),))
+    with pytest.raises(QcPackError, match="frames of one eye check"):
+        _eye_pack(first, previews=(_sheet(((3, 0),)),))
+    with pytest.raises(QcPackError, match="at most one sheet"):
+        _eye_pack(first, previews=(_sheet(((0, 0),)), _sheet(((1, 0),), "P-0002.png")))
+
+
+def test_a_sheet_of_eyes_never_counts_as_showing_a_face():
+    eyes = qc_pack.PreviewKind.SERIES_EYES.value
+    cine = qc_pack.PreviewKind.SERIES_CINE.value
+
+    assert qc_pack.pictured_frames([(eyes, [(0, 0), (1, 0)])], ()) == {}
+    assert qc_pack.pictured_frames([(eyes, [(0, 0)]), (cine, [(1, 0)])], ()) == {1: 1}
+    # Not even where its kind is named.
+    assert qc_pack.pictured_frames([(eyes, [(0, 0)])], (), {eyes}) == {}

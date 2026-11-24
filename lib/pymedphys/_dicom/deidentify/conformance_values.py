@@ -45,9 +45,20 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
+from . import (
+    birth_dates,
+    conformance_content_values,
+    dates,
+    dummy_values,
+    pixel_risk,
+    pseudonyms,
+    residuals,
+    uids,
+)
 from . import release_report as report
+from . import conformance_items
 from .conformance import ConformanceStatement
+from .conformance_prose import code, join
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
 from .policy import (
@@ -67,7 +78,6 @@ from .residuals import _KINDS
 from .residuals import _NUMBERS as _NUMBER_VRS
 from .residuals import _PIXEL_DATA
 from .values import CHECKED_VRS
-from .walker import REVIEWED_DUMMY_SEQUENCES
 
 TEMPORAL_MODIFIED = "(0028,0303)"  # Longitudinal Temporal Information Modified
 # How the statement names the attributes of each temporal role, by its name in
@@ -83,6 +93,7 @@ _ROLE_WORDS = types.MappingProxyType(
     }
 )
 _SERIES_INSTANCE_UID = "(0020,000E)"
+_BURNED_IN_ANNOTATION = "(0028,0301)"
 
 # The name of each codec in which the residual search encodes every form.
 CODEC_NAMES: Mapping[str, str] = types.MappingProxyType(
@@ -107,19 +118,6 @@ def unsearched_vrs() -> Mapping[residuals.Omission, tuple[str, ...]]:
             residuals.Omission.NOT_DISTINCTIVE: tuple(sorted(others - _BINARY_VRS)),
         }
     )
-
-
-def join(values: Iterable[str], conjunction: str = "and") -> str:
-    """Join ``values`` as prose: ``"a"``, ``"a and b"``, or ``"a, b, and c"``."""
-    values = list(values)
-    if len(values) <= 2:
-        return f" {conjunction} ".join(values)
-    return ", ".join(values[:-1]) + f", {conjunction} " + values[-1]
-
-
-def code(action: str) -> str:
-    """Return ``action`` as inline code."""
-    return f"`{action}`"
 
 
 # Why a form of a value, or a spelling of it, is not searched.
@@ -200,8 +198,9 @@ STAGES: Mapping[str, str] = types.MappingProxyType(
 )
 
 # The codes by which the release gate can hold an instance for review rather
-# than withhold it: a gap in collection for a value of no required kind, and
-# other text found inside the data set.
+# than withhold it: a gap in collection for a value of no required kind,
+# other text found inside the data set, and a person name found in standard
+# text that a selected option keeps.
 REVIEW_CODES = frozenset(
     code.value
     for code in (
@@ -210,6 +209,7 @@ REVIEW_CODES = frozenset(
         ReasonCode.READ_AS_LATIN_1,
         ReasonCode.COLLECTED_AS_OTHER_VR,
         ReasonCode.RESIDUAL_TEXT,
+        ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT,
     )
 )
 
@@ -242,123 +242,22 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
             "run does not clean, or an RT Dose beside one with too much dose "
             "in the region set to air to set that dose to zero"
         ),
+        "annotations": (
+            "under Clean Graphics, a graphic annotation of a Presentation "
+            "State has no decision in the custodian's reviewed annotations "
+            "list, or the list keeps it but its text echoes one of the "
+            "instance's patient or other person identifiers"
+        ),
         "release": (
             "the release gate requires QC review, for other text that the "
-            "residual search found inside the data set, or a value that could "
-            "not be collected for the search and is not a person name, UID, "
-            "date, datetime, direct identifier, or sequence"
+            "residual search found inside the data set, a person name that it "
+            "found in standard text that a selected option keeps, such as "
+            "Institution Name under Retain Institution Identity, or a value "
+            "that could not be collected for the search and is not a person "
+            "name, UID, date, datetime, direct identifier, or sequence"
         ),
     }
 )
-
-
-def _reviewed_items(named: Callable[[str], str]) -> list[str]:
-    """Describe what D writes where a reviewed rule gives the value (D-021)."""
-    lines = []
-    for tag, compared in REVIEWED_DUMMY_SEQUENCES.items():
-        if tag == dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
-            lines.append(_procedure_step_items(named, tag, compared))
-            continue
-        within = _reviewed_place(tag)
-        (first,) = dummy_values.items_for_d(tag, [], within=within)
-        source = {e.tag: e.value for e in first if e.tag in compared}
-        (second,) = dummy_values.items_for_d(tag, [source], within=within)
-        changed = [
-            f"{named(element.tag)} `{element.value}`"
-            for element, before in zip(second, first)
-            if element.value != before.value
-        ]
-        place = "".join(f" in an item of {named(each)}" for each in within)
-        elsewhere = (
-            " Elsewhere, D on it has no reviewed rule, so the instance is sequestered."
-            if within
-            else ""
-        )
-        lines.append(
-            f"D on {named(tag)}{place} writes one item, with "
-            + join(f"{named(element.tag)} `{element.value}`" for element in first)
-            + ". Where a source item's "
-            + join((named(t) for t in sorted(compared)), "or")
-            + " equals the item's, as D compares values, the item has "
-            + join(changed)
-            + " instead."
-            + elsewhere
-        )
-    lines.append(_icc_profile(named))
-    return lines
-
-
-def _reviewed_place(tag: str) -> tuple[str, ...]:
-    """Return the sequence whose items alone hold a sequence's reviewed rule.
-
-    It is empty for a sequence whose rule holds everywhere.
-    """
-    return tuple(sorted(dummy_values.REVIEWED_WITHIN.get(tag, frozenset())))
-
-
-def _procedure_step_items(
-    named: Callable[[str], str], tag: str, compared: frozenset[str]
-) -> str:
-    """Describe the items that D writes in Referenced Performed Procedure Step Sequence."""
-    (uid,) = compared
-    return (
-        f"D on {named(tag)} writes, for each source item, one item, with "
-        f"{named('(0008,1150)')} "
-        f"`{dummy_values.MODALITY_PERFORMED_PROCEDURE_STEP}`, the Modality "
-        f"Performed Procedure Step SOP Class, and {named(uid)} the keyed "
-        "replacement of the source item's, as D writes for a UI attribute. "
-        f"Where the sequence has no item, or an item has no {named(uid)}, "
-        "the instance is sequestered."
-    )
-
-
-def _icc_profile(named: Callable[[str], str]) -> str:
-    """Describe the profile that D writes in place of ICC Profile."""
-    first, second = dummy_values.CONSTANTS["LO"]
-    return (
-        f"D on {named(dummy_values.ICC_PROFILE)} writes a fixed ICC version "
-        "2.4 input profile of the sRGB colour space of IEC 61966-2.1, "
-        f"described `{first} sRGB`, or `{second} sRGB` where the source has "
-        "the same bytes. PS3.3 Section C.11.15.1.1 requires the profile's "
-        "data colour space to be RGB, so where the source is not an RGB "
-        "profile, the instance is sequestered. Pixel values are preserved, "
-        "but the source profile's colorants and tone curves are not, so colour "
-        "rendering can change substantially."
-    )
-
-
-def _kept_items(
-    statement: ConformanceStatement, named: Callable[[str], str]
-) -> list[str]:
-    """Describe the items that D keeps where a reviewed rule keeps them (D-021)."""
-    actions = {entry.tag: entry.action for entry in statement.attributes}
-    return [
-        f"D on {named(tag)} keeps each source item, and in it only these "
-        "attributes, each under the action that the policy gives it: "
-        + "; ".join(f"{named(each)}, {code(actions[each])}" for each in sorted(kept))
-        + ". The item's other attributes are removed, and none of these is "
-        "added to an item that lacks it."
-        for tag, kept in dummy_values.KEPT_ITEM_ATTRIBUTES.items()
-    ]
-
-
-def _naming_pymedphys(named: Callable[[str], str]) -> dict[str, list[str]]:
-    """Name each value that a reviewed rule writes and that names PyMedPhys.
-
-    Each is listed by the sequence whose item holds it.
-    """
-    found = {
-        tag: [
-            f"{named(element.tag)} `{element.value}`"
-            for item in dummy_values.items_for_d(tag, [], within=_reviewed_place(tag))
-            for element in item
-            if "PYMEDPHYS" in element.value.upper()
-        ]
-        for tag in REVIEWED_DUMMY_SEQUENCES
-        # The procedure step's items hold only UIDs, written for the source.
-        if tag != dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
-    }
-    return {tag: values for tag, values in found.items() if values}
 
 
 def values_written(
@@ -373,7 +272,7 @@ def values_written(
     patient_id_length = len(pseudonyms.PATIENT_ID_PREFIX) + code_length
     # A replacement UID is the root and the decimal form of a 128-bit UUID.
     uid_length = len(uids.UID_ROOT) + len(str(2**128 - 1))
-    exceptions = _naming_pymedphys(named)
+    exceptions = conformance_items.naming_pymedphys(named)
     pseudonym_tags = join(named(tag) for tag in sorted(PSEUDONYM_TAGS))
     rows = [
         f"| {vr} | `{first}` | `{second}` |"
@@ -397,8 +296,16 @@ def values_written(
         "D on an attribute of any other VR, such as CS or SQ, "
         "needs a reviewed rule for that attribute; without one, the instance "
         "is sequestered.",
-        *(item for line in _reviewed_items(named) for item in ("", line)),
-        *(item for line in _kept_items(statement, named) for item in ("", line)),
+        *(
+            item
+            for line in conformance_items.reviewed_items(named)
+            for item in ("", line)
+        ),
+        *(
+            item
+            for line in conformance_items.kept_items(statement, named)
+            for item in ("", line)
+        ),
         "",
         f"At the top level of the data set, {pseudonym_tags} take the "
         "subject's keyed pseudonyms wherever Z or D applies to them; "
@@ -425,6 +332,7 @@ def values_written(
         "has no rank, as where the run holds no instance of its series, is "
         "emptied under Z and takes D's constant under D. The numbering spans "
         "one run.",
+        *conformance_content_values.paragraphs(statement, named),
         "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "
@@ -521,8 +429,10 @@ def dates_and_times(
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
             "withhold the instance, nor does a removed datetime whose date, "
-            "which the search also looks for, equals a whole kept date; found "
-            "inside a longer kept value, such as the date of a kept datetime, "
+            "which the search also looks for, equals a whole kept date, or a "
+            "removed date, or datetime's date, that is the date that begins a "
+            "kept datetime; found inside a longer kept value, such as a "
+            "removed datetime to the minute at the start of a kept datetime, "
             "it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
@@ -632,12 +542,26 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    localizer, rt_image, segmentation, head, unreadable = (
+    (
+        annotation,
+        localizer,
+        rt_image,
+        nm_image,
+        radiograph,
+        segmentation,
+        parametric_map,
+        head,
+        unreadable,
+    ) = (
         code(indicator.value)
         for indicator in (
+            Indicator.RADIOGRAPH_ANNOTATION,
             Indicator.LOCALIZER,
             Indicator.RT_IMAGE,
+            Indicator.NM_IMAGE,
+            Indicator.RADIOGRAPH,
             Indicator.SEGMENTATION,
+            Indicator.PARAMETRIC_MAP,
             Indicator.HEAD_OR_NECK,
             Indicator.UNREADABLE,
         )
@@ -660,7 +584,11 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "be reconstructed, or of values that may disclose the patient's body "
         "weight, with those indicators, and, where the "
         "instance is released or held for review, previews its written file "
-        "at full resolution or records why it could not. The engine reads "
+        "at full resolution or records why it could not. Every Computed "
+        "Radiography and Digital X-Ray image is one, as able to hold burned-in "
+        f"text, by {annotation}, since a CR reader or a DX console can burn "
+        "the patient's details into the image whatever its "
+        f"{named(_BURNED_IN_ANNOTATION)} says. The engine reads "
         "these indicators from the "
         "instance's attributes, never from its pixel data, so the absence "
         "of an indicator is not evidence that the risk is absent.",
@@ -673,11 +601,20 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "the CT, MR, and PET localizers among them, which can show the face "
         f"in profile, by {localizer}; the RT Images among them, projections "
         "such as a lateral DRR that can show the face in profile too, "
-        f"whatever their gantry angle, by {rt_image}; the Segmentations among "
+        f"whatever their gantry angle, by {rt_image}; the Nuclear Medicine "
+        "images among them, planar views, the projections of a tomographic "
+        "acquisition, or volumes reconstructed from them, any of which can "
+        f"show the face whatever their Image Type, by {nm_image}; the Computed "
+        "Radiography and Digital X-Ray images among them, projections such as "
+        "a lateral skull radiograph that can show the face in profile too, "
+        f"whatever their view position, by {radiograph}; the Segmentations among "
         "them, whose segment of the skin or body traces the profile whatever "
-        f"its label, by {segmentation}; "
-        "where the attributes of a volume, localizer, RT Image, or "
-        "Segmentation, or a Segmentation's segments, name a region of the "
+        f"its label, by {segmentation}; the Parametric Maps among them, "
+        "whose map of the head shows its outline whatever its quantity, by "
+        f"{parametric_map}; "
+        "where the attributes of a volume, localizer, RT Image, Nuclear "
+        "Medicine image, radiograph, Segmentation, or Parametric Map, or a "
+        "Segmentation's segments, name a region of the "
         f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
         f"where such evidence cannot be read, by {unreadable}; each with the "
         "instances that show it. A volume is a series whose instances of one "
@@ -716,22 +653,27 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         )
         return f"The engine writes Pixel Data (7FE0,0010) unchanged{face} and " + claims
     claims = "claims Clean Pixel Data only for an instance " + (
-        "without top-level pixel data or whose regions a reviewer approved, "
+        "without top-level pixel data or an encapsulated document, or whose "
+        "regions a reviewer approved, "
         "and Clean Recognizable Visual Features only for one that cannot show "
         "a face or whose source file a reviewer found free of one. "
         if visual
-        else "without top-level pixel data or whose regions a reviewer "
-        "approved, and never Clean Recognizable Visual Features. "
+        else "without top-level pixel data or an encapsulated document, or "
+        "whose regions a reviewer approved, and never Clean Recognizable "
+        "Visual Features. "
     )
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
         "of text that its text finder finds in each frame of Pixel Data "
-        "(7FE0,0010), and each region that a reviewed region rule gives "
+        "(7FE0,0010), Float Pixel Data (7FE0,0008), or Double Float Pixel "
+        "Data (7FE0,0009), and each region that a reviewed region rule gives "
         "every frame of an image with the rule's SOP Class UID, Manufacturer, "
         "Manufacturer's Model Name, Rows, and Columns, with one stored value: "
         "the frame's "
         "smallest for MONOCHROME2, its largest for MONOCHROME1, or zero for "
-        "RGB. Native Pixel Data is changed in place; compressed Pixel Data is "
+        "RGB, and for floating-point pixel data, the frame's smallest finite "
+        "value. Native Pixel Data, and floating-point pixel data, are changed "
+        "in place, in the element that held them; compressed Pixel Data is "
         "decoded first, YBR colour as RGB, and written uncompressed, in "
         "Explicit VR Little Endian, whether or not a region is blacked out. "
         "This erases the text's pattern, but how bright the region is "
@@ -744,8 +686,10 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "finder's and the rules' regions that the reviewer accepted, with any "
         "that the reviewer added, without the finder or the rules, and "
         "releases the instance, and it "
-        "sequesters an instance that the reviewer rejected. It sequesters an instance with "
-        "top-level Float or Double Float Pixel Data, or whose Pixel Data "
+        "sequesters an instance that the reviewer rejected. It sequesters an instance "
+        "whose Float or Double Float Pixel Data are not one sample of "
+        "MONOCHROME2 in a native transfer syntax, of 32 or 64 bits as their "
+        "element has them, or whose Pixel Data "
         "have a photometric interpretation other than MONOCHROME1, "
         "MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL, "
         "YBR_FULL_422, YBR_ICT, or YBR_RCT, or another layout that cannot be "
@@ -755,7 +699,14 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "other than in those regions. It writes other Pixel Data "
         f"unchanged{face or ','} and "
         + claims
-        + "A run's method digest also covers its text finder's class and "
+        + "An Encapsulated PDF's document is rendered page by page, at 150 "
+        "pixels per inch, its pages searched and blacked out as RGB frames "
+        "are, and written as an image-only PDF that holds the pages' images "
+        "and nothing else, so no text, metadata, or attached file of the "
+        "source document is written; it is held for review, and released, as "
+        "above, only once a reviewer approves its pages. A document that "
+        "cannot be rendered, such as an encrypted one, is sequestered. "
+        "A run's method digest also covers its text finder's class and "
         "description of its method, such as the text detector's model, ONNX "
         "Runtime, NumPy, and SciPy versions, and parameters, and the keyed "
         "digest of its region rules, so it is not the digest that this "

@@ -38,11 +38,15 @@ bits. A :class:`Defacer` alone, without a finder, a reviewer's regions, or
 an overlay to clear, also writes native Pixel Data of single bits, Bits
 Allocated, Bits Stored, and Pixel Representation 1, 1, and 0, packed eight
 to a byte, the first pixel in the lowest bit (PS3.5 Section 8.1.1), as a
-BINARY Segmentation holds its masks, where each frame's pixels fill whole
-bytes, so that each frame starts at a byte's first bit; pydicom 3.0.2
-misreads frames that start within a byte. Such Pixel Data is unpacked and
-written one frame at a time, so that a long segmentation needs no more than
-one frame unpacked beside its bytes. In native Pixel Data, the new value is written in place of the old,
+BINARY Segmentation holds its masks, packed across frames, so that a frame
+whose pixels do not fill whole bytes ends within a byte and the next
+starts there. Such Pixel Data is unpacked and written one frame at a time,
+the bytes that a frame spans unpacked and the bits of its neighbours in
+the bytes it shares with them written as they were, so that a long
+segmentation needs no more than one frame unpacked beside its bytes. Since
+pydicom 3.0.2 can fail to read a single frame that starts within a byte,
+such Pixel Data is checked as written from pydicom's reading of every
+frame at once. In native Pixel Data, the new value is written in place of the old,
 byte for byte, so the transfer syntax, the frames' layout, and every byte
 outside the regions are kept. Bits above Bits Stored could hold an overlay
 (PS3.3 Section C.9.2 before 2004) or anything else that a viewer does not
@@ -54,6 +58,19 @@ nothing that the stored value does not. Pixel Data whose unused bits then
 hold more than the value's sign is not cleaned: each stored word must have
 those bits all zero, or all one where the value is negative. A value written
 into a region has them as its sign gives them.
+
+Float Pixel Data (7FE0,0008) and Double Float Pixel Data (7FE0,0009), of
+one sample of MONOCHROME2 in 32-bit or 64-bit little-endian IEEE 754 values
+(PS3.3 Sections C.7.6.24 and C.7.6.25), as a Parametric Map can hold its
+frames, are cleaned in the same way, in the element that held them
+(:func:`float_layout_of`). Each frame is searched as
+:func:`searched_values` gives it, scaled so that no finder's arithmetic
+overflows, with infinities beyond its finite extremes and values that are
+not a number below those, and its regions are filled with its smallest finite value
+(:meth:`Layout.fill`), so that the fill is a value the frame holds rather
+than one that viewers read as missing. No overlay and no defacer's mask is
+written into floating-point pixel data, and its values are checked bit for
+bit, so that a value that is not a number keeps its bits.
 
 Compressed Pixel Data, in a transfer syntax that encapsulates it, is
 decoded first, every frame, by :func:`.pixel_decoding.decoded_frames`,
@@ -80,7 +97,10 @@ Under Clean Recognizable Visual Features, :func:`black_out` also writes
 the masks that a :class:`Defacer` gives each frame, such as the face block
 of a head CT (:mod:`~pymedphys._dicom.deidentify.face_blocks`), each pixel
 of a mask set to its one stored value after any region of text is filled,
-so that one new value of Pixel Data holds both.
+so that one new value of Pixel Data holds both. Compressed Pixel Data is
+decoded for a defacer as for a finder, and written uncompressed in the same
+way; :func:`decoded_stored_values` gives defacing the same decoded frames,
+one at a time, to find the face block and what it keeps from.
 
 :func:`redaction_problem` then checks the file written: pydicom must read
 the same stored values from it as from the source outside the regions and
@@ -96,8 +116,16 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import io
+import math
 import types
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import (
+    Callable,
+    Collection,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sequence,
+)
 from typing import Protocol
 
 from pymedphys._imports import numpy as np
@@ -105,7 +133,7 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
-from .pixel_decoding import FramesRefused, decoded_frames
+from .pixel_decoding import FramesRefused, decoded_frames, decoded_frames_at
 from .pixel_risk import overlay_groups_without_data
 from .reasons import PixelDataReason, TransformReason
 from .source import (
@@ -116,16 +144,23 @@ from .source import (
 from .text_detection import TextBox
 
 PIXEL_DATA = ElementPath((), "(7FE0,0010)")
-# Top-level pixel data that the option cannot clean.
+# Top-level floating-point pixel data, cleaned as native frames of 32-bit or
+# 64-bit IEEE 754 values.
 FLOAT_PIXEL_DATA = (
     ElementPath((), "(7FE0,0008)"),  # Float Pixel Data
     ElementPath((), "(7FE0,0009)"),  # Double Float Pixel Data
 )
+# The Bits Allocated of each, which the Floating Point and Double Floating
+# Point Image Pixel Modules fix (PS3.3 Sections C.7.6.24 and C.7.6.25).
+_FLOAT_BITS = dict(zip((32, 64), FLOAT_PIXEL_DATA, strict=True))
 _BITS_ALLOCATED = (8, 16, 32)
 # The Bits Allocated of Pixel Data packed eight pixels to a byte, which only
 # a defacer's masks are written into.
 _PACKED_BITS = 1
 _MONOCHROME = ("MONOCHROME1", "MONOCHROME2")
+# Of one sample whose stored values index a palette, as a label map's
+# Segment Numbers can be coloured; written only by a defacer.
+_PALETTE_COLOR = "PALETTE COLOR"
 _RGB = "RGB"
 # The colour of compressed Pixel Data that decodes to RGB: by pydicom from
 # YBR_FULL and YBR_FULL_422, and by the JPEG 2000 decoder from YBR_ICT and
@@ -154,7 +189,8 @@ class TextFinder(Protocol):
 
     def find(self, frame: np.ndarray) -> Sequence[TextBox]:
         """Return the regions of text in a frame of stored values: rows by
-        columns, or rows by columns by 3 for RGB."""
+        columns, or rows by columns by 3 for RGB; for floating-point pixel
+        data, the frame's values as :func:`searched_values` gives them."""
 
 
 class Defacer(Protocol):
@@ -257,6 +293,10 @@ class Layout:
         Photometric Interpretation.
     planar : bool
         Whether Planar Configuration is 1, each colour plane in turn.
+    floating : bool
+        Whether the frames are Float Pixel Data or Double Float Pixel Data,
+        of 32-bit or 64-bit IEEE 754 values, whose Bits Stored is taken as
+        Bits Allocated, so that no bit of a word is unused.
     """
 
     frames: int
@@ -268,6 +308,13 @@ class Layout:
     signed: bool
     photometric: str
     planar: bool
+    floating: bool = False
+
+    @property
+    def element(self) -> ElementPath:
+        """The element that holds the frames: Pixel Data, or Float Pixel
+        Data or Double Float Pixel Data by Bits Allocated."""
+        return _FLOAT_BITS[self.bits_allocated] if self.floating else PIXEL_DATA
 
     @property
     def words(self) -> int:
@@ -277,9 +324,12 @@ class Layout:
     @property
     def dtype(self) -> np.dtype:
         """The little-endian unsigned word of one sample: for Pixel Data
-        packed eight to a byte, a byte for each bit, once unpacked."""
+        packed eight to a byte, a byte for each bit, once unpacked; for
+        floating-point pixel data, the little-endian IEEE 754 value."""
         if self.packed:
             return np.dtype(np.uint8)
+        if self.floating:
+            return np.dtype(f"<f{self.bits_allocated // 8}")
         return np.dtype(f"<u{self.bits_allocated // 8}")
 
     @property
@@ -291,20 +341,34 @@ class Layout:
     def size(self) -> int:
         """How many bytes of the value field the frames' words fill."""
         if self.packed:
-            return self.words // 8
+            return -(-self.words // 8)
         return self.words * self.dtype.itemsize
 
-    def word_of(self, value: int) -> int:
+    def word_of(self, value: float) -> int | float:
         """Return the stored word of a value: in two's complement where
-        signed, so that the bits above Bits Stored give its sign."""
-        return value % (1 << self.bits_allocated)
+        signed, so that the bits above Bits Stored give its sign, or the
+        value itself where floating point."""
+        if self.floating:
+            return float(value)
+        return int(value) % (1 << self.bits_allocated)
 
-    def fill(self, frame: np.ndarray) -> tuple[int, ...]:
+    def fill(self, frame: np.ndarray) -> tuple[int | float, ...]:
         """Return the stored value that fills a frame's regions, once per
         sample: its smallest for MONOCHROME2, its largest for MONOCHROME1,
-        and zero for RGB."""
+        and zero for RGB.
+
+        Floating-point pixel data, which is MONOCHROME2, is filled with the
+        frame's smallest finite value, padding included, as an integer
+        frame's smallest stored value includes it, so that the fill is a
+        value the frame already holds and no viewer reads it as missing, as
+        many read not a number; a frame with no finite value is filled with
+        zero.
+        """
         if self.photometric == _RGB:
             return (0, 0, 0)
+        if self.floating:
+            finite = frame[np.isfinite(frame)]
+            return (float(finite.min()) if finite.size else 0.0,)
         value = frame.min() if self.photometric == "MONOCHROME2" else frame.max()
         return (int(value),)
 
@@ -335,7 +399,7 @@ class FrameRegions:
 
     frame: int
     boxes: tuple[TextBox, ...]
-    value: tuple[int, ...] = dataclasses.field(repr=False)
+    value: tuple[int | float, ...] = dataclasses.field(repr=False)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -458,7 +522,10 @@ def black_out(
     ------
     PixelDataRefused
         With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` for
-        float pixel data, or Pixel Data that cannot be read as frames, or
+        pixel data that cannot be read as frames, as :func:`layout_of` or,
+        for Float Pixel Data and Double Float Pixel Data,
+        :func:`float_layout_of` reads them, or for a defacer's mask in
+        floating-point pixel data, or
         the reason of :class:`~.pixel_decoding.FramesRefused` for
         compressed Pixel Data whose frames cannot be decoded for cleaning,
         and with :attr:`~.reasons.TransformReason.REDACTION_MISMATCH` where
@@ -467,8 +534,8 @@ def black_out(
         If ``rules`` holds anything but TextBox objects, or is given without
         a finder.
     ValueError
-        If ``overlays`` is given for compressed Pixel Data, or names a bit
-        that is not above High Bit.
+        If ``overlays`` is given for compressed or floating-point pixel
+        data, or names a bit that is not above High Bit.
     """
     if not all(isinstance(box, TextBox) for box in rules):
         raise TypeError("region rules must give TextBox objects")
@@ -483,7 +550,7 @@ def black_out(
         rows, columns = frame.shape[:2]
         if any(box.bottom > rows or box.right > columns for box in ruled):
             raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
-        return (*_checked(find(frame), rows, columns), *ruled)
+        return (*clipped_boxes(find(frame), rows, columns), *ruled)
 
     redaction = _blacked_out(source, dataset, found, defacer, overlays=overlays)
     if redaction is None or not ruled:
@@ -574,13 +641,18 @@ def _blacked_out(
 
     Given a ``review``, compressed Pixel Data whose decoded frames have
     another SHA-256 than it records raises :class:`PixelsNotReviewed`."""
-    if any(path in source for path in FLOAT_PIXEL_DATA):
-        raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
-    if PIXEL_DATA not in source:
+    floating = any(path in source for path in FLOAT_PIXEL_DATA)
+    if not floating and PIXEL_DATA not in source:
         return None
     decoded = None
-    if source.transfer_syntax in NATIVE_TRANSFER_SYNTAXES:
-        layout = layout_of(dataset, packed=boxes_of is None and not overlays)
+    if floating:
+        if overlays:
+            raise ValueError("overlays are cleared only in Pixel Data")
+        layout = float_layout_of(source, dataset)
+        field = source.value_field(layout.element)
+    elif source.transfer_syntax in NATIVE_TRANSFER_SYNTAXES:
+        alone = boxes_of is None and not overlays
+        layout = layout_of(dataset, packed=alone, palette=alone)
         field = source.value_field(PIXEL_DATA)
         if overlays & ~_unused_bits(layout):
             raise ValueError("an overlay's bit must be above High Bit")
@@ -589,7 +661,7 @@ def _blacked_out(
     else:
         if overlays:
             raise ValueError("overlays are cleared only in native Pixel Data")
-        layout, attributes = _decoded_layout(dataset)
+        layout, attributes = _decoded_layout(dataset, palette=boxes_of is None)
         try:
             field = decoded = decoded_frames(
                 source, attributes, layout.frames, layout.photometric
@@ -613,10 +685,11 @@ def _blacked_out(
     masks = []
     for index in range(layout.frames):
         frame = _frame(layout, _stored_values(layout, stored[index]))
+        searched = searched_values(frame) if layout.floating else frame
         boxes = (
             ()
             if boxes_of is None
-            else tuple(sorted(set(_given(boxes_of(index, frame)))))
+            else tuple(sorted(set(_given(boxes_of(index, searched)))))
         )
         if boxes:
             fill = layout.fill(frame)
@@ -686,28 +759,40 @@ def _bits_masked(layout: Layout, field: bytes, defacer: Defacer | None) -> Redac
     return Redaction(layout, (), bytes(written), tuple(masks))
 
 
-def _frame_span(layout: Layout, index: int) -> slice:
-    """The bytes of one frame of Pixel Data packed eight to a byte, whose
-    frames each fill whole bytes."""
-    length = layout.rows * layout.columns // 8
-    return slice(index * length, (index + 1) * length)
+def _frame_span(layout: Layout, index: int) -> tuple[slice, int]:
+    """The bytes that one frame of Pixel Data packed eight to a byte spans,
+    and the bit within the first of them at which the frame starts."""
+    length = layout.rows * layout.columns
+    start = index * length
+    first, stop = start // 8, -(-(start + length) // 8)
+    return slice(first, stop), start - 8 * first
 
 
 def _frame_bits(layout: Layout, field: bytes | bytearray, index: int) -> np.ndarray:
     """Return one frame of Pixel Data packed eight to a byte, unpacked, rows
     by columns, the first pixel in each byte's lowest bit."""
-    packed = np.frombuffer(field[_frame_span(layout, index)], dtype=np.uint8)
+    span, offset = _frame_span(layout, index)
+    packed = np.frombuffer(bytes(field[span]), dtype=np.uint8)
     bits = np.asarray(np.unpackbits(packed, bitorder="little"))
-    return bits.reshape(layout.rows, layout.columns)
+    length = layout.rows * layout.columns
+    return bits[offset : offset + length].reshape(layout.rows, layout.columns)
 
 
 def _put_frame_bits(
     layout: Layout, field: bytearray, index: int, bits: np.ndarray
 ) -> None:
     """Write one frame's bits, as :func:`_frame_bits` gives them, packed
-    into its bytes."""
-    packed = np.asarray(np.packbits(np.ravel(bits), bitorder="little"))
-    field[_frame_span(layout, index)] = packed.tobytes()
+    into the bytes it spans, keeping the bits of the frames beside it in the
+    bytes that it shares with them."""
+    span, offset = _frame_span(layout, index)
+    around = np.asarray(
+        np.unpackbits(
+            np.frombuffer(bytes(field[span]), dtype=np.uint8), bitorder="little"
+        )
+    )
+    around[offset : offset + layout.rows * layout.columns] = np.ravel(bits)
+    packed = np.asarray(np.packbits(around, bitorder="little"))
+    field[span] = packed.tobytes()
 
 
 def overlay_planes(source: SourceEvidence, dataset: pydicom.Dataset) -> int | None:
@@ -794,11 +879,15 @@ def _placed_overlays(
     return layout, planes
 
 
-def layout_of(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
+def layout_of(
+    dataset: pydicom.Dataset, *, packed: bool = False, palette: bool = False
+) -> Layout:
     """Return how native Pixel Data holds its frames.
 
     Pixel Data of single bits, packed eight to a byte, is read only where
-    ``packed`` is true, for a defacer's masks alone.
+    ``packed`` is true, and PALETTE COLOR of one sample, whose stored
+    values index its palette, only where ``palette`` is, each for a
+    defacer's masks alone.
 
     Raises
     ------
@@ -808,7 +897,10 @@ def layout_of(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
         is not cleaned.
     """
     layout = _read_layout(dataset, packed=packed)
-    monochrome = layout.samples == 1 and layout.photometric in _MONOCHROME
+    monochrome = layout.samples == 1 and (
+        layout.photometric in _MONOCHROME
+        or (palette and layout.photometric == _PALETTE_COLOR)
+    )
     rgb = (
         layout.samples == 3
         and layout.photometric == _RGB
@@ -820,14 +912,135 @@ def layout_of(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
     return layout
 
 
+def float_layout_of(source: SourceEvidence, dataset: pydicom.Dataset) -> Layout:
+    """Return how Float Pixel Data or Double Float Pixel Data holds its frames.
+
+    The Floating Point and Double Floating Point Image Pixel Modules (PS3.3
+    Sections C.7.6.24 and C.7.6.25) hold one sample of MONOCHROME2 in 32 or
+    64 bits, as Bits Allocated gives it, with no Bits Stored, High Bit, or
+    Pixel Representation, in little-endian IEEE 754 in every native transfer
+    syntax in scope.
+
+    Raises
+    ------
+    PixelDataRefused
+        With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` where
+        the instance holds more than one of Pixel Data, Float Pixel Data,
+        and Double Float Pixel Data, or its transfer syntax is not native,
+        or an attribute that describes its frames cannot be read or
+        describes a layout that is not cleaned, or Bits Allocated is not
+        that of the element that holds them.
+    """
+    uncleanable = PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+    held = [path for path in (*FLOAT_PIXEL_DATA, PIXEL_DATA) if path in source]
+    if len(held) != 1 or source.transfer_syntax not in NATIVE_TRANSFER_SYNTAXES:
+        raise uncleanable
+    try:
+        with redacted_diagnostics():
+            frames = _integer(dataset, "NumberOfFrames", default=1)
+            rows, columns, samples, allocated = (
+                _integer(dataset, keyword)
+                for keyword in ("Rows", "Columns", "SamplesPerPixel", "BitsAllocated")
+            )
+            photometric = dataset["PhotometricInterpretation"].value
+    # pydicom raises many types for a value it cannot convert, and a message
+    # can quote the value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise uncleanable from None
+    if not (
+        min(frames, rows, columns) > 0
+        and samples == 1
+        and photometric == "MONOCHROME2"
+        and _FLOAT_BITS.get(allocated) == held[0]
+    ):
+        raise uncleanable
+    return Layout(
+        frames=frames,
+        rows=rows,
+        columns=columns,
+        samples=1,
+        bits_allocated=allocated,
+        bits_stored=allocated,
+        signed=True,
+        photometric=photometric,
+        planar=False,
+        floating=True,
+    )
+
+
+def searched_values(frame: np.ndarray) -> np.ndarray:
+    """Return a frame of floating-point values as a text finder searches it.
+
+    A finder takes stored values, which for integer pixel data are finite
+    and bounded by Bits Stored; floating-point values can be infinite, not
+    a number, or near the largest that 64 bits hold, where a finder's own
+    arithmetic would overflow. So each value is divided by the power of two
+    at or above the frame's largest finite magnitude, exactly where it is
+    32-bit, so that the values lie within -1 and 1, keeping the order and
+    proportions between them that a finder's windows and filters read. Then
+    positive infinity is searched as above the frame's largest finite value
+    and negative infinity as below its smallest, each by the finite values'
+    range, or by 1 where they have none, as previews draw them
+    in the QC pack, so that text drawn in an infinity
+    stands apart even where the finite values beside it are its extreme or
+    all one value. A value that is not a number, which every preview draws
+    black as padding, is searched as below negative infinity by as much
+    again, so that text drawn in it, or drawn in another value on it,
+    stands apart too. Padding is searched as it is, as an integer frame's
+    is. A frame with no finite value is searched as though its finite
+    values were all 0.
+
+    Parameters
+    ----------
+    frame : numpy.ndarray
+        Rows by columns of 32-bit or 64-bit floating-point values.
+
+    Returns
+    -------
+    numpy.ndarray
+        Rows by columns of float64.
+    """
+    values = np.asarray(frame, dtype=np.float64)
+    finite = np.isfinite(values)
+    scaled = np.zeros(values.shape)
+    low = high = 0.0
+    if finite.any():
+        magnitude = float(np.abs(values[finite]).max())
+        exponent = int(np.frexp(magnitude)[1]) if magnitude > 0 else 0
+        scaled = np.ldexp(values, -exponent)
+        low, high = float(scaled[finite].min()), float(scaled[finite].max())
+    gap = high - low or 1.0
+    below = beyond(low, -gap)
+    scaled[np.isposinf(values)] = beyond(high, gap)
+    scaled[np.isneginf(values)] = below
+    scaled[np.isnan(values)] = beyond(below, -gap)
+    return scaled
+
+
+def beyond(value: float, gap: float) -> float:
+    """Return ``value`` moved by ``gap``, or, where float64 cannot hold
+    that apart from ``value``, the next float64 in its direction.
+
+    Infinities are drawn and searched beyond a frame's finite extremes by
+    this, so that they stay apart from those extremes, however close they
+    lie (:func:`searched_values`).
+    """
+    moved = value + gap
+    if moved == value:
+        moved = float(np.nextafter(value, math.copysign(math.inf, gap)))
+    return moved
+
+
 def _decoded_layout(
-    dataset: pydicom.Dataset,
+    dataset: pydicom.Dataset, *, palette: bool = False
 ) -> tuple[Layout, Mapping[str, int | str]]:
     """Return how compressed Pixel Data's frames are held once decoded, and
     the attributes that describe a frame to its decoder.
 
     Decoded frames have the samples of each pixel together, and colour of 8
     bits, unsigned, in any of :data:`_DECODED_TO_RGB` decodes to RGB.
+    PALETTE COLOR of one sample decodes to the indices that it holds, and
+    is read only where ``palette`` is true, for a defacer's masks alone.
 
     Raises
     ------
@@ -835,7 +1048,10 @@ def _decoded_layout(
         As :func:`layout_of` does.
     """
     layout = _read_layout(dataset)
-    monochrome = layout.samples == 1 and layout.photometric in _MONOCHROME
+    monochrome = layout.samples == 1 and (
+        layout.photometric in _MONOCHROME
+        or (palette and layout.photometric == _PALETTE_COLOR)
+    )
     colour = (
         layout.samples == 3
         and layout.photometric in _DECODED_TO_RGB
@@ -858,6 +1074,66 @@ def _decoded_layout(
         attributes["PlanarConfiguration"] = int(layout.planar)
         layout = dataclasses.replace(layout, photometric=_RGB, planar=False)
     return layout, attributes
+
+
+def frames_layout(
+    dataset: pydicom.Dataset, transfer_syntax: str, *, palette: bool = False
+) -> Layout:
+    """Return how :func:`black_out` holds an instance's frames: as native
+    Pixel Data holds them, by :func:`layout_of`, or, for compressed Pixel
+    Data, as its frames are held once decoded, with PALETTE COLOR read
+    where ``palette`` is true.
+
+    Raises
+    ------
+    PixelDataRefused
+        As :func:`layout_of` does.
+    """
+    if transfer_syntax in NATIVE_TRANSFER_SYNTAXES:
+        return layout_of(dataset, palette=palette)
+    return _decoded_layout(dataset, palette=palette)[0]
+
+
+def decoded_stored_values(
+    source: SourceEvidence, dataset: pydicom.Dataset, indices: Collection[int]
+) -> Iterator[np.ndarray]:
+    """Yield the stored values of the frames at ``indices`` of compressed
+    Pixel Data, in ascending order, one at a time, decoded as
+    :func:`black_out` decodes them, rows by columns, and by samples for
+    colour, as signed integers.
+
+    So defacing finds the face block and the brain that it keeps in the
+    samples that :func:`black_out` writes air into (D-050), without
+    decoding the frames that it does not ask for.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+        Of compressed Pixel Data, whose frames need not yet have been shown
+        sound (:func:`~.pixel_decoding.decoded_frames_at`).
+    dataset : pydicom.Dataset
+        The source's data set, as :meth:`SourceEvidence.dataset` reads it.
+    indices : collection of int
+        The frames to decode, by index from 0.
+
+    Raises
+    ------
+    PixelDataRefused
+        As :func:`black_out` raises it for compressed Pixel Data, before or
+        after decoding.
+    """
+    layout, attributes = _decoded_layout(dataset)
+    shape = (layout.rows, layout.columns, layout.samples)
+    try:
+        for frame in decoded_frames_at(
+            source, attributes, layout.frames, layout.photometric, indices
+        ):
+            words = np.frombuffer(frame, dtype=layout.dtype).reshape(shape)
+            if not _plain_unused_bits(layout, words):
+                raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+            yield _frame(layout, _stored_values(layout, words))
+    except FramesRefused as refused:
+        raise PixelDataRefused(refused.reason) from None
 
 
 def _read_layout(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
@@ -896,15 +1172,9 @@ def _read_layout(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
     # can quote the value.
     except Exception:  # pylint: disable = broad-exception-caught
         raise uncleanable from None
-    # Pixels of single bits are read only in frames that each fill whole
-    # bytes, which pydicom reads frame by frame.
-    bits = (
-        packed
-        and allocated == _PACKED_BITS
-        and samples == 1
-        and not representation
-        and rows * columns % 8 == 0
-    )
+    # Pixels of single bits are read only for a defacer, of one sample and
+    # unsigned, whether or not each frame fills whole bytes.
+    bits = packed and allocated == _PACKED_BITS and samples == 1 and not representation
     if not (
         min(frames, rows, columns) > 0
         and (allocated in _BITS_ALLOCATED or bits)
@@ -977,15 +1247,23 @@ def redaction_problem(
     them. For
     compressed Pixel Data, the source's are the decoded frames', and the
     output must be in :attr:`Redaction.transfer_syntax`, with no byte after
-    them but one of padding, of zero.
+    them but one of padding, of zero. Float Pixel Data and Double Float
+    Pixel Data are written to the element that held them, and nothing else
+    holds pixel data; their values are compared bit for bit, so that a
+    value that is not a number must keep its bits, and 0 its sign.
     """
     syntax = redaction.transfer_syntax or source.transfer_syntax
-    if PIXEL_DATA not in output or output.transfer_syntax != syntax:
+    layout = redaction.layout
+    element = layout.element
+    if element not in output or output.transfer_syntax != syntax:
+        return True
+    if any(
+        path in output for path in (*FLOAT_PIXEL_DATA, PIXEL_DATA) if path != element
+    ):
         return True
     decoded = redaction.decoded
-    before = source.value_field(PIXEL_DATA) if decoded is None else decoded
-    after = output.value_field(PIXEL_DATA)
-    layout = redaction.layout
+    before = source.value_field(element) if decoded is None else decoded
+    after = output.value_field(element)
     size = layout.size
     length = len(before) if decoded is None else size + size % 2
     if after != redaction.value or len(after) != length:
@@ -1030,7 +1308,7 @@ def _source_frames(source: SourceEvidence, redaction: Redaction) -> Iterator:
     source itself where it is native, and from the decoded frames where it
     is compressed, which are never decoded again in this process."""
     if redaction.transfer_syntax is None:
-        yield from pydicom.pixels.iter_pixels(source.dataset())
+        yield from _pydicom_frames(source, redaction.layout)
         return
     layout = redaction.layout
     words = _words(layout, redaction.decoded or b"")
@@ -1038,6 +1316,17 @@ def _source_frames(source: SourceEvidence, redaction: Redaction) -> Iterator:
         raise ValueError("the decoded frames do not fit their layout")
     for frame in layout.shaped(words):
         yield _frame(layout, _stored_values(layout, frame))
+
+
+def _pydicom_frames(evidence: SourceEvidence, layout: Layout) -> Iterator:
+    """Yield native Pixel Data's frames as pydicom reads them: one at a
+    time, but for frames of single bits that start within a byte, which
+    pydicom 3.0.2 reads reliably only all at once."""
+    if layout.packed and layout.frames > 1 and layout.rows * layout.columns % 8:
+        whole = np.asarray(pydicom.pixels.pixel_array(evidence.dataset()))
+        yield from whole.reshape(layout.frames, layout.rows, layout.columns)
+        return
+    yield from pydicom.pixels.iter_pixels(evidence.dataset())
 
 
 def _reads_as_planned(
@@ -1051,7 +1340,7 @@ def _reads_as_planned(
         with redacted_diagnostics():
             pairs = zip(
                 _source_frames(source, redaction),
-                pydicom.pixels.iter_pixels(output.dataset()),
+                _pydicom_frames(output, layout),
                 strict=True,
             )
             for index, (before, after) in enumerate(pairs):
@@ -1065,13 +1354,17 @@ def _reads_as_planned(
                 )
                 if before.shape != after.shape:
                     return False
+                fill = (
+                    None
+                    if regions is None
+                    else _bits(layout, np.array(regions.value, dtype=after.dtype))
+                )
+                before, after = _bits(layout, before), _bits(layout, after)
                 changed = inside | masked
                 if not np.array_equal(before[~changed], after[~changed]):
                     return False
                 filled = inside & ~masked
-                if regions is not None and not np.all(
-                    after[filled] == np.array(regions.value, dtype=after.dtype)
-                ):
+                if fill is not None and not np.all(after[filled] == fill):
                     return False
                 if mask is not None and not np.all(after[masked] == mask.value):
                     return False
@@ -1082,6 +1375,15 @@ def _reads_as_planned(
     return True
 
 
+def _bits(layout: Layout, values: np.ndarray) -> np.ndarray:
+    """Return floating-point values as the unsigned words that hold their
+    bits, so that they compare bit for bit; other values as they are."""
+    if not layout.floating:
+        return values
+    values = np.asarray(values)
+    return values.view(values.dtype.str.replace("f", "u"))
+
+
 def stored_range(layout: Layout) -> tuple[int, int]:
     """The least and greatest stored value that the layout can hold."""
     if layout.signed:
@@ -1090,8 +1392,13 @@ def stored_range(layout: Layout) -> tuple[int, int]:
 
 
 def _storable(layout: Layout, value: object) -> bool:
-    """Whether ``value`` is an integer that the layout can store."""
-    if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
+    """Whether ``value`` is an integer that the layout can store: never in
+    floating-point pixel data, into which no defacer writes a mask."""
+    if (
+        layout.floating
+        or isinstance(value, bool)
+        or not isinstance(value, (int, np.integer))
+    ):
         return False
     low, high = stored_range(layout)
     return low <= int(value) <= high
@@ -1154,7 +1461,10 @@ def _plain_unused_bits(layout: Layout, words: np.ndarray) -> bool:
 
 
 def _stored_values(layout: Layout, words: np.ndarray) -> np.ndarray:
-    """Return the stored values of the words, as signed integers."""
+    """Return the stored values of the words, as signed integers, or the
+    words themselves where they are floating point."""
+    if layout.floating:
+        return words
     values = (words & ((1 << layout.bits_stored) - 1)).astype(np.int64)
     if layout.signed:
         sign = 1 << (layout.bits_stored - 1)
@@ -1183,7 +1493,7 @@ def _given(boxes: Sequence[TextBox]) -> Sequence[TextBox]:
     return boxes
 
 
-def _checked(boxes: Sequence[TextBox], rows: int, columns: int) -> list[TextBox]:
+def clipped_boxes(boxes: Sequence[TextBox], rows: int, columns: int) -> list[TextBox]:
     """Return the finder's boxes, each clipped to the frame.
 
     Raises

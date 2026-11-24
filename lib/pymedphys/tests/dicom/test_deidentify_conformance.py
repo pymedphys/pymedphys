@@ -27,6 +27,7 @@ from pymedphys._imports import pydicom, pytest, tomlkit
 from pymedphys._dicom.deidentify import (
     codes,
     compound_actions,
+    content_items,
     conformance,
     conformance_markdown,
     descriptor_cleaning,
@@ -56,11 +57,16 @@ REFERRING_PHYSICIAN_IDENTIFICATION = ("(0008,0096)",)
 # Asserter Identification Sequence, which the Basic Profile keeps, within RT
 # Assertions Sequence.
 ASSERTER_IDENTIFICATION = ("(0044,0110)", "(0044,0103)")
+# Asserter Identification Sequence in Omitted Radiation Sequence, in an RT
+# Radiation Set Delivery Instruction.
+OMITTED_RADIATION_ASSERTER = ("(300A,0787)", "(0044,0103)")
 TREATMENT_MACHINE = ("(300A,0206)",)
+AUTHOR_IDENTIFICATION = ("(3010,0019)",)
 # Interlock Resolution User Sequence, in an RT Beams Treatment Record and in
 # an RT Ion Beams Treatment Record.
 INTERLOCK_USER = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
 ION_INTERLOCK_USER = ("(3008,0021)", "(300A,0740)", "(300A,0746)")
+RECORD_INTERLOCK_USER = ("(300A,0740)", "(300A,0746)")
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"  # X/Z/D in the Basic Profile
 PIXEL_DATA_PROVIDER_URL = "(0028,7FE0)"  # X/Z/D by a supplementary rule
 # The attributes that a reviewed rule gives a dummy value, whatever their VR.
@@ -69,6 +75,8 @@ REVIEWED_DUMMY_ATTRIBUTES = {
     "(0008,1111)",
     "(0028,2000)",
     "(0040,A073)",
+    # Referenced Study Sequence, which keeps its items (D-021).
+    "(0008,1110)",
 }
 # Institution Code Sequence has a reviewed rule only directly in an item of
 # Interlock Resolution User Sequence (D-021).
@@ -137,7 +145,7 @@ def _removed_with_a_sequence(sequence_action, iod, path):
             action = compound_actions.resolve_plain_in_iod(
                 iod, tag, path[:depth], action
             )
-        if not walker.descends(tag, action):
+        if not walker.descends(tag, action, path[:depth]):
             return True
     return False
 
@@ -239,6 +247,8 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
 def _has_dummy_value(tag, path):
     if tag == INSTITUTION_CODE_SEQUENCE:
         return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
+    if tag == dummy_values.OPERATOR_IDENTIFICATION_SEQUENCE:
+        return path[-1:] == (dummy_values.OVERRIDE_SEQUENCE,)
     attribute = standard.dictionary_attribute(tag.replace("60xx", "6000"))
     return (
         tag in REVIEWED_DUMMY_ATTRIBUTES
@@ -255,8 +265,33 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     assert found[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert found[("RT Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
     assert found[("RT Ion Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
+    assert found[("RT Brachy Treatment Record", TREATMENT_MACHINE)] == "Z"
     assert found[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
     assert found[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
+    assert found[("Enhanced RT Image", AUTHOR_IDENTIFICATION)] == "Z"
+    # Type 2 in the items of Operator Identification Sequence that D keeps
+    # in a radiation record's tolerance override (D-021).
+    operator = ("(300A,0731)", "(3008,0060)", "(0008,1072)")
+    assert found[("RT Radiation Salvage Record", operator)] == "Z"
+    assert found[("Enhanced Continuous RT Image", AUTHOR_IDENTIFICATION)] == "Z"
+    for name in (
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
+    ):
+        assert found[(name, AUTHOR_IDENTIFICATION)] == "Z", name
+    assert (
+        found[("RT Radiation Set Delivery Instruction", AUTHOR_IDENTIFICATION)] == "Z"
+    )
+    assert (
+        found[("RT Radiation Set Delivery Instruction", OMITTED_RADIATION_ASSERTER)]
+        == "Z"
+    )
     assert found[("RT Structure Set", ())] == "X"
     # Places within a sequence that the Basic Profile removes are not listed.
     assert ("RT Structure Set", ROI_CREATOR) not in found
@@ -264,11 +299,32 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
 
     text = conformance_markdown.render_markdown(statement_for("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
+    records = (
+        "C-Arm Photon-Electron Radiation Record, RT Radiation Salvage Record, "
+        "Robotic-Arm Radiation Record, and Tomotherapeutic Radiation Record"
+    )
     assert row.endswith(
-        "| Z within Treatment Machine Sequence (300A,0206) in RT Beams Treatment "
-        "Record and RT Ion Beams Treatment Record; within RT Assertions Sequence "
+        "| Z within Author Identification Sequence (3010,0019) in C-Arm "
+        "Photon-Electron Radiation, C-Arm Photon-Electron Radiation Record, "
+        "Enhanced Continuous RT Image, Enhanced RT Image, RT Patient Position "
+        "Acquisition Instruction, RT Physician Intent, RT Radiation Record "
+        "Set, RT Radiation Salvage Record, RT Radiation Set, RT Radiation Set "
+        "Delivery Instruction, RT Segment Annotation, RT Treatment "
+        "Preparation, Robotic-Arm Radiation, "
+        "Robotic-Arm Radiation Record, Tomotherapeutic Radiation, and "
+        "Tomotherapeutic Radiation Record; within Treatment Tolerance "
+        "Violation Sequence (300A,0731) > Override Sequence (3008,0060) > "
+        f"Operator Identification Sequence (0008,1072) in {records}; within "
+        "Confirmation Sequence (300A,073F) > Asserter Identification Sequence "
+        f"(0044,0103) in {records}; within Treatment Machine Sequence "
+        "(300A,0206) in RT Beams Treatment Record, RT Brachy Treatment Record, "
+        "and RT Ion Beams Treatment Record; within RT Assertions Sequence "
         "(0044,0110) > Asserter Identification Sequence (0044,0103) in RT Ion "
-        "Plan and RT Plan. D within Treatment Session Beam Sequence (3008,0020) "
+        "Plan and RT Plan; within Omitted Radiation Sequence (300A,0787) > "
+        "Asserter Identification Sequence (0044,0103) in RT Radiation Set "
+        "Delivery Instruction. D within Interlock Sequence (300A,0740) > "
+        f"Interlock Resolution User Sequence (300A,0746) in {records}; within "
+        "Treatment Session Beam Sequence (3008,0020) "
         "> Interlock Sequence (300A,0740) > Interlock Resolution User Sequence "
         "(300A,0746) in RT Beams Treatment Record; within Treatment Session Ion "
         "Beam Sequence (3008,0021) > Interlock Sequence (300A,0740) > Interlock "
@@ -305,9 +361,20 @@ def test_an_interlock_users_institution_code_sequence_is_listed_as_d(statement_f
     assert places[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert places[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert places[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    # The radiation records' RT Radiation Record Common Module holds the
+    # interlock at its top level.
     assert {place for place, action in places.items() if action == "D"} == {
         ("RT Beams Treatment Record", INTERLOCK_USER),
         ("RT Ion Beams Treatment Record", ION_INTERLOCK_USER),
+        *(
+            (name, RECORD_INTERLOCK_USER)
+            for name in (
+                "C-Arm Photon-Electron Radiation Record",
+                "Tomotherapeutic Radiation Record",
+                "Robotic-Arm Radiation Record",
+                "RT Radiation Salvage Record",
+            )
+        ),
     }
 
 
@@ -540,7 +607,9 @@ def test_places_name_their_enclosing_sequences(statement_for):
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
         "within RT Assertions Sequence (0044,0110) > Asserter Identification "
-        "Sequence (0044,0103) in RT Ion Plan and RT Plan." in row
+        "Sequence (0044,0103) in RT Ion Plan and RT Plan; within Omitted "
+        "Radiation Sequence (300A,0787) > Asserter Identification Sequence "
+        "(0044,0103) in RT Radiation Set Delivery Instruction." in row
     )
     assert row.endswith(". X elsewhere. |")
 
@@ -636,6 +705,13 @@ def test_the_markdown_acknowledges_every_part_of_the_standard_it_quotes(statemen
     text = conformance_markdown.render_markdown(statement_for("basic"))
     for part in ("PS3.3", "PS3.4", "PS3.6", "PS3.15", "PS3.16"):
         assert f"DICOM {part} 2026d, © NEMA" in text
+    assert text.endswith(
+        "\n\nThe DICOM Standard is published at <https://www.dicomstandard.org/>. "
+        "DICOM® is the registered trademark of the National Electrical "
+        "Manufacturers Association (NEMA) for its standards publications relating "
+        "to digital communications of medical information. NEMA does not endorse, "
+        "sponsor, or certify PyMedPhys.\n"
+    )
 
 
 def _section(text, heading):
@@ -761,7 +837,7 @@ def test_private_attribute_removal_is_described(preset, statement_for):
         ("tps-import", (), (), "MODIFIED"),
         (
             "public-release",
-            ("113100", "113111", "113107"),
+            ("113100", "113111", "113107", "113104"),
             ("113105", "113102"),
             "MODIFIED",
         ),
@@ -833,6 +909,20 @@ def test_every_listed_action_is_the_one_the_engine_applies(name):
             )
             assert (rule.action, entry.policy_action) == ("C", "C"), entry.tag
             assert entry.action == fallen_back.action, entry.tag
+            continue
+        if (
+            policy.CLEAN_STRUCTURED_CONTENT in composed.options
+            and entry.tag in content_items.CONTENT_ITEM_SEQUENCES
+        ):
+            # The element rules give the sequence its Basic Profile action;
+            # the engine cleans its content items by their concept names and
+            # keeps it where it can (D-047).
+            assert (entry.action, entry.policy_action, entry.superseded_by) == (
+                "C",
+                "",
+                "",
+            ), entry.tag
+            assert rule.source is element_rules.RuleSource.TABLE, entry.tag
             continue
         assert entry.action == rule.action, entry.tag
         policy_action = given.get(entry.tag, "U")

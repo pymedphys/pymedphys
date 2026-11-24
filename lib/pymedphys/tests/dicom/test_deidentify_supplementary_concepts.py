@@ -30,6 +30,7 @@ import types
 from pymedphys._imports import pydicom, pytest, tomlkit
 
 from pymedphys._dicom.deidentify import (
+    attribution,
     content_items,
     policy,
     run,
@@ -46,6 +47,7 @@ from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 
+from . import _corpus_run
 from . import _synthetic_dose_reports as dose_reports
 from . import _synthetic_references as synthetic
 from . import _synthetic_structured_reports as reports
@@ -167,12 +169,18 @@ def _code(key):
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to the presets that do not select it.
+    """
     monkeypatch.setattr(
         policy,
         "PRESETS",
         types.MappingProxyType(
-            {preset: (*options, CSC) for preset, options in policy.PRESETS.items()}
+            {
+                preset: options if CSC in options else (*options, CSC)
+                for preset, options in policy.PRESETS.items()
+            }
         ),
     )
     return policy.compose_policy
@@ -220,7 +228,11 @@ def _transformed(composed, dataset):
         else None
     )
     transform = InstanceTransform(
-        composed, KEY, cleaning=cleaning, unvalidated_policy=True
+        composed,
+        KEY,
+        cleaning=cleaning,
+        face_review=_corpus_run.face_review_for(composed),
+        unvalidated_policy=True,
     )
     # Under tps-import, the subject's synthetic birth date is chosen first.
     transform.prepare({0: record}, [data].__getitem__)
@@ -493,6 +505,24 @@ def test_a_written_report_holds_no_udi_without_device_identity():
     assert b"SENTINEL" not in result.data
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("preset, kept", [
+    ("public-release", False),
+    ("tps-import", True),
+])  # fmt: skip
+def test_each_preset_writes_a_udi_only_with_device_identity(preset, kept):
+    # Both presets select the option; only tps-import retains device identity.
+    composed = policy.compose_policy(preset)
+    assert CSC in composed.options
+    assert (RDI in composed.options) is kept
+
+    result = _transformed(composed, _imaging(_udi()))
+
+    assert isinstance(result, run.Transformed), result
+    assert (UDI_TEXT.encode() in result.data) is kept
+
+
 def _imaging(*extra):
     dataset = reports.imaging_report(("TID 1007 row 5",))
     dataset.ContentSequence.extend(extra)
@@ -557,7 +587,7 @@ def _document(**changes):
     document = {
         "schema": supplementary_concepts.SCHEMA,
         "edition": "2026d",
-        "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+        **attribution.fields("PS3.16", "2026d"),
         "concept": [
             {
                 "scheme_designator": "99PMP",
@@ -604,6 +634,8 @@ def test_a_valid_file_loads(tmp_path):
     (_document(schema="other/1"), "schema"),
     (_document(edition="2026c"), "edition of Table E.3.4-1"),
     (_document(acknowledgement="DICOM"), "acknowledgement"),
+    (_document(link="https://dicom.nema.org/"), "the link to the DICOM Standard"),
+    (_document(notice="DICOM"), "NEMA's trademark notice"),
     (_document(concept={"a": 1}), "array of tables"),
     (_without("note"), "exactly the fields"),
     (_row_with(extra="1"), "exactly the fields"),

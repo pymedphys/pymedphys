@@ -51,16 +51,50 @@ SOURCE_SERIES_INFORMATION = ("(3006,004C)",)
 RESPONSIBLE_PERSON = "(0010,2297)"  # X; Type 2C at the top level
 OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
-CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report IODs
-GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; no supported IOD defines it
+CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report and Key Object IODs
+FLOW_IDENTIFIER_SEQUENCE = "(0034,0001)"  # D; no supported IOD defines it
+GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; Type 1 in its module
+# The softcopy Presentation States, in the statement's order.
+PRESENTATION_STATES = (
+    "Advanced Blending Presentation State",
+    "Blending Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Grayscale Softcopy Presentation State",
+    "Planar MPR Volumetric Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+    "Volume Rendering Volumetric Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+)
+# The Structured Reports and the Key Object Selection Document, in the
+# statement's order.
 STRUCTURED_REPORTS = (
+    "Acquisition Context SR",
     "Basic Text SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
     "Comprehensive 3D SR",
     "Comprehensive SR",
     "Enhanced SR",
+    "Enhanced X-Ray Radiation Dose SR",
     "Extensible SR",
+    "Implantation Plan SR Document",
+    "Key Object Selection Document",
+    "Macular Grid Thickness and Volume Report",
+    "Mammography CAD SR",
+    "Patient Radiation Dose SR",
+    "Performed Imaging Agent Administration SR",
+    "Planned Imaging Agent Administration SR",
+    "Procedure Log",
     "Radiopharmaceutical Radiation Dose SR",
+    "Simplified Adult Echo SR",
+    "Spectacle Prescription Report",
+    "Waveform Annotation SR",
     "X-Ray Radiation Dose SR",
+)
+# A Key Object Selection Document has no Verifying Observer Sequence.
+VERIFIABLE_REPORTS = tuple(
+    name for name in STRUCTURED_REPORTS if name != "Key Object Selection Document"
 )
 # Attribute Modification DateTime, D, within Original Attributes Sequence,
 # which the Basic Profile gives X.
@@ -69,6 +103,8 @@ ORIGINAL_ATTRIBUTES = "(0400,0561)"
 ROI_INTERPRETER_SEQUENCE = "(3006,004E)"  # X in the Basic Profile
 REFERENCED_REQUEST = "(0040,A370)"
 REQUESTED_PROCEDURE_ID = "(0040,1001)"  # X in the Basic Profile
+RECORDED_SOURCE = "(3008,0100)"
+SOURCE_MANUFACTURER = "(300A,0216)"  # X, or K under Retain Device Identity
 SOP_CLASS_UID = "(0008,0016)"  # Type 1 at the top level of CT Image
 
 
@@ -164,6 +200,106 @@ def test_the_statement_says_a_reports_requested_procedure_id_is_emptied(preset):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_statement_says_a_brachy_records_source_manufacturer_is_emptied(
+    preset,
+):
+    statement = _statement(preset)
+    entry = _entry(statement, SOURCE_MANUFACTURER)
+    # A plain X empties it in the RT Brachy Treatment Record's Recorded Source
+    # Sequence, rather than sequester the record (D-020); under Retain Device
+    # Identity it is kept, at every place.
+    if "retain_device_identity" in statement.options:
+        assert entry.action == "K"
+        assert not entry.places
+        return
+    # RT Plan's Source Sequence (300A,0210) is listed too, where it is Type 3
+    # and removed alone, as elsewhere.
+    assert entry.places == (
+        conformance.Place("RT Brachy Treatment Record", (RECORDED_SOURCE,), "Z"),
+        conformance.Place("RT Plan", ("(300A,0210)",), "X"),
+    )
+    text = conformance_markdown.render_markdown(statement)
+    row = _row(text, SOURCE_MANUFACTURER)
+    assert row.endswith(
+        "| Z within Recorded Source Sequence (3008,0100) in RT Brachy Treatment "
+        "Record. X elsewhere. |"
+    )
+    assert "it is emptied there too, rather than sequester the record" in text
+
+
+PROCEDURE_PARAMETER_DESCRIPTION = "(300A,078E)"  # X, or C under Clean Descriptors
+PRIOR_TREATMENT_DOSE_DESCRIPTION = "(3010,0061)"  # X, or C under Clean Descriptors
+REFERENCED_STUDY_SEQUENCE = "(0008,1110)"  # X/Z, or K under Retain UIDs
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "PS3.15-E.1.3-01")
+def test_the_statement_says_the_required_preparation_and_prescription_descriptions_are_emptied(
+    preset,
+):
+    # A plain X empties each where its IOD makes it Type 2 and no Type 3
+    # sequence encloses it, rather than sequester the instance (D-020); Clean
+    # Descriptors' C falls back to that X (D-009).
+    statement = _statement(preset)
+    intent = _entry(statement, PRIOR_TREATMENT_DOSE_DESCRIPTION)
+    assert intent.action == "X"
+    assert intent.places == (
+        conformance.Place("RT Physician Intent", ("(3010,006B)",), "Z"),
+    )
+    preparation = _entry(statement, PROCEDURE_PARAMETER_DESCRIPTION)
+    assert preparation.action == "X"
+    assert (
+        conformance.Place("RT Treatment Preparation", ("(300A,0790)",), "Z")
+        in preparation.places
+    )
+    # Elsewhere it is within the Type 3 Patient Treatment Preparation
+    # Sequence (300A,079F), which goes with it.
+    assert {place.removes for place in preparation.places if place.action == "X"} == {
+        "(300A,079F)"
+    }
+    text = conformance_markdown.render_markdown(statement)
+    assert _row(text, PRIOR_TREATMENT_DOSE_DESCRIPTION).endswith(
+        "| Z within RT Prescription Sequence (3010,006B) in RT Physician Intent. "
+        "X elsewhere. |"
+    )
+    assert (
+        "Patient Treatment Preparation Procedure Parameter Description (300A,078E)"
+        in (text)
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_statement_says_a_type_1_referenced_study_sequence_keeps_its_items(
+    preset,
+):
+    # X/Z resolves to D where Referenced Study Sequence is Type 1, and its
+    # reviewed rule keeps the items there, so the statement gives D, not a
+    # sequestration, at the three places (D-021); under Retain UIDs it is
+    # kept everywhere.
+    statement = _statement(preset)
+    entry = _entry(statement, REFERENCED_STUDY_SEQUENCE)
+    if "retain_uids" in statement.options:
+        assert entry.action == "K"
+        return
+    assert {place for place in entry.places if place.action not in ("X", "Z")} == {
+        conformance.Place(
+            "RT Patient Position Acquisition Instruction",
+            ("(3002,0118)", "(3002,011A)", "(3002,0132)"),
+            "D",
+        ),
+        conformance.Place("RT Physician Intent", ("(3010,0057)", "(3010,005F)"), "D"),
+        conformance.Place("RT Physician Intent", ("(3010,006B)", "(3010,0076)"), "D"),
+    }
+    text = conformance_markdown.render_markdown(statement)
+    assert (
+        "D on Referenced Study Sequence (0008,1110) keeps each source item, and in "
+        "it only these attributes, each under the action that the policy gives "
+        "it there: Referenced Series Sequence (0008,1115), `K`, as an attribute "
+        "of VR SQ that no rule covers; Study Instance UID (0020,000D), `U`; "
+        "Pertinent SOP Classes in Study (3010,0052), `U`."
+    ) in " ".join(text.split())
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_x_on_a_required_attribute_removes_its_sequence():
     statement = _statement("basic")
     place = conformance.Place(
@@ -208,34 +344,47 @@ def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_d_that_no_supported_iod_defines_is_removed():
-    entry = _entry(_statement("basic"), GRAPHIC_ANNOTATION_SEQUENCE)
+    entry = _entry(_statement("basic"), FLOW_IDENTIFIER_SEQUENCE)
     assert (entry.action, entry.places, entry.elsewhere) == ("D", (), "X")
     row = _row(
         conformance_markdown.render_markdown(_statement("basic")),
-        GRAPHIC_ANNOTATION_SEQUENCE,
+        FLOW_IDENTIFIER_SEQUENCE,
     )
     assert row.endswith("| X elsewhere. |")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_a_plain_d_on_a_presentation_states_graphic_annotations_sequesters_it():
+    # A sequence has no dummy value (D-021), and the Graphic Annotation
+    # Module requires the sequence at the top level wherever the module is
+    # present.
+    entry = _entry(_statement("basic"), GRAPHIC_ANNOTATION_SEQUENCE)
+    assert (entry.action, entry.elsewhere) == ("D", "X")
+    assert entry.places == tuple(
+        conformance.Place(name, (), conformance.SEQUESTER)
+        for name in PRESENTATION_STATES
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_d_on_a_reports_content_sequence_sequesters_it():
     # A sequence has no dummy value (D-021), and each Structured Report
     # requires Content Sequence at the top level where the root has content
-    # items.
+    # items. An Encapsulated PDF allows it there, as Type 3, and D replaces
+    # whatever its Type.
     entry = _entry(_statement("basic"), CONTENT_SEQUENCE)
+    sequestered = tuple(sorted((*STRUCTURED_REPORTS, "Encapsulated PDF")))
     assert (entry.action, entry.elsewhere) == ("D", "X")
     assert entry.places == tuple(
-        conformance.Place(name, (), conformance.SEQUESTER)
-        for name in STRUCTURED_REPORTS
+        conformance.Place(name, (), conformance.SEQUESTER) for name in sequestered
     )
     row = _row(
         conformance_markdown.render_markdown(_statement("basic")), CONTENT_SEQUENCE
     )
     assert row.endswith(
-        "| instance sequestered at the top level in Basic Text SR, "
-        "Comprehensive 3D SR, Comprehensive SR, Enhanced SR, Extensible SR, "
-        "Radiopharmaceutical Radiation Dose SR, and X-Ray Radiation Dose SR. "
-        "X elsewhere. |"
+        "| instance sequestered at the top level in "
+        + ", ".join(sequestered[:-1])
+        + f", and {sequestered[-1]}. X elsewhere. |"
     )
 
 
@@ -247,7 +396,7 @@ def test_a_plain_d_on_a_reports_verifying_observer_sequence_writes_its_rule():
     entry = _entry(_statement("basic"), VERIFYING_OBSERVER_SEQUENCE)
     assert (entry.action, entry.elsewhere) == ("D", "X")
     assert entry.places == tuple(
-        conformance.Place(name, (), "D") for name in STRUCTURED_REPORTS
+        conformance.Place(name, (), "D") for name in VERIFIABLE_REPORTS
     )
 
 

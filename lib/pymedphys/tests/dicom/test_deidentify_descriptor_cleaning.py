@@ -528,8 +528,8 @@ def test_a_roi_name_that_was_not_collected_sequesters_its_instance(monkeypatch):
     path = ElementPath((("(3006,0020)", 0),), "(3006,0026)")
     collect = instance_transform.edit_instance
 
-    def without_the_name(*args):
-        edits = collect(*args)
+    def without_the_name(*args, **kwargs):
+        edits = collect(*args, **kwargs)
         return dataclasses.replace(
             edits,
             source_values=tuple(

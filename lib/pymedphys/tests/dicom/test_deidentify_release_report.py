@@ -66,6 +66,7 @@ METHOD_FIELDS = [
     "technique_vocabulary_digest",
     "text_finder_digest",
     "pixel_region_rules",
+    "reviewed_annotations",
     "safe_private_list",
     "generated_values_digest",
     "engine_files",
@@ -202,6 +203,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "qc_review",
         "face_review",
         "redaction_review",
+        "residual_review",
         "pixel_regions",
         "readiness",
         "released",
@@ -209,6 +211,8 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "held_for_review",
         "roi_names",
         "descriptors",
+        "annotations",
+        "icc_profiles",
         "reference_findings",
         "pixel_risks",
         "search_coverage",
@@ -217,7 +221,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "structural_checks",
         "studies_with_several_patients",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/44"
+    assert document["format"] == "pymedphys-deid-release-report/87"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -314,7 +318,8 @@ def test_the_report_holds_no_path_of_the_installed_engine(basic, tmp_path, monke
     )
     assert set(json.loads(text)["method"]["engine_files"]) == {
         *ENGINE_FILES,
-        *(f"_standard/{path.name}" for path in (engine / "_standard").glob("*.json")),
+        # The generated tables and their notice file.
+        *(f"_standard/{path.name}" for path in (engine / "_standard").iterdir()),
         *outside,
     }
 

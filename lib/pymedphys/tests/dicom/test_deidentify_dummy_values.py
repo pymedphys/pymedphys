@@ -16,11 +16,13 @@
 
 import datetime
 import io
+import struct
 
 from pymedphys._imports import hypothesis, pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     dummy_values,
+    icc_cleaning,
     icc_profiles,
     keys,
     standard,
@@ -452,6 +454,7 @@ def test_the_person_identification_item_is_written_as_dicom():
     assert read[0].CodeMeaning == "DEIDENTIFIED^DEIDENTIFIED"
 
 
+OPERATOR_IDENTIFICATION_SEQUENCE = "(0008,1072)"
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
 # Interlock Resolution User Sequence, in the Interlock Sequence of an RT Beams
 # Treatment Record's and of an RT Ion Beams Treatment Record's beam sessions.
@@ -546,9 +549,10 @@ def test_d_on_institution_code_sequence_elsewhere_has_no_dummy_value(within):
     assert "SECRET" not in str(raised.value)
 
 
-def test_only_institution_code_sequence_has_its_rule_at_some_places():
+def test_only_two_sequences_have_their_rules_at_some_places():
     assert dict(dummy_values.REVIEWED_WITHIN) == {
-        INSTITUTION_CODE_SEQUENCE: frozenset({"(300A,0746)"})
+        INSTITUTION_CODE_SEQUENCE: frozenset({"(300A,0746)"}),
+        OPERATOR_IDENTIFICATION_SEQUENCE: frozenset({"(3008,0060)"}),
     }
     # Person Identification Code Sequence's rule holds wherever it is.
     for within in ((), *INTERLOCK_USERS, ("(0044,0110)", "(0044,0103)")):
@@ -624,9 +628,15 @@ def test_d_on_any_other_sequence_is_refused():
         # Its reviewed rule holds only where it says (D-021).
         "InstitutionCodeSequence",
     }
-    # Verifying Observer Sequence's reviewed rule keeps its source items
-    # instead of writing items of its own (D-021).
-    assert set(dummy_values.KEPT_ITEM_ATTRIBUTES) == {"(0040,A073)"}
+    # The reviewed rules of Verifying Observer Sequence, of Referenced Study
+    # Sequence, and of Operator Identification Sequence in an item of
+    # Override Sequence keep their source items instead of writing items of
+    # their own (D-021).
+    assert set(dummy_values.KEPT_ITEM_ATTRIBUTES) == {
+        "(0040,A073)",
+        "(0008,1110)",
+        OPERATOR_IDENTIFICATION_SEQUENCE,
+    }
     for attribute in sequences:
         with pytest.raises(dummy_values.NoDummyValueError) as raised:
             dummy_values.items_for_d(attribute.tag, [{CODE_VALUE: "SECRET"}], KEY)
@@ -748,18 +758,77 @@ def _with_colour_space(profile, colour_space):
     return profile[:16] + colour_space + profile[20:]
 
 
-@pytest.mark.deid_requirement("MIDI-BP-14")
-def test_d_on_icc_profile_writes_the_fixed_srgb_profile():
-    written = dummy_values.icc_profile_for_d(RGB_SOURCE)
+def _display_with_d65_white(profile):
+    """Return ``profile`` as a display profile whose media white point is D65."""
+    written = bytearray(profile[:12] + b"mntr" + profile[16:])
+    (count,) = struct.unpack_from(">I", written, 128)
+    for index in range(count):
+        tag, offset, _ = struct.unpack_from(">4sII", written, 132 + 12 * index)
+        if tag == b"wtpt":
+            struct.pack_into(
+                ">3i",
+                written,
+                offset + 8,
+                *(round(v * 65536) for v in (0.9505, 1.0, 1.0891)),
+            )
+    return bytes(written)
 
-    assert written == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
-    assert icc_profiles.data_colour_space(written) == icc_profiles.RGB
-    assert b"scanner" not in written
-    # A source equal to the first profile takes the second, so D always
-    # changes the value.
-    assert dummy_values.icc_profile_for_d(written) == icc_profiles.srgb_profile(
-        "DE-IDENTIFIED sRGB"
-    )
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_d_on_icc_profile_writes_the_source_cleaned_of_all_but_its_colorimetry():
+    outcome = dummy_values.icc_profile_outcome(RGB_SOURCE)
+
+    assert outcome.refusal is None
+    assert outcome.profile == icc_cleaning.clean_profile(RGB_SOURCE, "DEIDENTIFIED")
+    assert dummy_values.icc_profile_for_d(RGB_SOURCE) == outcome.profile
+    assert icc_profiles.data_colour_space(outcome.profile) == icc_profiles.RGB
+    assert b"scanner" not in outcome.profile
+    # A source equal to its cleaned profile takes the second text, so D
+    # always changes the value.
+    assert dummy_values.icc_profile_for_d(
+        outcome.profile
+    ) == icc_cleaning.clean_profile(RGB_SOURCE, "DE-IDENTIFIED")
+
+
+def test_the_fixed_srgb_profile_is_cleaned_like_any_source():
+    fixed = icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    outcome = dummy_values.icc_profile_outcome(fixed)
+
+    assert outcome.refusal is None
+    assert outcome.profile == icc_cleaning.clean_profile(fixed, "DEIDENTIFIED")
+    assert outcome.profile != fixed
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+@pytest.mark.parametrize(
+    "source, refusal",
+    [
+        # An output device profile, which has no input transform to keep.
+        (
+            RGB_SOURCE[:12] + b"prtr" + RGB_SOURCE[16:],
+            icc_cleaning.Refusal.DEVICE_CLASS,
+        ),
+        (
+            RGB_SOURCE[:8] + bytes([5, 0]) + RGB_SOURCE[10:],
+            icc_cleaning.Refusal.VERSION,
+        ),
+        (RGB_SOURCE[:-4], icc_cleaning.Refusal.STRUCTURE),
+        # A version 2 display profile whose white point colour management
+        # modules read by its class, which the cleaned profile would change.
+        (
+            _display_with_d65_white(RGB_SOURCE),
+            icc_cleaning.Refusal.DISPLAY_WHITE_POINT,
+        ),
+    ],
+    ids=["output-device", "version-5", "truncated", "display-d65-white"],
+)
+def test_d_writes_the_fixed_srgb_profile_where_the_source_cannot_be_cleaned(
+    source, refusal
+):
+    outcome = dummy_values.icc_profile_outcome(source)
+
+    assert outcome == (icc_profiles.srgb_profile("DEIDENTIFIED sRGB"), refusal)
+    assert dummy_values.icc_profile_for_d(source) == outcome.profile
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")

@@ -253,6 +253,77 @@ def tilted(
     return Scan(orientation, positions, (spacing, spacing), (rows, columns))
 
 
+def rotation(
+    about_x: float = 0.0, about_y: float = 0.0, about_z: float = 0.0
+) -> np.ndarray:
+    """The rotation by these degrees about x, then y, then z."""
+    a, b, c = (math.radians(angle) for angle in (about_x, about_y, about_z))
+    x = np.array(
+        [[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]]
+    )
+    y = np.array(
+        [[math.cos(b), 0, math.sin(b)], [0, 1, 0], [-math.sin(b), 0, math.cos(b)]]
+    )
+    z = np.array(
+        [[math.cos(c), -math.sin(c), 0], [math.sin(c), math.cos(c), 0], [0, 0, 1]]
+    )
+    return z @ y @ x
+
+
+def oblique(scan: Scan, turn: np.ndarray) -> Scan:
+    """``scan`` with its rows, columns, and slices turned by the rotation
+    ``turn`` about its middle."""
+    along_row = turn @ np.array(scan.orientation[:3])
+    down_column = turn @ np.array(scan.orientation[3:])
+    middle = np.mean(
+        [scan.points(0)[0, 0], scan.points(len(scan.positions) - 1)[-1, -1]], axis=0
+    )
+    positions = tuple(
+        tuple(float(value) for value in middle + turn @ (np.array(position) - middle))
+        for position in scan.positions
+    )
+    orientation = (
+        float(along_row[0]),
+        float(along_row[1]),
+        float(along_row[2]),
+        float(down_column[0]),
+        float(down_column[1]),
+        float(down_column[2]),
+    )
+    return dataclasses.replace(scan, orientation=orientation, positions=positions)
+
+
+def sheared(scan: Scan, degrees: float) -> Scan:
+    """``scan``, an axial one from inferior up, with each slice offset
+    anteriorly from the last by its step times the tangent of ``degrees``,
+    as a gantry tilt is recorded with axial direction cosines."""
+    steps = [z - scan.positions[0][2] for _, _, z in scan.positions]
+    slope = math.tan(math.radians(degrees))
+    positions = tuple(
+        (x, y - step * slope, z) for (x, y, z), step in zip(scan.positions, steps)
+    )
+    return dataclasses.replace(scan, positions=positions)
+
+
+# Taller, or deeper, than the default extent, so that a tilted or sheared
+# stack still covers the head about the eyes.
+_TALL = ((-100, 100), (-130, 110), (-160, 200))
+_DEEP = ((-100, 100), (-130, 180), (-120, 120))
+
+
+def tilted_heads() -> dict[str, Scan]:
+    """Gantry-tilted, sheared, and oblique scans of the head, by name, each
+    covering the head about the eyes."""
+    return {
+        "gantry-tilt-half-degree": tilted(degrees=0.5),
+        "gantry-tilt-15": tilted(degrees=15.0, extent=_TALL),
+        "gantry-tilt-30": tilted(degrees=30.0, extent=_TALL),
+        "gantry-tilt-15-sheared": sheared(axial(extent=_DEEP), 15.0),
+        "oblique-about-z-10": oblique(axial(), rotation(about_z=10.0)),
+        "compound-oblique": oblique(axial(), rotation(about_x=12.0, about_y=-8.0)),
+    }
+
+
 def sagittal(
     *,
     spacing: float = 1.0,

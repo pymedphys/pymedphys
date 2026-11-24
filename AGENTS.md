@@ -459,10 +459,15 @@ detailed explanations of individual features.
   standard check;
   symlinks, submodules and an unverifiable diff select every check a path can
   select. Integration and database tests and the full unit-test matrix are
-  cost-gated on PRs, as the maintainers decided. Merge groups retain every
-  check with the quick Ubuntu/Python 3.14 unit matrix; main pushes and releases
-  run the full unit matrix. The maintainers accept platform failures first
-  discovered on main to avoid repeating the full matrix before each merge.
+  cost-gated on PRs, as the maintainers decided, and so are the dependency
+  floors' and the `dicom` extra's de-identification corpus parts, which run
+  for dependency inputs. Merge groups retain every other check with the quick
+  Ubuntu/Python 3.14 unit matrix, except the Windows and macOS tooling tests,
+  which run on PRs that change the tooling; a push to main runs no
+  CI, since the merge group tested that commit, and main's nightly run,
+  manual runs and releases run the full unit matrix. The maintainers accept
+  platform failures first discovered on main to avoid repeating the full
+  matrix before each merge or delaying the merges after it.
   Beyond the `full-test` and `database` labels, integration
   and database tests run on PRs only for inputs that no standard check validates,
   listed in `select_checks.py`.
@@ -479,8 +484,10 @@ detailed explanations of individual features.
   ready for review starts both. Only the jobs without `needs` and the two
   summaries carry the draft condition, so every other job is skipped with
   `changes`. Give a new job without `needs` the same condition, and use a
-  status function (`always()`, `cancelled()`, `failure()`) only on a summary or
-  a push-only job.
+  status function (`always()`, `cancelled()`, `failure()`) only on a summary, a
+  main-only job, or a selected job's `!cancelled() && (github.event_name ==
+  'merge_group' || ...)` condition: merge groups skip `changes`, and the
+  summaries then require every other job to succeed.
 
 - Main requires the GitHub Actions checks `CI Summary` and `Security Summary`.
   Keep these names unique across workflows; the release report is named

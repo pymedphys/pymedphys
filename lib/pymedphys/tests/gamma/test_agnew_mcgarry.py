@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2018 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +27,6 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._gamma.utilities import calculate_pass_rate
 
 # pylint: disable=C0103,C1801
 
@@ -112,7 +112,7 @@ def local_gamma(
         distance_threshold,
     )
 
-    gamma_pass = calculate_pass_rate(gamma)
+    gamma_pass = pymedphys.gamma_percent_passed(gamma)
 
     assert np.round(gamma_pass, decimals=1) == result
 
@@ -162,21 +162,39 @@ def test_local_gamma_0_25mm():
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_multi_inputs():
-    gamma = run_gamma(
+    files = (
         get_data_file("H&N_VMAT_Reference_0_25mmPx.dcm"),
         get_data_file("H&N_VMAT_Evaluated_0_25mmPx.dcm"),
-        random_subset=RANDOM_SUBSET,
-        max_gamma=1.0001,
-        dose_threshold=[1, 0.2],
-        distance_threshold=[1, 4],
+    )
+    options = {"random_subset": RANDOM_SUBSET, "max_gamma": 1.0001}
+    gamma = run_gamma(
+        *files, dose_threshold=[1, 0.2], distance_threshold=[1, 4], **options
     )
 
+    # Each pair is searched at its own step, the distance threshold divided
+    # by interp_fraction, so a list gives what separate calls give. The 1 mm
+    # pairs are unchanged. The 4 mm pairs were 99.8 and 99.2 while a list
+    # searched them at a finer step than they get alone. With
+    # interp_fraction=40 the four pairs give 97.1, 99.9, 94.3 and 99.6.
     baseline = {
         (1, 1): LOCAL_GAMMA_0_25_BASELINE,
-        (1, 4): 99.8,  # 99.9 with higher interp_fraction
-        (0.2, 1): 91.8,  # 94.4 with higher interp_fraction
-        (0.2, 4): 99.2,  # 99.7 with higher interp_fraction
+        (1, 4): 99.4,
+        (0.2, 1): 91.8,
+        (0.2, 4): 90.4,
     }
 
-    for key, value in gamma.items():
-        assert np.round(calculate_pass_rate(value), decimals=1) == baseline[key]
+    assert len(gamma) == len(baseline)
+    for (dose_threshold, distance_threshold), value in gamma.items():
+        pair = (dose_threshold, distance_threshold)
+        assert (
+            np.round(pymedphys.gamma_percent_passed(value), decimals=1)
+            == baseline[pair]
+        )
+
+        alone = run_gamma(
+            *files,
+            dose_threshold=dose_threshold,
+            distance_threshold=distance_threshold,
+            **options,
+        )
+        np.testing.assert_array_equal(value, alone, err_msg=str(pair))

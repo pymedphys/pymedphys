@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module for the reporter and the counts that it reads from the material.
+
 """The release report that a run publishes with its release.
 
 A run gives its :class:`Reporter` the outcome of each input, the QC
@@ -34,8 +37,14 @@ material that the transform gives and the assessment of their series, as
 the QC pack lists them (D-015), and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
-(D-027), and how many released instances have each kind of residual finding
-that an exemption kept from review, from the gate's material (D-032). The
+(D-027), how many released instances have each kind of residual finding
+that an exemption kept from review, from the gate's material (D-032), and,
+under a face review, the RT Doses that the run released or held with more
+dose in a face block than it sets to zero there, by what it did with them,
+from the transform's material (:func:`doses_in_face_block`, D-051), and
+the instances in a defaced frame that it did not clean of the face, by
+whether a reviewer gave each a face verdict of its own
+(:func:`undefaced_instances`, D-050). The
 report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one. Before the run labels its outcomes, it asks the
@@ -76,15 +85,22 @@ from . import (
     release_report_markdown,
 )
 from .face_blocks import FaceBlockCounts
+from .icc_cleaning import Refusal
 from .pixel_region_rules import PixelRegionRules
 from .policy import CLEAN_PIXEL_DATA, Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .qc_pack import QcPack
 from .readiness import ReadinessReview
 from .risk_assessment import policy_digest
-from .reasons import RunReason
+from .reasons import DoseChoice, RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
+from .graphic_annotations import AnnotationMaterial
+from .reviewed_annotations import (
+    AnnotationCounts,
+    AnnotationReviewQueue,
+    ReviewedAnnotations,
+)
 from .reviewed_descriptors import (
     DescriptorCounts,
     DescriptorReviewQueue,
@@ -99,7 +115,10 @@ from .reviewed_roi_names import (
 from .safe_private import SafePrivateList
 from .run_qc import (
     DescriptorMaterial,
+    DoseCheckMaterial,
     Dropped,
+    UndefacedMaterial,
+    IccProfileMaterial,
     PixelRiskMaterial,
     RedactionMaterial,
     ReferenceFindingMaterial,
@@ -123,10 +142,14 @@ HELD_FOR_REVIEW = "held-for-review"
 RELEASED = "released"
 SEQUESTERED = "sequestered"
 # The reviewed ROI names and descriptors lists that a run's descriptor
-# cleaning applies, and the reviewed region rules that its Clean Pixel Data
+# cleaning applies, the reviewed region rules that its Clean Pixel Data
+# applies, and the reviewed annotations list that its Clean Graphics
 # applies, as the run read them, or None for each that it was not given.
 ReviewedLists = tuple[
-    ReviewedNames | None, ReviewedDescriptors | None, PixelRegionRules | None
+    ReviewedNames | None,
+    ReviewedDescriptors | None,
+    PixelRegionRules | None,
+    ReviewedAnnotations | None,
 ]
 
 
@@ -169,8 +192,9 @@ class Reporter(Protocol):
     which the run generates the report's human-readable form. ``qc_pack`` is
     the opaque reference of the run's QC pack, and ``facts`` the run's
     :class:`RunFacts`. ``reviewed_lists`` are the reviewed ROI names and
-    descriptors lists that the run's descriptor cleaning applies, and the
-    reviewed region rules that its Clean Pixel Data applies, as it read
+    descriptors lists that the run's descriptor cleaning applies, the
+    reviewed region rules that its Clean Pixel Data applies, and the
+    reviewed annotations list that its Clean Graphics applies, as it read
     them, or None for each that it was not given (:data:`ReviewedLists`),
     whose salted digest the run records in its QC pack.
     """
@@ -222,6 +246,15 @@ class ReleaseReporter:
         The reference of the attested QC pack whose redaction verdicts the
         run applies under the Clean Pixel Data Option, or None, the
         default, without one.
+    redaction_frames_not_shown : int, optional
+        With ``redaction_review``, how many frames its approved source files
+        hold that the reviewer was not shown (D-059).
+    redaction_review_modes : mapping of str to int, optional
+        With ``redaction_review``, how many of its approved source files
+        were reviewed in each mode, by the mode's value (D-059).
+    residual_review : str, optional
+        The reference of the attested QC pack whose clearings of residual
+        findings the run applies, or None, the default, without one.
     reviewed_descriptors : str or None, optional
         The keyed digest of the reviewed descriptors list that descriptor
         cleaning applies to free-text descriptors, or None, the default,
@@ -249,6 +282,11 @@ class ReleaseReporter:
         Data Option applies, or None, the default, without rules, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    reviewed_annotations : str or None, optional
+        The keyed digest of the reviewed annotations list that the Clean
+        Graphics Option applies, or None, the default, without a list, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes, the reviewed rules by default, as
@@ -274,15 +312,17 @@ class ReleaseReporter:
         cleaning applies, as it read them, whose keyed digests are
         ``reviewed_roi_names`` and ``reviewed_descriptors``, and the
         version of the reviewed region rules that Clean Pixel Data applies,
-        whose keyed digest is ``pixel_region_rules``, for the readiness
-        section's statistical gate; none, the default, without descriptor
-        cleaning or rules.
+        whose keyed digest is ``pixel_region_rules``, and the reviewed
+        annotations list that Clean Graphics applies, whose keyed digest is
+        ``reviewed_annotations``, for the readiness section's statistical
+        gate; none, the default, without descriptor cleaning, rules, or
+        annotations list.
 
     Raises
     ------
     TypeError
         If ``policy`` is not a Policy, ``readiness_review`` is not a
-        ReadinessReview, or ``reviewed_lists`` is not a tuple of three.
+        ReadinessReview, or ``reviewed_lists`` is not a tuple of four.
     ValueError
         If ``readiness_review`` is given with a policy other than the
         ``public-release`` preset.
@@ -299,19 +339,24 @@ class ReleaseReporter:
         technique_vocabulary: str | None = None,
         face_blocks: FaceBlockCounts | None = None,
         redaction_review: str | None = None,
+        redaction_frames_not_shown: int | None = None,
+        redaction_review_modes: Mapping[str, int] | None = None,
+        residual_review: str | None = None,
         text_finder: Mapping[str, object] | None = None,
         pixel_region_rules: str | None = None,
+        reviewed_annotations: str | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         project_key: str | None = None,
         readiness_review: ReadinessReview | None = None,
-        reviewed_lists: ReviewedLists = (None, None, None),
+        reviewed_lists: ReviewedLists = (None, None, None, None),
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
         # Each member's type is checked where the run binds them.
-        if not isinstance(reviewed_lists, tuple) or len(reviewed_lists) != 3:
+        if not isinstance(reviewed_lists, tuple) or len(reviewed_lists) != 4:
             raise TypeError(
-                "reviewed_lists must be the two reviewed lists and the region rules"
+                "reviewed_lists must be the two reviewed lists, the region "
+                "rules, and the annotations list"
             )
         if readiness_review is not None and not isinstance(
             readiness_review, ReadinessReview
@@ -333,8 +378,12 @@ class ReleaseReporter:
         self._technique_vocabulary = technique_vocabulary
         self._face_blocks = face_blocks
         self._redaction_review = redaction_review
+        self._redaction_frames_not_shown = redaction_frames_not_shown
+        self._redaction_review_modes = redaction_review_modes
+        self._residual_review = residual_review
         self._text_finder = text_finder
         self._pixel_region_rules = pixel_region_rules
+        self._reviewed_annotations = reviewed_annotations
         self._safe_private_list = safe_private_list
 
     def __repr__(self) -> str:
@@ -397,6 +446,8 @@ class ReleaseReporter:
             exempted=exempted_findings(outcomes, material),
             roi_names=roi_name_counts(material),
             descriptors=descriptor_counts(material),
+            annotations=annotation_counts(material),
+            icc_profiles=icc_profile_counts(outcomes, material),
             pixel_regions=(
                 pixel_regions(outcomes, material)
                 if CLEAN_PIXEL_DATA in self._policy.options
@@ -409,6 +460,16 @@ class ReleaseReporter:
                 for position in sorted(material)
             ),
             checks=structural_checks(outcomes, material),
+            doses_in_face_block=(
+                None
+                if self._face_review is None
+                else doses_in_face_block(outcomes, material)
+            ),
+            undefaced_instances=(
+                None
+                if self._face_review is None
+                else undefaced_instances(outcomes, material)
+            ),
             several_patients=(
                 facts.several_patients if isinstance(facts, RunFacts) else None
             ),
@@ -428,6 +489,7 @@ class ReleaseReporter:
                     reviewed_names=self._reviewed_lists[0],
                     reviewed_descriptors=self._reviewed_lists[1],
                     pixel_region_rules=self._reviewed_lists[2],
+                    reviewed_annotations=self._reviewed_lists[3],
                 ),
             )
         return release_report.to_json(report)
@@ -465,10 +527,14 @@ class ReleaseReporter:
             face_review=self._face_review,
             face_blocks=self._face_blocks,
             redaction_review=self._redaction_review,
+            redaction_frames_not_shown=self._redaction_frames_not_shown,
+            redaction_review_modes=self._redaction_review_modes,
+            residual_review=self._residual_review,
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
             text_finder=self._text_finder,
             pixel_region_rules=self._pixel_region_rules,
+            reviewed_annotations=self._reviewed_annotations,
             safe_private_list=self._safe_private_list,
             project_key=self._project_key,
             **run,  # type: ignore[arg-type]
@@ -571,6 +637,87 @@ def released_instances(outcomes: Sequence[object]) -> tuple[PurePosixPath, ...]:
         getattr(outcome, "output")
         for outcome in outcomes
         if getattr(outcome, "status").value == RELEASED
+    )
+
+
+def doses_in_face_block(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.DosesInFaceBlock:
+    """Count the released and held RT Doses with more dose in a face block
+    than the run sets to zero there, by the choice that the run applied,
+    naming each released one by its output name.
+
+    Each input's choice comes from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.DoseCheckMaterial`. An
+    identical copy of an input is the same instance, so it is not counted
+    again, and a sequestered one reaches no recipient.
+    """
+    choices: dict[int, DoseChoice | None] = {}
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, DoseCheckMaterial):
+                choices[position] = item.choice
+                break
+    held: dict[DoseChoice | None, int] = dict.fromkeys(
+        (None, DoseChoice.AS_WRITTEN, DoseChoice.SET_TO_ZERO), 0
+    )
+    released: dict[DoseChoice, list[PurePosixPath]] = {
+        DoseChoice.AS_WRITTEN: [],
+        DoseChoice.SET_TO_ZERO: [],
+    }
+    for outcome in outcomes:
+        position = getattr(outcome, "position")
+        if position not in choices or getattr(outcome, "duplicate_of") is not None:
+            continue
+        status = getattr(outcome, "status").value
+        choice = choices[position]
+        if status == RELEASED and choice is not None:
+            released[choice].append(getattr(outcome, "output"))
+        elif status == HELD_FOR_REVIEW:
+            held[choice] += 1
+    return release_report.DosesInFaceBlock(
+        held=held[None],
+        released_as_written=tuple(released[DoseChoice.AS_WRITTEN]),
+        held_as_written=held[DoseChoice.AS_WRITTEN],
+        released_set_to_zero=tuple(released[DoseChoice.SET_TO_ZERO]),
+        held_set_to_zero=held[DoseChoice.SET_TO_ZERO],
+    )
+
+
+def undefaced_instances(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.UndefacedInstances:
+    """Count the released and held instances in a defaced frame that the run
+    did not clean of the face, by whether the face review gave each a verdict
+    of its own, naming each released one by its output name.
+
+    Each input's verdict comes from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.UndefacedMaterial`. An
+    identical copy of an input is the same instance, so it is not counted
+    again, and a sequestered one reaches no recipient.
+    """
+    own: dict[int, bool] = {}
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, UndefacedMaterial):
+                own[position] = item.own_verdict
+                break
+    held = held_with_own = 0
+    released: list[PurePosixPath] = []
+    for outcome in outcomes:
+        position = getattr(outcome, "position")
+        if position not in own or getattr(outcome, "duplicate_of") is not None:
+            continue
+        status = getattr(outcome, "status").value
+        if status == RELEASED and own[position]:
+            released.append(getattr(outcome, "output"))
+        elif status == HELD_FOR_REVIEW:
+            if own[position]:
+                held_with_own += 1
+            else:
+                held += 1
+    return release_report.UndefacedInstances(
+        held=held, released=tuple(released), held_with_own_verdict=held_with_own
     )
 
 
@@ -820,6 +967,65 @@ def roi_name_counts(material: Mapping[int, Sequence[object]]) -> RoiNameCounts:
                 for name in names
             ],
         )
+    return queue.report_counts()
+
+
+def icc_profile_counts(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.IccProfileCounts:
+    """Count the ICC Profiles that D replaced in the released and held instances.
+
+    Each input's
+    :class:`~pymedphys._dicom.deidentify.run_qc.IccProfileMaterial` says
+    whether its source profile was cleaned and written or, for a reason, the
+    fixed sRGB profile was written instead (D-021). An identical copy of an
+    input is the same instance, so it is not counted again.
+    """
+    shown = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "status").value in release_report.PIXEL_RISK_DISPOSITIONS
+        and getattr(outcome, "duplicate_of") is None
+    }
+    cleaned = 0
+    replaced: dict[Refusal, int] = {}
+    for position in sorted(shown & set(material)):
+        for item in material[position]:
+            if not isinstance(item, IccProfileMaterial):
+                continue
+            if item.refusal is None:
+                cleaned += 1
+            else:
+                replaced[item.refusal] = replaced.get(item.refusal, 0) + 1
+    return release_report.IccProfileCounts(cleaned=cleaned, replaced=replaced)
+
+
+def annotation_counts(material: Mapping[int, Sequence[object]]) -> AnnotationCounts:
+    """Return what Clean Graphics wrote for a run's graphic annotations, by count.
+
+    ``material`` is each input's QC material, by its position. Each
+    :class:`~.graphic_annotations.AnnotationMaterial` is one annotation of a
+    Presentation State whose annotations the reviewed annotations list
+    decided on, or, without items in its path, the instance's annotations
+    together, which are not counted, so every annotation counts by its
+    outcome, and each distinct
+    annotation held for review once for each of its reasons, as
+    :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.AnnotationReviewQueue.report_counts`
+    gives, without text or digest (D-062).
+    """
+    queue = AnnotationReviewQueue()
+    for position in sorted(material):
+        found = [
+            item
+            for item in material[position]
+            if isinstance(item, AnnotationMaterial) and not item.together
+        ]
+        if found:
+            queue.add(
+                [item.digest for item in found],
+                [item.texts for item in found],
+                [item.result for item in found],
+            )
     return queue.report_counts()
 
 

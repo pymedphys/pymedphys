@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify.defacing import FaceBlock
 from pymedphys._dicom.deidentify.dose_defacing import (
     DOSE_FRACTION,
     DoseBlock,
+    FrameRegion,
     RtDoseDefacer,
     find_dose_blocks,
 )
@@ -356,7 +357,7 @@ def _grid(frame: str = files.FRAME, instance: str = files.ROOT + ".6.1") -> byte
     )
 
 
-def _dose_blocks(*data: bytes, outcomes=None) -> dict[str, DoseBlock]:
+def _dose_blocks(*data: bytes, outcomes=None) -> dict[str, FrameRegion]:
     records = {
         position: InstanceRecord.from_file(each) for position, each in enumerate(data)
     }
@@ -375,7 +376,7 @@ def test_a_defaced_series_gives_its_frame_a_block_with_the_cavity_kept():
     blocks = _dose_blocks(*slices, _grid())
 
     assert list(blocks) == [files.FRAME]
-    found = blocks[files.FRAME]
+    (found,) = blocks[files.FRAME].blocks
     assert found.slices and all(each.kept.dtype == bool for each in found.slices)
     # The brain above the floor is kept, and the eyes are not.
     floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
@@ -396,11 +397,43 @@ def test_no_block_without_a_dose_in_the_frame_or_for_one_naming_none():
     assert not _dose_blocks(*slices, files.written(frameless))
 
 
-def test_no_block_where_two_series_are_defaced_in_the_frame():
+def test_two_series_defaced_in_the_frame_give_it_both_blocks_in_order():
+    first = _head_files()
+    second = _head_files(series=files.ROOT + ".07")
+    alone = _dose_blocks(*first, _grid())[files.FRAME]
+
+    found = _dose_blocks(*first, *second, _grid())[files.FRAME]
+
+    # Each series' block, in the order of their Series Instance UIDs, with
+    # its own slices and instances.
+    assert len(found.blocks) == 2
+    assert repr(found) == "FrameRegion(blocks=2)"
+    second, first_ = found.blocks
+    assert second.block == first_.block == alone.blocks[0].block
+    assert first_.instances == alone.instances
+    assert second.instances.isdisjoint(first_.instances)
+    assert found.instances == second.instances | first_.instances
+
+
+def test_no_block_where_one_of_two_series_in_the_frame_can_no_longer_be_read():
     first = _head_files()
     second = _head_files(series=files.ROOT + ".7")
+    data = (*first, *second, _grid())
+    records = {
+        position: InstanceRecord.from_file(each) for position, each in enumerate(data)
+    }
+    outcomes = face_blocks.find_face_blocks(records, lambda p: data[p])
 
-    assert not _dose_blocks(*first, *second, _grid())
+    def read(position):
+        return None if position == len(first) + 1 else data[position]
+
+    assert len(find_dose_blocks(records, lambda p: data[p], outcomes)) == 1
+    assert not find_dose_blocks(records, read, outcomes)
+
+
+def test_a_frame_region_has_a_block():
+    with pytest.raises(ValueError):
+        FrameRegion(())
 
 
 def test_no_block_for_a_frame_whose_series_is_not_defaced():

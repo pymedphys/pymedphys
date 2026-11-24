@@ -26,9 +26,11 @@ header sequester it whatever the option does. The reports are synthetic,
 built from the templates of PS3.16 2026d by
 :mod:`._synthetic_dose_reports`.
 
-A preset with the option added is composed by adding it to the preset's
-options for the test alone, since no preset selects it, and ``tps-import``'s
-options cannot be composed as a custom set.
+A preset with the option added is composed by adding it, for the test
+alone, to the options of a preset that does not select it, ``basic`` or
+``basic-clean-descriptors``, rather than as a custom set, since
+``tps-import``'s options cannot be composed as one; ``tps-import`` and
+``public-release`` select it.
 """
 
 import io
@@ -103,15 +105,19 @@ SOURCE_VALUES = (
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to a preset that does not select it.
+    """
     presets = dict(policy.PRESETS)
 
     def compose(preset):
-        monkeypatch.setattr(
-            policy,
-            "PRESETS",
-            types.MappingProxyType({**presets, preset: (*presets[preset], CSC)}),
-        )
+        if CSC not in presets[preset]:
+            monkeypatch.setattr(
+                policy,
+                "PRESETS",
+                types.MappingProxyType({**presets, preset: (*presets[preset], CSC)}),
+            )
         return policy.compose_policy(preset)
 
     return compose

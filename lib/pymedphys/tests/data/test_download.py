@@ -17,8 +17,10 @@
 import email.message
 import io
 import pathlib
+import threading
 import urllib.error
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from pymedphys._imports import pytest
 
@@ -176,9 +178,198 @@ def test_truncated_response_is_rejected(tmp_path: pathlib.Path, monkeypatch):
     assert _leftovers(tmp_path, "truncated.bin") == []
 
 
+def test_oversized_response_is_rejected_without_replacing_cached_file(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda _url, **_kwargs: _FakeResponse(
+            b"more-than-advertised", content_length=3
+        ),
+    )
+    destination = tmp_path / "cached.bin"
+    destination.write_bytes(b"previous validated contents")
+
+    with pytest.raises(ValueError, match="exceeded the declared Content-Length"):
+        download.download_with_progress(
+            "https://example.invalid/cached.bin", destination
+        )
+
+    assert destination.read_bytes() == b"previous validated contents"
+    assert _leftovers(tmp_path, "cached.bin") == [destination]
+
+
+def test_negative_declared_size_is_rejected_before_cache_replacement(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda _url, **_kwargs: _FakeResponse(b"", content_length=-1),
+    )
+    destination = tmp_path / "cached.bin"
+    destination.write_bytes(b"old cached data")
+
+    with pytest.raises(ValueError, match="Negative Content-Length"):
+        download.download_with_progress(
+            "https://example.invalid/cached.bin", destination
+        )
+
+    assert destination.read_bytes() == b"old cached data"
+    assert _leftovers(tmp_path, "cached.bin") == [destination]
+
+
+@pytest.mark.parametrize(
+    ("content_lengths", "transfer_encodings", "error_message"),
+    [
+        (("3",), ("chunked",), "Conflicting Content-Length"),
+        (("",), ("chunked",), "Conflicting Content-Length"),
+        (("3",), ("",), "Conflicting Content-Length"),
+        (("3", "7"), (), "Multiple Content-Length"),
+        (("3, 7",), (), "Invalid Content-Length"),
+        (("",), (), "Invalid Content-Length"),
+    ],
+)
+def test_invalid_http_framing_is_rejected_before_caching(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    content_lengths: tuple[str, ...],
+    transfer_encodings: tuple[str, ...],
+    error_message: str,
+):
+    # The real urllib HTTPResponse preserves blank and repeated header lines.
+    # Disable proxies so system or CI proxy settings cannot intercept loopback.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    monkeypatch.setattr(urllib.request, "urlopen", opener.open)
+
+    class InvalidResponse(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            for content_length in content_lengths:
+                self.send_header("Content-Length", content_length)
+            for transfer_encoding in transfer_encodings:
+                self.send_header("Transfer-Encoding", transfer_encoding)
+            self.end_headers()
+            self.wfile.write(b"B\r\nhello world\r\n0\r\n\r\n")
+
+        def log_message(self, format: str, *_args: object) -> None:  # pylint: disable = redefined-builtin
+            # Suppress the test-only HTTP server's request logging.
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), InvalidResponse)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    destination = tmp_path / "cache.bin"
+    destination.write_bytes(b"previously cached content")
+    try:
+        with pytest.raises(ValueError, match=error_message):
+            download.download_with_progress(
+                f"http://127.0.0.1:{server.server_port}/bad",
+                destination,
+            )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert destination.read_bytes() == b"previously cached content"
+    assert _leftovers(tmp_path, "cache.bin") == [destination]
+
+
 def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     override = tmp_path / "nested" / "data"
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(override))
 
     assert download.get_data_dir() == override
     assert override.is_dir()
+
+
+@pytest.mark.usefixtures("no_sleep")
+def test_retry_diagnostics_do_not_disclose_exception_details(capsys):
+    """Sensitive URL query parameters from failed downloads never reach stdout."""
+    signed_url = "https://example.invalid/data?token=synthetic-secret-value"
+    attempts = []
+
+    @retry.retry(urllib.error.URLError, tries=2, delay=0)
+    def fail_once():
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise urllib.error.URLError(signed_url)
+        return "recovered"
+
+    assert fail_once() == "recovered"
+    assert len(attempts) == 2
+    output = capsys.readouterr().out
+    assert "URLError, Retrying in 0 seconds" in output
+    assert signed_url not in output
+    assert "synthetic-secret-value" not in output
+
+
+@pytest.mark.usefixtures("no_sleep")
+def test_retry_logger_receives_only_safe_exception_metadata():
+    """A supplied logger must not receive sensitive exception text either."""
+    from unittest.mock import Mock
+
+    logger = Mock()
+    secret = "synthetic-password-not-for-logs"
+    attempts = []
+
+    @retry.retry(ConnectionError, tries=2, delay=0, logger=logger)
+    def fail_once():
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise ConnectionError(secret)
+        return "ok"
+
+    assert fail_once() == "ok"
+    logger.warning.assert_called_once_with("ConnectionError, Retrying in 0 seconds...")
+    assert secret not in str(logger.warning.call_args)
+
+
+@pytest.mark.usefixtures("no_sleep")
+def test_retry_http_status_does_not_disclose_url_or_reason(capsys):
+    """An HTTP retry retains the numeric status but not sensitive text."""
+    signed_url = "https://example.invalid/data?token=synthetic-secret-value"
+    attempts = []
+
+    @retry.retry(urllib.error.URLError, tries=2, delay=0)
+    def fail_once():
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise urllib.error.HTTPError(
+                signed_url, 503, "private reason: synthetic-secret-value", None, None
+            )
+        return "recovered"
+
+    assert fail_once() == "recovered"
+    assert len(attempts) == 2
+    output = capsys.readouterr().out
+    assert output == "HTTPError 503, Retrying in 0 seconds...\n"
+    assert signed_url not in output
+    assert "synthetic-secret-value" not in output
+
+
+@pytest.mark.usefixtures("no_sleep")
+def test_retry_http_status_is_safe_with_injected_logger():
+    """The logger receives the HTTP status without an exception message."""
+    from unittest.mock import Mock
+
+    logger = Mock()
+    signed_url = "https://example.invalid/data?token=synthetic-secret-value"
+    attempts = []
+
+    @retry.retry(urllib.error.URLError, tries=2, delay=0, logger=logger)
+    def fail_once():
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise urllib.error.HTTPError(
+                signed_url, 429, "private reason: synthetic-secret-value", None, None
+            )
+        return "recovered"
+
+    assert fail_once() == "recovered"
+    assert len(attempts) == 2
+    logger.warning.assert_called_once_with("HTTPError 429, Retrying in 0 seconds...")
+    assert signed_url not in str(logger.warning.call_args)
+    assert "synthetic-secret-value" not in str(logger.warning.call_args)

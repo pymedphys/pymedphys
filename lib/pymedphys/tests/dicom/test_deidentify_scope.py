@@ -60,6 +60,7 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.4.2": "MR Spectroscopy",
     "1.2.840.10008.5.1.4.1.1.4.3": "Enhanced MR Color Image",
     "1.2.840.10008.5.1.4.1.1.4.4": "Legacy Converted Enhanced MR Image",
+    "1.2.840.10008.5.1.4.1.1.20": "Nuclear Medicine Image",
     "1.2.840.10008.5.1.4.1.1.128": "Positron Emission Tomography Image",
     "1.2.840.10008.5.1.4.1.1.130": "Enhanced PET Image",
     "1.2.840.10008.5.1.4.1.1.128.1": "Legacy Converted Enhanced PET Image",
@@ -68,21 +69,89 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.3": "RT Structure Set",
     "1.2.840.10008.5.1.4.1.1.481.4": "RT Beams Treatment Record",
     "1.2.840.10008.5.1.4.1.1.481.5": "RT Plan",
+    "1.2.840.10008.5.1.4.1.1.481.6": "RT Brachy Treatment Record",
+    "1.2.840.10008.5.1.4.1.1.481.7": "RT Treatment Summary Record",
     "1.2.840.10008.5.1.4.1.1.481.8": "RT Ion Plan",
     "1.2.840.10008.5.1.4.1.1.481.9": "RT Ion Beams Treatment Record",
+    "1.2.840.10008.5.1.4.1.1.481.16": "RT Radiation Record Set",
+    "1.2.840.10008.5.1.4.1.1.481.17": "RT Radiation Salvage Record",
+    "1.2.840.10008.5.1.4.1.1.481.18": "Tomotherapeutic Radiation Record",
+    "1.2.840.10008.5.1.4.1.1.481.19": "C-Arm Photon-Electron Radiation Record",
+    "1.2.840.10008.5.1.4.1.1.481.20": "Robotic-Arm Radiation Record",
+    "1.2.840.10008.5.1.4.1.1.481.23": "Enhanced RT Image",
+    "1.2.840.10008.5.1.4.1.1.481.24": "Enhanced Continuous RT Image",
+    "1.2.840.10008.5.1.4.1.1.1": "Computed Radiography Image",
+    # Digital X-Ray Image Storage - For Presentation and - For Processing.
+    "1.2.840.10008.5.1.4.1.1.1.1": "Digital X-Ray Image",
+    "1.2.840.10008.5.1.4.1.1.1.1.1": "Digital X-Ray Image",
+    "1.2.840.10008.5.1.4.1.1.481.11": "RT Segment Annotation",
+    "1.2.840.10008.5.1.4.1.1.481.12": "RT Radiation Set",
+    "1.2.840.10008.5.1.4.1.1.481.13": "C-Arm Photon-Electron Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.14": "Tomotherapeutic Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.15": "Robotic-Arm Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.21": "RT Radiation Set Delivery Instruction",
+    "1.2.840.10008.5.1.4.34.7": "RT Beams Delivery Instruction",
+    "1.2.840.10008.5.1.4.34.10": "RT Brachy Application Setup Delivery Instruction",
+    "1.2.840.10008.5.1.4.1.1.481.10": "RT Physician Intent",
+    "1.2.840.10008.5.1.4.1.1.481.22": "RT Treatment Preparation",
+    "1.2.840.10008.5.1.4.1.1.481.25": "RT Patient Position Acquisition Instruction",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
+    "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
+    # Label Map Segmentation Storage, which Table B.5-1 maps to the same IOD.
+    "1.2.840.10008.5.1.4.1.1.66.7": "Segmentation",
+    # Surface Segmentation Storage, which Table B.5-1 maps to an IOD of its own.
+    "1.2.840.10008.5.1.4.1.1.66.5": "Surface Segmentation",
     "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.73": "Patient Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.76": "Enhanced X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.11": "Basic Text SR",
     "1.2.840.10008.5.1.4.1.1.88.22": "Enhanced SR",
     "1.2.840.10008.5.1.4.1.1.88.33": "Comprehensive SR",
     "1.2.840.10008.5.1.4.1.1.88.34": "Comprehensive 3D SR",
     "1.2.840.10008.5.1.4.1.1.88.35": "Extensible SR",
+    "1.2.840.10008.5.1.4.1.1.88.59": "Key Object Selection Document",
+    "1.2.840.10008.5.1.4.1.1.88.50": "Mammography CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.65": "Chest CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.69": "Colon CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.40": "Procedure Log",
+    "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
+    "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
+    "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.7": "Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.1": "Multi-frame Single Bit Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.2": "Multi-frame Grayscale Byte Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.3": "Multi-frame Grayscale Word Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.7.4": "Multi-frame True Color Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.88.70": "Implantation Plan SR Document",
+    "1.2.840.10008.5.1.4.1.1.88.72": "Simplified Adult Echo SR",
+    "1.2.840.10008.5.1.4.1.1.88.74": "Planned Imaging Agent Administration SR",
+    "1.2.840.10008.5.1.4.1.1.88.75": "Performed Imaging Agent Administration SR",
+    "1.2.840.10008.5.1.4.1.1.88.71": "Acquisition Context SR",
+    "1.2.840.10008.5.1.4.1.1.30": "Parametric Map",
+    "1.2.840.10008.5.1.4.1.1.67": "Real World Value Mapping",
+    "1.2.840.10008.5.1.4.1.1.11.1": "Grayscale Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.2": "Color Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.3": "Pseudo-Color Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.4": "Blending Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.5": "XA/XRF Grayscale Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.12": (
+        "Variable Modality LUT Softcopy Presentation State"
+    ),
+    "1.2.840.10008.5.1.4.1.1.11.6": "Planar MPR Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.7": "Planar MPR Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.8": "Advanced Blending Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.9": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.10": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.11": "Volume Rendering Volumetric Presentation State",
+    "1.2.840.10008.5.1.4.1.1.9.100.1": "Waveform Presentation State",
+    "1.2.840.10008.5.1.4.1.1.9.100.2": "Waveform Acquisition Presentation State",
+    "1.2.840.10008.5.1.4.1.1.104.1": "Encapsulated PDF",
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
+def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -92,26 +161,86 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
         "Enhanced MR Color Image",
         "Legacy Converted Enhanced MR Image",
         "MR Spectroscopy",
+        "Nuclear Medicine Image",
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "RT Beams Delivery Instruction",
         "RT Beams Treatment Record",
+        "RT Brachy Application Setup Delivery Instruction",
+        "RT Brachy Treatment Record",
         "RT Dose",
         "RT Image",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
+        "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
+        "RT Treatment Summary Record",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "RT Radiation Record Set",
+        "Segmentation",
+        "Surface Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        "Key Object Selection Document",
+        "Mammography CAD SR",
+        "Chest CAD SR",
+        "Colon CAD SR",
+        "Procedure Log",
+        "Spectacle Prescription Report",
+        "Macular Grid Thickness and Volume Report",
+        "Waveform Annotation SR",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
+        "Parametric Map",
+        "Real World Value Mapping",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
+        "Encapsulated PDF",
     }
+    assert scope.SECONDARY_CAPTURE_IODS < scope.SUPPORTED_IODS
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
 
@@ -169,29 +298,23 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # The other Structured Reports, including the other dose reports,
-        # Key Object Selection documents, and Presentation States, which the
-        # design always sequesters.
-        ("1.2.840.10008.5.1.4.1.1.88.50", "Mammography CAD SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.59", "Key Object Selection Document"),
-        ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, spatial fiducials, second-generation RT
-        # objects, including the second-generation RT images, and
-        # brachytherapy records.
-        ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
+        # that are not images, height map segmentations, and spatial fiducials.
+        # The projection radiographs of IODs of their own, beside Computed
+        # Radiography Image and Digital X-Ray Image.
+        ("1.2.840.10008.5.1.4.1.1.1.2", "Digital Mammography X-Ray Image"),
+        ("1.2.840.10008.5.1.4.1.1.1.3.1", "Digital Intra-Oral X-Ray Image"),
+        ("1.2.840.10008.5.1.4.1.1.13.1.2", "X-Ray 3D Craniofacial Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
-        ("1.2.840.10008.5.1.4.1.1.66.4", "Segmentation"),
-        ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
+        ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
-        ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
-        ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
-        ("1.2.840.10008.5.1.4.1.1.481.23", "Enhanced RT Image"),
-        ("1.2.840.10008.5.1.4.1.1.481.24", "Enhanced Continuous RT Image"),
-        ("1.2.840.10008.5.1.4.1.1.481.6", "RT Brachy Treatment Record"),
+        # The encapsulated documents other than PDF: a CDA document, whose
+        # XML is text throughout, and the 3D models and their materials.
+        ("1.2.840.10008.5.1.4.1.1.104.2", "Encapsulated CDA"),
+        ("1.2.840.10008.5.1.4.1.1.104.3", "Encapsulated STL"),
+        ("1.2.840.10008.5.1.4.1.1.104.4", "Encapsulated OBJ"),
+        ("1.2.840.10008.5.1.4.1.1.104.5", "Encapsulated MTL"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
@@ -283,13 +406,13 @@ def test_only_an_unsupported_iod_has_a_reason_with_its_iod(
 
 
 def test_an_unsupported_iods_reason_holds_its_iod_and_code_alone():
-    reason = scope.UnsupportedIod("Nuclear Medicine Image")
+    reason = scope.UnsupportedIod("Ultrasound Image")
 
-    assert repr(reason) == "UnsupportedIod(iod='Nuclear Medicine Image')"
+    assert repr(reason) == "UnsupportedIod(iod='Ultrasound Image')"
     assert [field.name for field in dataclasses.fields(reason)] == ["iod", "code"]
     with pytest.raises(TypeError):
         # pylint: disable-next = too-many-function-args
-        scope.UnsupportedIod("Nuclear Medicine Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
+        scope.UnsupportedIod("Ultrasound Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
 
 
 def test_the_sop_class_decides_before_the_transfer_syntax():
@@ -302,13 +425,13 @@ def test_the_table_can_be_given():
     table = sop_classes.load_storage_sop_classes()
     plan = next(row for row in table.rows if row.name == "RT Plan Storage")
     altered = dataclasses.replace(
-        table, rows=(dataclasses.replace(plan, iod="Nuclear Medicine Image IOD"),)
+        table, rows=(dataclasses.replace(plan, iod="Ultrasound Image IOD"),)
     )
 
     found = scope.classify(plan.uid, EXPLICIT_LE, sop_classes=altered)
 
     assert found == scope.Classification(
-        Disposition.UNSUPPORTED_IOD, "Nuclear Medicine Image"
+        Disposition.UNSUPPORTED_IOD, "Ultrasound Image"
     )
     # CT Image Storage is not in the altered table.
     ct = scope.classify("1.2.840.10008.5.1.4.1.1.2", EXPLICIT_LE, sop_classes=altered)
@@ -358,6 +481,13 @@ def test_pydicom_names_the_same_uids():
         uid.RTBeamsTreatmentRecordStorage,
         uid.RTIonPlanStorage,
         uid.RTIonBeamsTreatmentRecordStorage,
+        uid.RTBrachyTreatmentRecordStorage,
+        uid.RTTreatmentSummaryRecordStorage,
+        uid.EnhancedRTImageStorage,
+        uid.EnhancedContinuousRTImageStorage,
+        uid.RTBeamsDeliveryInstructionStorage,
+        uid.RTBrachyApplicationSetupDeliveryInstructionStorage,
+        uid.RTRadiationSetDeliveryInstructionStorage,
         uid.SpatialRegistrationStorage,
         uid.DeformableSpatialRegistrationStorage,
         uid.BasicTextSRStorage,
@@ -365,6 +495,38 @@ def test_pydicom_names_the_same_uids():
         uid.ComprehensiveSRStorage,
         uid.Comprehensive3DSRStorage,
         uid.ExtensibleSRStorage,
+        uid.KeyObjectSelectionDocumentStorage,
+        uid.MammographyCADSRStorage,
+        uid.ChestCADSRStorage,
+        uid.ColonCADSRStorage,
+        uid.ProcedureLogStorage,
+        uid.SpectaclePrescriptionReportStorage,
+        uid.MacularGridThicknessAndVolumeReportStorage,
+        uid.WaveformAnnotationSRStorage,
+        uid.SecondaryCaptureImageStorage,
+        uid.MultiFrameSingleBitSecondaryCaptureImageStorage,
+        uid.MultiFrameGrayscaleByteSecondaryCaptureImageStorage,
+        uid.MultiFrameGrayscaleWordSecondaryCaptureImageStorage,
+        uid.MultiFrameTrueColorSecondaryCaptureImageStorage,
+        uid.ImplantationPlanSRStorage,
+        uid.SimplifiedAdultEchoSRStorage,
+        uid.PlannedImagingAgentAdministrationSRStorage,
+        uid.PerformedImagingAgentAdministrationSRStorage,
+        uid.AcquisitionContextSRStorage,
+        uid.GrayscaleSoftcopyPresentationStateStorage,
+        uid.ColorSoftcopyPresentationStateStorage,
+        uid.PseudoColorSoftcopyPresentationStateStorage,
+        uid.BlendingSoftcopyPresentationStateStorage,
+        uid.XAXRFGrayscaleSoftcopyPresentationStateStorage,
+        uid.VariableModalityLUTSoftcopyPresentationStateStorage,
+        uid.GrayscalePlanarMPRVolumetricPresentationStateStorage,
+        uid.CompositingPlanarMPRVolumetricPresentationStateStorage,
+        uid.AdvancedBlendingPresentationStateStorage,
+        uid.VolumeRenderingVolumetricPresentationStateStorage,
+        uid.SegmentedVolumeRenderingVolumetricPresentationStateStorage,
+        uid.MultipleVolumeRenderingVolumetricPresentationStateStorage,
+        uid.EncapsulatedPDFStorage,
+        # pydicom 3.0.2 names neither waveform Presentation State SOP Class.
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED

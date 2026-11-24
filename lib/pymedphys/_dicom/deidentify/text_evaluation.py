@@ -86,7 +86,6 @@ import dataclasses
 import functools
 import hashlib
 import importlib.metadata
-import math
 import multiprocessing
 import platform
 import re
@@ -109,20 +108,25 @@ from .text_evaluation_frames import (
     tissue_mask,
 )
 from .text_evaluation_injection import InjectionPlan, inject, zone_of
+from .text_evaluation_intervals import cluster_bootstrap, seed_of, wilson
 from .text_evaluation_benchmarks import tier_of
 from .text_evaluation_models import BoxPoint
 from .text_evaluation_sources import CaseSource, Skipped
 
-FORMAT = "pymedphys-deid-text-detector-evaluation/1"
+FORMAT = "pymedphys-deid-text-detector-evaluation/3"
 SPLITS = ("tuning", "held-out")
 EVALUATED = (*SPLITS, "all")
 SPLIT_SALT = "pymedphys-text-detector-evaluation-split/1"
+# Seeds the bootstrap's resampling, apart from FORMAT, so that a new label
+# for the summary's layout leaves every interval where it was; the label the
+# first summaries were seeded with.
+BOOTSTRAP_SALT = "pymedphys-deid-text-detector-evaluation/1"
 SPLIT_RULE = (
-    "A case is held out where the first 8 bytes of the SHA-256 of "
-    f"'{SPLIT_SALT}', its collection, and its subject (its patient where "
-    "known, otherwise the case), joined by NUL, read as a big-endian "
-    "integer, are a multiple of 3, or its collection is held out whole; "
-    "otherwise it is for tuning. The bootstrap resamples subjects."
+    "A case is held out where its collection is held out whole, or where the "
+    f"first 8 bytes of the SHA-256 of '{SPLIT_SALT}', its subject's namespace "
+    "(shared by collections sharing patients, else its collection), and its "
+    "subject (its patient, else the case), joined by NUL and read as a big-endian "
+    "integer, are a multiple of 3; else it is for tuning. Bootstrap units are subjects."
 )
 FRAME_DIMENSIONS = (
     "collection",
@@ -184,7 +188,6 @@ _KINDS = {
     "unknown": "text_unknown",
     "unknown-away": "text_unknown_away_from_injected",
 }
-_Z = 1.959963984540054
 
 
 def subject_of(source: object) -> str:
@@ -200,14 +203,32 @@ def subject_of(source: object) -> str:
     return subject
 
 
+def namespace_of(source: object) -> str:
+    """Where a case's subject is named, by which the split and the bootstrap
+    key it: the source's ``subject_namespace``, which collections that hold
+    the same patients share, or else its collection."""
+    namespace = getattr(source, "subject_namespace", None)
+    if namespace is None:
+        return str(getattr(source, "collection"))
+    if not isinstance(namespace, str) or not namespace:
+        raise EvaluationRefused("A case's subject namespace must be a name.")
+    return namespace
+
+
 def split_of(
-    collection: str, case: str, held_out_collections: Iterable[str] = ()
+    collection: str,
+    case: str,
+    held_out_collections: Iterable[str] = (),
+    *,
+    namespace: str | None = None,
 ) -> str:
     """The part of the split that a case belongs to, by :data:`SPLIT_RULE`,
-    for a case's subject (:func:`subject_of`) as ``case``."""
+    for a case's subject (:func:`subject_of`) as ``case``, named in
+    ``namespace`` (:func:`namespace_of`), its collection by default."""
     if collection in set(held_out_collections):
         return "held-out"
-    digest = hashlib.sha256("\0".join((SPLIT_SALT, collection, case)).encode()).digest()
+    named = collection if namespace is None else namespace
+    digest = hashlib.sha256("\0".join((SPLIT_SALT, named, case)).encode()).digest()
     return "held-out" if int.from_bytes(digest[:8], "big") % 3 == 0 else "tuning"
 
 
@@ -325,6 +346,8 @@ class CaseResult:
     subject : str
         Its subject (:func:`subject_of`), whose cases' clusters the
         bootstrap resamples as one; no summary or report names it.
+    namespace : str
+        Where its subject is named (:func:`namespace_of`).
     """
 
     collection: str
@@ -335,6 +358,7 @@ class CaseResult:
     crashed: str | None = None
     public: dict[str, str] | None = None
     subject: str = dataclasses.field(default="", repr=False)
+    namespace: str = dataclasses.field(default="", repr=False)
 
 
 @dataclasses.dataclass
@@ -399,7 +423,13 @@ def _case(
     source: CaseSource, detector: MeasuredDetector, settings: EvaluationSettings
 ) -> CaseResult:
     subject = subject_of(source)
-    split = split_of(source.collection, subject, settings.held_out_collections)
+    namespace = namespace_of(source)
+    split = split_of(
+        source.collection,
+        subject,
+        settings.held_out_collections,
+        namespace=namespace,
+    )
     evaluated = settings.evaluated in ("all", split)
     public = getattr(source, "public", None)
     public = (
@@ -408,7 +438,12 @@ def _case(
         else None
     )
     result = CaseResult(
-        source.collection, split, evaluated, public=public, subject=subject
+        source.collection,
+        split,
+        evaluated,
+        public=public,
+        subject=subject,
+        namespace=namespace,
     )
     if not evaluated:
         return result
@@ -681,49 +716,6 @@ def _meet(first: TextBox, second: TextBox) -> bool:
     )
 
 
-def wilson(successes: int, trials: int) -> tuple[float, float] | None:
-    """The 95% Wilson score interval of a share, or None without trials."""
-    if trials <= 0:
-        return None
-    share = successes / trials
-    z2 = _Z * _Z
-    denominator = 1 + z2 / trials
-    centre = (share + z2 / (2 * trials)) / denominator
-    half = (
-        _Z
-        * math.sqrt(share * (1 - share) / trials + z2 / (4 * trials * trials))
-        / denominator
-    )
-    return (max(0.0, centre - half), min(1.0, centre + half))
-
-
-def cluster_bootstrap(
-    numerators: np.ndarray,
-    denominators: np.ndarray,
-    *,
-    replicates: int,
-    seed: int,
-) -> tuple[float, float] | None:
-    """The 95% percentile interval of a ratio of sums, resampling clusters
-    with replacement; None with fewer than two clusters that count."""
-    numerators = np.asarray(numerators, dtype=np.float64)
-    denominators = np.asarray(denominators, dtype=np.float64)
-    counted = denominators > 0
-    if int(np.count_nonzero(counted)) < 2 or replicates < 1:
-        return None
-    numerators, denominators = numerators[counted], denominators[counted]
-    rng = np.random.default_rng(seed)
-    chosen = rng.integers(0, numerators.size, size=(replicates, numerators.size))
-    ratios = numerators[chosen].sum(axis=1) / denominators[chosen].sum(axis=1)
-    low, high = np.percentile(ratios, [2.5, 97.5])
-    return (float(low), float(high))
-
-
-def _seed(*parts: object) -> int:
-    digest = hashlib.sha256("\0".join(str(each) for each in parts).encode()).digest()
-    return int.from_bytes(digest[:8], "big")
-
-
 def summarise(evaluation: Evaluation, *, replicates: int = 2000) -> dict[str, Any]:
     """Return the evaluation's counts, as the module describes, for JSON.
 
@@ -738,37 +730,74 @@ def summarise(evaluation: Evaluation, *, replicates: int = 2000) -> dict[str, An
     replicates : int
         The bootstrap's replicates.
     """
-    settings = evaluation.settings
-    points = settings.points
+    return summary_of(
+        evaluation.settings,
+        evaluation.detector,
+        totals(evaluation.results),
+        replicates=replicates,
+    )
+
+
+@dataclasses.dataclass
+class Totals:
+    """What a summary takes from the cases, none of it by their order: the
+    evaluated cases' tally; the bootstrap's clusters (:func:`_by_subject`),
+    in any order; each collection's cases, those evaluated, and those that
+    raised, by where; and the cases in each part of the split."""
+
+    tally: Tally
+    clusters: list[dict[tuple, list[int]]]
+    collections: dict[str, dict[str, Any]]
+    parts: dict[str, int]
+
+
+def totals(results: Sequence[CaseResult]) -> Totals:
+    """The totals of the cases' results."""
     tally = Tally()
-    evaluated = [each for each in evaluation.results if each.evaluated]
+    evaluated = [each for each in results if each.evaluated]
     for each in evaluated:
         tally.add(each.tally)
-    clusters = _by_subject(each for each in evaluated if each.crashed is None)
+    return Totals(
+        tally,
+        _by_subject(each for each in evaluated if each.crashed is None),
+        _collections(results),
+        {part: sum(each.split == part for each in results) for part in SPLITS},
+    )
+
+
+def summary_of(
+    settings: EvaluationSettings,
+    detector: Mapping[str, object],
+    found: Totals,
+    *,
+    replicates: int = 2000,
+) -> dict[str, Any]:
+    """The summary (:func:`summarise`) of the cases whose totals are given."""
+    tally = found.tally
     return {
         "format": FORMAT,
         "software": _software(),
-        "detector": _plain(evaluation.detector),
-        "tier": tier_of(evaluation.detector),
+        "detector": _plain(detector),
+        "tier": tier_of(detector),
         "plan": None if settings.plan is None else settings.plan.described(),
         "negatives": settings.negatives,
         "split": {
             "rule": SPLIT_RULE,
             "evaluated": settings.evaluated,
             "held_out_collections": sorted(settings.held_out_collections),
-            "cases": {
-                part: sum(each.split == part for each in evaluation.results)
-                for part in SPLITS
-            },
+            "cases": {part: found.parts.get(part, 0) for part in SPLITS},
         },
-        "collections": _collections(evaluation.results),
+        "collections": {
+            name: {**entry, "crashed": dict(sorted(entry["crashed"].items()))}
+            for name, entry in sorted(found.collections.items())
+        },
         "frames": _counted(tally, "frames"),
         "skipped": _counted(tally, "skipped"),
         "not_placed": _counted(tally, "not-placed"),
         "not_injected": _counted(tally, "not-injected"),
         "points": [
-            _point(index, point, tally, clusters, settings, replicates)
-            for index, point in enumerate(points)
+            _point(index, point, tally, found.clusters, settings, replicates)
+            for index, point in enumerate(settings.points)
         ],
     }
 
@@ -778,7 +807,8 @@ def _by_subject(results: Iterable[CaseResult]) -> list[dict[tuple, list[int]]]:
     in the order that each subject first appears."""
     found: dict[tuple[str, str], dict[tuple, list[int]]] = {}
     for result in results:
-        merged = found.setdefault((result.collection, result.subject), {})
+        namespace = result.namespace or result.collection
+        merged = found.setdefault((namespace, result.subject), {})
         for key, row in result.clusters.items():
             _added(merged, key, row)
     return list(found.values())
@@ -931,7 +961,7 @@ def _intervals(
         [each.get(key, [0] * len(_CLUSTER_FIELDS)) for each in clusters],
         dtype=np.float64,
     ).reshape(-1, len(_CLUSTER_FIELDS))
-    seed = _seed(FORMAT, index, "+".join(grouping), *value)
+    seed = seed_of(BOOTSTRAP_SALT, index, "+".join(grouping), *value)
     entry["sensitivity"]["bootstrap"] = _pair(
         cluster_bootstrap(rows[:, 1], rows[:, 0], replicates=replicates, seed=seed)
     )

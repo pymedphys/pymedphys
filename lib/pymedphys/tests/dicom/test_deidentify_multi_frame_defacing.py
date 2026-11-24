@@ -26,7 +26,6 @@ import io
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify.defacing import FaceBlockProblem
 from pymedphys._dicom.deidentify.dose_defacing import find_dose_blocks
 from pymedphys._dicom.deidentify.face_blocks import (
     RT_STRUCTURE_SET,
@@ -273,8 +272,8 @@ def test_a_multi_frame_series_gives_its_frame_the_block_of_its_slices():
         outcomes = find_face_blocks(records, read)
         return find_dose_blocks(records, read, outcomes, (RT_STRUCTURE_SET,))
 
-    found = blocks(files.multi_frame(_slices()), _organ())[files.FRAME]
-    expected = blocks(*_slices(), _organ())[files.FRAME]
+    (found,) = blocks(files.multi_frame(_slices()), _organ())[files.FRAME].blocks
+    (expected,) = blocks(*_slices(), _organ())[files.FRAME].blocks
 
     assert found.block == expected.block
     assert found.instances == frozenset({_ENHANCED})
@@ -430,9 +429,9 @@ def test_ct_images_whose_rescale_type_is_hounsfield_units_are_defaced():
     assert _outcome(*slices).block == _single().block
 
 
-def test_frames_at_one_position_are_not_one_stack_for_the_finder():
+def test_frames_at_one_position_that_nothing_parts_are_repeated_positions():
     # Every frame at the first's position, as two phases of one stack can
-    # put two.
+    # put two, and no Frame Content group to part them into phases.
     data = files.multi_frame(
         _slices(),
         shared=(
@@ -443,7 +442,7 @@ def test_frames_at_one_position_are_not_one_stack_for_the_finder():
         ),
     )
 
-    assert _outcome(data).problem is FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+    assert _outcome(data).problem is SeriesProblem.REPEATED_POSITIONS
 
 
 def test_frames_of_another_size_or_frame_of_reference_are_not_one_stack():
@@ -455,11 +454,14 @@ def test_frames_of_another_size_or_frame_of_reference_are_not_one_stack():
     )
 
 
-def test_a_compressed_multi_frame_instance_is_not_defaced():
+def test_a_compressed_multi_frame_instance_has_the_face_block_of_its_slices():
     dataset = _dataset(files.multi_frame(_slices()))
-    dataset.compress(pydicom.uid.RLELossless)
+    dataset.compress(pydicom.uid.RLELossless, generate_instance_uid=False)
 
-    assert _outcome(files.written(dataset)).problem is SeriesProblem.COMPRESSED
+    outcome = _outcome(files.written(dataset))
+
+    assert outcome.problem is None
+    assert outcome.block == _single().block
 
 
 def test_a_ct_image_of_two_frames_is_not_one_stack():
@@ -818,9 +820,15 @@ def test_a_pet_image_of_two_frames_is_refused():
         PetDefacer(_region(), _dataset(_changed(_pet_slices()[0], doubled)))
 
 
-def test_a_compressed_multi_frame_pet_is_refused():
+def test_a_compressed_multi_frame_pet_is_set_to_zero_activity_as_its_native_frames_are():
+    native = _dataset(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE))
     dataset = _dataset(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE))
-    dataset.compress(pydicom.uid.RLELossless)
+    dataset.compress(pydicom.uid.RLELossless, generate_instance_uid=False)
+    defacer = PetDefacer(_region(), _dataset(files.written(dataset)))
+    expected = PetDefacer(_region(), native)
 
-    with pytest.raises(PixelDataRefused):
-        PetDefacer(_region(), _dataset(files.written(dataset)))
+    for index, stored in enumerate(native.pixel_array):
+        found, wanted = defacer.mask(index, stored), expected.mask(index, stored)
+        assert (found is None) == (wanted is None), index
+        if wanted is not None:
+            np.testing.assert_array_equal(found.mask, wanted.mask)

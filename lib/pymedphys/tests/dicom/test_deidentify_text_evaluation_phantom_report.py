@@ -146,11 +146,9 @@ def test_only_allow_listed_phantom_collections_are_admitted():
     assert set(report.PHANTOM_COLLECTIONS) == {
         "CC-Radiomics-Phantom-3",
         "RIDER PHANTOM PET-CT",
-        "MRI-DIR",
         "VICTRE",
     }
     victre = report.phantom_collection("VICTRE")
-    assert victre.patients is None
     assert victre.doi == "10.7937/TCIA.2019.ho23nxaw"
     assert victre.licence == "CC BY 3.0"
     assert victre.citation.endswith(
@@ -161,15 +159,19 @@ def test_only_allow_listed_phantom_collections_are_admitted():
     forged = dataclasses.replace(report.phantom_collection(CC), name="NSCLC-Radiomics")
     with pytest.raises(EvaluationRefused):
         report.PhantomDicomCase(forged, "a", ())
-    widened = dataclasses.replace(report.phantom_collection("MRI-DIR"), patients=None)
+    widened = dataclasses.replace(
+        report.phantom_collection(CC),
+        project_names=(*report.phantom_collection(CC).project_names, "NSCLC-Radiomics"),
+    )
     with pytest.raises(EvaluationRefused):
         report.PhantomDicomCase(widened, "a", ())
 
 
-def test_mri_dir_admits_no_subject_until_its_phantoms_are_listed():
-    assert report.phantom_collection("MRI-DIR").patients == frozenset()
-    for name in ("CC-Radiomics-Phantom-3", "RIDER PHANTOM PET-CT"):
-        assert report.phantom_collection(name).patients is None
+def test_no_collection_with_patient_or_animal_images_is_admitted():
+    # MRI-DIR mixes a porcine phantom with synthetic images derived from
+    # patients' scans, so it is not a collection of phantoms alone.
+    with pytest.raises(EvaluationRefused):
+        report.phantom_collection("MRI-DIR")
 
 
 def test_a_patient_source_is_never_reported_in_full(tmp_path):
@@ -196,7 +198,7 @@ def test_a_patient_source_is_never_reported_in_full(tmp_path):
     [
         (CC, None, "PHANTOM-01", "not-phantom/no-project"),
         (CC, "NSCLC-Radiomics", "PHANTOM-01", "not-phantom/other-project"),
-        ("MRI-DIR", "MRI-DIR", "PHANTOM-01", "not-phantom/patient-not-listed"),
+        (CC, "MRI-DIR", "PHANTOM-01", "not-phantom/other-project"),
     ],
 )
 def test_files_not_of_the_collections_phantoms_are_skipped_unread(

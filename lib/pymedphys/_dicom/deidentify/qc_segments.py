@@ -99,7 +99,6 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from . import qc_contours, qc_surfaces
-from .pixel_risk import SEGMENTATION_SOP_CLASSES
 from .uids import normalise_uid
 
 # The Segmentation Types whose segments a sheet draws.
@@ -169,26 +168,6 @@ class Segments:
 
     def __repr__(self) -> str:
         return f"Segments(segments={len(self.numbers)}, frames={len(self.origins)})"
-
-
-def is_segmentation(dataset: pydicom.Dataset) -> bool:
-    """Whether an instance is a Segmentation, whose frames only a QC pack's
-    segments sheet shows as they could show a face (D-017).
-
-    Its SOP Class UID being Segmentation Storage or Label Map Segmentation
-    Storage, or its Modality being SEG, makes it one, so that a file of
-    either alone is never counted as shown by another preview.
-    """
-    try:
-        sop_class = normalise_uid(str(dataset.get("SOPClassUID") or ""))
-    # Whatever reading the value raises, it names no class.
-    except Exception:  # pylint: disable = broad-exception-caught
-        sop_class = ""
-    try:
-        modality = str(dataset.get("Modality") or "").strip(" \0").upper()
-    except Exception:  # pylint: disable = broad-exception-caught
-        modality = ""
-    return sop_class in SEGMENTATION_SOP_CLASSES or modality == "SEG"
 
 
 def segments_of(dataset: pydicom.Dataset) -> Segments | None:

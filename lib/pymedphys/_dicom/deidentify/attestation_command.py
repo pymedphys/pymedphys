@@ -25,18 +25,45 @@ under the institution's governance; either left out is recorded as not
 stated. The reviewer may give a face verdict on any of the pack's series, by
 the run position of its first instance: ``--face-absent POSITION`` where
 they saw no recognisable face in its previews, and ``--face-present
-POSITION`` where they saw one, each repeatable. Likewise, they may give a
-redaction verdict on any instance whose Pixel Data the Clean Pixel Data
-Option cleaned and the pack previewed, by its run position:
-``--redaction-accepted POSITION`` where the pack's regions cover every
-burned-in text, ``--redaction-rejected POSITION`` where the instance is not
-to be released, and ``--redaction-revised POSITION`` where regions of their
-own are to be blacked out as well as the pack's, so that together they
-cover every burned-in text, each given as ``--redaction-region POSITION
-FRAME TOP LEFT BOTTOM RIGHT``, in pixels from the frame's top left corner
-with the bottom row and right column excluded; a revised instance needs at
-least one. Each is repeatable. An outcome of rejected takes no verdict,
-since its verdicts would release nothing. It is not
+POSITION`` where they saw one, each repeatable. They may confirm the face
+block of any series that the pack lists in its ``eye_checks``, which the
+run defaced and held because its eye ROIs disagree with the globes that its
+block was found from, by the run position of its first instance there:
+``--residuals-cleared POSITION``, repeatable, clears the residual findings
+of the instance at that run position, of those that the pack's
+``residual_findings`` shows with their excerpts, where the reviewer found
+that the values holding them are not identifying, such as an Institution
+Name that only shares a word with a removed physician's name; a later run
+given the pack with ``--residual-review`` then releases the instance if
+those findings are all that hold it for review (D-042).
+``--block-confirmed POSITION`` where the pack's sheet of the globes found
+beside the eye ROIs shows that the globes are the patient's eyes,
+repeatable; a later run given the attestation then defaces the series with
+that block without holding it for its eyes. They may choose what a later
+run does with any RT Dose that the pack lists in its ``dose_checks``, whose
+dose in a defaced series' face block is more than the run sets to zero, by
+its run position: ``--dose-as-written POSITION`` to write it as received,
+to be released on a verdict of absent on its series from its own
+dose-levels previews, and ``--dose-set-to-zero POSITION`` to set it to zero
+in the block anyway, to be released only on a verdict on the later run's
+previews of the grid as set to zero, each repeatable. They may give a face
+verdict of its own on any instance that the pack lists in its
+``undefaced_instances`` as shown, which lies in a defaced series' Frame of
+Reference, names none, or refers to a defaced slice, and whose outline or
+pixel data the run did not clean of the face, by its run position, from
+its own previews, which a verdict on its series does not cover:
+``--instance-face-absent POSITION`` where they saw no recognisable face in
+them, and ``--instance-face-present POSITION`` where they saw one, each
+repeatable. Their redaction verdicts on the instances whose Pixel Data the
+Clean Pixel Data Option cleaned are read from the file that the redaction
+review app (:mod:`~pymedphys._dicom.deidentify.redaction_review_app`) saved
+as they worked, given as ``--redaction-verdicts``, by default the app's file
+in the pack's directory: each instance accepted, revised by the regions that
+they dropped and drew, or rejected, with the frames that they were shown
+(D-048, D-059). The regions are drawn on the frames, never typed, so that
+none can be given for another frame or with its coordinates transposed. An
+instance that the file gives no verdict has none. An outcome of rejected
+takes no verdict, since its verdicts would release nothing. It is not
 registered with the ``pymedphys`` command: nothing de-identification related
 joins the public command line before the first supported release.
 
@@ -47,13 +74,19 @@ previews by their SHA-256, and only once: a pack that has been attested, a
 directory that holds no QC pack, a pack of another format, a pack whose
 previews are missing or changed, an outcome of attested without all three
 reviews, a face verdict on a position that begins none of the pack's series,
-a series given both verdicts, a verdict with an outcome of rejected, a
-redaction verdict on a position that the
-pack does not list as cleaned and previewed, an instance given more than
-one redaction verdict, a revised instance without a region, and a region
-that is empty, in a frame that the instance does not hold, past the Rows or
-Columns that the pack records for it, or given for an instance not revised
-are each refused, and nothing is written. The run that applies the verdicts
+a series given both verdicts, a confirmed block on a position that begins
+none of the pack's eye checks, or one without a sheet of its eyes, a dose
+choice on a position that the pack's ``dose_checks`` does not list, an RT
+Dose given both choices, an instance's own face verdict on a position that
+the pack's ``undefaced_instances`` does not list, or lists as not shown, an
+instance given both of its own face verdicts, a verdict, a confirmation, or
+a choice with an outcome of rejected, a verdicts file for another pack, or
+for this pack before it changed, a redaction verdict on a position that the
+pack does not list as cleaned and previewed, a region dropped that the pack
+does not list for its frame or that a region rule gave, a region drawn in a
+frame that the instance does not hold or past the Rows or Columns that the
+pack records for it, and an accepted or revised verdict that was not shown
+every frame that its review requires are each refused, and nothing is written. The run that applies the verdicts
 checks each region against its frame again, and sequesters an instance
 whose region goes past it.
 
@@ -65,14 +98,15 @@ that a release report records (D-016).
 
 The reviewer's name and the pack's path can identify people, so neither the
 summary nor any message quotes them; the summary gives the outcome, the
-reviews done, how many series have each face verdict, how many instances
-have each redaction verdict, each region that a revised verdict adds, by
-run position and frame, with the preview of that frame, so that the
-reviewer can check the region against the frame it was read from, and the
-pack's opaque reference. A region inside its frame but misplaced, such as
-one with its coordinates transposed or given for another frame, is not
-refused, and would leave the text it was meant to cover, so the check is
-the reviewer's (D-048).
+reviews done, how many series have each face verdict, how many blocks were
+confirmed, how many RT Doses were given each dose choice, how many
+undefaced instances have each face verdict of their own, how many instances
+have each redaction verdict, and each region that a revised verdict drops
+or draws, by run position and frame, with the preview of that frame, and
+the pack's opaque reference. A drawn region in the right frame but in the
+wrong place, or a dropped region that covered text, would leave text that
+the instance claims to be clean of, so the check of the summary is the
+reviewer's (D-048).
 
 Exit statuses:
 
@@ -90,7 +124,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TextIO
 
-from . import command
+from . import command, redaction_verdicts
 from .command import _Parser, _print
 from .qc_attestation import (
     Attestation,
@@ -100,10 +134,11 @@ from .qc_attestation import (
     Redaction,
     RedactionVerdict,
     attest,
+    pack_reference,
     redaction_previews,
 )
 from .qc_pack import QcPackError
-from .text_detection import TextBox
+from .reasons import DoseChoice
 
 EXIT_RECORDED = 0
 EXIT_NOT_RECORDED = 1
@@ -122,15 +157,20 @@ def summary_lines(
 
     It gives the pack's reference, the outcome, whether each review that
     D-017 requires was done, the releaser's confirmations, how many series
-    have each face verdict, how many instances have each redaction verdict,
-    each region that a revised verdict adds, with the file in the pack that
-    previews its frame where ``previews``, by run position and frame, names
-    one, and that the published release report is unchanged.
+    have each face verdict, how many blocks the reviewer confirmed, how
+    many RT Doses have each dose choice, how many undefaced instances have
+    each face verdict of their own, how many instances have their residual
+    findings cleared, how many instances have each redaction verdict, each
+    region that a revised verdict drops or draws, with the file in the pack
+    that previews its frame where ``previews``, by run position and frame,
+    names one, and that the published release report is unchanged.
     """
     previews = {} if previews is None else previews
     coverage = attestation.coverage
     faces = [verdict.face for verdict in attestation.faces]
     redactions = [verdict.redaction for verdict in attestation.redactions]
+    doses = [verdict.choice for verdict in attestation.dose_choices]
+    own = [verdict.face for verdict in attestation.instance_faces]
     return [
         f"QC pack {attestation.reference}: {attestation.outcome.value}",
         *(
@@ -153,11 +193,25 @@ def summary_lines(
         ),
         f"  series without a recognisable face: {faces.count(Face.ABSENT)}",
         f"  series with a recognisable face: {faces.count(Face.PRESENT)}",
+        f"  face blocks confirmed: {len(attestation.confirmed_blocks)}",
+        *(
+            f"  RT Doses with dose in a face block {chosen}: {doses.count(choice)}"
+            for chosen, choice in (
+                ("to write as received", DoseChoice.AS_WRITTEN),
+                ("to set to zero", DoseChoice.SET_TO_ZERO),
+            )
+        ),
+        "  undefaced instances without a recognisable face in their own "
+        f"previews: {own.count(Face.ABSENT)}",
+        "  undefaced instances with a recognisable face in their own "
+        f"previews: {own.count(Face.PRESENT)}",
+        "  instances with their residual findings cleared: "
+        f"{len(attestation.cleared_residuals)}",
         *(
             f"  cleaned instances {verdict}: {redactions.count(redaction)}"
             for verdict, redaction in (
                 ("with their regions accepted", Redaction.ACCEPTED),
-                ("with the reviewer's regions added", Redaction.REVISED),
+                ("with their regions revised", Redaction.REVISED),
                 ("rejected", Redaction.REJECTED),
             )
         ),
@@ -168,12 +222,16 @@ def summary_lines(
                 if (verdict.position, index) in previews
                 else ""
             )
-            + ": adds "
+            + f": {action} "
             + ", ".join(
                 f"[{box.top}, {box.left}, {box.bottom}, {box.right}]" for box in boxes
             )
             for verdict in attestation.redactions
-            for index, boxes in verdict.regions
+            for action, regions in (
+                ("drops", verdict.dropped),
+                ("draws", verdict.regions),
+            )
+            for index, boxes in regions
         ),
         "the release report published with the run is unchanged",
     ]
@@ -255,14 +313,42 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
                 "instance is at this run position; repeatable"
             ),
         )
-    for flag, verdict in (
-        ("--redaction-accepted", "its regions cover every burned-in text"),
-        (
-            "--redaction-revised",
-            "your regions, given with --redaction-region, are to be blacked out "
-            "as well as its own",
+    parser.add_argument(
+        "--residuals-cleared",
+        action="append",
+        type=int,
+        default=[],
+        metavar="POSITION",
+        help=(
+            "the values that hold the residual findings of the instance at "
+            "this run position, as the QC pack's excerpts show them, are not "
+            "identifying, so a later run given this pack as --residual-review "
+            "does not hold the instance for them; repeatable"
         ),
-        ("--redaction-rejected", "it is not to be released"),
+    )
+    parser.add_argument(
+        "--block-confirmed",
+        action="append",
+        type=int,
+        default=[],
+        metavar="POSITION",
+        help=(
+            "the globes found are the patient's eyes, in the QC pack's sheet of "
+            "the eye check whose first instance is at this run position, so its "
+            "face block is confirmed; repeatable"
+        ),
+    )
+    for flag, chosen in (
+        (
+            "--dose-as-written",
+            "write it as received, to be released on a verdict of absent on its "
+            "own dose-levels previews",
+        ),
+        (
+            "--dose-set-to-zero",
+            "set it to zero in the face block anyway, to be released only on a "
+            "verdict on the later run's previews of it as set to zero",
+        ),
     ):
         parser.add_argument(
             flag,
@@ -271,75 +357,63 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
             default=[],
             metavar="POSITION",
             help=(
-                "for the instance at this run position, whose Pixel Data Clean "
-                f"Pixel Data cleaned, {verdict}; repeatable"
+                "for the RT Dose at this run position in the QC pack's dose "
+                f"checks, a later run is to {chosen}; repeatable"
+            ),
+        )
+    for flag, seen in (
+        ("--instance-face-absent", "no recognisable face"),
+        ("--instance-face-present", "a recognisable face"),
+    ):
+        parser.add_argument(
+            flag,
+            action="append",
+            type=int,
+            default=[],
+            metavar="POSITION",
+            help=(
+                f"you saw {seen} in the own previews of the instance at this run "
+                "position in the QC pack's undefaced instances; repeatable"
             ),
         )
     parser.add_argument(
-        "--redaction-region",
-        action="append",
-        nargs=6,
-        type=int,
-        default=[],
-        metavar=("POSITION", "FRAME", "TOP", "LEFT", "BOTTOM", "RIGHT"),
+        "--redaction-verdicts",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="FILE",
         help=(
-            "a region to black out, as well as the QC pack's, in a frame, by "
-            "index from 0, of an instance given --redaction-revised, in pixels "
-            "from the frame's top left corner, the bottom row and right column "
-            "excluded; repeatable"
+            "read your redaction verdicts on the instances that Clean Pixel "
+            "Data cleaned from the file that the redaction review app saved; "
+            "by default the app's file in the pack's directory"
         ),
     )
     return parser
 
 
 def _redaction_verdicts(arguments: argparse.Namespace) -> list[RedactionVerdict]:
-    """Return the redaction verdicts that the arguments give.
+    """Return the redaction verdicts of the file that the arguments name.
 
     Raises
     ------
-    ValueError
-        If an instance is given more than one verdict, a revised instance
-        has no region, or a region is empty or given for an instance not
-        revised. The message quotes no argument.
+    QcPackError
+        If the pack or the file cannot be read, or the file is not of its
+        format or is bound to another pack. The message names no path.
     """
-    given = {
-        Redaction.ACCEPTED: arguments.redaction_accepted,
-        Redaction.REVISED: arguments.redaction_revised,
-        Redaction.REJECTED: arguments.redaction_rejected,
-    }
-    positions = [position for each in given.values() for position in each]
-    if len(positions) != len(set(positions)):
-        raise ValueError("an instance is given more than one redaction verdict")
-    regions: dict[int, dict[int, set[TextBox]]] = {
-        position: {} for position in given[Redaction.REVISED]
-    }
-    for position, frame, *box in arguments.redaction_region:
-        if position not in regions:
-            raise ValueError("a region is given for an instance that is not revised")
-        if frame < 0:
-            raise ValueError("a region is given in a frame before the first")
-        try:
-            regions[position].setdefault(frame, set()).add(TextBox(*box))
-        except ValueError:
-            raise ValueError("a region has no rows or no columns") from None
-    if not all(regions.values()):
-        raise ValueError("a revised instance is given no region to add")
-    return [
-        RedactionVerdict(
-            position,
-            redaction,
-            (
-                tuple(
-                    (frame, tuple(sorted(boxes)))
-                    for frame, boxes in sorted(regions[position].items())
-                )
-                if redaction is Redaction.REVISED
-                else ()
-            ),
-        )
-        for redaction, each in given.items()
-        for position in each
-    ]
+    if arguments.redaction_verdicts is None:
+        return []
+    pack = Path(arguments.pack)
+    path = (
+        pack / redaction_verdicts.VERDICTS_FILE
+        if arguments.redaction_verdicts == ""
+        else Path(arguments.redaction_verdicts)
+    )
+    reference, digest = pack_reference(pack)
+    return list(
+        redaction_verdicts.read_redaction_verdicts(
+            path, reference=reference, pack_digest=digest
+        ).verdicts()
+    )
 
 
 def main(
@@ -371,12 +445,25 @@ def main(
             stderr,
         )
         return EXIT_NOT_RECORDED
-    try:
-        redactions = _redaction_verdicts(arguments)
-    except ValueError as error:
-        _print(f"error: {error}; nothing was recorded", stderr)
+    as_written = set(arguments.dose_as_written)
+    set_to_zero = set(arguments.dose_set_to_zero)
+    if as_written & set_to_zero:
+        _print(
+            "error: an RT Dose is given both dose choices; nothing was recorded",
+            stderr,
+        )
+        return EXIT_NOT_RECORDED
+    own_absent = set(arguments.instance_face_absent)
+    own_present = set(arguments.instance_face_present)
+    if own_absent & own_present:
+        _print(
+            "error: an instance is given both face verdicts of its own; nothing "
+            "was recorded",
+            stderr,
+        )
         return EXIT_NOT_RECORDED
     try:
+        redactions = _redaction_verdicts(arguments)
         previews = redaction_previews(Path(arguments.pack))
         attestation = attest(
             Path(arguments.pack),
@@ -394,6 +481,16 @@ def main(
                 **{series: Face.PRESENT for series in present},
             },
             redactions=redactions,
+            confirmed_blocks=arguments.block_confirmed,
+            dose_choices={
+                **dict.fromkeys(as_written, DoseChoice.AS_WRITTEN),
+                **dict.fromkeys(set_to_zero, DoseChoice.SET_TO_ZERO),
+            },
+            instance_faces={
+                **dict.fromkeys(own_absent, Face.ABSENT),
+                **dict.fromkeys(own_present, Face.PRESENT),
+            },
+            cleared_residuals=arguments.residuals_cleared,
         )
     except QcPackError as error:
         # QcPackError and the OSErrors it replaces name a check, never a path.

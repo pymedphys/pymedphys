@@ -32,7 +32,11 @@ where every cell that a criterion names does:
   covered;
 - no single stratum's share of texts fully covered falls, nor its share of
   frames with a region rises, by more than
-  :attr:`AcceptanceCriteria.max_loss` from the baseline point's.
+  :attr:`AcceptanceCriteria.max_loss` from the baseline point's, where the
+  baseline point is today's detector. Where it is not, as for another
+  model, the publishers' settings, or a variant of the renderings or the
+  network's input, the summary alone cannot show a loss against today's
+  detector, so every point fails this rule as not assessed.
 
 :func:`assess` also gives, for each IOD of the summary, the review that a
 point allows its frames (:data:`REVIEW_MODES`): ``"flagged-only"``, where
@@ -317,18 +321,36 @@ CHOSEN_CRITERIA = AcceptanceCriteria(
     min_texts=400,
     min_frames=300,
 )
+# The failure of every point of a summary whose baseline is not today's
+# detector, for the rule of no loss against it.
+NOT_TODAYS = "loss: not assessed, as the baseline is not today's detector"
 # Held out whole, beside the split's rule.
 HELD_OUT_COLLECTIONS = ("Pediatric-CT-SEG",)
 
 
 def assess(
-    summary: Mapping[str, Any], criteria: AcceptanceCriteria
+    summary: Mapping[str, Any],
+    criteria: AcceptanceCriteria,
+    *,
+    todays_baseline: bool = True,
 ) -> list[dict[str, Any]]:
     """Whether each point of a summary meets the criteria, and which cells
     fail and why, whether it could be adopted: never for a benchmark-only
     detector, whatever it meets; and the review that it allows each IOD of
     the summary, as the module describes. It reads only the summary, so it
-    can be run again on a published one with other criteria."""
+    can be run again on a published one with other criteria.
+
+    Parameters
+    ----------
+    summary : Mapping
+    criteria : AcceptanceCriteria
+    todays_baseline : bool
+        Whether the summary's baseline point is today's detector, today's
+        model at the settings that D-037 describes. Where it is not, every
+        point fails the rule of :attr:`AcceptanceCriteria.max_loss` as not
+        assessed, since a loss against today's detector cannot be measured
+        from a baseline of another.
+    """
     points = summary["points"]
     if not 0 <= criteria.baseline < len(points):
         raise EvaluationRefused("The baseline must be a point of the summary.")
@@ -336,7 +358,9 @@ def assess(
     adoptable = summary.get("tier", "adoptable") == "adoptable"
     assessed = []
     for point in points:
-        failures = list(dict.fromkeys(_failures(point, baseline, criteria)))
+        failures = list(
+            dict.fromkeys(_failures(point, baseline, criteria, todays_baseline))
+        )
         failed = {iod for iod, _ in failures}
         # An IOD without a cell of its own was not judged whole.
         whole = {row["value"]["iod"] for row in point["by"].get("iod", [])}
@@ -368,14 +392,21 @@ def _iods(point: Mapping[str, Any]) -> list[str]:
 
 
 def _failures(
-    point: Mapping[str, Any], baseline: Mapping[str, Any], criteria: AcceptanceCriteria
+    point: Mapping[str, Any],
+    baseline: Mapping[str, Any],
+    criteria: AcceptanceCriteria,
+    todays_baseline: bool,
 ) -> list[_Failure]:
     failures = _sensitivity_failures(point, criteria)
     failures += _unmeasured_failures(point, criteria)
     failures += _false_positive_failures(point, criteria)
     failures += _missed_failures(point, criteria)
     if criteria.max_loss is not None:
-        failures += _losses(point, baseline, criteria.max_loss)
+        if todays_baseline:
+            failures += _losses(point, baseline, criteria.max_loss)
+        else:
+            # Of every IOD, as a loss in any stratum could be.
+            failures.append((None, NOT_TODAYS))
     return failures
 
 

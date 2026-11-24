@@ -41,10 +41,19 @@ The indicators are:
 - Conversion Type (0008,0064), of any value, which describes how an image
   was converted or captured, such as from a workstation's screen or a
   scanned document (PS3.3 Section C.8.6.1).
+- A Computed Radiography or Digital X-Ray image, by its SOP Class UID
+  (0008,0016). A CR reader or a DX console can burn the patient's name,
+  identifiers, dates, the site, and the operator's markers into the image,
+  and Burned In Annotation (0028,0301), Type 3 in the Computed Radiography
+  Image IOD, need not say so, so every radiograph is reported, whatever
+  that attribute says.
 - An overlay group, (6000,eeee) to (601E,eeee), without Overlay Data
   (60xx,3000). PS3.3 before 2004 let an overlay lie in unused bits of Pixel
   Data (Section C.9.2), so its graphics and text stay in the pixel data when
-  the Basic Profile removes the overlay's attributes.
+  the Basic Profile removes the overlay's attributes. A group whose only
+  attribute is Overlay Activation Layer (60xx,1001), with which a softcopy
+  Presentation State shows an overlay of the image that it references
+  (Section C.11.7), holds no overlay, so it is not one.
 - In an RT Structure Set, an ROI that has contours and whose RT ROI
   Interpreted Type (3006,00A4) or ROI Name (3006,0026) is EXTERNAL, BODY,
   or SKIN, the patient's outline, or BOLUS or FIXATION, the Defined Terms
@@ -55,9 +64,11 @@ The indicators are:
   such as "Skin 5mm" is not one.
 - Units (0054,1001) of GML or CM2ML, values scaled to a standardised uptake
   value (SUV), or a Real World Value Mapping Sequence (0040,9096) item, at
-  the top level or in a shared or per-frame functional group, whose
-  Measurement Units Code Sequence (0040,08EA) gives a Code Value or Long
-  Code Value that contains ``{SUV``, as each SUV unit of PS3.16 CID 85
+  the top level, in a shared or per-frame functional group, or in a
+  Referenced Image Real World Value Mapping Sequence (0040,9094) item,
+  where a Real World Value Mapping instance maps the images that the item
+  names (PS3.3 Section C.25.2), whose Measurement Units Code Sequence
+  (0040,08EA) gives a Code Value or Long Code Value that contains ``{SUV``, as each SUV unit of PS3.16 CID 85
   does, such as ``g/ml{SUVbw}``. The Basic Profile removes Patient's Weight
   (0010,1030) but keeps these and Radionuclide Total Dose (0018,1074), so
   a mapping's slope and the dose give the weight, and so do images scaled
@@ -79,11 +90,15 @@ indicator. Findings name attribute paths, never values.
 :func:`assess_series` reads the indicators that need a whole series:
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
-which can show the face in profile, and so may an RT Image, a projection
-such as a lateral DRR, and a Segmentation, whose segment of the skin or
-body traces the profile; and one whose attributes, or a Segmentation's
-segments, name a region of the head or neck in a reviewed list from PS3.16
-Annex L says that it does.
+which can show the face in profile, and so may an RT Image, Enhanced RT
+Image, or Enhanced Continuous RT Image, each a projection such as a lateral
+DRR, a Nuclear Medicine image, whether a reconstructed volume, the
+projections it is reconstructed from, or a planar projection, a Computed
+Radiography or Digital X-Ray image, a projection such as a lateral skull
+radiograph, a Segmentation, whose segment of the skin or body traces the
+profile, and a Parametric Map, whose map of the head shows its outline; and
+one whose attributes, or a Segmentation's segments, name a region of the
+head or neck in a reviewed list from PS3.16 Annex L says that it does.
 :func:`series_evidence` gives the part of an instance that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
@@ -108,6 +123,7 @@ from collections.abc import Iterator, MutableSequence, Sequence
 
 from pymedphys._imports import pydicom
 
+from . import attribution
 from .file_layout import ElementPath
 from .sequences import UnreadableItems, decode_items
 from .standard import load_data_dictionary
@@ -131,6 +147,7 @@ class Indicator(enum.Enum):
     RECOGNIZABLE_VISUAL_FEATURES = "recognizable-visual-features"
     SECONDARY_IMAGE = "secondary-image"
     CONVERTED_IMAGE = "converted-image"
+    RADIOGRAPH_ANNOTATION = "radiograph-annotation"
     EMBEDDED_OVERLAY = "embedded-overlay"
     PATIENT_SURFACE_CONTOUR = "patient-surface-contour"
     CT_VOLUME = "ct-volume"
@@ -139,7 +156,10 @@ class Indicator(enum.Enum):
     RT_DOSE_VOLUME = "rt-dose-volume"
     LOCALIZER = "localizer"
     RT_IMAGE = "rt-image"
+    NM_IMAGE = "nm-image"
+    RADIOGRAPH = "radiograph"
     SEGMENTATION = "segmentation"
+    PARAMETRIC_MAP = "parametric-map"
     HEAD_OR_NECK = "head-or-neck"
     SUV_UNITS = "suv-units"
     SUV_MAPPING = "suv-mapping"
@@ -157,6 +177,7 @@ _RISKS = {
     Indicator.RECOGNIZABLE_VISUAL_FEATURES: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SECONDARY_IMAGE: Risk.BURNED_IN_TEXT,
     Indicator.CONVERTED_IMAGE: Risk.BURNED_IN_TEXT,
+    Indicator.RADIOGRAPH_ANNOTATION: Risk.BURNED_IN_TEXT,
     Indicator.EMBEDDED_OVERLAY: Risk.BURNED_IN_TEXT,
     Indicator.PATIENT_SURFACE_CONTOUR: Risk.RECONSTRUCTABLE_FACE,
     Indicator.CT_VOLUME: Risk.RECONSTRUCTABLE_FACE,
@@ -165,7 +186,10 @@ _RISKS = {
     Indicator.RT_DOSE_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
     Indicator.RT_IMAGE: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.NM_IMAGE: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.RADIOGRAPH: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SEGMENTATION: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.PARAMETRIC_MAP: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
     Indicator.SUV_MAPPING: Risk.BODY_WEIGHT,
@@ -266,6 +290,7 @@ _ROI_NUMBER = "(3006,0022)"
 _ROI_NAME = "(3006,0026)"
 _UNITS = "(0054,1001)"
 _REAL_WORLD_VALUE_MAPPING_SEQUENCE = "(0040,9096)"
+_REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE = "(0040,9094)"
 _MEASUREMENT_UNITS_CODE_SEQUENCE = "(0040,08EA)"
 _LONG_CODE_VALUE = "(0008,0119)"
 _SEGMENT_SEQUENCE = "(0062,0002)"
@@ -300,6 +325,7 @@ READ_VRS = {
     _ROI_NAME: "LO",
     _UNITS: "CS",
     _REAL_WORLD_VALUE_MAPPING_SEQUENCE: "SQ",
+    _REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE: "SQ",
     _MEASUREMENT_UNITS_CODE_SEQUENCE: "SQ",
     _LONG_CODE_VALUE: "UC",
     _SEGMENT_SEQUENCE: "SQ",
@@ -308,6 +334,11 @@ READ_VRS = {
 
 _PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
 _OVERLAY_DATA_ELEMENT = 0x3000
+# Overlay Activation Layer (60xx,1001), the only attribute of a softcopy
+# Presentation State's Overlay Activation Module (PS3.3 C.11.7), names an
+# overlay of the referenced image, or of the state's own Overlay Plane
+# Module, by its group, to show on a graphic layer: it describes no overlay.
+_OVERLAY_ACTIVATION_LAYER_ELEMENT = 0x1001
 _UNDEFINED_LENGTH = 0xFFFFFFFF
 # An IS value: an optional sign and digits (PS3.5 Table 6.2-1).
 _INTEGER = re.compile(r"[+-]?[0-9]+")
@@ -461,6 +492,7 @@ def assess_pixel_risk(dataset: pydicom.Dataset) -> PixelRiskAssessment:
     ['burned-in-text: burned-in-annotation at (0028,0301)']
     """
     findings = [*_image_findings(dataset), *_overlay_findings(dataset)]
+    findings.extend(_radiograph_findings(dataset))
     findings.extend(_surface_findings(dataset))
     findings.extend(_body_weight_findings(dataset))
     return PixelRiskAssessment(
@@ -503,17 +535,47 @@ def _image_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
             yield Finding(indicator, path)
 
 
+def _radiograph_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
+    """Find a Computed Radiography or Digital X-Ray image, by its SOP Class."""
+    path = ElementPath((), _SOP_CLASS_UID)
+    try:
+        sop_class = _sop_class(dataset)
+    except _Unreadable:
+        yield Finding(Indicator.UNREADABLE, path, Risk.BURNED_IN_TEXT)
+        return
+    if sop_class in _RADIOGRAPH_SOP_CLASSES:
+        yield Finding(Indicator.RADIOGRAPH_ANNOTATION, path)
+
+
 def overlay_groups_without_data(dataset: pydicom.Dataset) -> dict[int, int]:
     """Return each overlay group without Overlay Data (60xx,3000), with its
     first element, in the order of the data set.
 
     These are the groups whose overlay may lie in unused bits of Pixel Data,
     which :func:`assess_pixel_risk` reports as
-    :attr:`Indicator.EMBEDDED_OVERLAY`.
+    :attr:`Indicator.EMBEDDED_OVERLAY`. A group is an overlay group by any
+    element but its group length and Overlay Activation Layer (60xx,1001),
+    with which a softcopy Presentation State shows an overlay of the image
+    that it references on one of its graphic layers (PS3.3 C.11.7): a group
+    that holds only that attribute places no overlay in this instance.
+
+    >>> from pymedphys._imports import pydicom
+    >>> dataset = pydicom.Dataset()
+    >>> dataset.add_new(0x60001001, "CS", "LAYER")
+    >>> overlay_groups_without_data(dataset)
+    {}
+    >>> dataset.add_new(0x60000102, "US", 15)
+    >>> overlay_groups_without_data(dataset) == {0x6000: 0x0102}
+    True
     """
     groups: dict[int, int] = {}
     for tag in dataset.keys():
-        if 0x6000 <= tag.group <= 0x601E and tag.group % 2 == 0 and tag.element:
+        if (
+            0x6000 <= tag.group <= 0x601E
+            and tag.group % 2 == 0
+            and tag.element
+            and tag.element != _OVERLAY_ACTIVATION_LAYER_ELEMENT
+        ):
             groups.setdefault(tag.group, tag.element)
     return {
         group: first
@@ -620,7 +682,8 @@ def _body_weight_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
     body surface area, or, for SUVibw, an ideal body weight from height and
     sex (PS3.16 CID 85). The Basic Profile removes Patient's Weight
     (0010,1030) but keeps Units (0054,1001), Real World Value Mapping
-    Sequence (0040,9096), and Radionuclide Total Dose (0018,1074).
+    Sequence (0040,9096), Referenced Image Real World Value Mapping Sequence
+    (0040,9094), and Radionuclide Total Dose (0018,1074).
 
     These are conservative disclosure indicators, not demonstrated recovery:
     weight recovery depends on the SUV normalisation, activity calibration,
@@ -654,6 +717,14 @@ def _body_weight_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
     ):
         for item, within in _sequence_items(dataset, (), group, unreadable):
             mappings.extend(_sequence_items(item, within, mapping, unreadable))
+    # A Real World Value Mapping instance maps the values of the images that
+    # each item names in the Real World Value Mapping Sequence of the item,
+    # which includes the Real World Value Mapping Macro (PS3.3 Table
+    # C.25.2-1).
+    for item, within in _sequence_items(
+        dataset, (), _REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE, unreadable
+    ):
+        mappings.extend(_sequence_items(item, within, mapping, unreadable))
     for item, within in mappings:
         for unit, nested in _sequence_items(
             item, within, _MEASUREMENT_UNITS_CODE_SEQUENCE, unreadable
@@ -711,6 +782,9 @@ HEAD_AND_NECK_REGIONS_PATH = (
     pathlib.Path(__file__).resolve().parent / "head_and_neck_regions.toml"
 )
 _REGIONS_SCHEMA = "pymedphys-deid-head-and-neck-regions/1"
+_REGIONS_TOP_LEVEL_FIELDS = frozenset(
+    {"schema", "edition", "acknowledgement", "link", "notice", "region"}
+)
 _REGION_FIELDS = {"meaning", "sct"}
 # The image Storage SOP Classes of CT, MR, and PET, and RT Dose Storage
 # (PS3.4 Table B.5-1), each with the indicator of its volume and whether its
@@ -744,22 +818,75 @@ _VOLUME_SOP_CLASSES = {
     # frames, so it is not a volume.
     "1.2.840.10008.5.1.4.1.1.481.2": (Indicator.RT_DOSE_VOLUME, True),
 }
-# RT Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such
-# as a digitally reconstructed radiograph (DRR) or a simulator or portal
-# image (PS3.3 Section C.8.8.2), so, like a localizer, it can show the face
-# in profile. It is recognised by its SOP Class, whatever its Image Type:
-# the standard Defined Terms of Image Type's third value for it do not
-# include LOCALIZER, though an implementer may extend them (PS3.5 Section
-# 6.3).
-_RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# RT Image Storage, Enhanced RT Image Storage, and Enhanced Continuous RT
+# Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such as a
+# digitally reconstructed radiograph (DRR) or a simulator or portal image
+# (PS3.3 Section C.8.8.2), and an Enhanced or Enhanced Continuous RT Image
+# holds projections too, acquired directly or derived from a volume such as
+# a CT (PS3.3 Sections A.86.1.15.1 and A.86.1.16.1), so, like a localizer,
+# each can show the face in profile. Each is recognised by its SOP Class,
+# whatever its Image Type: the standard Defined Terms of Image Type's third
+# value for them do not include LOCALIZER, though an implementer may extend
+# them (PS3.5 Section 6.3).
+RT_IMAGE_SOP_CLASSES = frozenset(
+    {
+        "1.2.840.10008.5.1.4.1.1.481.1",
+        "1.2.840.10008.5.1.4.1.1.481.23",
+        "1.2.840.10008.5.1.4.1.1.481.24",
+    }
+)
+# Nuclear Medicine Image Storage (PS3.4 Table B.5-1), the one Storage SOP
+# Class of the Nuclear Medicine Image IOD. Each instance is reported,
+# whatever its Image Type and Number of Frames: by the third value of its
+# Image Type (PS3.3 Section C.8.4.9.1.1), it is a volume reconstructed from
+# a tomographic acquisition (RECON TOMO or RECON GATED TOMO), the
+# projections at each angle of the detectors' rotation from which such a
+# volume is reconstructed (TOMO or GATED TOMO), among them lateral views,
+# or planar projections (STATIC, DYNAMIC, GATED, or WHOLE BODY), any of
+# which may be lateral, as an RT Image may be. Its frames are placed by the
+# items of its Detector Information Sequence (0054,0022), not by the
+# attributes that place a CT, MR, or PET slice, so it is no frame of a
+# volume, and an Image Type that cannot be read cannot hide it. Its
+# resolution, coarser than CT's, changes how readily a face is recognised,
+# not whether it may be.
+_NM_IMAGE = "1.2.840.10008.5.1.4.1.1.20"
+# Computed Radiography Image Storage, and Digital X-Ray Image Storage - For
+# Presentation and - For Processing (PS3.4 Table B.5-1), the Storage SOP
+# Classes of the Computed Radiography Image and Digital X-Ray Image IODs. A
+# radiograph is a projection, and a lateral one of the head, such as a
+# lateral skull radiograph or a cephalogram, shows the face in profile, as a
+# localizer can. It is recognised by its SOP Class, whatever its View
+# Position (0018,5101), which is Type 2 in a CR image, so may be empty, and
+# Type 3 in a DX image, so may be absent,
+# and whatever its Image Type, whose third value the Digital X-Ray Image IOD
+# requires to be empty (PS3.3 Section C.8.11.3.1.1) and the Computed
+# Radiography Image IOD does not define. Each is also reported as able to
+# hold burned-in text, by :func:`_radiograph_findings`.
+_RADIOGRAPH_SOP_CLASSES = frozenset(
+    {
+        "1.2.840.10008.5.1.4.1.1.1",
+        "1.2.840.10008.5.1.4.1.1.1.1",
+        "1.2.840.10008.5.1.4.1.1.1.1.1",
+    }
+)
 # Segmentation Storage and Label Map Segmentation Storage (PS3.4 Table
 # B.5-1), whose frames are masks of segments. A segment of the skin or body
 # traces the profile, and its label or code need not say that it is one, so
-# each instance is reported, whatever its segments. Surface Segmentation
-# holds meshes, not pixel data, and is out of scope (D-010).
+# each instance is reported, whatever its segments. A Surface Segmentation
+# holds meshes, not pixel data, so it is none of them: the face review
+# releases one under Clean Recognizable Visual Features only on a verdict on
+# the QC pack's surfaces sheet of its meshes (face_review.holds_surface_mesh).
 SEGMENTATION_SOP_CLASSES = frozenset(
     {"1.2.840.10008.5.1.4.1.1.66.4", "1.2.840.10008.5.1.4.1.1.66.7"}
 )
+# Parametric Map Storage (PS3.4 Table B.5-1), whose frames map a quantity,
+# such as an apparent diffusion coefficient or a standardised uptake value,
+# derived from images of the patient (PS3.3 Section A.75.1). A map of the
+# head shows the head's outline wherever the quantity differs from the air
+# around it, whatever its quantity (an inference, not a published result),
+# and one frame of it can be a sagittal plane, so each instance is reported, whatever its Number of Frames, and it
+# is no frame of a volume.
+PARAMETRIC_MAP_STORAGE = "1.2.840.10008.5.1.4.1.1.30"
 VOLUME_INDICATORS = (
     Indicator.CT_VOLUME,
     Indicator.MR_VOLUME,
@@ -791,21 +918,30 @@ class HeadAndNeckRegions:
     codes: frozenset[tuple[str, str]]
 
 
+def _is_regions_document(data: dict[str, object]) -> bool:
+    """Whether a regions file has the schema, an edition, that edition's
+    PS3.16 attribution, and no other top-level fields."""
+    edition = data.get("edition")
+    if data.get("schema") != _REGIONS_SCHEMA or not isinstance(edition, str):
+        return False
+    if data.get("acknowledgement") != attribution.acknowledgement("PS3.16", edition):
+        return False
+    return (
+        attribution.missing(data) is None
+        and set(data) == _REGIONS_TOP_LEVEL_FIELDS
+        and isinstance(data["region"], list)
+    )
+
+
 @functools.lru_cache(maxsize=None)
 def _load_regions(path: pathlib.Path) -> HeadAndNeckRegions:
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
         raise ValueError(f"{path.name} cannot be read") from None
-    edition = data.get("edition")
-    if (
-        data.get("schema") != _REGIONS_SCHEMA
-        or not isinstance(edition, str)
-        or data.get("acknowledgement") != f"DICOM PS3.16 {edition}, © NEMA"
-        or set(data) != {"schema", "edition", "acknowledgement", "region"}
-        or not isinstance(data["region"], list)
-    ):
+    if not _is_regions_document(data):
         raise ValueError(f"{path.name} is not a list of head and neck regions")
+    edition = data["edition"]
     if edition != load_data_dictionary().edition:
         raise ValueError(f"{path.name} is not of the pinned edition")
     body_parts: set[str] = set()
@@ -846,7 +982,8 @@ def load_head_and_neck_regions(
     ValueError
         If the file cannot be read; has another schema, an edition other
         than the pinned data dictionary's, an acknowledgement other than that
-        of its edition, or other fields; or
+        of its edition, no link to the DICOM Standard or NEMA's trademark
+        notice, or other fields; or
         has a region without exactly a meaning, a numeric SNOMED CT code, an
         optional SNOMED RT identifier, and an optional Body Part Examined
         term of at most 16 upper-case letters, digits, underscores, and
@@ -902,18 +1039,34 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     counts as a frame of each volume that the series' other instances make.
     The localizers of those image classes are reported apart, since a
     localizer can show the face in profile, although no study has measured
-    recognition from one. So is each RT Image Storage instance, whatever its
-    Image Type, gantry angle, or Number of Frames, since an RT Image is a
-    projection, and a lateral one, such as a DRR or a simulator or portal
-    image, can show the face in profile as a localizer can; it is no frame
-    of a volume. So is each Segmentation, of Segmentation Storage or Label
-    Map Segmentation Storage, whatever its segments and Number of Frames,
-    since a segment of the skin or body traces the profile and its label or
-    code need not say that it is one; it is no frame of a volume either.
-    A volume, localizer, RT Image, or Segmentation whose Body Part Examined
-    (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
-    in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
-    functional group, names a region in :func:`load_head_and_neck_regions`
+    recognition from one. So is each RT Image, of RT Image Storage,
+    Enhanced RT Image Storage, or Enhanced Continuous RT Image Storage,
+    whatever its Image Type, gantry angle, or Number of Frames, since each
+    holds projections, and a lateral one, such as a DRR or a simulator,
+    portal, or kV image, can show the face in profile as a localizer can; it
+    is no frame of a volume. So is each Nuclear Medicine Image Storage
+    instance, whatever its Image Type and Number of Frames, since it is a
+    volume reconstructed from a tomographic acquisition, the projections
+    from which one is reconstructed, or a planar projection, which may be
+    lateral; it is no frame of a volume either. So is each instance of
+    Computed Radiography Image Storage, Digital X-Ray Image Storage - For
+    Presentation, or Digital X-Ray Image Storage - For Processing, whatever
+    its View Position (0018,5101), Image Type, or Number of Frames, since a
+    radiograph is a projection, and a lateral one of the head, such as a
+    lateral skull radiograph or a cephalogram, shows the face in profile; it
+    is no frame of a volume either. So is each Segmentation, of
+    Segmentation Storage or Label Map Segmentation Storage, whatever its
+    segments and Number of Frames, since a segment of the skin or body
+    traces the profile and its label or code need not say that it is one;
+    it is no frame of a volume either. So is each Parametric Map, whatever
+    its quantity and Number of Frames, since a map of the head shows its
+    outline wherever the quantity differs from the air around it; it is no
+    frame of a volume either. A volume, localizer, RT Image, Nuclear
+    Medicine image, radiograph, Segmentation, or Parametric Map whose Body
+    Part Examined (0018,0015) or Anatomic Region Sequence (0008,2218), at
+    the top level or in a Frame Anatomy Sequence (0020,9071) of the shared
+    or a per-frame functional group, names a region in
+    :func:`load_head_and_neck_regions`
     is also reported as showing the head or neck, and so is a Segmentation
     an item of whose Segment Sequence (0062,0002) names one by its Anatomic
     Region Sequence or its Segmented Property Type Code Sequence
@@ -931,8 +1084,10 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     -------
     tuple of SeriesFinding
         The CT, MR, PET, and RT Dose volumes first, in that order, then the
-        localizers, then the RT Images, then the Segmentations, then the head
-        or neck by attribute, then unreadable evidence by instance, which is
+        localizers, then the RT Images, then the Nuclear Medicine images,
+        then the radiographs, then the Segmentations, then the Parametric
+        Maps, then the head or neck by attribute, then unreadable evidence by
+        instance, which is
         reported whether or not the series is a volume.
     """
     regions = load_head_and_neck_regions()
@@ -941,7 +1096,10 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     unknown: list[int] = []
     localizers: list[int] = []
     rt_images: list[int] = []
+    nm_images: list[int] = []
+    radiographs: list[int] = []
     segmentations: list[int] = []
+    parametric_maps: list[int] = []
     head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
     for index, dataset in enumerate(instances):
@@ -951,8 +1109,12 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
             volume_class = None
         else:
-            if sop_class == _RT_IMAGE:
-                rt_images.append(index)
+            if sop_class in RT_IMAGE_SOP_CLASSES or sop_class == _NM_IMAGE:
+                (nm_images if sop_class == _NM_IMAGE else rt_images).append(index)
+                head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
+                continue
+            if sop_class in _RADIOGRAPH_SOP_CLASSES:
+                radiographs.append(index)
                 head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue
             if sop_class in SEGMENTATION_SOP_CLASSES:
@@ -961,6 +1123,10 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
                     *_head_or_neck(dataset, regions, index, unreadable),
                     *_segments_head_or_neck(dataset, regions, index, unreadable),
                 ]
+                continue
+            if sop_class == PARAMETRIC_MAP_STORAGE:
+                parametric_maps.append(index)
+                head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue
             volume_class = _VOLUME_SOP_CLASSES.get(sop_class or "")
             if volume_class is None:
@@ -991,8 +1157,14 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
         shown_by.append(SeriesFinding(Indicator.LOCALIZER, tuple(localizers)))
     if rt_images:
         shown_by.append(SeriesFinding(Indicator.RT_IMAGE, tuple(rt_images)))
+    if nm_images:
+        shown_by.append(SeriesFinding(Indicator.NM_IMAGE, tuple(nm_images)))
+    if radiographs:
+        shown_by.append(SeriesFinding(Indicator.RADIOGRAPH, tuple(radiographs)))
     if segmentations:
         shown_by.append(SeriesFinding(Indicator.SEGMENTATION, tuple(segmentations)))
+    if parametric_maps:
+        shown_by.append(SeriesFinding(Indicator.PARAMETRIC_MAP, tuple(parametric_maps)))
     shown = {index for finding in shown_by for index in finding.instances}
     named: dict[ElementPath, list[int]] = {}
     for index, paths in head.items():

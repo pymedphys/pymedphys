@@ -83,6 +83,10 @@ class ConvertedCase:
     def subject(self) -> str | None:
         return self.source.subject
 
+    @property
+    def subject_namespace(self) -> str | None:
+        return getattr(self.source, "subject_namespace", None)
+
     def read(self) -> Iterator[EvaluationFrame | Skipped]:
         images: list[ClassicImage] = []
         known = []

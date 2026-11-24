@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Marchant Van der Walt
 # Copyright (C) 2019 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import os
+import sys
 import textwrap
 from copy import deepcopy
 from typing import Union, cast
@@ -104,6 +107,59 @@ def _check_for_supported_collimation_device(
         )
 
 
+def _check_control_points_that_leave_out_a_device(
+    beam_limiting_device_position_sequences, beam_limiting_device_sequence
+):
+    """Validate the control points that leave out a beam limiting device.
+
+    After the first control point, an RT Plan lists only the devices
+    whose positions change during the beam (PS3.3 C.8.8.14), so
+    ``pymedphys.Delivery.from_dicom`` gives a device that is left out
+    the positions it was last given. That reading holds only for a list
+    of devices that the beam defines. A control point that lists every
+    device of the beam is read as it always was.
+
+    Parameters
+    ----------
+    beam_limiting_device_position_sequences
+        The ``BeamLimitingDevicePositionSequence`` that applies at each
+        control point of a beam, in control point order.
+    beam_limiting_device_sequence
+        The ``BeamLimitingDeviceSequence`` of that beam.
+
+    Raises
+    ------
+    ValueError
+        If a control point that leaves out one of the beam's devices
+        has an empty ``BeamLimitingDevicePositionSequence``, or lists a
+        device that the beam does not define.
+
+    """
+    defined_types = {
+        item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
+    }
+
+    for index, sequence in enumerate(beam_limiting_device_position_sequences):
+        listed_types = {item.RTBeamLimitingDeviceType for item in sequence}
+
+        if defined_types <= listed_types:
+            continue
+
+        if not listed_types:
+            raise ValueError(
+                "The Beam Limiting Device Position Sequence of control point "
+                f"{index}, counting from 0, is empty. A control point at "
+                "which no beam limiting device moves leaves the sequence out."
+            )
+
+        if not listed_types <= defined_types:
+            raise ValueError(
+                f"Control point {index}, counting from 0, leaves out a beam "
+                "limiting device and lists one that the Beam Limiting Device "
+                "Sequence of its beam does not define."
+            )
+
+
 class DeliveryDicom(DeliveryBase):
     @classmethod
     def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_group_number=None):
@@ -168,6 +224,58 @@ class DeliveryDicom(DeliveryBase):
         return cls.combine(*delivery_data_by_beam_sequence)
 
     def to_dicom(self, dicom_template, fraction_group_number=None):
+        """Write this delivery into a copy of an RT Plan template.
+
+        Parameters
+        ----------
+        dicom_template : pydicom.Dataset
+            An RT Plan whose beams each have a single gantry angle. The
+            delivery's control points go to the beam at their gantry
+            angle. Each beam must define one ASYMY jaw pair and one MLCX
+            beam limiting device.
+        fraction_group_number : int, optional
+            The fraction group to write. By default, the template's only
+            fraction group, or the one whose Beam Metersets and gantry
+            angles match the delivery's.
+
+        Returns
+        -------
+        pydicom.Dataset
+            A copy of the template with only that fraction group and its
+            beams, holding this delivery's control points and Beam
+            Metersets.
+
+        Raises
+        ------
+        ValueError
+            If a template beam does not define exactly one ASYMY and one
+            MLCX beam limiting device, if its Final Cumulative Meterset
+            Weight is not a positive, finite number or is below
+            ``sys.float_info.min``, where a float no longer has full
+            precision, or if no single fraction group matches the
+            delivery.
+
+        Notes
+        -----
+        Every control point is written with ASYMY and MLCX positions,
+        in whatever order the template lists the devices, including
+        where a template control point leaves a device out. Cumulative
+        Meterset Weights are written on the scale of the template beam's
+        Final Cumulative Meterset Weight, which the weight at the end of
+        the beam equals (PS3.3 C.8.8.14); a beam without one is given a
+        Final Cumulative Meterset Weight of 1. Each weight is written to
+        within a millionth of the final weight, whatever that scale is:
+        with six decimal places, with more where the final weight is
+        below 1, and with seven significant figures where those do not
+        fit the 16 characters of a Decimal String. After the first
+        control point, whose Cumulative Dose Reference Coefficients
+        PS3.3 C.8.8.14.7 defines as zero, the coefficients in each
+        Referenced Dose Reference Sequence are left empty, because they
+        come from the dose calculated for the template, which a delivery
+        does not record. Other control point attributes are copied from
+        the template's first control point for the first, and from its
+        last control point for the rest.
+        """
         filtered = self._filter_cps()
         if fraction_group_number is None:
             fraction_group_number = self._fraction_group_number(dicom_template)
@@ -259,6 +367,9 @@ class DeliveryDicom(DeliveryBase):
                 control_points, "BeamLimitingDevicePositionSequence"
             )
         )
+        _check_control_points_that_leave_out_a_device(
+            beam_limiting_device_position_sequences, beam_limiting_device_sequence
+        )
 
         dicom_mlcs = _pmp_rtplan.get_leaf_jaw_positions_for_type(
             beam_limiting_device_position_sequences, "MLCX"
@@ -306,8 +417,11 @@ class DeliveryDicom(DeliveryBase):
                     "without the dose being calculated."
                 )
 
+        # The weight is divided by the final weight first, so that a large
+        # weight does not overflow its product with the meterset. The NumPy
+        # value comes first, so that the result stays a NumPy float.
         mu = [
-            meterset * np.array(weight) / final_mu_weight
+            (np.array(weight) / final_mu_weight) * meterset
             for control_point, weight in zip(control_points, cumulative_meterset_weight)
         ]
 
@@ -328,12 +442,45 @@ class DeliveryDicom(DeliveryBase):
         data_converted = self._coordinate_convert()
 
         beam = created_dicom.BeamSequence[beam_index]
+
+        device_types = [
+            device.get("RTBeamLimitingDeviceType")
+            for device in beam.get("BeamLimitingDeviceSequence", [])
+        ]
+        if device_types.count("ASYMY") != 1 or device_types.count("MLCX") != 1:
+            raise ValueError(
+                "Delivery.to_dicom needs each template beam to define one "
+                "ASYMY and one MLCX beam limiting device, the jaws and MLC "
+                "whose positions it writes."
+            )
+
+        # Required (Type 1C) once the control points have weights.
+        if beam.get("FinalCumulativeMetersetWeight") in (None, ""):
+            beam.FinalCumulativeMetersetWeight = 1
+
+        # The scale of the weights that are written. Below the smallest
+        # normal float, the weights could not be scaled at full precision.
+        final_cumulative_meterset_weight = beam.FinalCumulativeMetersetWeight
+        if not (
+            math.isfinite(final_cumulative_meterset_weight)
+            and final_cumulative_meterset_weight >= sys.float_info.min
+        ):
+            raise ValueError(
+                "Delivery.to_dicom needs each template beam's Final "
+                "Cumulative Meterset Weight to be a positive, finite number "
+                "that a float holds at full precision, because it is the "
+                "scale of the weights that are written."
+            )
+
         cp_sequence = beam.ControlPointSequence
         initial_cp = cp_sequence[0]
         subsequent_cp = cp_sequence[-1]
 
         all_control_points = _pmp_rtplan.build_control_points(
-            initial_cp, subsequent_cp, data_converted
+            initial_cp,
+            subsequent_cp,
+            data_converted,
+            final_cumulative_meterset_weight,
         )
 
         beam_meterset = "{:.6f}".format(data_converted["monitor_units"][-1])
@@ -341,8 +488,6 @@ class DeliveryDicom(DeliveryBase):
             created_dicom, beam_meterset, beam_index, fraction_index
         )
         _pmp_rtplan.replace_beam_sequence(created_dicom, all_control_points, beam_index)
-
-        _pmp_rtplan.restore_trailing_zeros(created_dicom)
 
         return created_dicom
 

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module renders every section of the report, each checked as it is
+# read, so it is long.
+
 """The release report's human-readable form.
 
 :func:`to_markdown` gives the text of a release report as CommonMark with
@@ -40,10 +44,23 @@ values themselves, such as digests and codes, are those that
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
 
 from .policy import UIDS
 from .release_report import FORMAT, STRUCTURAL_CHECKS
+from .release_report_markdown_values import (
+    ReleaseReportMarkdownError,
+    _boolean,
+    _code,
+    _count,
+    _digest_table,
+    _fields,
+    _list,
+    _members,
+    _optional,
+    _refuse,
+    _table,
+    _tally,
+)
 
 # The name of each field of a section, as a reader sees it, in the order of
 # the document.
@@ -66,6 +83,7 @@ _METHOD = {
     "technique_vocabulary_digest": "Technique vocabulary digest",
     "text_finder_digest": "Text finder digest",
     "pixel_region_rules": "Pixel region rules digest",
+    "reviewed_annotations": "Reviewed annotations digest",
     "safe_private_list": "Safe private list",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
@@ -80,6 +98,7 @@ _OPTIONAL_METHOD = frozenset(
         "technique_vocabulary_digest",
         "text_finder_digest",
         "pixel_region_rules",
+        "reviewed_annotations",
         "safe_private_list",
     }
 )
@@ -103,6 +122,7 @@ _SECTIONS = (
     "qc_review",
     "face_review",
     "redaction_review",
+    "residual_review",
     "pixel_regions",
     "readiness",
     "released",
@@ -110,6 +130,8 @@ _SECTIONS = (
     "held_for_review",
     "roi_names",
     "descriptors",
+    "annotations",
+    "icc_profiles",
     "reference_findings",
     "pixel_risks",
     "search_coverage",
@@ -126,13 +148,6 @@ _GATES = {
     "pixel_and_face": "Pixel and face review gate",
     "attestation": "Attestation gate",
 }
-
-
-class ReleaseReportMarkdownError(ValueError):
-    """The text is not a release report of this module's format.
-
-    The message names the field, never its value.
-    """
 
 
 def to_markdown(report: str) -> str:
@@ -181,6 +196,7 @@ def to_markdown(report: str) -> str:
         *_qc_review(document["qc_review"]),
         *_face_review(document["face_review"]),
         *_redaction_review(document["redaction_review"]),
+        *_residual_review(document["residual_review"]),
         *_pixel_regions(document["pixel_regions"]),
         *_readiness(document["readiness"]),
         *_released(document["released"]),
@@ -188,6 +204,8 @@ def to_markdown(report: str) -> str:
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
         *_descriptors(document["descriptors"]),
+        *_annotations(document["annotations"]),
+        *_icc_profiles(document["icc_profiles"]),
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
@@ -360,11 +378,26 @@ def _qc_review(section: object) -> list[Block]:
 def _face_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("face_review", section, ("reference", "ct_series"))
+    section = _fields(
+        "face_review",
+        section,
+        (
+            "reference",
+            "ct_series",
+            "rt_doses_in_face_block",
+            "undefaced_in_defaced_frame",
+        ),
+    )
     series = _fields(
         "face_review ct_series",
         section["ct_series"],
-        ("defaced", "defaced_around_targets", "not_defaced"),
+        (
+            "defaced",
+            "defaced_around_targets",
+            "defaced_eyes_unconfirmed",
+            "defaced_eyes_confirmed",
+            "not_defaced",
+        ),
     )
     rows = []
     for entry in _list("face_review ct_series not_defaced", series["not_defaced"]):
@@ -396,28 +429,154 @@ def _face_review(section: object) -> list[Block]:
                 "face_review ct_series defaced_around_targets",
                 series["defaced_around_targets"],
             )
+            + ". Of the series defaced, those whose eye ROIs lie away from "
+            "the eyes that the run found, which it holds for review, with each "
+            "instance cleaned by their block, until a reviewer confirms the "
+            "block from the QC pack's sheet of the eyes: "
+            + _tally(
+                "face_review ct_series defaced_eyes_unconfirmed",
+                series["defaced_eyes_unconfirmed"],
+            )
+            + "; and those whose block a reviewer confirmed, which the "
+            "reviewer's verdict on the written images decides: "
+            + _tally(
+                "face_review ct_series defaced_eyes_confirmed",
+                series["defaced_eyes_confirmed"],
+            )
             + ". Those it did not deface, by reason, which the reviewer's "
             "verdict decides, or, for a target that the run cannot keep "
-            "within the images or an eye drawn away from the eyes found, "
-            "holds for review:"
+            "within the images, holds for review:"
         ],
         _table(("Reason", "Series"), rows) if rows else [_NONE],
+        *_doses_in_face_block(section["rt_doses_in_face_block"]),
+        *_undefaced_in_defaced_frame(section["undefaced_in_defaced_frame"]),
+    ]
+
+
+def _undefaced_in_defaced_frame(section: object) -> list[Block]:
+    field = "face_review undefaced_in_defaced_frame"
+    undefaced = _fields(field, section, ("held", "released", "held_with_own_verdict"))
+    rows = [
+        (_code(f"{field} released", output),)
+        for output in _list(f"{field} released", undefaced["released"])
+    ]
+    return [
+        [
+            "RT Structure Sets, RT Doses, PET images, Segmentations, and "
+            "deformable registrations in the Frame of Reference of a defaced "
+            "CT series, naming none, or referring to a defaced slice, that the "
+            "run does not clean of the face, wholly, or of a defaced slice "
+            "that they refer to in another frame, which a verdict on their "
+            "series does not release, since it may have been given beside the "
+            "defaced CT, and which are released only where a reviewer saw no "
+            "recognisable face in each one's own previews: held without such "
+            "a verdict: "
+            + _tally(f"{field} held", undefaced["held"])
+            + "; held with one, since it or its series showed a face, the run "
+            "writes other pixel data, contours, or deformation grids of it "
+            "than the QC pack showed, a block of its own frame that cleaned "
+            "it awaits confirmation, or another hold applies: "
+            + _tally(
+                f"{field} held_with_own_verdict", undefaced["held_with_own_verdict"]
+            )
+            + ". Each released on its own verdict, by its output name, is "
+            "written as the QC pack showed it: not cleaned of the face, or "
+            "cleaned only by the blocks of its own frame:"
+        ],
+        _table(("Output name",), rows) if rows else [_NONE],
+    ]
+
+
+def _doses_in_face_block(section: object) -> list[Block]:
+    field = "face_review rt_doses_in_face_block"
+    doses = _fields(
+        field,
+        section,
+        (
+            "held",
+            "released_as_written",
+            "held_as_written",
+            "released_set_to_zero",
+            "held_set_to_zero",
+        ),
+    )
+    rows = [
+        (_code(f"{field} {name}", output), what)
+        for name, what in (
+            ("released_as_written", "written as received"),
+            ("released_set_to_zero", "set to zero in the face block"),
+        )
+        for output in _list(f"{field} {name}", doses[name])
+    ]
+    return [
+        [
+            "RT Doses with more dose in a face block than the run sets to zero "
+            "there, which it writes as received and holds for review until a "
+            "reviewer chooses, for a later run, to have each written as "
+            "received, released only where the reviewer saw no recognisable "
+            "face in its own dose levels, or set to zero there anyway, "
+            "released only where a reviewer saw no recognisable face in a "
+            "later QC pack's dose levels of it so: held without a choice: "
+            + _tally(f"{field} held", doses["held"])
+            + "; held, written as received on a reviewer's choice: "
+            + _tally(f"{field} held_as_written", doses["held_as_written"])
+            + "; held, set to zero on a reviewer's choice: "
+            + _tally(f"{field} held_set_to_zero", doses["held_set_to_zero"])
+            + ". Each released on a reviewer's choice, by its output name; one "
+            "set to zero may have lost dose that matters for planning, such as "
+            "a target's that the structure set does not mark, and its "
+            "dose-volume histograms are those of the grid as received:"
+        ],
+        _table(("Output name", "Dose in the face block"), rows) if rows else [_NONE],
     ]
 
 
 def _redaction_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("redaction_review", section, ("reference",))
+    section = _fields(
+        "redaction_review", section, ("reference", "review_modes", "frames_not_shown")
+    )
+    modes = _fields(
+        "redaction_review review_modes",
+        section["review_modes"],
+        ("every-frame", "flagged-frames"),
+    )
+    every = _tally("redaction_review review_modes", modes["every-frame"])
+    flagged = _tally("redaction_review review_modes", modes["flagged-frames"])
+    not_shown = _tally("redaction_review frames_not_shown", section["frames_not_shown"])
     return [
         ["## Redaction review"],
         [
             "Under the Clean Pixel Data Option, an instance with Pixel Data is "
-            "released only where a reviewer accepted its blacked-out regions, "
-            "or gave their own, in the earlier run's confidential QC pack with "
+            "released only where a reviewer confirmed the regions to black "
+            "out, keeping or dropping those that the text finder proposed and "
+            "adding their own, in the earlier run's confidential QC pack with "
             "this opaque reference: "
             + _code("redaction_review reference", section["reference"])
-            + "."
+            + ". Source files so approved whose review required every frame: "
+            f"{every}; whose review required only the frames with a "
+            "proposed region, which only an IOD whose text finder met the "
+            f"acceptance criteria allows: {flagged}. Frames of those files "
+            f"that the reviewer was not shown: {not_shown}."
+        ],
+    ]
+
+
+def _residual_review(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("residual_review", section, ("reference",))
+    return [
+        ["## Residual review"],
+        [
+            "An instance that the residual search held for review was released "
+            "only where a reviewer cleared each of its findings, in the value "
+            "that the earlier run's confidential QC pack with this opaque "
+            "reference showed: "
+            + _code("residual_review reference", section["reference"])
+            + ". Each finding so cleared is counted under residual findings "
+            "exempted from review, as reviewed."
         ],
     ]
 
@@ -648,6 +807,54 @@ def _descriptors(section: object) -> list[Block]:
     ]
 
 
+def _annotations(section: object) -> list[Block]:
+    section = _fields("annotations", section, ("outcomes", "held"))
+    tables = _code_tables("annotations", section, "annotations")
+    return [
+        ["## Graphic annotations"],
+        [
+            "The outcome of each graphic annotation of the Presentation States "
+            "whose annotations the reviewed annotations list decided on under "
+            "Clean Graphics, every annotation counted, and how many distinct "
+            "annotations it held for review for each reason. Only the "
+            "confidential QC pack shows the annotations."
+        ],
+        ["### Outcome of each annotation"],
+        tables[0],
+        ["### Distinct annotations held for review"],
+        tables[1],
+    ]
+
+
+def _icc_profiles(section: object) -> list[Block]:
+    section = _fields("icc_profiles", section, ("cleaned", "replaced"))
+    rows = []
+    for entry in _list("icc_profiles replaced", section["replaced"]):
+        entry = _fields("icc_profiles replaced", entry, ("reason", "count"))
+        rows.append(
+            (
+                _code("icc_profiles reason", entry["reason"]),
+                _count("icc_profiles replaced count", entry["count"]),
+            )
+        )
+    return [
+        ["## ICC profiles"],
+        [
+            "What replaced the ICC Profile of each released and held instance "
+            "that had one: the source profile cleaned of everything but its "
+            "colorimetry, so that colours show as they did in the source, or, "
+            "where the source could not be cleaned, a fixed sRGB profile, "
+            "with which colours can show differently."
+        ],
+        [
+            "Cleaned source profiles: "
+            f"{_tally('icc_profiles cleaned', section['cleaned'])}."
+        ],
+        ["### Fixed sRGB profiles, by why the source could not be cleaned"],
+        _table(("Reason", "Profiles"), rows) if rows else [_NONE],
+    ]
+
+
 def _reference_findings(section: object) -> list[Block]:
     rows = []
     for entry in _list("reference_findings", section):
@@ -753,8 +960,19 @@ def _exempted(section: object) -> list[Block]:
             "because what it is or where it was found explains it: a standard "
             "term or code, an equipment name, a vendor's private creator, a date "
             "that Modified Dates shifted, a value that a selected option keeps, "
+            "text in a private creator that the run's safe private list keeps, "
+            "the method digest that the run writes, which holds no source value, "
+            "the nominal UTC offset that Modified Dates writes, which holds none "
+            "either, "
             "or a standard code's meaning, or a UID that a selected option "
-            "keeps, that only instances the run did not write held. Each is "
+            "keeps, that only instances the run did not write held, a kept code "
+            "meaning or technique descriptor made only of the reviewed technique "
+            "vocabulary, a removed requested procedure's code equal to the whole "
+            "value of the same attribute of a kept code, as where equipment "
+            "copied the request's code into the procedure's, a removed code's "
+            "local coding scheme designator equal to the whole designator of a "
+            "kept code of the same scheme, or a finding that a "
+            "reviewer cleared in an earlier run's QC pack. Each is "
             "counted by why it was exempted, the attribute that "
             "held the source value, and the attribute it was found in, each "
             "instance once for each. The QC pack lists each finding by instance "
@@ -862,90 +1080,3 @@ def _several_patients(section: object) -> list[Block]:
             ],
         ),
     ]
-
-
-def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> Block:
-    def line(cells: Sequence[str]) -> str:
-        return "|" + "".join(f" {cell} |" if cell else " |" for cell in cells)
-
-    return [line(header), "|" + " --- |" * len(header), *(line(row) for row in rows)]
-
-
-def _digest_table(field: str, digests: object) -> Block:
-    if not isinstance(digests, dict):
-        raise _refuse(field)
-    return _table(
-        ("File", "SHA-256"),
-        [
-            (_code(field, name), _code(field, digest))
-            for name, digest in digests.items()
-        ],
-    )
-
-
-def _fields(
-    field: str, section: object, names: Mapping[str, object] | Sequence[str]
-) -> dict:
-    """Return the section, if it has exactly these fields, in this order."""
-    if not isinstance(section, dict) or list(section) != list(names):
-        raise ReleaseReportMarkdownError(
-            f"The fields of the release report's {field} are not those of {FORMAT}."
-        )
-    return section
-
-
-def _list(field: str, value: object) -> list:
-    if not isinstance(value, list):
-        raise _refuse(field)
-    return value
-
-
-def _code(field: str, value: object) -> str:
-    # An empty code span, or one with space at an end, would not show the
-    # value as it is.
-    if (
-        not isinstance(value, str)
-        or not value
-        or value != value.strip()
-        or any(c in value for c in "`|\n\r")
-    ):
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _count(field: str, value: object) -> str:
-    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _tally(field: str, value: object) -> str:
-    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _boolean(field: str, value: object) -> str:
-    if not isinstance(value, bool):
-        raise _refuse(field)
-    return f"`{json.dumps(value)}`"
-
-
-def _optional(field: str, value: object, absent: str = "none") -> str:
-    return absent if value is None else _code(field, value)
-
-
-def _members(pairs: list[tuple[str, object]]) -> dict:
-    """Return a JSON object's members, refusing a member named twice."""
-    members = dict(pairs)
-    if len(members) != len(pairs):
-        raise ReleaseReportMarkdownError(
-            "The release report names a member twice in one object."
-        )
-    return members
-
-
-def _refuse(field: str) -> ReleaseReportMarkdownError:
-    return ReleaseReportMarkdownError(
-        f"The release report's {field} is not in the form of {FORMAT}."
-    )

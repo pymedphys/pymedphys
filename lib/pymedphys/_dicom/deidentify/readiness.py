@@ -79,12 +79,14 @@ from .qc_attestation import Outcome, _attestation_of, _pack_bytes, _reference_of
 from .qc_pack import (
     NO_CONTOURS_SHA256,
     NO_GRIDS_SHA256,
+    NO_SURFACES_SHA256,
     NO_PIXELS_SHA256,
     Disposition,
     QcPack,
 )
 from .qc_pack import QcPackError, pack_document
 from .reasons import ReviewReason
+from .reviewed_annotations import ReviewedAnnotations
 from .reviewed_descriptors import ReviewedDescriptors
 from .reviewed_roi_names import ReviewedNames
 from .risk_assessment import (
@@ -111,10 +113,12 @@ _FACE_REASONS = (
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
     ReviewReason.OTHER_GRIDS,
+    ReviewReason.OTHER_SURFACES,
 )
 _NO_PIXELS = bytes.fromhex(NO_PIXELS_SHA256)
 _NO_CONTOURS = bytes.fromhex(NO_CONTOURS_SHA256)
 _NO_GRIDS = bytes.fromhex(NO_GRIDS_SHA256)
+_NO_SURFACES = bytes.fromhex(NO_SURFACES_SHA256)
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -296,6 +300,7 @@ def readiness(
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
     pixel_region_rules: PixelRegionRules | None,
+    reviewed_annotations: ReviewedAnnotations | None = None,
 ) -> release_report.Readiness:
     """Decide a ``public-release`` run's readiness from an earlier run's review.
 
@@ -319,6 +324,10 @@ def readiness(
         The reviewed region rules that the run's Clean Pixel Data applied,
         or None without any, which the statistical gate checks in the same
         way.
+    reviewed_annotations : ReviewedAnnotations, optional
+        The reviewed annotations list that the run's Clean Graphics
+        applied, or None, the default, without one, which the statistical
+        gate checks in the same way.
 
     Returns
     -------
@@ -352,6 +361,7 @@ def readiness(
         reviewed_names=reviewed_names,
         reviewed_descriptors=reviewed_descriptors,
         pixel_region_rules=pixel_region_rules,
+        reviewed_annotations=reviewed_annotations,
         subjects=subjects,
     )
     if review is None:
@@ -438,15 +448,22 @@ def _pixel_and_face(
         return ReviewReason.NO_FACE_VERDICT
     # How many frames the run's own previews show of each instance, from
     # the first, which its pack records a pixel data digest only where they
-    # are every frame, and of each that its dose-levels previews show,
-    # which alone show an RT Dose as it could show a face.
-    _, _, pictured, dosed = _previews(pack_document(pack))
+    # are every frame, of each that its dose-levels previews show, which
+    # alone show an RT Dose as it could show a face, and of each that its
+    # segments sheets show, which alone show a Segmentation so.
+    _, _, pictured, dosed, segmented = _previews(pack_document(pack))
     found = set()
     for position, entry in released.items():
         pixels = _digest(entry.pixel_sha256)
         contours = _digest(entry.contour_sha256)
         grids = _digest(entry.grid_sha256)
-        if pixels == _NO_PIXELS and contours == _NO_CONTOURS and grids == _NO_GRIDS:
+        surfaces = _digest(entry.surface_sha256)
+        if (
+            pixels == _NO_PIXELS
+            and contours == _NO_CONTOURS
+            and grids == _NO_GRIDS
+            and surfaces == _NO_SURFACES
+        ):
             continue  # nothing of it can show a face
         held = faces.hold_reason(
             _digest(entry.source_sha256) or b"",
@@ -455,6 +472,8 @@ def _pixel_and_face(
             pictured.get(position),
             dose=position in dosed,
             grids=grids,
+            segmentation=position in segmented,
+            surfaces=surfaces,
         )
         if held is not None:
             found.add(ReviewReason(held.value))

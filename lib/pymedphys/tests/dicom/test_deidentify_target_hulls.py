@@ -18,6 +18,7 @@ voxels and contours that they keep. Every value here is invented."""
 from __future__ import annotations
 
 import itertools
+import math
 import tracemalloc
 
 from pymedphys._imports import numpy as np
@@ -30,10 +31,10 @@ from pymedphys._dicom.deidentify import target_hulls
 from pymedphys._dicom.deidentify.region_defacing import cut_contours
 from pymedphys._dicom.deidentify.target_hulls import (
     KeptTargets,
+    SliceExtent,
     SliceRange,
     TargetHull,
     beyond_slices,
-    slice_ranges,
     slice_reach,
 )
 
@@ -282,11 +283,13 @@ def test_the_slices_extend_half_a_pixel_beyond_their_edge_centres_and_depth_beyo
     # One slice shifted along its rows: only where all reach counts.
     slices.append(((-9.0, -20.0, 6.0), _AXIAL))
 
-    along_row, down_column, normal = slice_ranges(slices, (2.0, 1.0), (11, 21), 1.0)
+    extent = SliceExtent.of(slices, (2.0, 1.0), (11, 21), 1.0)
+    along_row, down_column = extent.within(-1.0, 7.0)
 
     assert along_row == SliceRange((1.0, 0.0, 0.0), -9.5, 10.5)
     assert down_column == SliceRange((0.0, 1.0, 0.0), -21.0, 1.0)
-    assert normal == SliceRange((0.0, 0.0, 1.0), -1.0, 7.0)
+    assert extent.along_normal() == SliceRange((0.0, 0.0, 1.0), -1.0, 7.0)
+    assert repr(extent) == "SliceExtent(slices=4)"
 
 
 @pytest.mark.parametrize(
@@ -306,7 +309,7 @@ def test_the_slices_extend_half_a_pixel_beyond_their_edge_centres_and_depth_beyo
 def test_a_hull_reaches_beyond_the_slices_only_by_its_part_in_the_block(
     low, high, beyond
 ):
-    ranges = slice_ranges(
+    extent = SliceExtent.of(
         [((-10.0, -20.0, z), _AXIAL) for z in (0.0, 2.0, 4.0)],
         (1.0, 1.0),
         (21, 21),
@@ -314,7 +317,67 @@ def test_a_hull_reaches_beyond_the_slices_only_by_its_part_in_the_block(
     )
     hull = TargetHull.of(_box(low, high))
 
-    assert beyond_slices(hull, _BLOCK, ranges) is beyond
+    assert beyond_slices(hull, _BLOCK, extent) is beyond
+
+
+# A sheared stack: axial slices 2 mm apart from z = 0 to 18 mm, each
+# offset 2 mm further along y than the last, as a gantry tilt is recorded
+# with axial direction cosines, each slice 21 pixels of 1 mm along x and y.
+_SHEARED = [((-10.0, -20.0 + 2.0 * step, 2.0 * step), _AXIAL) for step in range(10)]
+
+
+@pytest.mark.parametrize(
+    ("low", "high", "starts"),
+    [
+        # Within one slice's reach: it and the nearest beyond each end.
+        (4.0, 4.0, (2.0, 6.0)),
+        (3.5, 6.5, (2.0, 8.0)),
+        # Beyond the first or last slice: that slice alone.
+        (-1.0, -0.5, (0.0, 0.0)),
+        (18.5, 19.0, (18.0, 18.0)),
+        (-math.inf, math.inf, (0.0, 18.0)),
+    ],
+    ids=["at-a-slice", "between", "below-the-first", "above-the-last", "every"],
+)
+def test_only_the_slices_nearest_a_span_of_the_normal_decide_its_extent(
+    low, high, starts
+):
+    extent = SliceExtent.of(_SHEARED, (1.0, 1.0), (21, 21), 1.0)
+
+    along_row, down_column = extent.within(low, high)
+
+    # Along a row, every slice's pixels lie alike; down a column, each
+    # slice from first to last is shifted 2 mm, its pixels reaching from
+    # half a pixel before its first to half a pixel after its last.
+    first, last = (-20.0 + each for each in starts)
+    assert along_row == SliceRange((1.0, 0.0, 0.0), -10.5, 10.5)
+    assert down_column == SliceRange((0.0, 1.0, 0.0), last - 0.5, first + 20.5)
+    assert extent.along_normal() == SliceRange((0.0, 0.0, 1.0), -1.0, 19.0)
+
+
+@pytest.mark.parametrize(
+    ("low", "high", "beyond"),
+    [
+        # Low on the stack, within the pixels of the slices at 0, 2, and
+        # 4 mm, which the last slices' pixels, shifted on, do not reach.
+        ((-3, -16, 1), (3, -14, 3), False),
+        # Beyond them, before the pixels of the slice at 4 mm.
+        ((-3, -17, 1), (3, -14, 3), True),
+        # High on the stack, within the pixels of the slices at 14, 16, and
+        # 18 mm, which the first slices' pixels do not reach.
+        ((-3, 10, 15), (3, 14, 17), False),
+        ((-3, 10, 15), (3, 15, 17), True),
+    ],
+    ids=["low-within", "low-beyond", "high-within", "high-beyond"],
+)
+def test_a_hull_on_a_sheared_stack_is_judged_by_the_slices_nearest_it(
+    low, high, beyond
+):
+    block = FaceBlock((0.0, 30.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+    extent = SliceExtent.of(_SHEARED, (1.0, 1.0), (21, 21), 1.0)
+    hull = TargetHull.of(_box(low, high))
+
+    assert beyond_slices(hull, block, extent) is beyond
 
 
 # What the hulls keep of RT Dose and contours.
@@ -389,11 +452,15 @@ def test_a_target_s_contours_are_written_as_received_wherever_they_lie():
     region = DoseBlock(_BLOCK, slices, targets=kept)
 
     # No contour is cut.
-    assert not cut_contours(region, _structure_set(*contours), files.FRAME)
+    assert not cut_contours(
+        {files.FRAME: region}, _structure_set(*contours), {files.FRAME}
+    )
     # Without the hulls, the slices' pixels alone keep those on them, and
     # the others, wholly in the block, are removed.
     cut = cut_contours(
-        DoseBlock(_BLOCK, slices), _structure_set(*contours), files.FRAME
+        {files.FRAME: DoseBlock(_BLOCK, slices)},
+        _structure_set(*contours),
+        {files.FRAME},
     )
     assert [(each.contour, each.values) for each in cut[0]] == [(0, None), (1, None)]
 
@@ -405,7 +472,9 @@ def test_an_outline_keeps_the_squares_of_the_pixels_kept_for_a_target():
     outline = _rectangle(-15, 15, -15, 15, 10.0)
 
     ((_, written),) = list(
-        cut_contours(region, _structure_set(outline), files.FRAME).items()
+        cut_contours(
+            {files.FRAME: region}, _structure_set(outline), {files.FRAME}
+        ).items()
     )
 
     polygons = [

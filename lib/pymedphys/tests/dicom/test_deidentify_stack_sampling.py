@@ -38,50 +38,6 @@ from . import _synthetic_head as head
 TIE = 1e-6
 
 
-def _rotation(about_x: float = 0.0, about_y: float = 0.0, about_z: float = 0.0):
-    """The rotation by these degrees about x, then y, then z."""
-    a, b, c = (math.radians(angle) for angle in (about_x, about_y, about_z))
-    x = np.array(
-        [[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]]
-    )
-    y = np.array(
-        [[math.cos(b), 0, math.sin(b)], [0, 1, 0], [-math.sin(b), 0, math.cos(b)]]
-    )
-    z = np.array(
-        [[math.cos(c), -math.sin(c), 0], [math.sin(c), math.cos(c), 0], [0, 0, 1]]
-    )
-    return z @ y @ x
-
-
-def _oblique(scan: head.Scan, rotation: np.ndarray) -> head.Scan:
-    """``scan`` with its rows, columns, and slices turned about its middle."""
-    along_row = rotation @ np.array(scan.orientation[:3])
-    down_column = rotation @ np.array(scan.orientation[3:])
-    middle = np.mean(
-        [scan.points(0)[0, 0], scan.points(len(scan.positions) - 1)[-1, -1]], axis=0
-    )
-    positions = tuple(
-        tuple(
-            float(value) for value in middle + rotation @ (np.array(position) - middle)
-        )
-        for position in scan.positions
-    )
-    orientation = tuple(float(value) for value in (*along_row, *down_column))
-    return dataclasses.replace(scan, orientation=orientation, positions=positions)
-
-
-def _sheared(scan: head.Scan, degrees: float) -> head.Scan:
-    """``scan``, an axial one from inferior up, with each slice offset
-    anteriorly from the last by its step times the tangent of ``degrees``,
-    as a gantry tilt is recorded with axial direction cosines."""
-    steps = [z - scan.positions[0][2] for _, _, z in scan.positions]
-    slope = math.tan(math.radians(degrees))
-    positions = tuple(
-        (x, y - step * slope, z) for (x, y, z), step in zip(scan.positions, steps)
-    )
-    return dataclasses.replace(scan, positions=positions)
-
-
 def _small(
     orientation=(1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
     steps=(0.0, 2.1, 4.2, 6.3, 8.4, 10.5, 12.6, 14.7),
@@ -103,27 +59,29 @@ def _orientation(rotation: np.ndarray, flip: tuple[float, float] = (1.0, 1.0)):
     return tuple(float(value) for value in (*along_row, *down_column))
 
 
-_TILT_15 = _orientation(_rotation(about_x=-15.0))
+_TILT_15 = _orientation(head.rotation(about_x=-15.0))
 
 SMALL = {
     "axial": _small(),
     "gantry-tilt-15": _small(orientation=_TILT_15),
     "gantry-tilt-30-feet-first": _small(
-        orientation=_orientation(_rotation(about_x=-30.0), flip=(-1.0, 1.0)),
+        orientation=_orientation(head.rotation(about_x=-30.0), flip=(-1.0, 1.0)),
         steps=(0.0, -2.1, -4.2, -6.3),
     ),
     "sheared": _small(along=(0.0, -math.tan(math.radians(15.0)), 1.0)),
-    "oblique-about-z": _small(orientation=_orientation(_rotation(about_z=10.0))),
+    "oblique-about-z": _small(orientation=_orientation(head.rotation(about_z=10.0))),
     "compound-oblique": _small(
-        orientation=_orientation(_rotation(about_x=25.0, about_y=-35.0, about_z=50.0)),
-        along=_rotation(about_x=25.0, about_y=-35.0, about_z=50.0)
+        orientation=_orientation(
+            head.rotation(about_x=25.0, about_y=-35.0, about_z=50.0)
+        ),
+        along=head.rotation(about_x=25.0, about_y=-35.0, about_z=50.0)
         @ np.array([0.2, -0.1, 1.0]),
     ),
     "uneven-and-unordered": _small(
         orientation=_TILT_15, steps=(6.0, 0.0, 1.0, 9.5, 2.5, 3.0, 20.0)
     ),
     "one-slice-oblique": _small(
-        orientation=_orientation(_rotation(about_y=20.0)), steps=(0.0,)
+        orientation=_orientation(head.rotation(about_y=20.0)), steps=(0.0,)
     ),
     # Axial slices sheared by half their step: at 2 mm voxels, voxels lie
     # exactly midway between rows, between columns, between slices along
@@ -485,7 +443,7 @@ def test_thin_slices_are_each_drawn_where_every_slice_is_asked_for():
     # Tilted slices 0.4 mm apart, sampled to 2 mm voxels, so that each is
     # nearest the centres of few voxels.
     scan = _small(
-        orientation=_orientation(_rotation(about_x=-20.0)),
+        orientation=_orientation(head.rotation(about_x=-20.0)),
         steps=tuple(0.4 * step for step in range(30)),
         shape=(24, 20),
         spacing=(1.0, 1.0),
@@ -535,16 +493,7 @@ def test_every_slice_keeps_the_nearest_slices_values_and_adds_the_crossings():
 
 # The analytic head scanned with a tilt reaching its crown and chin, and
 # with a shear reaching the back of its head.
-_TALL = ((-100, 100), (-130, 110), (-160, 200))
-_DEEP = ((-100, 100), (-130, 180), (-120, 120))
-TILTED_HEADS = {
-    "gantry-tilt-half-degree": head.tilted(degrees=0.5),
-    "gantry-tilt-15": head.tilted(degrees=15.0, extent=_TALL),
-    "gantry-tilt-30": head.tilted(degrees=30.0, extent=_TALL),
-    "gantry-tilt-15-sheared": _sheared(head.axial(extent=_DEEP), 15.0),
-    "oblique-about-z-10": _oblique(head.axial(), _rotation(about_z=10.0)),
-    "compound-oblique": _oblique(head.axial(), _rotation(about_x=12.0, about_y=-8.0)),
-}
+TILTED_HEADS = head.tilted_heads()
 
 
 def _classes(values: np.ndarray) -> np.ndarray:
@@ -589,15 +538,18 @@ def test_a_tilted_head_samples_to_the_head_as_it_lies(scan):
     assert differs < 2 * untilted
 
 
-def _block(values: np.ndarray, lattice: stack_sampling.Lattice) -> defacing.FaceBlock:
+def _block(volume: stack_sampling.SampledVolume) -> defacing.FaceBlock:
     """The face block of a sampled volume, averaged as the face finder
-    averages it, with the lattice's heights as the volume's."""
+    averages it, with its stack's spacing."""
     averaged = scipy.ndimage.uniform_filter(
-        np.nan_to_num(values, nan=-1000.0), size=3, mode="nearest"
+        np.nan_to_num(volume.values, nan=-1000.0), size=3, mode="nearest"
     )
-    heights = np.sort(lattice.coordinates[0])
+    lattice = volume.sampler.lattice
     return defacing.FaceInspection(
-        averaged, np.array(lattice.first), lattice.voxel, heights
+        averaged,
+        np.array(lattice.first),
+        lattice.voxel,
+        defacing.SampleSpacing.of(volume.sampler.stack),
     ).block()
 
 
@@ -614,7 +566,7 @@ def test_a_tilted_head_sampled_gives_the_untilted_heads_face_block(scan):
     expected = finder.block()
 
     volume = _sampled(scan, voxel, list(scan.slices(anatomy)))
-    block = _block(volume.values, volume.sampler.lattice)
+    block = _block(volume)
 
     truth = (
         (-head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),

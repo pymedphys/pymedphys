@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# Every exemption that the release gate tries is decided here, so it is long.
+
 """Name the residual findings that kept vocabulary, labels, or options explain.
 
 The residual search finds the text of a removed value wherever it is in a
@@ -49,6 +52,18 @@ reason that such a finding is not a reason for review (D-032), or returns
   collected for the subject is, without trailing spaces and NULs, exactly
   one of the private creators that the pinned PS3.15 Table E.3.10-1 lists
   (:func:`vendor_creators`), wherever in the data set the finding is.
+- :attr:`Exemption.RETAINED_CREATOR`: the finding is in a private creator,
+  (gggg,0010) to (gggg,00FF) of a group open to private use, at any depth,
+  whose whole value, without trailing spaces and NULs, is a private creator
+  that the run's safe private list keeps in that group
+  (:func:`kept_creators`), and its source is a private creator or private
+  data element, at any depth, or one of the six equipment attributes that
+  :attr:`EQUIPMENT` reads. It applies only under the Retain Safe Private
+  Option, whose list the coverage records. The kept creator holds the block
+  name that the list matched, so any text found in it is that name; a
+  finding from Institution Name (0008,0080), Station Name (0008,1010), or
+  any other source stays under review, so an in-house block named after the
+  institution is still seen (D-042).
 - :attr:`Exemption.RETAINED_TEXT`: the finding is in a text attribute that
   a selected option keeps, such as Station Name (0008,1010) under Retain
   Device Identity, and its source is a private data element or an attribute
@@ -56,7 +71,9 @@ reason that such a finding is not a reason for review (D-032), or returns
   (:func:`~pymedphys._dicom.deidentify.option_kept.retained_text`).
 - :attr:`Exemption.RETAINED_VALUE`: a value of the element, a date, time,
   or datetime that a selected option keeps, equals a whole value of the
-  finding's source, or, in a kept date, the date of a datetime source
+  finding's source, or, in a kept date, the date of a datetime source, or,
+  in a kept datetime, begins with a date source, or the date of a datetime
+  source
   (:func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
   applies to a finding of a date or datetime, which would otherwise
   withhold the file (:func:`retained_date`).
@@ -70,16 +87,100 @@ reason that such a finding is not a reason for review (D-032), or returns
   option keeps, equal to a whole value of it, whose source's values only
   instances that the run does not write collected (:func:`unwritten_uid`).
   It applies to a finding that would otherwise withhold the file.
+- :attr:`Exemption.REMOVED_UID`: a UID found in a UID that a selected
+  option keeps, whose source is a private data element that every instance
+  which collected one of its values removed, or does not write, and each of
+  whose values that the search could find there equals a whole value of it
+  (:func:`removed_uid`). It applies to a finding that would otherwise
+  withhold the file.
+- :attr:`Exemption.VOCABULARY_MEANING`: the finding is in a Code Meaning
+  (0008,0104) of a code item, whatever its scheme, every value of which is
+  made only of words of the reviewed technique vocabulary and echoes no
+  identifier of the subject, and its source is a description, comment, or
+  technique descriptor of the examination, a contrast agent or
+  radiopharmaceutical, or an SR TEXT value, or a private data element that
+  only copies one of them
+  (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
+  The release gate tries it after every exemption listed here but
+  :attr:`Exemption.COPIED_REQUEST_CODE`,
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR`, and
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
+- :attr:`Exemption.METHOD_DIGEST`: a finding of any kind in De-identification
+  Method (0012,0063) of the top-level data set, every match of whose source
+  there lies wholly inside a value equal to the method digest that the run
+  writes (:func:`in_method_digest`). The digest is a SHA-256 of the policy
+  and the engine, never of a source value, so a value found in its digits
+  is there by chance.
+- :attr:`Exemption.NOMINAL_OFFSET`: under Modified Dates, a finding of any
+  kind, every match of whose source in its element lies wholly inside the
+  nominal UTC offset ``+0000`` that the option writes, whatever the source
+  held: a value of Timezone Offset From UTC (0008,0201), every value of
+  which is the nominal offset, or the offset that ends a datetime that the
+  option moved
+  (:func:`~pymedphys._dicom.deidentify.residual_offsets.in_nominal_offset`,
+  D-039). The nominal offset holds no source value, so a value found
+  wholly inside it, such as a source offset that was already ``+0000``,
+  reveals nothing.
+- :attr:`Exemption.COPIED_REQUEST_CODE`: the finding's source is the Code
+  Value, Coding Scheme Designator, or Code Meaning of a code item directly
+  in Requested Procedure Code Sequence (0032,1064), at any depth, every
+  value of which collected for the subject is one that the instance's output
+  does not hold, and it is found in the same attribute of a kept code item,
+  each of whose source values that the search could find there equals a
+  whole value of it
+  (:func:`~pymedphys._dicom.deidentify.residual_copies.copied_request_code`).
+  Equipment copies the
+  request's code, which the Basic Profile removes with Request Attributes
+  Sequence (0040,0275), into Procedure Code Sequence (0008,1032), which it
+  keeps, so the removed copy reveals nothing the kept code does not, and
+  every other finding in the kept code is decided as before. The release
+  gate tries it after every exemption listed here but
+  :attr:`Exemption.VOCABULARY_DESCRIPTOR` and
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
+- :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
+  descriptor, an attribute whose values the reviewed technique vocabulary's
+  automatic tier may keep, such as Series Description (0008,103E), at the
+  top level or in an item, every value of which is made only of words of
+  that vocabulary and echoes no identifier of the subject, and its source
+  is a description, comment, or technique descriptor of the examination, a
+  contrast agent or radiopharmaceutical, or an SR TEXT value, or a private
+  data element that only copies one of them
+  (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
+  The release gate tries it after every exemption listed here but
+  :attr:`Exemption.SHARED_DESIGNATOR`, for a text finding that none of them
+  explains.
+- :attr:`Exemption.SHARED_DESIGNATOR`: the finding's source is the Coding
+  Scheme Designator (0008,0102) of a code item, at any depth, in no
+  private sequence and in none that codes or names an institution, a
+  department, a station, or a custodial organisation, every value of which
+  collected for the subject is one that the instance's output does not
+  hold, and it is found in the Coding Scheme Designator of a kept code
+  item, each of whose source values that the search could find there
+  equals a whole value of it
+  (:func:`~pymedphys._dicom.deidentify.residual_copies.shared_designator`).
+  A designator names its code's scheme and nothing else, so where Clean
+  Structured Content removes a content item and keeps another of the same
+  local scheme, the removed designator shows only that the two shared a
+  scheme, which the kept item already shows. Text of any other source
+  found in a designator, such as an organisation's name, and every Code
+  Meaning are decided as before. The release gate tries it after every
+  other exemption listed here, for a text finding that none of them
+  explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
 every one of its values is a term; and a source's values are pooled across
 the subject, so a private creator is exempt only if all of them are a
 vendor's, a date only if each of them that could be in the element equals a
-whole kept value, and a Code Meaning or a UID from unwritten instances only
-if no written instance collected any of them. A finding in an element that holds a byte
-outside ISO 646's printable characters, a finding of any other kind, and a
-finding outside the data set are never exempt. Kept values are read from the
+whole kept value, a Code Meaning or a UID from unwritten instances only
+if no written instance collected any of them, and a removed private UID
+only if no written instance holds any of them replaced and each that could
+be in the element equals a whole kept value, and likewise a removed request
+code or designator. A finding in an element that
+holds a byte outside ISO 646's printable characters, a finding of any other
+kind, and a finding outside the data set are never exempt. Kept values are read from the
 written file's bytes, as text in ISO 646, never decoded by pydicom, and none
 is reported.
 """
@@ -91,13 +192,21 @@ import enum
 import functools
 import pathlib
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from .codes import load_coding_schemes
-from .file_layout import ElementPath, Region, read_file_layout
-from .option_kept import kept_by, retained_text, retained_value
-from .residuals import Finding, SourceValue
-from .standard import dictionary_attribute, load_table_e3_10_1
+from .file_layout import ElementPath, Extent, Region, read_file_layout
+from .option_kept import (
+    UID_KINDS,
+    kept_by,
+    retained_text,
+    retained_value,
+    whole_values,
+)
+from .residuals import Finding, SourceValue, _derive, _Needle
+from .safe_private import SafePrivateList, load_safe_private_rules
+from .standard import _RESERVED_ODD_GROUPS, dictionary_attribute, load_table_e3_10_1
+from .tcia_private_tags import tcia_safe_private_rules
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
 _DESIGNATOR = "(0008,0102)"
@@ -107,6 +216,9 @@ _CODE_MEANING = "(0008,0104)"
 _CREATOR_REFERENCE = "(0008,0302)"
 _CHARACTERISTICS = "(0008,0300)"
 BODY_PART_EXAMINED = "(0018,0015)"
+# De-identification Method, which holds the method digest that the run writes.
+DEIDENTIFICATION_METHOD = ElementPath((), "(0012,0063)")
+_METHOD_DIGEST = re.compile(r"[0-9a-f]{64}")
 # Code Value, Coding Scheme Version, Code Meaning, Long Code Value, and URN
 # Code Value, which the designator in their item qualifies.
 _CODE_ITEM = frozenset(
@@ -131,11 +243,30 @@ class Exemption(enum.Enum):
     EQUIPMENT = "equipment"  # an equipment name, found from equipment or private
     SHIFTED_DATE = "shifted-date"  # equal to a date that Modified Dates shifted
     VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
+    # in a private creator that the run's safe private list keeps, from a
+    # private element or an equipment attribute
+    RETAINED_CREATOR = "retained-creator"
     RETAINED_TEXT = "retained-text"  # in text an option keeps, from its own or private
     RETAINED_VALUE = "retained-value"  # equal to a date or time an option keeps
     # the meaning of a code of a scheme of Table 8-1, from unwritten instances only
     UNWRITTEN_CODE_MEANING = "unwritten-code-meaning"
     UNWRITTEN_UID = "unwritten-uid"  # in a UID an option keeps, from unwritten only
+    REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
+    # in a Code Meaning made only of the reviewed technique vocabulary
+    VOCABULARY_MEANING = "vocabulary-meaning"
+    # equal to the same attribute of a kept code, from a removed request code
+    COPIED_REQUEST_CODE = "copied-request-code"
+    # in a technique descriptor made only of the reviewed technique vocabulary
+    VOCABULARY_DESCRIPTOR = "vocabulary-descriptor"
+    # equal to a kept code's whole designator, from a removed code's designator
+    SHARED_DESIGNATOR = "shared-designator"
+    # a finding that would hold the file for review, which a reviewer cleared
+    # in an attested QC pack of an earlier run of the same source file, in
+    # the same value (residuals.ReviewedFinding)
+    REVIEWED = "reviewed"
+    METHOD_DIGEST = "method-digest"  # wholly inside the run's own method digest
+    # wholly inside the nominal UTC offset that Modified Dates writes
+    NOMINAL_OFFSET = "nominal-offset"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -265,6 +396,41 @@ def vendor_creators() -> frozenset[str]:
     return frozenset(row.private_creator for row in load_table_e3_10_1().attributes)
 
 
+@functools.cache
+def kept_creators(safe_private_list: SafePrivateList) -> frozenset[tuple[int, str]]:
+    """Return the private creators that a safe private list keeps, by group.
+
+    Parameters
+    ----------
+    safe_private_list : SafePrivateList
+        The list that a run under the Retain Safe Private Option chose.
+
+    Returns
+    -------
+    frozenset of (int, str)
+        The group and private creator, without padding, of each rule of the
+        shipped list that can retain a value: the reviewed rules
+        (:func:`~pymedphys._dicom.deidentify.safe_private.load_safe_private_rules`)
+        or TCIA's
+        (:func:`~pymedphys._dicom.deidentify.tcia_private_tags.tcia_safe_private_rules`).
+        A creator that a list keeps in one group is not kept in another:
+        TCIA's dictionary keeps ``GEMS_PETD_01`` in group 0009, not 0011.
+
+    Raises
+    ------
+    TypeError
+        If ``safe_private_list`` is not a SafePrivateList.
+    """
+    if not isinstance(safe_private_list, SafePrivateList):
+        raise TypeError("safe_private_list must be a SafePrivateList")
+    rules = (
+        tcia_safe_private_rules()
+        if safe_private_list is SafePrivateList.TCIA
+        else load_safe_private_rules()
+    )
+    return frozenset((rule.group, rule.private_creator) for rule in rules.retained())
+
+
 def source_values(
     collected: tuple[SourceValue, ...],
 ) -> Mapping[ElementPath, tuple[SourceValue, ...]]:
@@ -315,6 +481,14 @@ class KeptValues:
             return None
         return raw.decode("ascii")
 
+    def extent(self, path: ElementPath) -> Extent | None:
+        """Return where an element of the data set is, or ``None`` if it is not."""
+        return self._extents.get(path)
+
+    def read(self, start: int, stop: int) -> bytes:
+        """Return the written file's bytes from ``start`` up to ``stop``."""
+        return bytes(self._written[start:stop])
+
     def values(self, path: ElementPath) -> tuple[str, ...] | None:
         """Return an element's values without padding, or ``None``.
 
@@ -338,6 +512,7 @@ def exemption(
     sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...] = (),
     meanings: frozenset[SourceValue] = frozenset(),
+    safe_private_list: SafePrivateList | None = None,
 ) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
 
@@ -355,6 +530,9 @@ def exemption(
         The Code Meanings in ``sources`` that only instances the run does
         not write collected, each from an item whose own Coding Scheme
         Designator Table 8-1 lists (:func:`standard_code_meanings`).
+    safe_private_list : SafePrivateList, optional
+        The run's safe private list, under the Retain Safe Private Option.
+        With none, no kept private creator explains a finding.
 
     Returns
     -------
@@ -379,7 +557,12 @@ def exemption(
         return Exemption.EQUIPMENT
     if _vendor_creator(finding.source, sources):
         return Exemption.VENDOR_CREATOR
-    why = _retained(finding, kept, sources, options)
+    if safe_private_list is not None and _retained_creator(
+        finding.source, element, kept, safe_private_list
+    ):
+        why: Exemption | None = Exemption.RETAINED_CREATOR
+    else:
+        why = _retained(finding, kept, sources, options)
     if why is None and _unwritten_code_meaning(finding.source, sources, meanings):
         why = Exemption.UNWRITTEN_CODE_MEANING
     return why
@@ -494,6 +677,211 @@ def unwritten_uid(
     return None
 
 
+def removed_uid(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    removed: frozenset[SourceValue],
+    options: tuple[str, ...],
+) -> Exemption | None:
+    """Return whether a kept UID explains a UID found from a removed private copy.
+
+    Parameters
+    ----------
+    finding : Finding
+        A finding that would otherwise withhold its file.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    removed : frozenset of SourceValue
+        The values in ``sources`` that no instance's output holds at their
+        place, because every instance that collected them removed them or is
+        not written (:attr:`~.release_gate.Coverage.removed`).
+    options : tuple of str
+        The run's options.
+
+    Returns
+    -------
+    Exemption or None
+        :attr:`Exemption.REMOVED_UID` where the finding is in a data set
+        element of an attribute that a selected option keeps
+        (:func:`~pymedphys._dicom.deidentify.option_kept.kept_by`), which the
+        pinned dictionary gives only VR UI; its source is a private data
+        element, (gggg,1000) to (gggg,FFFF) of a group open to private use,
+        at any depth;
+        every value of the source is in ``removed``; and one of them equals
+        a whole value of the element, and each other that the search could
+        find there does too
+        (:func:`~pymedphys._dicom.deidentify.option_kept.whole_values`). The
+        private copy is gone from the output, so nothing in it refers
+        through the copy, and the option releases the UID where it is found.
+        A copy that a written instance holds replaced, a value of the source
+        found only inside a longer kept UID, one found anywhere else, such
+        as in text or in the File Meta Information, and a standard source,
+        such as a reference that a written instance replaced while keeping
+        the UID it names (D-040), give ``None``.
+    """
+    element = finding.location.element
+    if finding.location.region is not Region.DATA_SET or element is None:
+        return None
+    attribute = dictionary_attribute(element.tag)
+    if (
+        attribute is None
+        or attribute.vrs != ("UI",)
+        or element.tag not in kept_by(options)
+        or not _private_data(finding.source.tag)
+    ):
+        return None
+    values = sources.get(finding.source, ())
+    if not values or not all(each in removed for each in values):
+        return None
+    written, text = kept.values(element), kept.text(element)
+    if written is None or text is None:
+        return None
+    if whole_values(values, written, text, UID_KINDS):
+        return Exemption.REMOVED_UID
+    return None
+
+
+def in_method_digest(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    digest: str | None,
+) -> Exemption | None:
+    """Return whether a finding lies wholly inside the run's own method digest.
+
+    Parameters
+    ----------
+    finding : Finding
+        A finding of the residual search, of any kind.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    digest : str or None
+        The method digest that the run writes into De-identification
+        Method (0012,0063), 64 lowercase hexadecimal digits, as the
+        coverage records it; ``None`` explains nothing.
+
+    Returns
+    -------
+    Exemption or None
+        :attr:`Exemption.METHOD_DIGEST` where all of these hold, and
+        ``None`` otherwise:
+
+        - the finding is in De-identification Method of the top-level data
+          set, whose values, read as ISO 646 text, include ``digest``;
+        - the finding's match starts inside such a value; and
+        - every place in that element, from its header to the end of its
+          value, where a form that the search derives from any value of the
+          finding's source, pooled across the subject, starts, in any codec
+          and case, lies wholly inside such a value. The characters around
+          each are ignored, which finds at least what the search does, since
+          the search records only the first match of a source in each
+          element.
+
+        So the same value found before or after the digest, in the value
+        that the run writes after it, or in a digest of another run, which
+        the element keeps from its source, still counts, as does a match
+        that starts in the digest and runs past its end. The digest is a
+        SHA-256 of the policy and the engine, never of a source value, so a
+        value found wholly inside it is there by chance and reveals nothing.
+    """
+    element = finding.location.element
+    if (
+        digest is None
+        or not _METHOD_DIGEST.fullmatch(digest)
+        or finding.location.region is not Region.DATA_SET
+        or element != DEIDENTIFICATION_METHOD
+    ):
+        return None
+    extent, values = kept.extent(element), kept.values(element)
+    if extent is None or values is None or digest not in values:
+        return None
+    spans = _digest_spans(
+        kept.read(extent.value_start, extent.end), extent.value_start, digest
+    )
+    if not matches_within(finding, kept, sources, extent, spans):
+        return None
+    return Exemption.METHOD_DIGEST
+
+
+def matches_within(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    extent: Extent,
+    spans: Sequence[tuple[int, int]],
+) -> bool:
+    """Return whether every match of a finding's source in its element is in ``spans``.
+
+    Parameters
+    ----------
+    finding : Finding
+        A finding of the residual search, in the element at ``extent``.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    extent : Extent
+        Where the finding's element is in the written file.
+    spans : sequence of tuple of int
+        The ranges of the written file, each from its first byte up to the
+        byte after its last, that the engine wrote whatever the source held.
+
+    Returns
+    -------
+    bool
+        Whether the finding's match starts inside a span, and every place
+        in the element, from its header to the end of its value, where a
+        form that the search derives from any value of the finding's source,
+        pooled across the subject, starts, in any codec and case, lies
+        wholly inside a span. The characters around each are ignored, which
+        finds at least what the search does, since the search records only
+        the first match of a source in each element. A match that starts in
+        a span and runs past its end counts against it.
+    """
+    if not any(start <= finding.offset < stop for start, stop in spans):
+        return False
+    needles = {
+        needle.folded
+        for value in sources.get(finding.source, ())
+        for needle in _derive(value)
+        if isinstance(needle, _Needle)
+    }
+    if not needles:
+        return False
+    # The bytes of the element, and those after it that a match starting in
+    # it could run into, with ASCII letters in lower case, as searched.
+    longest = max(map(len, needles))
+    window = kept.read(extent.start, extent.end + longest - 1).lower()
+    for needle in needles:
+        at = window.find(needle)
+        while at != -1 and extent.start + at < extent.end:
+            begin, end = extent.start + at, extent.start + at + len(needle)
+            if not any(start <= begin and end <= stop for start, stop in spans):
+                return False
+            at = window.find(needle, at + 1)
+    return True
+
+
+def _digest_spans(value: bytes, offset: int, digest: str) -> list[tuple[int, int]]:
+    """Return where the values of an element's ``value`` that equal ``digest`` are.
+
+    ``offset`` is where ``value`` starts in the file. Each span is of the
+    digest's own bytes, without padding.
+    """
+    spans, start, wanted = [], offset, digest.encode("ascii")
+    for each in value.split(b"\\"):
+        if each.strip(_PADDING) == wanted:
+            begin = start + len(each) - len(each.lstrip(_PADDING))
+            spans.append((begin, begin + len(wanted)))
+        start += len(each) + 1
+    return spans
+
+
 def standard_code_meanings(
     collected: tuple[SourceValue, ...],
 ) -> frozenset[SourceValue]:
@@ -577,6 +965,51 @@ def _vendor_creator(
         isinstance(each.value, str) and each.value.rstrip(" \x00") in vendor_creators()
         for each in values
     )
+
+
+def _retained_creator(
+    source: ElementPath,
+    element: ElementPath,
+    kept: KeptValues,
+    safe_private_list: SafePrivateList,
+) -> bool:
+    """Return whether a kept private creator of the list explains a finding.
+
+    ``element``, where the finding is, must be a private creator whose whole
+    written value, without trailing spaces and NULs, is a creator that
+    ``safe_private_list`` keeps in its group, compared exactly, as the
+    engine compares creators; ``source`` must be a private creator or
+    private data element, or name equipment.
+    """
+    if not _private_creator(element.tag):
+        return False
+    if not (
+        _private_creator(source.tag)
+        or _private_data(source.tag)
+        or source.tag in EQUIPMENT_SOURCES
+    ):
+        return False
+    text = kept.text(element)
+    if text is None or "\\" in text:
+        return False
+    group = int(element.tag[1:5], 16)
+    return (group, text.rstrip(" \x00")) in kept_creators(safe_private_list)
+
+
+def _private_group(tag: str) -> bool:
+    """Return whether a tag's group is open to private use (PS3.5 7.8.1)."""
+    group = int(tag[1:5], 16)
+    return group % 2 == 1 and group not in _RESERVED_ODD_GROUPS
+
+
+def _private_creator(tag: str) -> bool:
+    """Return whether a tag is a private creator, (gggg,0010) to (gggg,00FF)."""
+    return _private_group(tag) and 0x0010 <= int(tag[6:10], 16) <= 0x00FF
+
+
+def _private_data(tag: str) -> bool:
+    """Return whether a tag is a private data element, (gggg,1000) or later."""
+    return _private_group(tag) and int(tag[6:10], 16) >= 0x1000
 
 
 def _equipment_source(source: ElementPath) -> bool:

@@ -9,7 +9,7 @@ De-identification must not break the files it releases: MIDI-BP-03 in the [requi
 
 Continuous integration runs it on every pull request, over the synthetic corpus, under each preset. This page also shows how to run it yourself, on the corpus or on a release of your own, such as the [MIDI-B benchmark's](deidentification-midi-benchmark.md).
 
-The code is in `pymedphys._dicom.deidentify`: `dicom_validators.py` runs the validators, `dicom_validation.py` compares inputs with outputs, and `dicom_validation_known.toml` lists the explained differences. The command is the development module `pymedphys._dicom.deidentify.dicom_validation_command`. It is not part of the `pymedphys` command line, because nothing de-identification related joins the public command line before the first supported release.
+The code is in `pymedphys._dicom.deidentify`: `dicom_validators.py` runs the validators, `dicom_validation.py` compares inputs with outputs, `dicom_validation_series.py` finds the series whose inputs mix modalities, and `dicom_validation_known.toml` lists the explained differences. The command is the development module `pymedphys._dicom.deidentify.dicom_validation_command`. It is not part of the `pymedphys` command line, because nothing de-identification related joins the public command line before the first supported release.
 
 ## The validators
 
@@ -29,7 +29,7 @@ Each validator checks each released instance's input and its output; `dcentvfy` 
 
 Each introduced finding is then:
 
-- **explained**, by an entry in `dicom_validation_known.toml`, whose category says why: `profile`, where the action that PS3.15 Table E.1-1 gives the attribute causes it; `validator`, where it is a limitation or heuristic of the validator and the output conforms; or `engine`, a defect of the engine's output, recorded until it is fixed. An entry whose explanation rests on a property of the output names it, and explains the finding only in an output that has it;
+- **explained**, by an entry in `dicom_validation_known.toml`, whose category says why: `profile`, where the action that PS3.15 Table E.1-1 gives the attribute causes it; `validator`, where it is a limitation or heuristic of the validator and the output conforms; `source`, where the input already breaks a requirement that no de-identification can repair, and each output conforms to its own IOD; or `engine`, a defect of the engine's output, recorded until it is fixed. An entry whose explanation rests on a property of the output, or of the output with its input, names it, and explains the finding only where the files have it. For `dcentvfy`, which compares a patient's outputs together, such a property can hold for one attribute alone, and the entry then explains the finding only for that attribute;
 - **not comparable**, where it lies below an attribute whose contents the validator could not read in the input, because its dictionary lacks the attribute and the input is in Implicit VR or gives it the VR UN, while it could read them in the output; or
 - **unexplained**.
 
@@ -43,6 +43,10 @@ At present the synthetic corpus needs five known differences, each listed with i
 
 - `profile`: Study Date, Study Time, and Study ID, which the Basic Profile empties (action Z), are needed to build a DICOMDIR, so `dciodvfy` warns.
 - `validator`: `dciodvfy` warns about every Person Name without a component delimiter, such as the dummy value `DEIDENTIFIED`, as a retired form; its dictionary predates RT Assertions Sequence (0044,0110); and its condition for the Common Instance Reference Module's Referenced Series Sequence (0008,1115) and Studies Containing Other Referenced Instances Sequence (0008,1200) counts references from only a few sequences, so it reports both as present without need once the Basic Profile removes or empties Referenced Image Sequence and Source Image Sequence in the functional groups of enhanced images. PS3.3 Section C.12.2 counts references from any module, and the corpus's outputs still reference the instances they list elsewhere, for example from Referenced Image Evidence Sequence (0008,9092), so their condition is met. These two entries apply only to an output that still references, outside the module, an instance that the sequence lists; where the last such reference is gone, the finding is unexplained. Where no reference to an instance survives outside the module, the engine removes both sequences.
+
+Other entries explain findings that the synthetic corpus does not give, but releases of other data can. Among them, in `validator`: `dicom-validator` checks a user-optional module only where the data set holds an attribute of it that no other module present holds. In the Digital X-Ray Image IOD, the X-Ray Acquisition Dose Module shares 18 Type 3 attributes, such as Distance Source to Detector (0018,1110) and Filter Type (0018,1160), with the DX Positioning, X-Ray Filtration, and X-Ray Generation Modules, all user-optional, and X-Ray Filtration has no attribute of its own. The Basic Profile removes attributes that are the other three modules' own, such as Comments on Radiation Dose (0040,0310). An output that keeps none of them then gives each shared attribute it holds as unexpected, as a source that never held one does, although the output conforms. A test in `test_deidentify_dicom_validation_corpus.py` gives such an image to the engine and `dicom-validator`, and another checks the entry's 18 attributes against the generated PS3.3 tables.
+
+In `source`: PS3.3 Section A.1.2.3 requires the instances of a series to be of one modality and to have the same Series information. The MIDI-B Test subset has a PET series that holds four CT Image instances under its Series Instance UID, which breaks the first requirement in the input. Each instance's own IOD then decides each attribute's action. Series Date (0008,0021) and Series Time (0008,0031) are X/D, so they get a dummy value in the PET images, where they are Type 1, and are removed from the CT images, where they are Type 3. Radiopharmaceutical Information Sequence (0054,0016), which the CT Image IOD does not define, is removed from the CT images alone. So `dcentvfy` finds each attribute present in one instance but not the other, although every output conforms to its own IOD. The entry explains this finding only for an attribute that every input of such a series holds, and whose outputs hold it, or lack it, by SOP Class alone. `dcentvfy` counts a patient's findings together, whatever series gave them, so the comparison checks such a series again on its own, and explains no more occurrences than the series gives there, at Series level. The same finding from another series of the patient stays unexplained. The finding stays unexplained in a series of one modality, which A.1.2.3 allows to mix IODs, such as CT Image with Enhanced CT Image, or where the outputs of one SOP Class differ. A test in `test_deidentify_dicom_validation_corpus.py` gives such a series to the engine and the validators.
 
 ## Run it on the synthetic corpus
 
@@ -59,12 +63,13 @@ The corpus tests build the synthetic corpus, run the engine over it once for eac
    export PYMEDPHYS_DICOM_VALIDATORS=required
    export PYMEDPHYS_DICOM_VALIDATION_REPORT="$PWD/dicom-validation"
    uv run --no-dev --extra tests pymedphys dev tests --dicom-validators \
-     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py
+     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
+     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus_p_z.py
    ```
 
 The tests are marked `dicom_validators`, so the ordinary test run leaves them out. Without `PYMEDPHYS_DICOM_VALIDATORS=required` they skip when a validator is missing, rather than fail. The first run downloads the DocBook source into `~/.pymedphys/dicom-validator`, or into the directory that `PYMEDPHYS_DICOM_VALIDATOR_STANDARD` names. Each run's report is written into a directory of `dicom-validation` named after the run.
 
-In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow. Its summary shows each run's report, and its `dicom-validation` artefact holds the reports as Markdown and JSON.
+The first module validates the policies whose names begin with a letter from a to o, and the second the others, through the same checks. In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow, which validates the two halves on two runners, `(a-o)` and `(p-z)`. Each runner's summary shows its runs' reports, and its `dicom-validation-a-o` or `dicom-validation-p-z` artefact holds them as Markdown and JSON.
 
 ## Run it on a release of your own
 
@@ -79,6 +84,8 @@ uv run --no-dev --extra tests python -m pymedphys._dicom.deidentify.dicom_valida
   --work /data/midi-b/runs/validation-basic-1 \
   --out /data/midi-b/runs/validation-basic-1-dicom-validation
 ```
+
+The **MIDI-B Benchmark** workflow runs the same command in each of its jobs, after the benchmark, and keeps the results in the job's artefact (section 9 of the [MIDI-B benchmark guide](deidentification-midi-benchmark.md)).
 
 For another release, give the release and the mapping instead:
 

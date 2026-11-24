@@ -147,6 +147,8 @@ def test_a_series_that_is_not_a_volume_is_shown_only_in_the_frames_of_its_cine()
 
 
 def test_pixel_data_that_no_preview_shows_are_not_shown():
+    # Float Pixel Data under Bits Allocated 16, which no element of
+    # floating-point pixel data has.
     dataset = _slices()[0]
     dataset.FloatPixelData = dataset.pixel_array.astype(np.float32).tobytes()
     del dataset.PixelData
@@ -244,9 +246,53 @@ def test_padding_of_more_than_one_value_counts_only_as_written(mixed):
         ((0, (TextBox(0, 0, 1, 4),)),),
     )
     found = qc_previews.previews_of({0: written}, set(), {0: (received, entry)})
-    assert [preview.kind for preview in found.previews][-1] is PreviewKind.REDACTION
+    assert [preview.kind for preview in found.previews][-2:] == [
+        PreviewKind.REDACTION,
+        PreviewKind.REVIEW_FRAME,
+    ]
     assert not found.not_previewed
     assert found.pixels_shown == (frozenset() if mixed else {0})
+
+
+def _floated(data, values):
+    """A file whose frames are Float Pixel Data of ``values``."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    for keyword in ("PixelData", "BitsStored", "HighBit", "PixelRepresentation"):
+        delattr(dataset, keyword)
+    dataset.BitsAllocated = 32
+    dataset.FloatPixelData = np.asarray(values, "<f4").tobytes()
+    return files.written(dataset)
+
+
+def test_floating_point_pixel_data_cleaned_are_shown_beside_them_as_received():
+    dataset = _slices()[0]
+    rows, columns = dataset.Rows, dataset.Columns
+    stored = dataset.pixel_array.astype(np.float32)
+    stored[0, 0] = np.nan
+    received = _floated(files.written(dataset), stored)
+    box = TextBox(1, 0, 2, 4)
+    cleaned = stored.copy()
+    cleaned[1, :4] = np.nanmin(stored)
+    written = _floated(files.written(dataset), cleaned)
+    entry = RedactionEntry(
+        0,
+        PixelDataReason.TEXT_BLACKED_OUT,
+        1,
+        rows,
+        columns,
+        ((0, (box,)),),
+    )
+    found = qc_previews.previews_of({0: written}, set(), {0: (received, entry)})
+    assert [preview.kind for preview in found.previews][-2:] == [
+        PreviewKind.REDACTION,
+        PreviewKind.REVIEW_FRAME,
+    ]
+    assert not found.not_previewed
+    assert found.pixels_shown == {0}
+    redaction = _decoded(found.previews[-2].png)
+    # As received, as written, and as written over its full range, each in
+    # colour, with grey gutters between.
+    assert redaction.shape == (rows, 3 * columns + 2 * 8, 3)
 
 
 def _dose(frames):
@@ -394,7 +440,6 @@ def _padded(data, tag):
 def _unshown_doses():
     """RT Dose instances of 12 frames, or a series of planes, whose dose
     levels cannot be drawn, by name."""
-    oblique = (0.866025, 0.5, 0.0, -0.5, 0.866025, 0.0)
     longer = pydicom.dcmread(io.BytesIO(_dose(12)))
     longer.PixelData += bytes(4 * 20 * 20)
     return {
@@ -402,7 +447,6 @@ def _unshown_doses():
         "zero-scaling": [_altered(_dose(12), DoseGridScaling=0)],
         "negative-scaling": [_altered(_dose(12), DoseGridScaling=-0.001)],
         "rescaled": [_altered(_dose(12), RescaleSlope=2, RescaleIntercept=0)],
-        "oblique": [_altered(_dose(12), ImageOrientationPatient=list(oblique))],
         "uneven": [
             _altered(_dose(12), GridFrameOffsetVector=[0.0, 3.0, 7.0, *range(9, 18)])
         ],
@@ -634,24 +678,27 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
     document["previews"] = [
         {"kind": "instance", "frames": [{"position": 0, "frame": 0}]}
     ]
-    files_of = face_review._series_files(json.dumps(document).encode("ascii"))
+    files_of, by_position = face_review._series_files(
+        json.dumps(document).encode("ascii")
+    )
     (entry,) = files_of[0]
+    assert by_position == {0: entry}
     assert entry[1] == bytes.fromhex("1e" * 32)
     # It carries how many frames, from the first, the previews showed, and
     # none that dose levels showed.
-    assert entry[4] == 1 and entry[5] is None
+    assert entry[4] == 1 and entry[5] is None and entry[6] is None
     document["previews"][0]["frames"].append({"position": 0, "frame": 2})
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
     document["previews"][0]["frames"][1]["frame"] = 1
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
     assert entry[4] == 2
     # Dose levels' frames count for both.
     document["previews"].append(
         {"kind": "series-dose-levels", "frames": [{"position": 0, "frame": 0}]}
     )
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
-    assert entry[4:6] == (2, 1)
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
+    assert entry[4:7] == (2, 1, None)
     document["not_previewed"] = [{"position": 0, "reason": "unreadable-pixel-data"}]
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
@@ -898,6 +945,9 @@ def test_a_run_releases_an_rt_dose_only_where_its_dose_levels_showed_every_frame
                 frozenset({(source, face_review.contour_data_sha256(written))}),
                 frozenset({(source, pixels, 12)}),
                 dose_frames,
+                # Every frame on a segments sheet, since a Modality of two
+                # values may be SEG too.
+                absent_segment_frames=frozenset({(source, pixels, 12)}),
             ),
             unvalidated_policy=True,
         )(data, record)

@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import (
+    CLEAN_STRUCTURED_CONTENT,
     DEVICE_IDENTITY,
     PRESETS,
     compose_custom_policy,
@@ -488,7 +489,8 @@ def test_a_policy_without_a_cleaners_option_describes_no_cleaner(preset):
 def test_a_statement_awaits_the_cleaning_that_no_cleaner_describes(monkeypatch):
     composed = compose_policy("tps-import")
     # With Retain Device Identity's cleaner alone, tps-import's dates and
-    # retained patient characteristics have no cleaner.
+    # retained patient characteristics have no cleaner. Clean Structured
+    # Content's cleaning of content items is not one of the cleaners.
     monkeypatch.setattr(
         cleaners,
         "CLEANERS",
@@ -497,5 +499,8 @@ def test_a_statement_awaits_the_cleaning_that_no_cleaner_describes(monkeypatch):
 
     statement = conformance.conformance_statement(composed, vocabulary=None)
 
-    assert [cleaned.option for cleaned in statement.cleaned] == [DEVICE_IDENTITY]
+    assert [cleaned.option for cleaned in statement.cleaned] == [
+        DEVICE_IDENTITY,
+        CLEAN_STRUCTURED_CONTENT,
+    ]
     assert conformance.PENDING_CLEANING in statement.pending

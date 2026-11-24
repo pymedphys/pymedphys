@@ -23,6 +23,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    face_review,
     pixel_risk,
     qc_attestation,
     qc_pack,
@@ -127,7 +128,8 @@ def test_a_segmentation_is_no_frame_of_a_volume():
     assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.SEGMENTATION, (1,), None)
     }
-    # A Surface Segmentation holds meshes, and is out of scope.
+    # A Surface Segmentation holds meshes, not frames, so no segments sheet
+    # or volume indicator reads it; the face review holds it instead.
     surface = _segmentation(_segment(), sop_class="1.2.840.10008.5.1.4.1.1.66.5")
     assert not pixel_risk.assess_series([surface])
 
@@ -221,15 +223,15 @@ def test_binary_and_label_map_segmentations_are_read(kind):
     assert found.frame == files.FRAME
     assert found.series == {files.SERIES}
     assert repr(found).startswith("Segments(segments=2, frames=")
-    assert qc_segments.is_segmentation(_read(data))
+    assert face_review.is_segmentation(_read(data))
 
 
 def test_a_segmentation_is_one_by_its_class_or_its_modality():
     dataset = _read(files.segmentation(_SCAN, [_mask()]))
     dataset.SOPClassUID = files.CT_IMAGE_STORAGE
-    assert qc_segments.is_segmentation(dataset)
+    assert face_review.is_segmentation(dataset)
     dataset.Modality = "CT"
-    assert not qc_segments.is_segmentation(dataset)
+    assert not face_review.is_segmentation(dataset)
 
 
 def _altered(data, change):

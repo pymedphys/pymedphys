@@ -22,7 +22,8 @@ Extended image of one value. The other syntaxes are encoded by pydicom
 (RLE Lossless), Pillow (JPEG Baseline), or pylibjpeg-openjpeg (JPEG 2000),
 which a test skips without. :func:`compressed_corpus` writes the synthetic
 corpus's images again in these syntaxes, with text planted in their
-codestreams.
+codestreams, and :func:`compressed_file` writes one file's frames again in
+one of them.
 """
 
 import dataclasses
@@ -374,7 +375,7 @@ _SMALLEST_JPEG_2000 = 32
 def compressed_corpus(corpus):
     """Return the synthetic corpus with each image written again, compressed.
 
-    The images, the instances with Pixel Data, take :data:`CORPUS_SYNTAXES`
+    The images, the instances with Pixel Data in whole bytes, take :data:`CORPUS_SYNTAXES`
     in turn, each the next that can encode it, so that RLE Lossless takes
     any that the others cannot, such as 32-bit samples, and JPEG 2000 none
     smaller than 32 by 32. Each frame of a JPEG
@@ -382,7 +383,8 @@ def compressed_corpus(corpus):
     and each of a JPEG 2000 codestream a comment at the end of its main
     header, holding :data:`CODESTREAM_TEXT` and the file's name. Every other
     element is written as pydicom reads it, in Explicit VR Little Endian, so
-    the planted attributes and their places are unchanged.
+    the planted attributes and their places are unchanged. A file of single
+    bits, as a BINARY Segmentation, is kept as it is.
 
     Parameters
     ----------
@@ -398,7 +400,9 @@ def compressed_corpus(corpus):
     files, images = [], 0
     for file in corpus.files:
         dataset = pydicom.dcmread(io.BytesIO(file.data))
-        if "PixelData" not in dataset:
+        # Single bits, as a BINARY Segmentation's, stay native: the encoders
+        # here code each sample in whole bytes.
+        if "PixelData" not in dataset or dataset.BitsAllocated == 1:
             files.append(file)
             continue
         start = images % len(CORPUS_SYNTAXES)
@@ -514,3 +518,40 @@ def _with_jpeg_2000_text(codestream: bytes, text: str) -> bytes:
     comment = struct.pack(">H", 1) + text.encode("ascii")
     planted = struct.pack(">HH", 0xFF64, len(comment) + 2) + comment
     return codestream[:position] + planted + codestream[position:]
+
+
+def compressed_file(data: bytes, syntax: str, **options) -> bytes:
+    """The file ``data`` with its native Pixel Data's frames encoded in
+    ``syntax``, one fragment each, after an empty Basic Offset Table; every
+    other attribute, the SOP Instance UID included, is kept.
+
+    RLE Lossless takes samples of any width; JPEG Lossless, First-Order
+    Prediction, unsigned samples alone; and JPEG 2000 is reversible unless
+    ``options`` give its compression ratios.
+    """
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    rows, columns = int(dataset.Rows), int(dataset.Columns)
+    stored = pydicom.pixels.pixel_array(dataset).reshape(-1, rows, columns)
+    precision = int(dataset.BitsStored)
+    if syntax == RLE_LOSSLESS:
+        codestreams = [rle_lossless(frame) for frame in stored]
+    elif syntax == JPEG_LOSSLESS_SV1:
+        codestreams = [jpeg_lossless(frame, precision=precision) for frame in stored]
+    elif syntax in (JPEG_2000_LOSSLESS, JPEG_2000):
+        codestreams = [
+            jpeg_2000(frame, precision=precision, **options) for frame in stored
+        ]
+    else:
+        raise ValueError("a syntax that the tests do not encode")
+    dataset.PixelData = encapsulated(codestreams)
+    dataset["PixelData"].VR = "OB"
+    return _rewritten(dataset, syntax)
+
+
+def _rewritten(dataset, syntax: str) -> bytes:
+    """Return ``dataset`` written as a file in ``syntax``, keeping its File
+    Meta Information's SOP Class and Instance UIDs."""
+    dataset.file_meta.TransferSyntaxUID = syntax
+    buffer = io.BytesIO()
+    dataset.save_as(buffer, enforce_file_format=True)
+    return buffer.getvalue()

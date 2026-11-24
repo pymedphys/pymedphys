@@ -26,20 +26,97 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
-# Tables A.39.1-1 and A.39.2-1.
-MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
+# Tables A.39.1-1, A.39.2-1, A.46-1, A.86.1.15-1, and A.86.1.16-1, the
+# second-generation RT IOD Modules tables of Section A.86.1, the IOD
+# Modules table of Section A.79, and the Planar MPR and Volume Rendering
+# Volumetric Presentation State and Advanced Blending Presentation State
+# IODs' Tables A.80.1-1, A.80.2.3-1, and A.33.7-1.
+MANDATORY = {
+    "Spatial Registration",
+    "Deformable Spatial Registration",
+    "Real World Value Mapping",
+    "Enhanced RT Image",
+    "Enhanced Continuous RT Image",
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "C-Arm Photon-Electron Radiation",
+    "Tomotherapeutic Radiation",
+    "Robotic-Arm Radiation",
+    "RT Brachy Application Setup Delivery Instruction",
+    "RT Radiation Set Delivery Instruction",
+    "RT Physician Intent",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation Record",
+    "RT Radiation Salvage Record",
+    "RT Radiation Record Set",
+    "Planar MPR Volumetric Presentation State",
+    "Volume Rendering Volumetric Presentation State",
+    "Advanced Blending Presentation State",
+}
+# Required in a Segmentation where a Derivation Image functional group is
+# present, in a Parametric Map where a Derivation Image or Referenced Image
+# functional group is, in a Surface Segmentation where the surface was
+# derived from another instance (PS3.3 Table A.57-1), and in an RT Beams
+# Delivery Instruction where the instruction is not conveyed by a Unified
+# Procedure Step.
+CONDITIONAL = {
+    "Segmentation",
+    "Parametric Map",
+    "Surface Segmentation",
+    "RT Beams Delivery Instruction",
+}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
-# A.35).
+# A.35), and the Encapsulated PDF, whose Encapsulated Document Module names
+# its sources in Source Instance Sequence (PS3.3 Table C.24-2).
 WITHOUT = {
     "X-Ray Radiation Dose SR",
+    "Enhanced X-Ray Radiation Dose SR",
     "Radiopharmaceutical Radiation Dose SR",
+    "Patient Radiation Dose SR",
     "Basic Text SR",
     "Enhanced SR",
     "Comprehensive SR",
     "Comprehensive 3D SR",
     "Extensible SR",
+    "Key Object Selection Document",
+    "Mammography CAD SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
+    "Procedure Log",
+    "Spectacle Prescription Report",
+    "Macular Grid Thickness and Volume Report",
+    "Waveform Annotation SR",
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
+    "Encapsulated PDF",
 }
+# The supported IODs without the module whose Presentation State
+# Relationship Module makes Referenced Series Sequence (0008,1115) Type 1 at
+# the top level, from the 2026d PS3.3 Section A.33 and Table C.11.11-1.
+PRESENTATION_STATES = {
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+}
+# The supported IODs without the module whose Waveform Presentation State
+# Relationship Module makes Referenced Series Sequence Type 1 at the top
+# level, from the 2026d PS3.3 Tables A.92.1-1 and A.92.2-1.
+WAVEFORM_PRESENTATION_STATES = {
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+}
+# The supported Presentation State IOD without either module: the blending
+# one names its images in its Blending Sequence (0070,0402) instead.
+BLENDING = "Blending Softcopy Presentation State"
 
 
 def _path(*steps):
@@ -53,14 +130,31 @@ def test_every_supported_iod_but_the_reports_includes_the_module_and_its_sequenc
     for name in scope.SUPPORTED_IODS:
         iod = tables.iods[name]
         usages = {m.usage for m in iod.modules if m.module == MODULE}
-        if name in WITHOUT:
+        relationship = (
+            "Presentation State Relationship"
+            if name in PRESENTATION_STATES
+            else "Waveform Presentation State Relationship"
+            if name in WAVEFORM_PRESENTATION_STATES
+            else None
+        )
+        if relationship is not None:
+            assert not usages, name
+            assert {
+                (d.tag, d.type, d.module)
+                for d in iod.definitions
+                if d.tag in SEQUENCES and not d.path
+            } == {("(0008,1115)", "1", relationship)}, name
+            continue
+        if name in WITHOUT | {BLENDING}:
             assert not usages, name
             assert not any(
                 d.tag in SEQUENCES and not d.path for d in iod.definitions
             ), name
             continue
         (usage,) = usages
-        assert usage == ("M" if name in MANDATORY else "U"), name
+        assert usage == (
+            "M" if name in MANDATORY else "C" if name in CONDITIONAL else "U"
+        ), name
         assert {
             (d.tag, d.type)
             for d in iod.definitions
@@ -73,6 +167,23 @@ def test_the_modules_sequences_are_at_the_top_level_only(tag):
     assert is_common_instance_reference(_path(tag))
     # As in the Hierarchical SOP Instance Reference Macro.
     assert not is_common_instance_reference(_path("(0008,9092)", tag))
+
+
+def test_a_presentation_states_referenced_series_sequence_is_not_the_modules():
+    # Given its IOD, the Type 1 sequence of the Presentation State
+    # Relationship Module is not the module's, so it never lapses; the
+    # module's own sequences, in an IOD that includes it, still are.
+    tables = iods.load_iod_tables()
+    path = _path("(0008,1115)")
+    for name in PRESENTATION_STATES | WAVEFORM_PRESENTATION_STATES:
+        assert not is_common_instance_reference(path, tables.iods[name]), name
+    assert is_common_instance_reference(path, tables.iods["CT Image"])
+    assert is_common_instance_reference(
+        _path("(0008,1200)"), tables.iods["Spatial Registration"]
+    )
+    # A report, which defines neither, is as without an IOD: the sequence is
+    # removed anyway, as no module of the IOD defines it.
+    assert is_common_instance_reference(path, tables.iods["Comprehensive SR"])
 
 
 @pytest.mark.parametrize("tag", ["(0008,1140)", "(0008,114A)", "(0008,1155)"])

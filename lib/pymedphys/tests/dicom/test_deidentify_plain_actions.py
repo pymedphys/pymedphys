@@ -14,7 +14,10 @@
 
 """Plain actions of Table E.1-1a, resolved from the strictest PS3.3 Type."""
 
-import collections
+# The tests share the hand-checked tag constants and IOD lists below, and
+# one test lists every required place of a plain X in the supported IODs, so
+# they stay in one module.
+# pylint: disable = too-many-lines
 
 from pymedphys._imports import pytest
 
@@ -22,7 +25,6 @@ from pymedphys._dicom.deidentify import (
     compound_actions,
     iods,
     standard,
-    supplementary_actions,
 )
 
 from .test_deidentify_compound_actions import (
@@ -57,11 +59,59 @@ PATIENT_SETUP_PHOTO_DESCRIPTION = "(300A,0794)"
 PATIENT_TREATMENT_PREPARATION = "(300A,079F)"
 REFERENCED_REQUEST = "(0040,A370)"
 REQUESTED_PROCEDURE_ID = "(0040,1001)"
+RECORDED_SOURCE = "(3008,0100)"
+SOURCE_MANUFACTURER = "(300A,0216)"
+POSITION_ACQUISITION_TEMPLATE_NAME = "(3002,0121)"
+POSITION_ACQUISITION_TEMPLATE_DESCRIPTION = "(3002,0123)"
+PRIOR_TREATMENT_DOSE_DESCRIPTION = "(3010,0061)"
+ACQUISITION_SUBTASK = ("(3002,0118)", "(3002,011A)")
+RT_PRESCRIPTION = "(3010,006B)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
+# X in the Basic Profile; Type 1 in the Timezone Module, which the Simplified
+# Adult Echo SR IOD alone of the supported IODs makes mandatory.
+TIMEZONE_OFFSET_FROM_UTC = "(0008,0201)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
-# The first supported release's IODs that include the Overlay Plane Module.
-OVERLAY_IODS = ("CT Image", "MR Image", "Positron Emission Tomography Image")
-# Its image IODs, all but MR Spectroscopy.
+# The first supported release's IODs that include the Overlay Plane Module as
+# user-optional.
+OVERLAY_IODS = (
+    "CT Image",
+    "MR Image",
+    "Nuclear Medicine Image",
+    "Positron Emission Tomography Image",
+    "Secondary Capture Image",
+    "Computed Radiography Image",
+)
+# The Presentation State IODs that the first supported release supports,
+# and the Type 1 dates and times of their creation.
+PRESENTATION_STATE_IODS = (
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Blending Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+    "Planar MPR Volumetric Presentation State",
+    "Volume Rendering Volumetric Presentation State",
+    "Advanced Blending Presentation State",
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+)
+PRESENTATION_CREATION_DATES = ("(0070,0082)", "(0070,0083)")
+# The IODs that include the Overlay Plane Module as conditional, of which the
+# first supported release supports the softcopy Presentation States and
+# Digital X-Ray Image, "Required if graphic annotation is present" (PS3.3
+# Table A.26-1).
+CONDITIONAL_OVERLAY_IODS = {
+    "Color Softcopy Presentation State",
+    "Digital Intra-Oral X-Ray Image",
+    "Digital Mammography X-Ray Image",
+    "Digital X-Ray Image",
+    "Grayscale Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+}
+# The first supported release's image IODs, all but MR Spectroscopy.
 IMAGE_IODS = frozenset(
     {
         "CT Image",
@@ -203,8 +253,11 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
 ):
     # Table E.1-1 gives RT Accessory Holder Slot ID Z, and it is Type 1 in RT
     # Accessory Holder Slot Sequence within RT Accessory Holder Definition
-    # Sequence of these IODs. No IOD of the first supported release has such
-    # a place. A new edition that changes where this happens fails here.
+    # Sequence of these IODs. Of the IODs of the first supported release,
+    # only C-Arm Photon-Electron Radiation, Robotic-Arm Radiation, their
+    # records, and RT Patient Position Acquisition Instruction have such a
+    # place, where it takes the dummy value (D-021). A new edition that
+    # changes where this happens fails here.
     z = {
         attribute.tag
         for attribute in standard.load_table_e1_1().attributes
@@ -229,7 +282,13 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
             "RT Patient Position Acquisition Instruction",
         )
     }
-    assert not set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy}
+    assert set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy} == {
+        "C-Arm Photon-Electron Radiation",
+        "Robotic-Arm Radiation",
+        "C-Arm Photon-Electron Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Patient Position Acquisition Instruction",
+    }
 
 
 @pytest.mark.parametrize("action", ["X", "K", "C", "U"])
@@ -389,13 +448,18 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
-@pytest.mark.parametrize("iod", FIRST_RELEASE_IODS)
+@pytest.mark.parametrize(
+    "iod", sorted(set(FIRST_RELEASE_IODS) - CONDITIONAL_OVERLAY_IODS)
+)
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
     # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
-    # MR Image, and Positron Emission Tomography Image IODs include as
+    # MR Image, Nuclear Medicine Image, Positron Emission Tomography Image,
+    # Secondary Capture Image, and Computed Radiography Image IODs include as
     # user-optional, so removing the whole group leaves a valid instance. The
-    # other IODs do not define it.
+    # other IODs do not define it, but for Digital X-Ray Image and the
+    # softcopy Presentation States, whose conditional module's Overlay Data
+    # sequesters the instance (below).
     expected_type = "1" if iod in OVERLAY_IODS else "3"
 
     assert strictest_type(tables.iods[iod], tag) == expected_type
@@ -413,18 +477,6 @@ def test_overlay_data_is_type_1_only_at_the_top_level_of_a_user_optional_module(
         (d.path, d.type, d.module) for d in ct.definitions if d.tag == "(60xx,3000)"
     } == {((), "1", "Overlay Plane")}
     assert usage["Overlay Plane"] == "U"
-
-
-CONDITIONAL_OVERLAY_IODS = {
-    "Color Softcopy Presentation State",
-    "Digital Intra-Oral X-Ray Image",
-    "Digital Mammography X-Ray Image",
-    "Digital X-Ray Image",
-    "Grayscale Softcopy Presentation State",
-    "Pseudo-Color Softcopy Presentation State",
-    "Variable Modality LUT Softcopy Presentation State",
-    "XA/XRF Grayscale Softcopy Presentation State",
-}
 
 
 @pytest.mark.deid_requirement("MIDI-BP-03")
@@ -588,13 +640,15 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
     }
     # At the top level of each image IOD but MR Spectroscopy, and within
     # Patient Setup Sequence of the RT Plan, RT Beams Treatment Record, RT Ion
-    # Plan, and RT Ion Beams Treatment Record IODs.
+    # Plan, RT Ion Beams Treatment Record, and RT Brachy Treatment Record
+    # IODs.
     preparation_places = [
         *((name, ()) for name in FIRST_RELEASE_IODS if name in IMAGE_IODS),
         ("RT Plan", (PATIENT_SETUP,)),
         ("RT Beams Treatment Record", (PATIENT_SETUP,)),
         ("RT Ion Plan", (PATIENT_SETUP,)),
         ("RT Ion Beams Treatment Record", (PATIENT_SETUP,)),
+        ("RT Brachy Treatment Record", (PATIENT_SETUP,)),
     ]
     preparation = {
         (name, (*outer, PATIENT_TREATMENT_PREPARATION, inner), tag): _removal(
@@ -622,6 +676,9 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
         **{
             (name, (), "(60xx,3000)"): _removal(*OVERLAY_GROUP) for name in OVERLAY_IODS
         },
+        # Type 1 in the Digital X-Ray Image IOD's conditional Overlay Plane
+        # Module, so an instance with an overlay is sequestered.
+        ("Digital X-Ray Image", (), "(60xx,3000)"): _removal(*SEQUESTER),
         # Type 1 in the Type 1 Radiopharmaceutical Information Sequence, so
         # every conforming instance is sequestered.
         (
@@ -629,6 +686,11 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RADIOPHARMACEUTICAL_INFORMATION,),
             RADIOPHARMACEUTICAL_START_DATETIME,
         ): _removal(*SEQUESTER),
+        # Type 1 at the top level of the echo report, so every conforming
+        # instance is sequestered unless a temporal option keeps it (D-020).
+        ("Simplified Adult Echo SR", (), TIMEZONE_OFFSET_FROM_UTC): _removal(
+            *SEQUESTER
+        ),
         # Type 2 in each report's Type 1C Referenced Request Sequence,
         # required where the report was made for a request, which no Type 3
         # sequence encloses, so it is emptied there instead (D-020).
@@ -636,158 +698,95 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (name, (REFERENCED_REQUEST,), REQUESTED_PROCEDURE_ID): _removal(*EMPTIED)
             for name in (
                 "X-Ray Radiation Dose SR",
+                "Enhanced X-Ray Radiation Dose SR",
                 "Radiopharmaceutical Radiation Dose SR",
+                "Patient Radiation Dose SR",
                 "Basic Text SR",
                 "Enhanced SR",
                 "Comprehensive SR",
                 "Comprehensive 3D SR",
                 "Extensible SR",
+                "Key Object Selection Document",
+                "Mammography CAD SR",
+                "Chest CAD SR",
+                "Colon CAD SR",
+                "Procedure Log",
+                "Spectacle Prescription Report",
+                "Macular Grid Thickness and Volume Report",
+                "Waveform Annotation SR",
+                "Implantation Plan SR Document",
+                "Simplified Adult Echo SR",
+                "Planned Imaging Agent Administration SR",
+                "Performed Imaging Agent Administration SR",
+                "Acquisition Context SR",
             )
         },
-    }
-    # Nine attributes in all.
-    assert len({tag for _, _, tag in found}) == 9
-
-
-# RT Brachy Treatment Record and RT Treatment Summary Record, which the
-# maintainer added to the target coverage on 31 October 2026, reviewed ahead
-# of supporting them, and the IODs reviewed before them.
-RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
-RECORD_REVIEWED_AGAINST = (
-    *FIRST_RELEASE_IODS,
-    "RT Ion Plan",
-    "RT Ion Beams Treatment Record",
-    "Segmentation",
-    "Enhanced X-Ray Radiation Dose SR",
-    "Patient Radiation Dose SR",
-)
-RECORDED_SOURCE = "(3008,0100)"
-SOURCE_MANUFACTURER = "(300A,0216)"
-
-
-def _record_basic_and_actions():
-    """Return the Basic Profile actions, and every action under any option.
-
-    Those of Table E.1-1 for the attributes it lists, else those of the
-    reviewed rules, by tag.
-    """
-    basic = {}
-    every = collections.defaultdict(set)
-    for attribute in standard.load_table_e1_1().attributes:
-        basic[attribute.tag] = attribute.basic_profile
-        every[attribute.tag] |= {attribute.basic_profile, *attribute.options.values()}
-    for tag, rule in supplementary_actions.load_supplementary_actions().rules.items():
-        if tag not in basic:
-            basic[tag] = rule.action
-            every[tag] |= {rule.action, *rule.options.values()}
-    return basic, every
-
-
-def _places_a_plain_action_cannot_keep_valid(tables, names):
-    """Return each place where a plain X, a plain Z, or a D cannot stand.
-
-    A plain X on an attribute that the IOD requires, with what it removes
-    there; a plain Z on a Type 1 attribute; and a D, plain or resolved by
-    Type, on a sequence or a URL, which have no dummy value (D-021). Places
-    inside a sequence that the Basic Profile removes are left out, since the
-    attribute goes with it.
-    """
-    basic, every = _record_basic_and_actions()
-    dictionary = {
-        attribute.tag: attribute
-        for attribute in standard.load_data_dictionary().attributes
-    }
-    found = {}
-    for name in names:
-        iod = tables.iods[name]
-        for definition in iod.definitions:
-            tag = definition.tag.replace("xx", "00")
-            path = definition.path
-            if any(
-                _basic_profile_removes(iod, path[depth], path[:depth], basic)
-                for depth in range(len(path))
-            ):
-                continue
-            strictest = strictest_type(iod, tag, path)
-            actions = every.get(definition.tag, set())
-            if "X" in actions and strictest != "3":
-                found[name, path, definition.tag, "X"] = resolve_plain_x_in_iod(
-                    iod, tag, path
-                )
-            if "Z" in actions and strictest == "1":
-                found[name, path, definition.tag, "Z"] = "Z"
-            action = basic.get(definition.tag)
-            if {"SQ", "UR"} & set(dictionary[definition.tag].vrs) and action:
-                resolved = (
-                    resolve_in_iod(iod, tag, path, action)
-                    if action in compound_actions.COMPOUND_ACTIONS
-                    else resolve_plain_in_iod(iod, tag, path, action)
-                )
-                if resolved == "D":
-                    found[name, path, definition.tag, "D"] = "D"
-    return found
-
-
-@pytest.mark.deid_requirement("MIDI-BP-03")
-def test_the_places_where_a_plain_action_cannot_stand_in_the_brachy_and_summary_records(
-    tables,
-):
-    found = _places_a_plain_action_cannot_keep_valid(tables, RECORD_IODS)
-    reviewed = {
-        (tag, action, removal)
-        for (_, _, tag, action), removal in _places_a_plain_action_cannot_keep_valid(
-            tables, RECORD_REVIEWED_AGAINST
-        ).items()
-    }
-
-    patient = {
-        (name, (), tag, "X"): _removal(*SEQUESTER)
-        for name in RECORD_IODS
-        for tag in (RESPONSIBLE_PERSON, RESPONSIBLE_ORGANIZATION)
-    }
-    # Within Patient Setup Sequence, as in RT Plan and RT Beams Treatment
-    # Record; RT Treatment Summary Record has no RT Patient Setup Module.
-    preparation = {
-        (
-            "RT Brachy Treatment Record",
-            (PATIENT_SETUP, PATIENT_TREATMENT_PREPARATION, inner),
-            tag,
-            "X",
-        ): _removal("SEQUENCE", 1 + (inner == REFERENCED_PATIENT_SETUP_PHOTO))
-        for inner, tag in (
-            (REFERENCED_PATIENT_SETUP_PHOTO, PATIENT_SETUP_PHOTO_DESCRIPTION),
-            (PATIENT_TREATMENT_PREPARATION_PROCEDURE, PROCEDURE_PARAMETER_DESCRIPTION),
-        )
-    }
-    # Source Manufacturer, which Table E.1-1 gives X, is Type 2 in the Type 1
-    # Recorded Source Sequence, so its removal sequesters every conforming
-    # RT Brachy Treatment Record. It is Type 3 in RT Plan's Source Sequence
-    # (300A,0210), where it is removed alone. The change that supports the
-    # IOD settles it (D-020).
-    source = {
+        # Type 2 in the RT Brachy Treatment Record's Type 1 Recorded Source
+        # Sequence, which no Type 3 sequence encloses, so every conforming
+        # record holds it; it is emptied there instead (D-020).
         (
             "RT Brachy Treatment Record",
             (RECORDED_SOURCE,),
             SOURCE_MANUFACTURER,
-            "X",
-        ): _removal(*SEQUESTER)
+        ): _removal(*EMPTIED),
+        # Type 1 at the top level of each Presentation State's mandatory
+        # Presentation State Identification or Volumetric Presentation State
+        # Identification Module, so every conforming instance is sequestered
+        # under the Basic Profile (D-020).
+        **{
+            (name, (), tag): _removal(*SEQUESTER)
+            for name in PRESENTATION_STATE_IODS
+            for tag in PRESENTATION_CREATION_DATES
+        },
+        # Type 1 in the conditional Overlay Plane Module of each softcopy
+        # Presentation State but the blending one; it and the volumetric and
+        # advanced blending ones have none. An instance that holds an overlay
+        # is sequestered.
+        **{
+            (name, (), "(60xx,3000)"): _removal(*SEQUESTER)
+            for name in PRESENTATION_STATE_IODS
+            if name in CONDITIONAL_OVERLAY_IODS
+        },
+        # RT Treatment Preparation holds the Patient Treatment Preparation
+        # descriptions at its top level: the photo's in the Type 3
+        # Referenced Patient Setup Photo Sequence, which goes with it, and
+        # the procedure parameter's as Type 2 in the Type 2 Patient Treatment
+        # Preparation Procedure Sequence, where it is emptied instead
+        # (D-020).
+        (
+            "RT Treatment Preparation",
+            (REFERENCED_PATIENT_SETUP_PHOTO,),
+            PATIENT_SETUP_PHOTO_DESCRIPTION,
+        ): _removal("SEQUENCE", 0),
+        (
+            "RT Treatment Preparation",
+            (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
+            PROCEDURE_PARAMETER_DESCRIPTION,
+        ): _removal(*EMPTIED),
+        # Type 2 in the Type 1 RT Prescription Sequence, which no Type 3
+        # sequence encloses, so it is emptied there instead (D-020).
+        (
+            "RT Physician Intent",
+            (RT_PRESCRIPTION,),
+            PRIOR_TREATMENT_DOSE_DESCRIPTION,
+        ): _removal(*EMPTIED),
+        # The template's name, Type 1, and description, Type 2, in the Type 3
+        # Position Acquisition Template Identification Sequence, which goes
+        # with them.
+        **{
+            (
+                "RT Patient Position Acquisition Instruction",
+                (*ACQUISITION_SUBTASK, "(3002,011F)"),
+                tag,
+            ): _removal("SEQUENCE", 2)
+            for tag in (
+                POSITION_ACQUISITION_TEMPLATE_NAME,
+                POSITION_ACQUISITION_TEMPLATE_DESCRIPTION,
+            )
+        },
     }
-    assert found == {**patient, **preparation, **source}
-    # Only Source Manufacturer is new: each other place matches one that the
-    # IODs reviewed before them have, with the same removal.
-    new = {
-        key
-        for key, removal in found.items()
-        if (key[2], key[3], removal) not in reviewed
-    }
-    assert new == set(source)
-    assert (
-        strictest_type(tables.iods["RT Brachy Treatment Record"], RECORDED_SOURCE)
-        == "1"
-    )
-    assert resolve_plain_x_in_iod(
-        tables.iods["RT Plan"], SOURCE_MANUFACTURER, ("(300A,0210)",)
-    ) == _removal(*ALONE)
+    # Sixteen attributes in all.
+    assert len({tag for _, _, tag in found}) == 16
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
@@ -800,9 +799,9 @@ def test_requested_procedure_id_is_emptied_in_each_referenced_request_sequence(
     # generated IOD that defines it there is a Structured Report or a Key
     # Object Selection Document, which give the sequence Type 1C at the top
     # level.
-    assert dict(compound_actions.EMPTIED_PLAIN_X) == {
-        REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,)
-    }
+    assert compound_actions.EMPTIED_PLAIN_X[REQUESTED_PROCEDURE_ID] == (
+        REFERENCED_REQUEST,
+    )
     emptied = [
         name
         for name, iod in tables.iods.items()
@@ -831,6 +830,149 @@ def test_requested_procedure_id_is_emptied_in_each_referenced_request_sequence(
     assert resolve_plain_x_in_iod(ct, REQUESTED_PROCEDURE_ID, ()) == _removal(*ALONE)
     report = tables.iods["X-Ray Radiation Dose SR"]
     assert resolve_plain_in_iod(report, REQUESTED_PROCEDURE_ID, (), "X") == "X"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_source_manufacturer_is_emptied_in_each_recorded_source_sequence(
+    tables, monkeypatch
+):
+    # Source Manufacturer, which Table E.1-1 gives X, or K under Retain
+    # Device Identity, is Type 2 in Recorded Source Sequence, which is Type 1
+    # at the top level of the RT Brachy Treatment Record IOD, so every
+    # conforming record holds it there and no Type 3 sequence encloses it;
+    # a plain X empties it there rather than sequester the record (D-020).
+    # These, and the two places of the RT Treatment Preparation and RT
+    # Physician Intent IODs below, are the only places that a plain X empties.
+    assert dict(compound_actions.EMPTIED_PLAIN_X) == {
+        REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,),
+        SOURCE_MANUFACTURER: (RECORDED_SOURCE,),
+        PROCEDURE_PARAMETER_DESCRIPTION: (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
+        PRIOR_TREATMENT_DOSE_DESCRIPTION: (RT_PRESCRIPTION,),
+    }
+    row = next(
+        attribute
+        for attribute in standard.load_table_e1_1().attributes
+        if attribute.tag == SOURCE_MANUFACTURER
+    )
+    assert (row.basic_profile, dict(row.options)) == (
+        "X",
+        {"retain_device_identity": "K"},
+    )
+    emptied = [
+        name
+        for name, iod in tables.iods.items()
+        if resolve_plain_x_in_iod(iod, SOURCE_MANUFACTURER, (RECORDED_SOURCE,))
+        == _removal(*EMPTIED)
+    ]
+    defined = [
+        name
+        for name, iod in tables.iods.items()
+        if strictest_type(iod, SOURCE_MANUFACTURER, (RECORDED_SOURCE,)) == "2"
+    ]
+    assert emptied == defined == ["RT Brachy Treatment Record"]
+    record = tables.iods["RT Brachy Treatment Record"]
+    assert strictest_type(record, RECORDED_SOURCE, ()) == "1"
+    assert (
+        resolve_plain_in_iod(record, SOURCE_MANUFACTURER, (RECORDED_SOURCE,), "X")
+        == "Z"
+    )
+    # Elsewhere, as in RT Plan's Source Sequence (300A,0210), where it is Type
+    # 3, a plain X removes it alone.
+    plan = tables.iods["RT Plan"]
+    assert strictest_type(plan, SOURCE_MANUFACTURER, ("(300A,0210)",)) == "3"
+    assert resolve_plain_x_in_iod(
+        plan, SOURCE_MANUFACTURER, ("(300A,0210)",)
+    ) == _removal(*ALONE)
+    assert resolve_plain_in_iod(plan, SOURCE_MANUFACTURER, ("(300A,0210)",), "X") == "X"
+    # Without the entry, every record would be sequestered.
+    monkeypatch.setattr(
+        compound_actions,
+        "EMPTIED_PLAIN_X",
+        {REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,)},
+    )
+    assert resolve_plain_x_in_iod(
+        record, SOURCE_MANUFACTURER, (RECORDED_SOURCE,)
+    ) == _removal(*SEQUESTER)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+@pytest.mark.parametrize(
+    "name, tag, path, sequence_type",
+    [
+        # Type 2 in the Type 2 Patient Treatment Preparation Procedure
+        # Sequence at the top level of the RT Treatment Preparation IOD.
+        (
+            "RT Treatment Preparation",
+            PROCEDURE_PARAMETER_DESCRIPTION,
+            (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
+            "2",
+        ),
+        # Type 2 in the Type 1 RT Prescription Sequence of the RT Physician
+        # Intent IOD's RT Enhanced Prescription Module.
+        (
+            "RT Physician Intent",
+            PRIOR_TREATMENT_DOSE_DESCRIPTION,
+            (RT_PRESCRIPTION,),
+            "1",
+        ),
+    ],
+)
+def test_a_plain_x_empties_the_required_preparation_and_prescription_descriptions(
+    tables, monkeypatch, name, tag, path, sequence_type
+):
+    # Table E.1-1 gives each a plain X under every option. Each is Type 2
+    # where the IOD defines it, and no Type 3 sequence encloses it, so its
+    # removal would sequester every instance that holds the sequence; a
+    # plain X empties it there instead, as it does Source Manufacturer in
+    # Recorded Source Sequence (D-020), as the maintainer decided on
+    # 16 November 2026 (23:46 UTC).
+    row = next(
+        attribute
+        for attribute in standard.load_table_e1_1().attributes
+        if attribute.tag == tag
+    )
+    assert (row.basic_profile, dict(row.options)) == ("X", {"clean_descriptors": "C"})
+    emptied = [
+        each
+        for each, iod in tables.iods.items()
+        if resolve_plain_x_in_iod(iod, tag, path) == _removal(*EMPTIED)
+    ]
+    assert emptied == [name]
+    iod = tables.iods[name]
+    assert strictest_type(iod, path[0], ()) == sequence_type
+    assert strictest_type(iod, tag, path) == "2"
+    assert resolve_plain_in_iod(iod, tag, path, "X") == "Z"
+    # Without the entry, the instance would be sequestered.
+    monkeypatch.setattr(
+        compound_actions,
+        "EMPTIED_PLAIN_X",
+        {
+            each: place
+            for each, place in compound_actions.EMPTIED_PLAIN_X.items()
+            if each != tag
+        },
+    )
+    assert resolve_plain_x_in_iod(iod, tag, path) == _removal(*SEQUESTER)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_a_plain_x_on_the_procedure_parameter_description_elsewhere_removes_its_sequence(
+    tables,
+):
+    # Elsewhere Patient Treatment Preparation Procedure Parameter
+    # Description is in the Type 3 Patient Treatment Preparation Sequence,
+    # at the top level of an image IOD or in Patient Setup Sequence, which a
+    # plain X removes with it, so it is not emptied there.
+    path = (PATIENT_TREATMENT_PREPARATION, PATIENT_TREATMENT_PREPARATION_PROCEDURE)
+    ct = tables.iods["CT Image"]
+    assert resolve_plain_x_in_iod(
+        ct, PROCEDURE_PARAMETER_DESCRIPTION, path
+    ) == _removal("SEQUENCE", 0)
+    assert resolve_plain_in_iod(ct, PROCEDURE_PARAMETER_DESCRIPTION, path, "X") == "X"
+    plan = tables.iods["RT Plan"]
+    assert resolve_plain_x_in_iod(
+        plan, PROCEDURE_PARAMETER_DESCRIPTION, (PATIENT_SETUP, *path)
+    ) == _removal("SEQUENCE", 1)
 
 
 @pytest.mark.parametrize(

@@ -29,9 +29,18 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from . import face_validation, face_validation_dicom
+from . import (
+    face_validation,
+    face_validation_dicom,
+    face_validation_keating,
+    face_validation_pddca,
+    face_validation_vhp,
+)
 from .face_validation_dicom_markdown import markdown as dicom_markdown
+from .face_validation_keating_markdown import markdown as keating_markdown
 from .face_validation_markdown import markdown
+from .face_validation_pddca_markdown import markdown as pddca_markdown
+from .face_validation_vhp_markdown import markdown as vhp_markdown
 
 JSON_NAME = "face-validation.json"
 MARKDOWN_NAME = "face-validation.md"
@@ -39,7 +48,9 @@ MARKDOWN_NAME = "face-validation.md"
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Check the face block and CT defacing against a data set's masks,
-    or the face block and its holds on a directory of DICOM files.
+    the face block and its holds on a directory of DICOM files, or the
+    face block and CT defacing on the NLM Visible Human Project's CT or on
+    Steven Keating's cranial CT.
 
     ``hanseg`` takes HaN-Seg's ZIP file and ``--out``, a directory that
     must not exist, and writes :func:`~pymedphys._dicom.deidentify.face_validation.summarise`'s
@@ -47,7 +58,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     and prints the Markdown. ``dicom`` takes a directory of DICOM files and
     ``--out`` likewise, and writes
     :func:`~pymedphys._dicom.deidentify.face_validation_dicom.summarise`'s
-    counts.
+    counts. ``visible-human`` takes a directory holding each series that
+    :data:`~pymedphys._dicom.deidentify.face_validation_vhp.SERIES` pins and
+    ``--out`` likewise, and writes
+    :func:`~pymedphys._dicom.deidentify.face_validation_vhp.check_visible_human`'s
+    summary there, as ``face-validation-vhp.json`` and
+    ``face-validation-vhp.md``, with each head's renders in
+    ``renders``, and prints the Markdown. ``pddca`` takes PDDCA's three
+    ZIP files, in order, and ``--out`` likewise, and writes
+    :func:`~pymedphys._dicom.deidentify.face_validation_pddca.summarise`'s
+    counts, as ``hanseg`` does. ``keating`` takes the Keating record's ZIP
+    file and ``--out`` likewise, and writes
+    :func:`~pymedphys._dicom.deidentify.face_validation_keating.check_keating`'s
+    summary there, as ``face-validation-keating.json`` and
+    ``face-validation-keating.md``, with each series' renders in
+    ``renders``, and prints the Markdown.
 
     Raises
     ------
@@ -104,14 +129,87 @@ def main(argv: Sequence[str] | None = None) -> int:
             "face-validation.md."
         ),
     )
+    visible_human = commands.add_parser(
+        "visible-human",
+        help=(
+            "Check the face block finder and CT defacing on the NLM Visible "
+            "Human Project's CT series from NCI Imaging Data Commons, and "
+            "render each head's face."
+        ),
+    )
+    visible_human.add_argument(
+        "directory",
+        help="A directory holding each pinned series in a folder named by its UUID.",
+    )
+    visible_human.add_argument(
+        "--out",
+        required=True,
+        help=(
+            "A directory, which must not exist, for face-validation-vhp.json, "
+            "face-validation-vhp.md, and the renders."
+        ),
+    )
+    pddca = commands.add_parser(
+        "pddca",
+        help=(
+            "Check against the PDDCA 1.4.1 data set's head and neck CTs and "
+            "optic nerve masks, read from its three ZIP files without "
+            "extracting them."
+        ),
+    )
+    pddca.add_argument(
+        "archives",
+        nargs=3,
+        help=(
+            "PDDCA-1.4.1_part1.zip, _part2.zip, and _part3.zip, from Zenodo "
+            "records 19657912, 19658040, and 19658102, unchanged, in that order."
+        ),
+    )
+    pddca.add_argument(
+        "--out",
+        required=True,
+        help=(
+            "A directory, which must not exist, for face-validation.json and "
+            "face-validation.md."
+        ),
+    )
+    keating = commands.add_parser(
+        "keating",
+        help=(
+            "Check the face block finder and CT defacing on Steven Keating's "
+            "cranial CT, and render its face."
+        ),
+    )
+    keating.add_argument(
+        "archive",
+        help=f"{face_validation_keating.ARCHIVE}, from Zenodo record 16816, unchanged.",
+    )
+    keating.add_argument(
+        "--out",
+        required=True,
+        help=(
+            "A directory, which must not exist, for "
+            "face-validation-keating.json, face-validation-keating.md, and "
+            "the renders."
+        ),
+    )
     arguments = parser.parse_args(argv)
     out = pathlib.Path(arguments.out)
     if out.exists():
         raise SystemExit("The output directory must not exist.")
+    if arguments.command == "visible-human":
+        return _visible_human(pathlib.Path(arguments.directory), out)
+    if arguments.command == "keating":
+        return _keating(pathlib.Path(arguments.archive), out)
     try:
         if arguments.command == "dicom":
             summary = _check_dicom(pathlib.Path(arguments.directory))
             page = dicom_markdown(summary)
+        elif arguments.command == "pddca":
+            summary = face_validation_pddca.check_pddca(
+                [pathlib.Path(each) for each in arguments.archives]
+            )
+            page = pddca_markdown(summary)
         else:
             summary = face_validation.check_hanseg(pathlib.Path(arguments.archive))
             page = markdown(summary)
@@ -120,6 +218,58 @@ def main(argv: Sequence[str] | None = None) -> int:
     out.mkdir(parents=True)
     (out / JSON_NAME).write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     (out / MARKDOWN_NAME).write_text(page, encoding="utf-8")
+    sys.stdout.write(page)
+    return 0
+
+
+def _visible_human(directory: pathlib.Path, out: pathlib.Path) -> int:
+    """Check the Visible Human series, and write the summary, the page, and
+    the renders.
+
+    Raises
+    ------
+    SystemExit
+        With a refusal's message, as for a series that is missing or not
+        the one pinned.
+    """
+    try:
+        summary = face_validation_vhp.check_visible_human(
+            directory, out / face_validation_vhp.RENDERS
+        )
+    except face_validation.FaceValidationRefused as refused:
+        raise SystemExit(str(refused)) from None
+    out.mkdir(parents=True, exist_ok=True)
+    page = vhp_markdown(summary)
+    (out / face_validation_vhp.JSON_NAME).write_text(
+        json.dumps(summary, indent=2) + "\n", encoding="utf-8"
+    )
+    (out / face_validation_vhp.MARKDOWN_NAME).write_text(page, encoding="utf-8")
+    sys.stdout.write(page)
+    return 0
+
+
+def _keating(archive: pathlib.Path, out: pathlib.Path) -> int:
+    """Check Steven Keating's cranial CT, and write the summary, the page,
+    and the renders.
+
+    Raises
+    ------
+    SystemExit
+        With a refusal's message, as for an archive that is not the one
+        pinned.
+    """
+    try:
+        summary = face_validation_keating.check_keating(
+            archive, out / face_validation_keating.RENDERS
+        )
+    except face_validation.FaceValidationRefused as refused:
+        raise SystemExit(str(refused)) from None
+    out.mkdir(parents=True, exist_ok=True)
+    page = keating_markdown(summary)
+    (out / face_validation_keating.JSON_NAME).write_text(
+        json.dumps(summary, indent=2) + "\n", encoding="utf-8"
+    )
+    (out / face_validation_keating.MARKDOWN_NAME).write_text(page, encoding="utf-8")
     sys.stdout.write(page)
     return 0
 

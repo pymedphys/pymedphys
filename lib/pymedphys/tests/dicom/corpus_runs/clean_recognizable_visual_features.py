@@ -17,7 +17,9 @@
 Every released instance claims the option, and so has Recognizable Visual
 Features (0028,0302) set to NO, whether or not its IOD defines it. The
 deformable registration is released too, since its verdict covers the grid
-that the run writes of it unchanged, which the QC pack's grid sheets show.
+that the run writes of it unchanged, which the QC pack's grid sheets show,
+and so is the Surface Segmentation, since its verdict covers the meshes
+that the run writes of it unchanged, which the pack's surfaces sheet shows.
 """
 
 from .._corpus_run import BASIC_WITHHELD, CorpusRun, every_face_absent

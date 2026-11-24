@@ -28,6 +28,7 @@ from pymedphys._dicom.deidentify import (
     conformance_values,
     dummy_values,
     edits,
+    icc_cleaning,
     icc_profiles,
     instance_transform,
     pixel_risk,
@@ -219,8 +220,12 @@ def test_the_reviewed_procedure_step_items_are_described():
 def test_the_reviewed_icc_profile_is_described():
     section = _section("basic", "Values written")
 
-    assert f"D on {_named(dummy_values.ICC_PROFILE)} writes a fixed ICC" in section
-    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+    assert (
+        f"D on {_named(dummy_values.ICC_PROFILE)} writes the source profile "
+        "cleaned of everything but its colorimetry"
+    ) in section
+    assert "D writes instead a fixed ICC version 2.4 input profile" in section
+    for description in ("DEIDENTIFIED", "DE-IDENTIFIED", "DEIDENTIFIED sRGB"):
         assert f"`{description}`" in section
     assert "grey" not in section
 
@@ -281,8 +286,11 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
         institution,
         dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     }
-    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
-        assert b"PYMEDPHYS" not in icc_profiles.srgb_profile(description).upper()
+    assert b"PYMEDPHYS" not in icc_profiles.srgb_profile("DEIDENTIFIED sRGB").upper()
+    source = icc_profiles.srgb_profile("A scanner's profile")
+    for text in dummy_values.CONSTANTS["LO"]:
+        cleaned = icc_cleaning.clean_profile(source, text)
+        assert b"PYMEDPHYS" not in cleaned.upper()
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -511,6 +519,15 @@ def _gate_reasons(code):
         coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
         text = b"ZEBEDEE^QUILLON "
         written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT:
+        # Institutional Department Name, which Retain Institution Identity
+        # keeps.
+        name = ElementPath((), "(0010,0010)")
+        coverage["planned"] = frozenset({name})
+        coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
+        coverage["options"] = ("retain_institution_identity",)
+        text = b"ZEBEDEE WARD"
+        written += struct.pack("<HH2sH", 0x0008, 0x1040, b"LO", len(text)) + text
     elif code is release_gate.ReasonCode.RESIDUAL_OUTSIDE_DATA_SET:
         coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
         written += b"\xff\xff\xff\xffZARQUON STUDY"
@@ -711,7 +728,11 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
         *pixel_risk.VOLUME_INDICATORS,
         pixel_risk.Indicator.LOCALIZER,
         pixel_risk.Indicator.RT_IMAGE,
+        pixel_risk.Indicator.NM_IMAGE,
+        pixel_risk.Indicator.RADIOGRAPH,
+        pixel_risk.Indicator.RADIOGRAPH_ANNOTATION,
         pixel_risk.Indicator.SEGMENTATION,
+        pixel_risk.Indicator.PARAMETRIC_MAP,
         pixel_risk.Indicator.HEAD_OR_NECK,
         pixel_risk.Indicator.UNREADABLE,
     ):
@@ -723,9 +744,24 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
     )
     assert "localizers among them, which can show the face in profile" in section
     assert "the RT Images among them, projections such as a lateral DRR" in section
-    assert "the Segmentations among them, whose segment of the skin" in section
     assert (
-        "localizer, RT Image, or Segmentation, or a Segmentation's segments" in section
+        "the Nuclear Medicine images among them, planar views, the projections "
+        "of a tomographic acquisition, or volumes reconstructed from them"
+    ) in section
+    assert "the Segmentations among them, whose segment of the skin" in section
+    assert "the Parametric Maps among them, whose map of the head" in section
+    assert (
+        "the Computed Radiography and Digital X-Ray images among them, "
+        "projections such as a lateral skull radiograph" in section
+    )
+    assert (
+        "Every Computed Radiography and Digital X-Ray image is one, as able "
+        "to hold burned-in text" in section
+    )
+    assert "whatever its Burned In Annotation (0028,0301) says" in section
+    assert (
+        "localizer, RT Image, Nuclear Medicine image, radiograph, "
+        "Segmentation, or Parametric Map, or a Segmentation's segments" in section
     )
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
@@ -799,3 +835,67 @@ def test_the_statement_cites_no_design_decision_by_number(preset_name, options):
         conformance.conformance_statement(selected, vocabulary=None)
     )
     assert re.search(r"\bD-\d{3}\b", text) is None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "options, described",
+    [
+        ((policy.CLEAN_STRUCTURED_CONTENT,), True),
+        ((policy.CLEAN_STRUCTURED_CONTENT, policy.FULL_DATES), False),
+        ((policy.CLEAN_STRUCTURED_CONTENT, policy.MODIFIED_DATES), False),
+        ((), False),
+    ],
+    ids=["option", "full-dates", "modified-dates", "no-option"],
+)
+def test_values_written_describes_a_procedure_logs_ranked_datetimes(options, described):
+    lines = conformance_markdown.render_markdown(
+        conformance.conformance_statement(
+            policy.compose_custom_policy(options), vocabulary=None
+        )
+    ).splitlines()
+    start = lines.index("## Values written") + 1
+    end = next(i for i in range(start, len(lines)) if lines[i].startswith("## "))
+    section = " ".join(lines[start:end])
+
+    # Only where D gives a log's entries their Observation DateTime does the
+    # statement say which dummy each takes.
+    paragraph = "Observation DateTime (0040,A032) of each entry of a Procedure Log"
+    assert (paragraph in section) is described
+    if described:
+        assert "`19000101000000` for the earliest, and one second more" in section
+        assert "A log whose entries are not in increasing order is sequestered." in (
+            section
+        )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "options, described",
+    [((policy.CLEAN_STRUCTURED_CONTENT,), True), ((), False)],
+    ids=["option", "no-option"],
+)
+def test_values_written_describes_ranked_linked_identifiers(options, described):
+    lines = conformance_markdown.render_markdown(
+        conformance.conformance_statement(
+            policy.compose_custom_policy(options), vocabulary=None
+        )
+    ).splitlines()
+    start = lines.index("## Values written") + 1
+    end = next(i for i in range(start, len(lines)) if lines[i].startswith("## "))
+    section = " ".join(lines[start:end])
+
+    # Only where the option keeps a report's tree does the statement say
+    # which dummy each agent's or implant component's identifier, and each
+    # reference to it, takes.
+    paragraph = "Text Value (0040,A160) of an Imaging Agent Identifier (130254, DCM)"
+    assert (paragraph in section) is described
+    assert ("Component ID (112347, DCM) of each Selected Implant" in section) is (
+        described
+    )
+    if described:
+        assert "`DEIDENTIFIED 1` for the first" in section
+        assert (
+            "or a reference names no agent or component that is kept, is "
+            "sequestered." in section
+        )

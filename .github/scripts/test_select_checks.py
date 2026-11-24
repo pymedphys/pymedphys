@@ -249,15 +249,24 @@ class SelectionTests(unittest.TestCase):
 
     def test_costly_checks_run_for_the_inputs_only_they_validate(self):
         both = {"run-integration", "run-database"}
+        # Dependency inputs also select the dicom extra's and the dependency
+        # floors' corpus parts.
+        corpus = {"run-dependency-corpus"}
         for path, expected in (
-            ("pyproject.toml", both),
-            ("uv.lock", both),
-            ("requirements.txt", both),
-            ("pyproject.hash", both),
-            ("lib/pymedphys/dependency-extra.txt", both),
-            ("lib/pymedphys/_version.py", both),
-            (".github/workflows/ci.yml", both),
-            (".github/actions/setup-project/action.yml", both),
+            ("pyproject.toml", both | corpus),
+            ("uv.lock", both | corpus),
+            ("requirements.txt", both | corpus),
+            ("pyproject.hash", both | corpus),
+            ("lib/pymedphys/dependency-extra.txt", both | corpus),
+            ("lib/pymedphys/_version.py", both | corpus),
+            (".github/workflows/ci.yml", both | corpus),
+            (".github/actions/setup-project/action.yml", both | corpus),
+            (".github/workflows/unit-tests.yml", corpus),
+            ("lib/pymedphys/_imports/imports.py", both | corpus),
+            ("lib/pymedphys/_extras.py", both | corpus),
+            ("lib/pymedphys/_vendor/apipkg/__init__.py", corpus),
+            ("lib/pymedphys/_dicom/deidentify/engine.py", set()),
+            ("lib/pymedphys/tests/dicom/test_deidentify_dates.py", set()),
             (".github/workflows/integration-tests.yml", {"run-integration"}),
             (".github/scripts/check_distributions.py", {"run-integration"}),
             (".github/scripts/select_checks.py", {"run-integration"}),
@@ -450,8 +459,10 @@ class SelectionTests(unittest.TestCase):
             select_checks(["README.rst"], labels=["DATABASE"])["run-database"]
         )
 
-    def test_main_and_full_test_prs_widen_the_unit_test_matrix(self):
-        self.assertTrue(select_checks([], event_name="push")["run-full-matrix"])
+    def test_nightly_manual_and_full_test_runs_widen_the_unit_test_matrix(self):
+        for event in ("schedule", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertTrue(select_checks([], event_name=event)["run-full-matrix"])
         self.assertTrue(select_checks([], labels=["full-test"])["run-full-matrix"])
         for paths in (None, [], ["uv.lock"], ["lib/pymedphys/_gamma/core.py"]):
             with self.subTest(paths=paths):
@@ -468,7 +479,11 @@ class SelectionTests(unittest.TestCase):
 
     def test_merge_groups_keep_every_check_with_the_quick_unit_matrix(self):
         expected = dict.fromkeys(OUTPUTS, True)
+        # The nightly run covers the full matrix, the dependency corpus, and
+        # the Windows and macOS tooling tests.
         expected["run-full-matrix"] = False
+        expected["run-dependency-corpus"] = False
+        expected["run-integration-scripts"] = False
         for paths in (
             None,
             [],
@@ -484,6 +499,33 @@ class SelectionTests(unittest.TestCase):
                         select_checks(paths, event_name="merge_group", labels=labels),
                         expected,
                     )
+
+    def test_the_dependency_corpus_follows_dependency_inputs_and_events(self):
+        for event in ("schedule", "workflow_dispatch", "push"):
+            with self.subTest(event=event):
+                self.assertTrue(
+                    select_checks([], event_name=event)["run-dependency-corpus"]
+                )
+        self.assertFalse(
+            select_checks([], event_name="merge_group")["run-dependency-corpus"]
+        )
+        self.assertTrue(
+            select_checks([], labels=["full-test"])["run-dependency-corpus"]
+        )
+        # Missing evidence, a link, or an unverifiable diff fails open.
+        self.assertTrue(select_checks(None)["run-dependency-corpus"])
+        self.assertTrue(
+            select_checks([ChangedPath("docs", regular=False)])["run-dependency-corpus"]
+        )
+        # Ordinary code, tests and unknown inputs leave it to the nightly run.
+        for paths in (
+            ["lib/pymedphys/_dicom/deidentify/values.py"],
+            ["lib/pymedphys/tests/dicom/test_deidentify_values.py"],
+            ["unclassified-input"],
+            ["README.rst"],
+        ):
+            with self.subTest(paths=paths):
+                self.assertFalse(select_checks(paths)["run-dependency-corpus"])
 
     def test_every_selection_has_explicit_booleans(self):
         for paths in (None, [], ["README.rst"], ["new-file"]):
