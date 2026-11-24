@@ -15,7 +15,7 @@ This project adheres to
 ### Keep staff password bytes out of MOSAIQ CSV exports
 
 The experimental MOSAIQ CSV exporter now has regression coverage ensuring every returned staff password is replaced before CSV conversion, including rows with blank staff names and missing passwords.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security/csv-staff-secret-regression)
+[PR #2717](https://github.com/pymedphys/pymedphys/pull/2717)
 
 ### RT Plans written by `Delivery.to_dicom`
 
