@@ -75,7 +75,7 @@ def test_dicom_trf_comparison(_data_paths):
             **GAMMA_OPTIONS,
         )
 
-        assert pymedphys.gamma_pass_rate(gamma) >= 98
+        assert pymedphys.gamma_percent_passed(gamma) >= 98
 
 
 @pytest.fixture()
