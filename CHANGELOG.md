@@ -15,7 +15,7 @@ This project adheres to
 ### Cover Monaco export sibling-directory and link boundaries
 
 Monaco export path validation now has regression coverage for adjacent directories whose names begin with the export directory name, and for chained symbolic links that lead outside it.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security/monaco-confinement-regression)
+[PR #2719](https://github.com/pymedphys/pymedphys/pull/2719)
 
 ### RT Plans written by `Delivery.to_dicom`
 
