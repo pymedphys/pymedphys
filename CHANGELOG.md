@@ -15,7 +15,7 @@ This project adheres to
 ### Executed-test coverage evidence
 
 Pydicom coverage metadata requires at least one executed test; reports containing only skipped cases no longer count as successful validation.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security-pydicom-skipped-evidence-20261124)
+[PR #2714](https://github.com/pymedphys/pymedphys/pull/2714)
 
 ### RT Plans written by `Delivery.to_dicom`
 
