@@ -10,6 +10,10 @@ from . import patients
 BUFFER_SIZE = 256
 ICOM_PORT = 1706
 
+# Before a complete timestamp is found, only its possible 17-byte prefix
+# and the eight bytes preceding that timestamp can belong to a future frame.
+_UNFRAMED_TAIL_BYTES = 25
+
 
 def save_an_icom_batch(date_pattern, ip_directory, data_to_save):
     if not date_pattern.match(data_to_save[8:26]):
@@ -72,6 +76,7 @@ def listen(ip, data_dir):
             try:
                 span = next(matches).span()
             except StopIteration:
+                data = data[-_UNFRAMED_TAIL_BYTES:]
                 continue
 
             previous_start_location = get_start_location_from_date_span(span)
