@@ -19,7 +19,7 @@ responses omit the requested URL, which can contain access tokens or private
 file names. Unsupported-scheme errors still name the scheme, and incomplete
 downloads still report the received and expected byte counts. The destination
 and retries behave as before.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/download-error-url-privacy)
+[PR #2701](https://github.com/pymedphys/pymedphys/pull/2701)
 
 ### RT Plans written by `Delivery.to_dicom`
 
