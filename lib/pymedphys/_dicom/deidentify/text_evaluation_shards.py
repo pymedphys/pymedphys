@@ -22,10 +22,13 @@ appears in that list (:func:`case_groups`). Each subject goes to one
 shard, so that its cases, which the bootstrap resamples together, are
 measured together: the subjects are taken from the heaviest down, by the
 frames that their cases' files hold (:func:`case_weight`), each to the
-shard least loaded so far (:func:`shard_positions`), so that the shards'
+shard least loaded so far (:func:`placement`), so that the shards'
 measurements take about as long as each other. The frames are read from
 the files' headers alone, which every shard reads alike, so every shard
-of a run places every subject in the same shard.
+of a run places every subject in the same shard; each record carries a
+digest of the whole placement, which :func:`merged` checks is the same in
+every record, so that shards that placed the cases differently, and might
+have measured a case twice and another not at all, are never merged.
 
 A shard's record (:func:`shard_record`, labelled :data:`SHARD_FORMAT`)
 holds what :func:`~.text_evaluation.summary_of` and
@@ -48,8 +51,10 @@ once.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import pathlib
+import struct
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
@@ -116,14 +121,24 @@ def shard_positions(
     weights: Sequence[int] | None = None,
 ) -> list[int]:
     """The places in the list of the cases that shard ``shard`` of
-    ``shards`` measures.
+    ``shards`` measures, by :func:`placement`."""
+    if not 0 <= shard < shards:
+        raise EvaluationRefused("A shard must be one of the run's shards.")
+    owners = placement(groups, shards, weights)
+    return [place for place, owner in enumerate(owners) if owner == shard]
+
+
+def placement(
+    groups: Sequence[int], shards: int, weights: Sequence[int] | None = None
+) -> tuple[int, ...]:
+    """Each case's shard.
 
     Each subject, with its cases' weights summed (one a case where
     ``weights`` is None), is taken from the heaviest down, and the lowest
     numbered first among equals, and goes to the shard of least weight so
     far, the lowest numbered first among equals.
     """
-    if shards < 1 or not 0 <= shard < shards:
+    if shards < 1:
         raise EvaluationRefused("A shard must be one of the run's shards.")
     if weights is None:
         weights = [1] * len(groups)
@@ -138,7 +153,7 @@ def shard_positions(
         lightest = min(range(shards), key=lambda each: (loads[each], each))
         owners[group] = lightest
         loads[lightest] += subjects[group]
-    return [place for place, group in enumerate(groups) if owners[group] == shard]
+    return tuple(owners[group] for group in groups)
 
 
 def case_weight(case: object) -> int:
@@ -167,7 +182,14 @@ def _frames(path: pathlib.Path) -> int:
             path, stop_before_pixels=True, specific_tags=["NumberOfFrames"]
         )
         return max(1, int(found.get("NumberOfFrames", 1) or 1))
-    except (OSError, pydicom.errors.InvalidDicomError, EOFError, ValueError, TypeError):
+    except (
+        OSError,
+        EOFError,
+        ValueError,
+        TypeError,
+        struct.error,
+        pydicom.errors.InvalidDicomError,
+    ):
         return 1
 
 
@@ -178,6 +200,7 @@ def shard_record(
     *,
     shard: int,
     shards: int,
+    owners: Sequence[int],
     run: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     """The record of one shard's evaluation, for JSON, as the module
@@ -195,6 +218,9 @@ def shard_record(
     run : mapping, optional
         What else names the run, such as the arguments that chose its
         detector and cases, which every record of it must share.
+    owners : sequence of int
+        Each case's shard in the run (:func:`placement`), of which the
+        record keeps a digest alone.
     """
     if len(positions) != len(evaluation.results):
         raise EvaluationRefused("A shard's record needs each case's place.")
@@ -209,6 +235,7 @@ def shard_record(
         "shards": shards,
         "cases": cases,
         "run": _plain(run or {}),
+        "placement": _digest(list(owners)),
         "detector": _plain(evaluation.detector),
         "settings": _settings_of(evaluation.settings),
         "totals": _totals_out(totals(evaluation.results)),
@@ -243,7 +270,7 @@ def _merged(
     for record in records:
         if record.get("format") != SHARD_FORMAT:
             raise EvaluationRefused("Each record must be a shard's record.")
-        for key in ("shards", "cases", "run", "detector", "settings"):
+        for key in ("shards", "cases", "run", "placement", "detector", "settings"):
             if record[key] != first[key]:
                 raise EvaluationRefused("The records must be of one run.")
     if first["settings"] != _settings_of(settings):
@@ -386,6 +413,10 @@ def _table_in(rows: Sequence[Sequence[Any]], kind: type) -> dict[tuple, Any]:
 
 def _canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True)
+
+
+def _digest(value: object) -> str:
+    return hashlib.sha256(_canonical(value).encode()).hexdigest()
 
 
 def _tuple(value: Any) -> Any:

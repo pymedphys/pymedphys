@@ -119,15 +119,15 @@ def _points():
 
 
 def _sharded(cases, settings, count):
-    groups = shards.case_groups(cases)
+    owners = shards.placement(shards.case_groups(cases), count)
     records = []
     for shard in range(count):
-        positions = shards.shard_positions(groups, shard, count)
+        positions = [place for place, owner in enumerate(owners) if owner == shard]
         run = evaluation.evaluate(
             [cases[place] for place in positions], box_detector, settings
         )
         record = shards.shard_record(
-            run, positions, len(cases), shard=shard, shards=count
+            run, positions, len(cases), shard=shard, shards=count, owners=owners
         )
         # Each record reaches the merge as JSON, as a runner's artefact.
         records.append(json.loads(json.dumps(record)))
@@ -211,6 +211,10 @@ def test_subjects_go_heaviest_first_to_the_least_loaded_shard():
     weights = (1, 9, 4, 4, 3, 1)
     found = [shards.shard_positions(groups, k, 3, weights) for k in range(3)]
     assert found == [[1], [2, 4], [0, 3, 5]]
+    # A subject's cases stay together where placing each case on its own
+    # would part them: its cases of 5 and 1 outweigh the other's 4.
+    assert shards.shard_positions((0, 1, 0), 0, 2, (5, 4, 1)) == [0, 2]
+    assert shards.shard_positions((0, 1, 0), 1, 2, (5, 4, 1)) == [1]
     # Every case is in exactly one shard, for any count of shards.
     for count in range(1, 8):
         places = [
@@ -271,6 +275,7 @@ def test_a_merge_refuses_a_shard_missing_or_repeated():
 def test_a_merge_refuses_records_of_another_run_or_settings():
     records, settings = _records()
     for key, value in (
+        ("placement", "another"),
         ("detector", {"network": "other"}),
         ("shards", 4),
         ("cases", 99),
@@ -312,4 +317,6 @@ def test_a_record_needs_each_cases_place():
     settings = _settings(points=_points())
     run = evaluation.evaluate(cases[:2], box_detector, settings)
     with pytest.raises(EvaluationRefused, match="place"):
-        shards.shard_record(run, [0], len(cases), shard=0, shards=1)
+        shards.shard_record(
+            run, [0], len(cases), shard=0, shards=1, owners=[0] * len(cases)
+        )
