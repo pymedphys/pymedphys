@@ -15,7 +15,7 @@ This project adheres to
 ### Private benchmark error redaction
 
 The private benchmark wrapper redacts module-import failures and safely reports long or cyclic exception chains.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:security-redacted-startup-errors-20261124)
+[PR #2703](https://github.com/pymedphys/pymedphys/pull/2703)
 
 ### RT Plans written by `Delivery.to_dicom`
 
