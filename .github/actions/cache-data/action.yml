@@ -1,6 +1,14 @@
 name: Cache PyMedPhys Data
 description: Restore and save the PyMedPhys data cache for the current manifest
 
+inputs:
+  name:
+    description: >-
+      Keeps apart the caches of a job's matrix combinations that read
+      different data, such as the extras that the narrow-extras job installs
+      one at a time. Leave empty where every combination reads the same data.
+    default: ''
+
 runs:
   using: composite
   steps:
@@ -8,18 +16,21 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.pymedphys
-        # The exact key is per job, so the first job to finish cannot claim a
-        # shared key with an empty cache. A cold job first restores any
-        # populated cache for the same manifest on the same OS, so only the
-        # first run after a manifest change contacts Zenodo, and data_path
-        # verifies hashes on restored files. Never restore across manifest
-        # hashes: zip_data_paths preserves existing extracted files even when
-        # it replaces an outdated archive.
+        # The exact key is per job and name. github.job is the same for every
+        # combination of a matrix, and an exact hit saves nothing, so with a
+        # key per job alone the first combination to finish would claim it,
+        # and a combination that reads other files would download them from
+        # Zenodo on every run. A cold job first restores any populated cache
+        # for the same manifest on the same OS, so only the first run after a
+        # manifest change contacts Zenodo, and data_path verifies hashes on
+        # restored files. Never restore across manifest hashes: zip_data_paths
+        # preserves existing extracted files even when it replaces an outdated
+        # archive.
         #
         # Name the manifest exactly. This step runs after uv sync, so a
         # **/hashes.json glob would walk every file in .venv (tens of seconds
         # on Windows) and would also hash pydicom's own data manifest, tying
         # the key to the installed pydicom version.
-        key: pymedphys-data-v4-${{ runner.os }}-${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-${{ github.job }}
+        key: pymedphys-data-v4-${{ runner.os }}-${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-${{ github.job }}${{ inputs.name && format('-{0}', inputs.name) || '' }}
         restore-keys: |
           pymedphys-data-v4-${{ runner.os }}-${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-

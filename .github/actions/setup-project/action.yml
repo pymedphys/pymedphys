@@ -63,3 +63,7 @@ runs:
     - name: Cache PyMedPhys data
       if: inputs.cache-data == 'true'
       uses: ./.github/actions/cache-data
+      with:
+        # A job's combinations that install different extras read
+        # different data, so each keeps its own cache.
+        name: ${{ inputs.extras }}

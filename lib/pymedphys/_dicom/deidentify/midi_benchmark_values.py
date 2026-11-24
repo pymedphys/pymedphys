@@ -29,13 +29,17 @@ from __future__ import annotations
 import base64
 import functools
 import re
+from collections.abc import Collection
 
 from pymedphys._imports import pydicom
 
 from .ae_titles import TOKEN_CHARACTERS, TOKEN_PREFIX
+from .dates import NOMINAL_UTC_OFFSET
 from .midi_answer_key import AttributePath, Element
+from .policy import MODIFIED_DATES
 from .pseudonyms import CODE_BYTES, FAMILY_NAME, PATIENT_ID_PREFIX
 from .removed_items import RemovedItems
+from .residual_offsets import takes_nominal_offset
 from .residuals import written_constants
 
 
@@ -240,7 +244,9 @@ def _constants() -> frozenset[tuple[str, str]]:
     return frozenset(written_constants())
 
 
-def is_engine_replacement(element: pydicom.DataElement) -> bool:
+def is_engine_replacement(
+    element: pydicom.DataElement, options: Collection[str] = ()
+) -> bool:
     """Whether each value of an element is one the engine writes in a source's place.
 
     That is a constant of the element's VR that the engine writes whatever
@@ -251,7 +257,11 @@ def is_engine_replacement(element: pydicom.DataElement) -> bool:
     ``DEIDENTIFIED^`` as Patient's Name (PN) followed by the patient's code
     of 16 characters, or an application entity's token (AE), ``AE``
     followed by 14 characters, each character an upper-case letter or a
-    digit from 2 to 7. Such a value holds nothing of the source, so a word
+    digit from 2 to 7; or, where the run's ``options`` hold Modified Dates,
+    the nominal UTC offset ``+0000`` in Timezone Offset From UTC, which the
+    option writes there whatever the source held
+    (:func:`~pymedphys._dicom.deidentify.residual_offsets.takes_nominal_offset`;
+    D-039). Such a value holds nothing of the source, so a word
     of the answer key's text that it holds, as :func:`compare_text` finds
     words within a text, is there by chance. An element is not such a value
     where it has no value but padding, or holds a sequence or bytes; an
@@ -265,6 +275,11 @@ def is_engine_replacement(element: pydicom.DataElement) -> bool:
     True
     >>> is_engine_replacement(pydicom.DataElement(0x00100010, "PN", name + "^JO"))
     False
+    >>> offset = pydicom.DataElement(0x00080201, "SH", "+0000")
+    >>> is_engine_replacement(offset, ["retain_longitudinal_modified_dates"])
+    True
+    >>> is_engine_replacement(offset)
+    False
     """
     value = element.value
     if element.VR == "SQ" or value is None or isinstance(value, (bytes, bytearray)):
@@ -277,8 +292,12 @@ def is_engine_replacement(element: pydicom.DataElement) -> bool:
     ]
     values = [each for each in values if each]
     keyed = _KEYED_VALUES.get(element.VR)
+    nominal = MODIFIED_DATES in options and takes_nominal_offset(
+        f"({element.tag.group:04X},{element.tag.element:04X})"
+    )
     return bool(values) and all(
         (element.VR, each) in _constants()
         or (keyed is not None and keyed.fullmatch(each) is not None)
+        or (nominal and each == NOMINAL_UTC_OFFSET)
         for each in values
     )

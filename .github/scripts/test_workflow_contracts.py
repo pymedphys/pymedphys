@@ -790,6 +790,37 @@ class WorkflowContractTests(unittest.TestCase):
                         "python-matrix", caller.read_text(encoding="utf-8")
                     )
 
+    def test_each_set_of_extras_keeps_its_own_data_cache(self):
+        actions = WORKFLOWS.parent / "actions"
+        cache = (actions / "cache-data/action.yml").read_text(encoding="utf-8")
+        # The key can read only a declared input, and an empty one, as in
+        # deps.yml, keeps the key per job.
+        declared = cache.split("\nruns:\n", 1)[0]
+        self.assertRegex(declared, r"(?m)^inputs:\n  name:\n")
+        self.assertIn("\n    default: ''\n", declared.split("\n  name:\n", 1)[1])
+        # An exact hit saves nothing, so combinations of one matrix that read
+        # different files must not share an exact key; the prefix still lets
+        # a cold combination start from any cache of the same manifest.
+        self.assertIn(
+            "        key: pymedphys-data-v4-${{ runner.os }}-"
+            "${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-"
+            "${{ github.job }}${{ inputs.name && format('-{0}', inputs.name) "
+            "|| '' }}\n",
+            cache,
+        )
+        self.assertIn(
+            "        restore-keys: |\n"
+            "          pymedphys-data-v4-${{ runner.os }}-"
+            "${{ hashFiles('lib/pymedphys/_data/hashes.json') }}-\n",
+            cache,
+        )
+        setup = (actions / "setup-project/action.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "      uses: ./.github/actions/cache-data\n      with:\n",
+            setup,
+        )
+        self.assertIn("        name: ${{ inputs.extras }}\n", setup)
+
     def test_pydicom_reuse_keeps_its_proof_inside_the_unit_workflow(self):
         workflow = jobs("unit-tests.yml")
         # Reuse saves suite executions; the only job it waits for combines
@@ -1034,6 +1065,28 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("\n      max-parallel: 4\n", shards)
         self.assertEqual(shards.count(" idc-measure \\\n"), 2)
         self.assertEqual(shards.count('--shard "${SHARD}/${SHARDS}"'), 2)
+        # Each measurement logs the runner's memory and swap alone, from
+        # free, in a loop started before it measures, and kills that loop,
+        # by its own process number, when the step's shell exits.
+        measurements = re.findall(
+            r"(?ms)^      - name: (Measure the series(?: as converted)?)\n(.*?)(?=^      - |\Z)",
+            shards,
+        )
+        self.assertEqual(
+            [name for name, _ in measurements],
+            ["Measure the series", "Measure the series as converted"],
+        )
+        for name, step in measurements:
+            with self.subTest(step=name):
+                self.assertEqual(step.count("free --mebi | awk"), 1)
+                self.assertEqual(step.count("watcher=$!"), 1)
+                self.assertEqual(step.count("trap 'kill \"${watcher}\"' EXIT"), 1)
+                self.assertRegex(
+                    step,
+                    r"(?s)\(\n *while sleep 300 .*?free --mebi \| awk.*?\n *\) &\n"
+                    r" *watcher=\$!\n *trap 'kill \"\$\{watcher\}\"' EXIT\n"
+                    r".* idc-measure \\\n",
+                )
         # A shard's records are written outside the uploaded results, and
         # only their encrypted copies join them, uploaded only once every
         # record is encrypted.

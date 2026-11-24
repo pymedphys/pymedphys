@@ -260,6 +260,18 @@ jobs:
       - name: Measure the series
         timeout-minutes: 240
         run: |
+          # The runner's memory and swap alone, every five minutes, so that
+          # a slow shard shows whether it was swapping. Nothing of the data.
+          (
+            while sleep 300 >/dev/null 2>&1; do
+              free --mebi | awk -v at="$(date -u +%H:%M)" '
+                /^Mem:/ { memory = $3 " MiB used, " $7 " MiB available" }
+                /^Swap:/ { swap = $3 " of " $2 " MiB" }
+                END { print at " UTC: memory " memory "; swap used " swap }'
+            done
+          ) &
+          watcher=$!
+          trap 'kill "${watcher}"' EXIT
           uv run --no-sync python .github/scripts/run_redacted.py \
             --private-stdout "${RUNNER_TEMP}/idc/private/measure-stdout.log" \
             pymedphys._dicom.deidentify.text_evaluation_command idc-measure \
@@ -284,6 +296,18 @@ jobs:
         if: ${{ !cancelled() }}
         timeout-minutes: 120
         run: |
+          # The runner's memory and swap alone, every five minutes, so that
+          # a slow shard shows whether it was swapping. Nothing of the data.
+          (
+            while sleep 300 >/dev/null 2>&1; do
+              free --mebi | awk -v at="$(date -u +%H:%M)" '
+                /^Mem:/ { memory = $3 " MiB used, " $7 " MiB available" }
+                /^Swap:/ { swap = $3 " of " $2 " MiB" }
+                END { print at " UTC: memory " memory "; swap used " swap }'
+            done
+          ) &
+          watcher=$!
+          trap 'kill "${watcher}"' EXIT
           uv run --no-sync python .github/scripts/run_redacted.py \
             --private-stdout "${RUNNER_TEMP}/idc/private/converted-stdout.log" \
             pymedphys._dicom.deidentify.text_evaluation_command idc-measure \
