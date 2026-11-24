@@ -64,6 +64,34 @@ class RunRedactedTests(unittest.TestCase):
         self.assertIn("builtins.KeyError was raised at:", output)
         self.assertIn(" in inner", output)
 
+    def test_implicit_exception_context_is_redacted(self):
+        def main(arguments):
+            try:
+                raise KeyError(SECRET)
+            except KeyError:
+                raise ValueError(SECRET)  # noqa: B904
+
+        status, output = _quiet(main)
+        self.assertEqual(status, CRASHED)
+        self.assertNotIn(SECRET, output)
+        self.assertIn("builtins.ValueError was raised at:", output)
+        self.assertIn("while handling:", output)
+        self.assertIn("builtins.KeyError was raised at:", output)
+
+    def test_suppressed_exception_context_is_not_reported(self):
+        def main(arguments):
+            try:
+                raise KeyError(SECRET)
+            except KeyError:
+                raise ValueError(SECRET) from None
+
+        status, output = _quiet(main)
+        self.assertEqual(status, CRASHED)
+        self.assertNotIn(SECRET, output)
+        self.assertIn("builtins.ValueError was raised at:", output)
+        self.assertNotIn("builtins.KeyError was raised at:", output)
+        self.assertNotIn("while handling:", output)
+
     def test_a_private_stdout_keeps_the_modules_output_and_not_the_report(self):
         script = Path(__file__).with_name("run_redacted.py")
         with tempfile.TemporaryDirectory() as directory:
