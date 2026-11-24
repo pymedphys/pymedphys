@@ -123,6 +123,10 @@ jobs:
           # modules of every other part. Missing paths fail every part. Expand
           # the selection only when it is set, which bash before 4.4 requires.
           selection=()
+          # Workers take the next test as each frees up, except in
+          # ct-defacing-variants, whose tests are in two classes by the runs
+          # they share, so that each worker makes only its own class's runs.
+          dist=worksteal
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
             for path in "${listed[@]}"; do
@@ -158,7 +162,10 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
-              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
+              ct-defacing-variants)
+                selection=("${CT_DEFACING_VARIANT_TEST}")
+                dist=loadscope
+                ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
@@ -190,7 +197,7 @@ jobs:
           # Use a short pytest temporary root, keeping Windows DICOM release
           # paths inside the 259-character guard on every Python version.
           uv run -- pymedphys dev tests -m "not slow" ${selection[@]+"${selection[@]}"} \
-            -n 2 --dist worksteal --durations=15 \
+            -n 2 --dist "${dist}" --durations=15 \
             --basetemp="${RUNNER_TEMP}/p" \
             --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
@@ -349,6 +356,10 @@ jobs:
           # de-identification modules from a to o, both in place of the
           # feature's paths, and others ignores the modules of every other
           # part. Missing paths fail every part.
+          # Workers take the next test as each frees up, except in
+          # ct-defacing-variants, whose tests are in two classes by the runs
+          # they share, so that each worker makes only its own class's runs.
+          dist=worksteal
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
             for path in "${listed[@]}"; do
@@ -384,7 +395,10 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
-              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
+              ct-defacing-variants)
+                selection=("${CT_DEFACING_VARIANT_TEST}")
+                dist=loadscope
+                ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
@@ -410,7 +424,7 @@ jobs:
           fi
           # --no-sync keeps uv from installing anything beyond the extra.
           uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${selection[@]}" \
-            -n "${TEST_WORKERS}" --dist worksteal --durations=15 \
+            -n "${TEST_WORKERS}" --dist "${dist}" --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
       - name: Upload test results
@@ -529,6 +543,10 @@ jobs:
           # modules of every other part. Missing paths fail every part. Expand
           # the selection only when it is set, which bash before 4.4 requires.
           selection=()
+          # Workers take the next test as each frees up, except in
+          # ct-defacing-variants, whose tests are in two classes by the runs
+          # they share, so that each worker makes only its own class's runs.
+          dist=worksteal
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
             for path in "${listed[@]}"; do
@@ -564,7 +582,10 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
-              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
+              ct-defacing-variants)
+                selection=("${CT_DEFACING_VARIANT_TEST}")
+                dist=loadscope
+                ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
@@ -588,7 +609,7 @@ jobs:
             esac
           fi
           "${overlay[@]}" python -m pymedphys dev tests -m "not slow" ${selection[@]+"${selection[@]}"} \
-            -n 2 --dist worksteal --durations=15 \
+            -n 2 --dist "${dist}" --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors-${PART}.xml"
 
       - name: Upload test results
