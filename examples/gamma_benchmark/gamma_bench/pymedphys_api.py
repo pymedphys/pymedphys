@@ -187,7 +187,8 @@ def translate_options(implementation, options):
 
     The request is unchanged: ``local_gamma`` becomes the ``normalisation``
     it selects, and ``interp_fraction`` the ``search_step_fraction`` that
-    gives the same search step.
+    gives the same search step. ``quiet``, which had no effect, is left out
+    because version 0.42.0 removed it.
     """
     if not _takes_renamed_options(implementation):
         return dict(options)
@@ -197,7 +198,7 @@ def translate_options(implementation, options):
             translated["normalisation"] = "local" if value else "global"
         elif name == "interp_fraction":
             translated["search_step_fraction"] = 1 / value
-        else:
+        elif name != "quiet":
             translated[_RENAMED_OPTIONS.get(name, name)] = value
     return translated
 

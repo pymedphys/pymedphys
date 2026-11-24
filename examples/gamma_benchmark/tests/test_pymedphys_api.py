@@ -14,6 +14,7 @@
 """PyMedPhys selection and output checks using mock packages, never real gamma."""
 
 import hashlib
+import inspect
 from pathlib import Path
 import subprocess
 import sys
@@ -22,7 +23,12 @@ import types
 import numpy as np
 import pytest
 
+import pymedphys
+
 from gamma_bench import pymedphys_api as api
+
+# The signature of this checkout's gamma. No test here calls the function.
+_GAMMA_SIGNATURE = inspect.signature(pymedphys.gamma)
 
 
 @pytest.fixture
@@ -78,22 +84,18 @@ def test_multiple_criteria_remain_identifiable(inputs, mock_version):
 
 
 def _renamed_gamma(observed, returned):
-    """A function with the option names that PyMedPhys 0.42.0 introduced."""
+    """A stand-in with the signature of this checkout's ``pymedphys.gamma``.
 
-    def gamma(
-        axes_reference,
-        dose_reference,
-        axes_evaluation,
-        dose_evaluation,
-        dose_criterion_percent,
-        distance_criterion_mm,
-        **options,
-    ):
-        observed.update(
-            criteria=(dose_criterion_percent, distance_criterion_mm), options=options
-        )
+    Each call is bound to that signature, so an option the function does not
+    take raises a TypeError, as it would from the function itself.
+    """
+
+    def gamma(*args, **options):
+        _GAMMA_SIGNATURE.bind(*args, **options)
+        observed.update(criteria=args[4:], options=options)
         return returned
 
+    gamma.__signature__ = _GAMMA_SIGNATURE
     return gamma
 
 
@@ -148,6 +150,31 @@ def test_local_gamma_selects_local_normalisation(inputs, mock_version):
     api.invoke(spec, inputs + (3, 2), {"local_gamma": True})
 
     assert observed["options"]["normalisation"] == "local"
+
+
+def test_quiet_is_left_out_for_a_version_that_removed_it(inputs, mock_version):
+    # quiet had no effect; from 0.42.0 gamma does not take it.
+    spec, module = mock_version
+    observed = {}
+    module.gamma = _renamed_gamma(observed, _result(3, 2, np.zeros((2, 2))))
+
+    api.invoke(spec, inputs + (3, 2), {"quiet": None})
+
+    assert observed["options"] == {"interpolator": "pymedphys"}
+
+
+def test_quiet_still_reaches_a_version_with_the_earlier_names(inputs, mock_version):
+    spec, module = mock_version
+    observed = {}
+
+    def gamma(*args, **kwargs):
+        observed.update(kwargs)
+        return np.full_like(args[1], 0.5)
+
+    module.gamma = gamma
+    api.invoke(spec, inputs + (3, 2), {"quiet": None})
+
+    assert observed == {"quiet": None, "interp_algo": "pymedphys"}
 
 
 def test_a_tuple_of_results_is_keyed_by_the_criteria_of_each_result(
