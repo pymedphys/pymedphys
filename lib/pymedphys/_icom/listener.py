@@ -59,7 +59,10 @@ def listen(ip, data_dir):
 
         while True:
             try:
-                data += s.recv(BUFFER_SIZE)
+                chunk = s.recv(BUFFER_SIZE)
+                if not chunk:
+                    raise ConnectionError("The iCOM connection was closed by the peer")
+                data += chunk
             except socket.timeout:
                 logging.warning("Socket connection timed out, retrying connection")
                 logging.info(s)
