@@ -1034,6 +1034,10 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("\n      max-parallel: 4\n", shards)
         self.assertEqual(shards.count(" idc-measure \\\n"), 2)
         self.assertEqual(shards.count('--shard "${SHARD}/${SHARDS}"'), 2)
+        # Both measurements log the runner's memory and swap alone, from
+        # free, and stop logging when they end.
+        self.assertEqual(shards.count("free --mebi | awk"), 2)
+        self.assertEqual(shards.count("trap 'kill \"${watcher}\"' EXIT"), 2)
         # A shard's records are written outside the uploaded results, and
         # only their encrypted copies join them, uploaded only once every
         # record is encrypted.
