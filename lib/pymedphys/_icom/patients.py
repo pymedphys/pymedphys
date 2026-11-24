@@ -133,7 +133,9 @@ class PatientIcomData:
             # received data item.
             if (self._data[ip][-1][26] + 1) % 256 != data[26]:
                 raise ValueError("Data stream appears to be arriving out of order")
-            self._data[ip].append(data)
+            # Only the preceding item is needed to validate this stream's
+            # sequence. Active delivery data is retained separately below.
+            self._data[ip] = [data]
         except KeyError:
             self._data[ip] = [data]
 
