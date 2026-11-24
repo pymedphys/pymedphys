@@ -18,7 +18,7 @@ While waiting for an iCOM timestamp, the listener retains only the final
 25 bytes that could form a split header with the next read. Long streams
 without a timestamp no longer grow that receive buffer indefinitely.
 Complete frame headers and message contents are preserved across reads.
-[Comparison](https://github.com/pymedphys/pymedphys/compare/main...jdotc1:fix/icom-bound-unframed-buffer)
+[PR #2709](https://github.com/pymedphys/pymedphys/pull/2709)
 
 ### RT Plans written by `Delivery.to_dicom`
 
