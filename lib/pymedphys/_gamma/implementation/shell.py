@@ -223,6 +223,26 @@ def gamma_shell(
         exclude_nan_reference,
     )
 
+    gamma = calculate_gamma_arrays(
+        options, np.shape(dose_reference), lower_percent_dose_cutoff
+    )
+
+    if len(gamma.keys()) == 1:
+        gamma = next(iter(gamma.values()))
+
+    return gamma
+
+
+def calculate_gamma_arrays(
+    options: "GammaInternalFixedOptions", shape, lower_percent_dose_cutoff
+):
+    """Run the search and return gamma on the reference grid for every pair.
+
+    Returns a dict of arrays shaped ``shape``, keyed by ``(dose threshold,
+    distance threshold)`` with the dose thresholds varying slowest. Reference
+    points that were not analysed are NaN, and values above
+    ``options.max_gamma`` are reported as ``options.max_gamma``.
+    """
     if options.local_gamma:
         logger.info("Computing the gamma using local normalisation point")
     else:
@@ -250,20 +270,17 @@ def gamma_shell(
             key = (dose_threshold, distance_threshold)
 
             gamma_temp = current_gamma[:, i, j]
-            gamma_temp = np.reshape(gamma_temp, np.shape(dose_reference))
+            gamma_temp = np.reshape(gamma_temp, shape)
             # Only points that were not analysed are still infinite.
             gamma_temp[np.isinf(gamma_temp)] = np.nan
 
             with np.errstate(invalid="ignore"):
-                gamma_greater_than_ref = gamma_temp > max_gamma
-                gamma_temp[gamma_greater_than_ref] = max_gamma
+                gamma_greater_than_ref = gamma_temp > options.max_gamma
+                gamma_temp[gamma_greater_than_ref] = options.max_gamma
 
             gamma[key] = gamma_temp
 
     logger.info("Complete!")
-
-    if len(gamma.keys()) == 1:
-        gamma = next(iter(gamma.values()))
 
     return gamma
 
@@ -281,13 +298,20 @@ def expand_dims_to_1d(array):
     raise ValueError("Expected a 0-d or 1-d array")
 
 
-def _prepare_evaluation_grid(axes_evaluation, dose_evaluation, interp_algo):
+def _prepare_evaluation_grid(
+    axes_evaluation, dose_evaluation, interp_algo, uneven_axes="warn"
+):
     """Return the evaluation grid as the interpolators require it.
 
     Each axis becomes a contiguous, strictly ascending float64 array, with
     the dose flipped along any axis that was descending, so that grids
     stored in either order (as DICOM data often is) give the same gamma.
     The reference grid is left as given, because gamma is returned on it.
+
+    The 'pymedphys' interpolator needs evenly spaced axes. ``uneven_axes``
+    says what to do when it was asked for and they are not: ``"warn"`` and
+    ``"switch"`` both use the 'scipy' interpolator, with and without a
+    warning, and ``"raise"`` raises ``ValueError``.
     """
     axes = [np.asarray(axis, dtype=np.float64) for axis in axes_evaluation]
     dose = np.asarray(dose_evaluation, dtype=np.float64)
@@ -315,12 +339,19 @@ def _prepare_evaluation_grid(axes_evaluation, dose_evaluation, interp_algo):
         for axis in axes
     )
     if is_uneven and interp_algo.lower() == "pymedphys":
-        warn(
-            "The evaluation axes are not evenly spaced, which the 'pymedphys' "
-            "interpolator requires. Falling back to interp_algo='scipy'.",
-            UserWarning,
-            stacklevel=4,
-        )
+        if uneven_axes == "raise":
+            raise ValueError(
+                "The evaluation axes are not evenly spaced, which the "
+                "'pymedphys' interpolator requires. Use the 'scipy' "
+                "interpolator, or leave the choice to the calculation."
+            )
+        if uneven_axes == "warn":
+            warn(
+                "The evaluation axes are not evenly spaced, which the 'pymedphys' "
+                "interpolator requires. Falling back to interp_algo='scipy'.",
+                UserWarning,
+                stacklevel=4,
+            )
         interp_algo = "scipy"
 
     axes = tuple(np.ascontiguousarray(axis) for axis in axes)
@@ -536,6 +567,7 @@ class GammaInternalFixedOptions:
         interp_algo="pymedphys",
         random_state=None,
         exclude_nan_reference=False,
+        uneven_axes="warn",
     ):
         if max_gamma is None:
             max_gamma = np.inf
@@ -555,7 +587,7 @@ class GammaInternalFixedOptions:
         )
         _check_finite_doses(dose_reference, dose_evaluation, exclude_nan_reference)
         axes_evaluation, dose_evaluation, interp_algo = _prepare_evaluation_grid(
-            axes_evaluation, dose_evaluation, interp_algo
+            axes_evaluation, dose_evaluation, interp_algo, uneven_axes
         )
 
         dose_percent_threshold = expand_dims_to_1d(dose_percent_threshold)
