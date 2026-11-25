@@ -86,7 +86,11 @@ def test_failed_stream_is_discarded_before_retry(tmp_path, monkeypatch):
 
     def fake_open(url, timeout):
         attempts.append(url)
-        return BrokenResponse(b"bad partial") if len(attempts) == 1 else io.BytesIO(b"valid")
+        return (
+            BrokenResponse(b"bad partial")
+            if len(attempts) == 1
+            else io.BytesIO(b"valid")
+        )
 
     monkeypatch.setattr(IDCMODULE.urllib.request, "urlopen", fake_open)
     monkeypatch.setattr(IDCMODULE.time, "sleep", lambda seconds: None)
