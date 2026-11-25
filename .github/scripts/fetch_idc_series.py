@@ -48,9 +48,7 @@ _WORKERS = 16
 _MAX_LISTING_BYTES = 8 << 20
 
 
-def _get(
-    url: str, timeout: float = 120.0, *, max_bytes: int | None = None
-) -> bytes:
+def _get(url: str, timeout: float = 120.0, *, max_bytes: int | None = None) -> bytes:
     """The body of a GET, optionally capped for untrusted XML listings."""
     for attempt in range(_ATTEMPTS):
         try:
