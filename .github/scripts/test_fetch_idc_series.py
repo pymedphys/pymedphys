@@ -23,6 +23,14 @@ UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
         ([f"{UUID}/CT.dcm", f"{UUID}/ct.DCM"], "Colliding"),
         ([f"{UUID}/CT.dcm", "other-prefix/OTHER.dcm"], "Unexpected"),
         ([f"{UUID}/.hidden"], "Unexpected"),
+        ([f"{UUID}/CON.dcm"], "Unexpected"),
+        ([f"{UUID}/prn"], "Unexpected"),
+        ([f"{UUID}/LPT1.DCM"], "Unexpected"),
+        ([f"{UUID}/alternate:stream.dcm"], "Unexpected"),
+        ([f"{UUID}/image.dcm "], "Unexpected"),
+        ([f"{UUID}/image.dcm."], "Unexpected"),
+        ([f"{UUID}/image\\nname.dcm"], "Unexpected"),
+        ([f"{UUID}/image\\x7fname.dcm"], "Unexpected"),
     ],
 )
 def test_rejects_unsafe_listing_before_any_download(
