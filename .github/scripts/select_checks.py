@@ -17,10 +17,11 @@
 Diff the tested merge tree against its base parent, with rename detection off,
 so deletions and both sides of a rename remain visible. Two checkout generations
 suffice and there is no API file-count limit. Non-PR events select every check;
-merge groups use the quick unit-test matrix, and push runs omit documentation,
-which Read the Docs publishes. On pull requests only known inputs skip standard
-checks, while the costly integration and database tests and the full unit-test
-matrix follow their labels and their own inputs. Links and unverifiable diffs
+merge groups use the quick unit-test matrix without the dependency corpus or the
+Windows and macOS tooling tests, and push runs omit documentation, which Read the Docs publishes. On pull requests
+only known inputs skip standard checks, while the costly integration and
+database tests, the full unit-test matrix, and the dependency corpus follow
+their labels and their own inputs. Links and unverifiable diffs
 select every check that a changed path can select.
 """
 
@@ -43,6 +44,7 @@ OUTPUTS = (
     "run-database",
     "run-scripts",
     "run-full-matrix",
+    "run-dependency-corpus",
     "run-dependency-audit",
     "run-python-security",
     "run-workflow-audit",
@@ -59,10 +61,26 @@ INTEGRATION_COMPONENTS = (
     "run-integration-scripts",
     "run-packaging",
 )
+# The dicom extra's and the dependency floors' de-identification corpus parts
+# check that the extra is complete and that the declared minimum versions
+# work. Both follow dependency inputs, so on PRs they run for those inputs,
+# the full-test label, links and unverified diffs; merge groups leave them to
+# the nightly run, and other non-PR events include them.
+DEPENDENCY_CORPUS_PREFIXES = (
+    "lib/pymedphys/_imports/",
+    "lib/pymedphys/_vendor/",
+)
+DEPENDENCY_CORPUS_FILES = frozenset(
+    {
+        "lib/pymedphys/_extras.py",
+        ".github/workflows/unit-tests.yml",
+    }
+)
 COST_GATED = (
     "run-integration",
     "run-database",
     "run-full-matrix",
+    "run-dependency-corpus",
     *INTEGRATION_COMPONENTS,
 )
 STANDARD = tuple(output for output in OUTPUTS if output not in COST_GATED)
@@ -222,6 +240,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/release_gate.py",
         "lib/pymedphys/_dicom/deidentify/release_report.py",
         "lib/pymedphys/_dicom/deidentify/removed_items.py",
+        "lib/pymedphys/_dicom/deidentify/residual_offsets.py",
         "lib/pymedphys/_dicom/deidentify/residuals.py",
         "lib/pymedphys/_dicom/deidentify/retained_uids.py",
         "lib/pymedphys/_dicom/deidentify/risk_assessment.py",
@@ -324,6 +343,15 @@ def _integration_components(name: str) -> tuple[str, ...]:
     return tuple(selected)
 
 
+def _is_dependency_corpus_input(name: str) -> bool:
+    return (
+        name in DEPENDENCY_INPUTS
+        or name in DEPENDENCY_CORPUS_FILES
+        or name.startswith(DEPENDENCY_CORPUS_PREFIXES)
+        or _configures_ci(name)
+    )
+
+
 def _is_database_input(name: str) -> bool:
     path = PurePosixPath(name)
     return (
@@ -352,8 +380,11 @@ def explain_checks(
         select(OUTPUTS, Reason(f"{event_name} event"))
         if event_name == "merge_group":
             # Every check still runs; main's nightly run validates the full
-            # platform matrix.
+            # platform matrix, the dependency corpus, and the tooling tests on
+            # Windows and macOS, which PRs that change the tooling also run.
             reasons["run-full-matrix"] = None
+            reasons["run-dependency-corpus"] = None
+            reasons["run-integration-scripts"] = None
         # ReadTheDocs publishes main independently; retain the existing policy.
         if event_name == "push":
             reasons["run-docs"] = None
@@ -407,6 +438,11 @@ def explain_checks(
                 )
             if _is_database_input(change.name):
                 select(["run-database"], Reason("database input", change.name))
+            if _is_dependency_corpus_input(change.name):
+                select(
+                    ["run-dependency-corpus"],
+                    Reason("dependency input", change.name),
+                )
     return reasons
 
 
