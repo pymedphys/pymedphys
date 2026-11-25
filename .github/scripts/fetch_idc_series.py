@@ -64,6 +64,7 @@ def keys(uuid: str) -> list[str]:
     """Every object key under a series' folder, page by page."""
     found: list[str] = []
     token = None
+    seen_tokens: set[str] = set()
     while True:
         query = {"list-type": "2", "prefix": f"{uuid}/"}
         if token:
@@ -72,8 +73,13 @@ def keys(uuid: str) -> list[str]:
         found += [key.text or "" for key in root.iter(f"{_NAMESPACE}Key") if key.text]
         truncated = root.findtext(f"{_NAMESPACE}IsTruncated") == "true"
         token = root.findtext(f"{_NAMESPACE}NextContinuationToken")
-        if not truncated or not token:
+        if not truncated:
             return found
+        if not token:
+            raise ValueError("Truncated IDC S3 listing has no continuation token")
+        if token in seen_tokens:
+            raise ValueError("IDC S3 listing repeated a continuation token")
+        seen_tokens.add(token)
 
 
 def fetch(uuid: str, out: pathlib.Path) -> int:
