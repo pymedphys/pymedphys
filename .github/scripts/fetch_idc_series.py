@@ -86,10 +86,27 @@ def fetch(uuid: str, out: pathlib.Path) -> int:
     if not names:
         raise SystemExit(f"The bucket holds nothing for series {uuid}.")
 
+    # S3 keys are hierarchical; flattening them to basename can silently
+    # overwrite another DICOM object. Check the *whole listing* before any
+    # download starts, including case-insensitive collisions on Windows.
+    seen: set[str] = set()
+    for key in names:
+        name = key.rsplit("/", 1)[-1]
+        if (
+            not key.startswith(f"{uuid}/")
+            or not name
+            or name.startswith(".")
+            or "/" in name
+            or "\\" in name
+        ):
+            raise SystemExit(f"Unexpected object name in series {uuid}.")
+        folded = name.casefold()
+        if folded in seen:
+            raise SystemExit(f"Colliding object names in series {uuid}.")
+        seen.add(folded)
+
     def download(key: str) -> None:
         name = key.rsplit("/", 1)[-1]
-        if not name or name.startswith(".") or "/" in name or "\\" in name:
-            raise SystemExit(f"Unexpected object name in series {uuid}.")
         (folder / name).write_bytes(_get(BUCKET + urllib.parse.quote(key)))
 
     with concurrent.futures.ThreadPoolExecutor(_WORKERS) as pool:

@@ -391,3 +391,140 @@ def test_a_dx_output_explains_the_attributes_whose_modules_dicom_validator_skips
     assert introduced == dict.fromkeys(
         (tag for tag, _ in DX_SHARED.values()), dicom_validation.Outcome.EXPLAINED
     )
+
+
+# What a CT Image's output loses where its input is in a PET series: Series
+# Date and Series Time, which X/D removes where they are Type 3, and
+# Radiopharmaceutical Information Sequence, which the CT Image IOD does not
+# define.
+CT_IN_PET_SERIES = ("(0008,0021)", "(0008,0031)", "(0054,0016)")
+
+
+def test_a_series_that_mixes_modalities_explains_what_each_iod_decides(
+    toolset, tmp_path, monkeypatch
+):
+    # A PET image and a CT image under one Series Instance UID, as in a
+    # MIDI-B Test series, which PS3.3 A.1.2.3 does not allow. The CT input
+    # holds the PET series' attributes too, so dcentvfy finds none of them
+    # missing in the inputs; their outputs differ by IOD, and the known
+    # differences explain each such attribute as the input's.
+    corpus = corpus_module.build_corpus()
+    files = {
+        file.name: pydicom.dcmread(io.BytesIO(file.data))
+        for file in corpus.files
+        if file.name in ("15-pet.dcm", "01-ct-1.dcm")
+    }
+    pet, ct = files["15-pet.dcm"], files["01-ct-1.dcm"]
+    ct.SeriesInstanceUID = pet.SeriesInstanceUID
+    ct.SeriesDate, ct.SeriesTime = pet.SeriesDate, pet.SeriesTime
+    ct.RadiopharmaceuticalInformationSequence = (
+        pet.RadiopharmaceuticalInformationSequence
+    )
+    source = tmp_path / "source"
+    source.mkdir()
+    pet.save_as(source / "pet.dcm", enforce_file_format=True)
+    ct.save_as(source / "ct.dcm", enforce_file_format=True)
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({"basic"}))
+    discovery = run.discover(source)
+    result = api.deidentify(
+        source, tmp_path / "release", qc_pack=tmp_path / "qc", preset="basic"
+    ).result
+    pairs, unpaired = dicom_validation.pairs_from_run(discovery, result)
+    assert len(pairs) == 2 and unpaired == 0
+
+    comparison = dicom_validation.compare(pairs, toolset)
+    introduced = {
+        i.finding.path: (i.finding.message, i.outcome)
+        for i in comparison.introduced
+        if i.finding.validator == DCENTVFY
+    }
+
+    assert introduced == dict.fromkeys(
+        CT_IN_PET_SERIES,
+        (
+            "Attribute present in one instance but not the other",
+            dicom_validation.Outcome.EXPLAINED,
+        ),
+    )
+    (difference,) = {
+        comparison.known[i.difference - 1]
+        for i in comparison.introduced
+        if i.finding.validator == DCENTVFY
+    }
+    assert difference.category is dicom_validation.Category.SOURCE
+    assert comparison.passed
+
+
+def test_a_mixed_series_explains_none_of_another_series_of_its_patient(
+    toolset, tmp_path
+):
+    # The outputs are written here, not by the engine, so that one of them
+    # can lose what no rule removes. Series A is a PET image and a CT image
+    # under one Series Instance UID, whose CT output loses what the CT Image
+    # IOD decides; series B is two CT images of the same patient, one of
+    # whose outputs loses Series Date, a new inconsistency that dcentvfy
+    # counts under the same finding as series A's.
+    corpus = corpus_module.build_corpus()
+    files = {
+        file.name: pydicom.dcmread(io.BytesIO(file.data))
+        for file in corpus.files
+        if file.name in ("15-pet.dcm", "01-ct-1.dcm", "02-ct-2.dcm")
+    }
+    pet, ct = files["15-pet.dcm"], files["01-ct-1.dcm"]
+    ct.SeriesInstanceUID = pet.SeriesInstanceUID
+    ct.SeriesDate, ct.SeriesTime = pet.SeriesDate, pet.SeriesTime
+    ct.RadiopharmaceuticalInformationSequence = (
+        pet.RadiopharmaceuticalInformationSequence
+    )
+    other = []
+    for template in (files["02-ct-2.dcm"], files["02-ct-2.dcm"]):
+        copy = pydicom.dcmread(io.BytesIO(_bytes(template)))
+        copy.SeriesInstanceUID = "1.2.826.0.1.3680043.10.1083.99.1"
+        copy.SOPInstanceUID = pydicom.uid.generate_uid()
+        copy.file_meta.MediaStorageSOPInstanceUID = copy.SOPInstanceUID
+        copy.SeriesDate = pet.SeriesDate
+        other.append(copy)
+    (tmp_path / "in").mkdir()
+    (tmp_path / "out").mkdir()
+    pairs = []
+    for name, dataset, lose in (
+        ("pet", pet, ()),
+        (
+            "ct",
+            ct,
+            ("SeriesDate", "SeriesTime", "RadiopharmaceuticalInformationSequence"),
+        ),
+        ("b1", other[0], ()),
+        ("b2", other[1], ("SeriesDate",)),
+    ):
+        source = tmp_path / "in" / f"{name}.dcm"
+        dataset.save_as(source, enforce_file_format=True)
+        written = pydicom.dcmread(source)
+        for keyword in lose:
+            delattr(written, keyword)
+        output = tmp_path / "out" / f"{name}.dcm"
+        written.save_as(output, enforce_file_format=True)
+        pairs.append(dicom_validation.Pair(source, output))
+
+    alone = dicom_validation.compare(pairs[:2], toolset)
+    together = dicom_validation.compare(pairs, toolset)
+
+    def dates(comparison):
+        return {
+            i.outcome: i.occurrences
+            for i in comparison.introduced
+            if i.finding.validator == DCENTVFY and i.finding.path == "(0008,0021)"
+        }
+
+    explained = dicom_validation.Outcome.EXPLAINED
+    unexplained = dicom_validation.Outcome.UNEXPLAINED
+    assert set(dates(alone)) == {explained}
+    assert dates(together)[explained] == dates(alone)[explained]
+    assert dates(together)[unexplained] > 0
+    assert not together.passed
+
+
+def _bytes(dataset):
+    buffer = io.BytesIO()
+    dataset.save_as(buffer, enforce_file_format=True)
+    return buffer.getvalue()

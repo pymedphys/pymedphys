@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from unittest import mock
 
@@ -27,6 +27,23 @@ UNAVAILABLE_REASON = (
 
 def _resolved(address):
     return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))]
+
+
+class PageFetchSafetyTests(unittest.TestCase):
+    def test_reads_normal_tcia_page(self):
+        with mock.patch.object(
+            keys.urllib.request, "urlopen", return_value=BytesIO(PAGE.encode("utf-8"))
+        ):
+            self.assertEqual(keys._page(attempts=1), PAGE)
+
+    def test_rejects_unbounded_remote_html_response(self):
+        oversized_page = b"x" * (keys.MAX_PAGE_BYTES + 1)
+        with mock.patch.object(
+            keys.urllib.request, "urlopen", return_value=BytesIO(oversized_page)
+        ) as request:
+            with self.assertRaisesRegex(ValueError, "HTML size limit"):
+                keys._page(attempts=1)
+            request.assert_called_once()
 
 
 class AscliFailureTests(unittest.TestCase):

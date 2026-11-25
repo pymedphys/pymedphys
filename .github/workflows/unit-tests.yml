@@ -15,6 +15,17 @@ on:
         required: false
         type: boolean
         default: false
+      # Whether the dicom extra's and the dependency floors' runs include the
+      # six de-identification corpus parts. They hold about two thirds of a
+      # merge group's runner time, and their own risks, an incomplete extra
+      # and the declared minimum versions, change with dependency inputs, so
+      # ci.yml leaves them to the nightly run, manual runs, and pull requests
+      # that change such inputs. The Ubuntu/Python 3.14 matrix runs every part
+      # every time, and the release runs them all.
+      dependency-corpus:
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -112,6 +123,10 @@ jobs:
           # modules of every other part. Missing paths fail every part. Expand
           # the selection only when it is set, which bash before 4.4 requires.
           selection=()
+          # Workers take the next test as each frees up, except in
+          # ct-defacing-variants, whose tests are in two classes by the runs
+          # they share, so that each worker makes only its own class's runs.
+          dist=worksteal
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
             for path in "${listed[@]}"; do
@@ -147,7 +162,10 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
-              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
+              ct-defacing-variants)
+                selection=("${CT_DEFACING_VARIANT_TEST}")
+                dist=loadscope
+                ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
@@ -179,7 +197,7 @@ jobs:
           # Use a short pytest temporary root, keeping Windows DICOM release
           # paths inside the 259-character guard on every Python version.
           uv run -- pymedphys dev tests -m "not slow" ${selection[@]+"${selection[@]}"} \
-            -n 2 --dist worksteal --durations=15 \
+            -n 2 --dist "${dist}" --durations=15 \
             --basetemp="${RUNNER_TEMP}/p" \
             --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
@@ -277,43 +295,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The dicom extra runs its tests in parts; the corpus parts only when
+        # the dependency corpus is selected.
+        extra: [dicom]
+        part: ${{ inputs.dependency-corpus && fromJSON('["ct-defacing", "ct-defacing-variants", "ct-defacing-reviews", "ct-defacing-doses", "corpus-runs", "corpus-end-to-end-p-z", "deidentify-a-o", "others"]') || fromJSON('["deidentify-a-o", "others"]') }}
+        marks: [not slow]
+        paths: [tests/dicom]
+        # Each entry below names another extra, so it cannot join a dicom
+        # combination and runs as a combination of its own, without a part.
         include:
           # Tests marked pydicom compare DICOM files, so they need dicom too.
           - extra: gamma
             marks: not slow and not pydicom
             paths: tests/gamma tests/interp
-          - extra: dicom
-            part: ct-defacing
-            marks: not slow
-            paths: tests/dicom
-          - extra: dicom
-            part: ct-defacing-variants
-            marks: not slow
-            paths: tests/dicom
-          - extra: dicom
-            part: ct-defacing-reviews
-            marks: not slow
-            paths: tests/dicom
-          - extra: dicom
-            part: ct-defacing-doses
-            marks: not slow
-            paths: tests/dicom
-          - extra: dicom
-            part: corpus-runs
-            marks: not slow
-            paths: tests/dicom
-          - extra: dicom
-            part: corpus-end-to-end-p-z
-            marks: not slow
-            paths: tests/dicom
-          - extra: dicom
-            part: deidentify-a-o
-            marks: not slow
-            paths: tests/dicom
-          - extra: dicom
-            part: others
-            marks: not slow
-            paths: tests/dicom
           - extra: mosaiq
             marks: not slow
             paths: tests/mosaiq
@@ -362,6 +356,10 @@ jobs:
           # de-identification modules from a to o, both in place of the
           # feature's paths, and others ignores the modules of every other
           # part. Missing paths fail every part.
+          # Workers take the next test as each frees up, except in
+          # ct-defacing-variants, whose tests are in two classes by the runs
+          # they share, so that each worker makes only its own class's runs.
+          dist=worksteal
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
             for path in "${listed[@]}"; do
@@ -397,7 +395,10 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
-              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
+              ct-defacing-variants)
+                selection=("${CT_DEFACING_VARIANT_TEST}")
+                dist=loadscope
+                ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
@@ -423,7 +424,7 @@ jobs:
           fi
           # --no-sync keeps uv from installing anything beyond the extra.
           uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${selection[@]}" \
-            -n "${TEST_WORKERS}" --dist worksteal --durations=15 \
+            -n "${TEST_WORKERS}" --dist "${dist}" --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
       - name: Upload test results
@@ -449,7 +450,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [ct-defacing, ct-defacing-variants, ct-defacing-reviews, ct-defacing-doses, corpus-runs, corpus-end-to-end-p-z, deidentify-a-o, others]
+        # The corpus parts only when the dependency corpus is selected.
+        part: ${{ inputs.dependency-corpus && fromJSON('["ct-defacing", "ct-defacing-variants", "ct-defacing-reviews", "ct-defacing-doses", "corpus-runs", "corpus-end-to-end-p-z", "deidentify-a-o", "others"]') || fromJSON('["deidentify-a-o", "others"]') }}
     runs-on: ubuntu-latest
     env:
       # PyMedPhys's extras to install, whose requirements the check below counts.
@@ -541,6 +543,10 @@ jobs:
           # modules of every other part. Missing paths fail every part. Expand
           # the selection only when it is set, which bash before 4.4 requires.
           selection=()
+          # Workers take the next test as each frees up, except in
+          # ct-defacing-variants, whose tests are in two classes by the runs
+          # they share, so that each worker makes only its own class's runs.
+          dist=worksteal
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
             for path in "${listed[@]}"; do
@@ -576,7 +582,10 @@ jobs:
             fi
             case "${PART}" in
               ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
-              ct-defacing-variants) selection=("${CT_DEFACING_VARIANT_TEST}") ;;
+              ct-defacing-variants)
+                selection=("${CT_DEFACING_VARIANT_TEST}")
+                dist=loadscope
+                ;;
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               ct-defacing-doses) selection=("${CT_DEFACING_DOSE_TEST}") ;;
               corpus-runs)
@@ -600,7 +609,7 @@ jobs:
             esac
           fi
           "${overlay[@]}" python -m pymedphys dev tests -m "not slow" ${selection[@]+"${selection[@]}"} \
-            -n 2 --dist worksteal --durations=15 \
+            -n 2 --dist "${dist}" --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors-${PART}.xml"
 
       - name: Upload test results

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import argparse
+import inspect
 import logging
 import sys
 
@@ -147,14 +148,16 @@ def pymedphys_cli():
     run_logging_basic_config(args, logging_config)
 
     if hasattr(args, "func"):
+        # Determine whether a command accepts unknown arguments before
+        # invoking it. Catching TypeError from within a handler and retrying
+        # can execute side-effecting commands (including file writes) twice.
         try:
-            args.func(args, remaining)
-            return
+            inspect.signature(args.func).bind(args, remaining)
         except TypeError:
-            pass
-
-        parser.parse_args()
-        args.func(args)
+            parser.parse_args()
+            args.func(args)
+        else:
+            args.func(args, remaining)
 
         return
 

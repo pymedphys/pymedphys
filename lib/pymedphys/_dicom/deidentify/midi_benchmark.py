@@ -83,8 +83,9 @@ separately for each answer-key category rather than as one score:
   removed, where each value of the attribute is one that the engine writes
   in the source's place
   (:func:`~pymedphys._dicom.deidentify.midi_benchmark_values.is_engine_replacement`),
-  a constant such as ``DEIDENTIFIED`` or a keyed pseudonym or token, which
-  holds nothing of the source: a word of the answer key's text is within it
+  a constant such as ``DEIDENTIFIED``, a keyed pseudonym or token, or,
+  under Modified Dates, the nominal UTC offset in Timezone Offset From UTC,
+  which holds nothing of the source: a word of the answer key's text is within it
   by chance, such as a short given name within a keyed code, which under
   another key may not be. A check that asks for a text to be kept can pass
   by the same chance on such a value, and is counted as passed;
@@ -1372,7 +1373,7 @@ def score_check(  # pylint: disable = too-many-arguments
     text that a check asks to be removed is never a deliberate difference,
     even where the policy keeps it. It is a replacement match where it
     fails on an attribute each of whose values is one that the engine
-    writes in the source's place
+    writes in the source's place under the policy's options
     (:func:`~pymedphys._dicom.deidentify.midi_benchmark_values.is_engine_replacement`),
     which holds nothing of the source, so that the words it was found to
     hold are there by chance; otherwise it is a finding.
@@ -1393,7 +1394,7 @@ def score_check(  # pylint: disable = too-many-arguments
         return scored
     if check.action is Action.TEXT_REMOVED:
         element = find_element(dataset, check.path, removed=removed)
-        if element is not None and is_engine_replacement(element):
+        if element is not None and is_engine_replacement(element, rules.policy.options):
             return Scored(Result.FAILED, _REPLACED, replacement_match=True)
     note = _explanation(check, check.path, dataset, rules, iod, fallback)
     return scored if note is None else Scored(Result.FAILED, note, deliberate=True)

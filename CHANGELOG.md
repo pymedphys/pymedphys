@@ -12,6 +12,27 @@ This project adheres to
 
 ## Unreleased
 
+### RT Plans written by `Delivery.to_dicom`
+
+`pymedphys.Delivery.to_dicom` wrote wrong monitor units, without an error, when a template beam's Final Cumulative Meterset Weight (300A,010E) was not 1. It wrote Cumulative Meterset Weights ending at 1 but kept the template's final weight, so every control point's meterset was divided by that final weight: 100 times too small for a template that gives the weights as percentages. When a template's control points listed the MLCX before the ASYMY jaws, it swapped the jaw and leaf positions. The weights now keep the template beam's scale, each to within a millionth of its Final Cumulative Meterset Weight, whatever that weight is, and the last equals it as a decimal number. Positions go to the item of their device type. **Re-export plans written from such templates, and recalculate any dose computed from them**, for example plans made from TRF logfiles. Templates with a final weight of 1 that list the jaws first give the same weights and positions as before. Written control points after the first no longer copy the Cumulative Dose Reference Coefficients of the template's last control point, which gave each of them the beam's full dose to the reference. They keep the template's Referenced Dose Reference Sequence with those coefficients left empty, because the coefficients come from the dose calculated for the template. Templates whose later control points list only the devices that move, or none, as PS3.3 specifies, now work instead of raising `IndexError` or `AttributeError`. A template beam without a Final Cumulative Meterset Weight is given one of 1. A template beam that does not define one ASYMY and one MLCX device raises `ValueError`, and so does one whose Final Cumulative Meterset Weight is not a positive, finite number or is below `sys.float_info.min` (about 2.2e-308), where a float no longer has full precision. `pymedphys.Delivery.from_dicom` now divides each Cumulative Meterset Weight by the Final Cumulative Meterset Weight before multiplying by the Beam Meterset, so a plan whose Beam Meterset times a weight would pass the largest float, such as one with a final weight of 1E308, no longer reads back as non-finite monitor units; for a final weight of 1 its monitor units are unchanged. [PR #2616](https://github.com/pymedphys/pymedphys/pull/2616)
+
+### Retry diagnostics do not reveal secrets from exceptions
+
+Retries of failed data downloads now log the exception type and numeric HTTP
+status (when available), rather than the exception message. HTTP exceptions
+can contain a signed download URL, access token or
+patient identifier; retry diagnostics no longer copy those values to terminal
+output or an application logger. Raised exceptions retain their original
+contents for callers that handle them directly. [PR #2635](https://github.com/pymedphys/pymedphys/pull/2635)
+
+### Mosaiq mock-database credential handling
+
+Mosaiq mock-database connections now construct SQLAlchemy URLs from separate
+credential and endpoint fields. Passwords containing reserved URL characters
+(such as `@`, `:`, `/`, `#` and `%`) are preserved instead of being parsed as
+URL delimiters, avoiding connection failures or unintended destinations.
+[PR #2634](https://github.com/pymedphys/pymedphys/pull/2634)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
@@ -28,6 +49,17 @@ ignored. **Recalculate session counts and session offsets from
 apart over a span longer than 3 hours, treatments across midnight, QA-mode
 deliveries, or a department interval other than 3 hours. Sites treated once a
 day at the default interval give the same sessions. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
+
+### DICOM listener CLI defaults to local-only binding
+
+`pymedphys dicom listen` now binds to `127.0.0.1` (the local computer)
+instead of `0.0.0.0` (all network interfaces) by default. **Sites receiving
+DICOM associations from another computer must explicitly supply `--host`**
+with the IP address of a trusted network interface, or `--host 0.0.0.0` to
+listen on all interfaces. The DICOM listener does not provide authentication;
+restrict network access and do not expose it to the public internet. This
+change affects the CLI default, not callers configuring `DicomListener`
+directly. [PR #2645](https://github.com/pymedphys/pymedphys/pull/2645)
 
 ### Oversized DICOM contours
 
@@ -144,6 +176,7 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### New features and enhancements
 
+- **[Privacy]** Set `PYMEDPHYS_REDACT_TRF_PATHS=1` to omit patient-bearing file paths from TRF-to-CSV conversion progress logs. The default preserves local file-identifying diagnostics for clinical operators. [PR #2642](https://github.com/pymedphys/pymedphys/pull/2642)
 - The experimental Mosaiq to CSV app asks for the Mosaiq server's hostname, port, database and site name when no Mosaiq site is configured, instead of failing. After the first successful connection it can save these settings, but not the credentials, to the `config.toml` that PyMedPhys reads, following any `redirect`; settings that fail to connect stay editable in the app. Sites configured in `config.toml` now connect to their `database` entry, which defaults to `MOSAIQ`, and each site's login prompt names its hostname, port and database, so sites that share an alias keep separate logins. [PR #1975](https://github.com/pymedphys/pymedphys/pull/1975)
 - A reusable gamma benchmark in `examples/gamma_benchmark` compares PyMedPhys versions and branches, or the SciPy and PyMedPhys interpolators in one checkout. Saved workload plans cover grid size, above-cutoff fraction, search settings and resource budgets, with numerical verification and illustrated offline reports. Follow the [comparison guide](https://docs.pymedphys.com/en/latest/contrib/info/gamma-benchmark.html) to prepare a study and run it when ready to measure. [PR #2183](https://github.com/pymedphys/pymedphys/pull/2183)
 - `pymedphys.gamma` has a new `exclude_nan_reference` option. When set, reference points whose dose is NaN are left out of the analysis, for example unmeasured detector positions or points outside a region of interest. They are reported as NaN, and the default normalisation ignores them. Without it, a NaN reference dose still raises `ValueError`, whose message now names the option, so that NaN from an upstream error is not silently dropped. NaN in the evaluation dose, and infinite doses in either grid, still raise; the evaluation message recommends cropping the evaluation grid, or using the measurement as the reference with the new option. [PR #2124](https://github.com/pymedphys/pymedphys/pull/2124)
@@ -174,6 +207,7 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 - `pymedphys --version` prints the installed version. Previously the option
   was not recognised and the help text was printed instead.
   [PR #2060](https://github.com/pymedphys/pymedphys/pull/2060)
+- **[Privacy]** Experimental pseudonymisation omits missing clinical input paths from `FileNotFoundError` messages, avoiding disclosure of patient-bearing filenames through exception reporting. [PR #2644](https://github.com/pymedphys/pymedphys/pull/2644)
 - **[Security]** Experimental pseudonymisation now warns about its security
   limitations. It hashes UIDs and some numeric values without a secret key,
   so anyone who holds the original UIDs can re-link records, and anyone can
@@ -208,8 +242,25 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### Bug fixes
 
+- **[Security]** The mock Mosaiq SQL Server backup restore helper now passes the administrator password to Docker through environment-variable forwarding rather than embedding its value in `docker run` process arguments. This prevents exposure of the password through process command-line listings and logs; Docker still receives it as an environment variable. [PR #2631](https://github.com/pymedphys/pymedphys/pull/2631)
+
+- **[Security]** The `pymedphys` command line no longer retries a subcommand
+  after its handler raises an internal `TypeError`. Previously, a command that
+  had already written or deleted a file could run a second time after this
+  error. The original error now propagates after one invocation. One-argument
+  handlers still reject unknown options; two-argument handlers still receive
+  the remaining options. [PR #2649](https://github.com/pymedphys/pymedphys/pull/2649)
+
+- **[Security]** Data downloads now reject negative, malformed, or repeated
+  `Content-Length` declarations, and responses containing both `Content-Length`
+  and `Transfer-Encoding` (even with blank field values). If the transport
+  returns more bytes than declared, the excess is refused before writing it.
+  These failures leave an existing cached file unchanged.
+  [PR #2621](https://github.com/pymedphys/pymedphys/pull/2621)
+- The MetersetMap app now writes the points that gamma did not analyse, such as those below the lower dose cutoff, as pixel value 0 in its saved `gamma.png` on every platform. Gamma is NaN at these points, and the app converted NaN to an integer pixel value, which C does not define, so the value could differ between platforms, and NumPy raised `RuntimeWarning: invalid value encountered in cast`. Images written on x86-64 Linux are unchanged, because the conversion already gave 0 there; where it gave another value, those pixels change to 0. A pixel value of 0 in `gamma.png` marks either a point that was not analysed or a gamma below 2/255 (about 0.008); the gamma plot in the report leaves the points that were not analysed blank. [PR #2656](https://github.com/pymedphys/pymedphys/pull/2656)
 - `pymedphys.Delivery.from_dicom` now reads RT Plans in which later control points leave out a beam limiting device whose positions do not change, as the DICOM standard specifies (PS3.3 C.8.8.14). For example, a beam with fixed Y jaws and moving MLC leaves lists the jaws only at its first control point. Such plans raised `ValueError: Expected exactly one item per control point for a given collimator`, and the MetersetMap app stopped with this error. Each device now keeps the positions from the last control point that listed it. A control point whose list of devices is empty, or that leaves out a device and lists one the beam does not define, still raises `ValueError`. Plans that list every device at every control point give the same `Delivery` as before. [PR #2614](https://github.com/pymedphys/pymedphys/pull/2614)
 
+- **[Privacy]** `convert_patient_name` now states the expected name format without copying malformed patient-name values into exceptions. [PR #2641](https://github.com/pymedphys/pymedphys/pull/2641)
 - The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
 
 - `pymedphys._mosaiq.sessions.cluster_sessions` no longer drops whole days and fractions of a second from its `interval`, and handles one or no treatments. `sessions_for_site` and the session offset helpers return no sessions, and a mean offset of `None`, for a site with no treatments, where they raised `IndexError`. `sessions_for_site`, `session_offsets_for_site` and `mean_session_offset_for_site` take the session interval as an argument, defaulting to the department setting from the new `session_interval_for_site`, which raises `ValueError` when a site's treatments come from departments with different settings. `session_offsets_for_site` searches for each session's offset from no earlier than the previous session's last treatment, so a session no longer takes the previous session's offset, and compares offset times to the second rather than to the minute. Session clustering no longer uses scikit-learn. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
@@ -351,6 +402,12 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** The distribution verifier rejects TAR and wheel
+  archives with duplicate or aliased member paths before reading metadata,
+  including duplicate TAR entries involving links. This avoids accepting
+  archives whose contents depend on which entry a reader selects.
+  [PR #2624](https://github.com/pymedphys/pymedphys/pull/2624)
+
 - **[Contributor facing only]** The locked pre-commit environment now uses virtualenv 21.14.13, fixing shell-prompt command execution in generated activation scripts. Recreate affected environments with the updated tool to receive the corrected scripts. [PR #2445](https://github.com/pymedphys/pymedphys/pull/2445)
 - **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [PR #2411](https://github.com/pymedphys/pymedphys/pull/2411)
 - **[Contributor facing only]** The de-identification tests, including the
@@ -365,6 +422,11 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 - **[Contributor facing only]** CI and the security scan run no jobs on draft pull requests. Marking a pull request ready for review starts both on its current commit, and converting it back to a draft cancels any run in progress, so work in progress uses no Actions runners. The merge queue still runs every check before a change reaches `main`. [PR #2269](https://github.com/pymedphys/pymedphys/pull/2269)
 - **[Contributor facing only]** Merge-queue validation uses the quick Ubuntu/Python 3.14 unit matrix while retaining every integration, database and security check. Main, releases and PRs labelled `full-test` retain the full OS/Python matrix. This avoids repeating all 12 environments immediately before and after each merge; platform failures discovered on main are corrected or reverted there. [PR #2249](https://github.com/pymedphys/pymedphys/pull/2249)
 - **[Contributor facing only]** CI no longer runs on a push to `main`: the merge queue updates `main` to the commit its merge group already tested, and each merge's run had put the full OS/Python matrix's jobs ahead of the next merge group, which then reached the queue's two-hour limit. The full matrix, with every other CI check, runs on `main` each night at 15:37 UTC instead, and anyone with write access can start the same run on any branch from the **Actions** tab. A failure of the nightly or a manual run on `main` opens or comments on the "CI failed on main" issue, and a later run waits for a running nightly or manual run instead of cancelling it. The security scan still runs on each push to `main`, and no time limit changes. [PR #2591](https://github.com/pymedphys/pymedphys/pull/2591)
+- **[Contributor facing only]** The merge queue no longer loses runners to builds it has abandoned or to a selection step that chooses nothing. When the queue drops a merge group, because a group ahead of it failed or timed out, the new `Merge Queue Cleanup` workflow cancels that group's unfinished CI and security runs; until now they ran on for hours and held runners that the rebuilt groups needed, so those groups reached the queue's time limit in turn. Merge groups also skip the `changes` job of CI and the security scan, which always chose every check there, so their checks start without first waiting for a runner for it; the summaries require every check to run and pass in a merge group. Pull requests choose their checks as before. [PR #2686](https://github.com/pymedphys/pymedphys/pull/2686)
+- **[Contributor facing only]** Merge-group builds no longer run the de-identification corpus with the `dicom` extra alone or at the NumPy and pandas minimum versions. Those twelve jobs took most of each build's runner time, and the risks they check, a package missing from the extra or a behaviour that differs at the minimum versions, change with dependency inputs, so they now run nightly, on manual runs and releases, with the `full-test` label, and on pull requests that change dependency inputs, CI configuration, `_extras.py`, `_imports/` or `_vendor/`. The Ubuntu/Python 3.14 run still runs every corpus test on every pull request and merge group, and a new static test, run with every unit-test run, fails when DICOM code imports an optional package that neither the `dicom` extra nor the base install provides. The DICOM validation jobs' dicom3tools install now has time limits and three attempts, so a hung package-index download no longer holds the job to its time limit. [PR #2688](https://github.com/pymedphys/pymedphys/pull/2688)
+- **[Contributor facing only]** Merge groups no longer run the Windows and macOS tests of the CI tooling in `.github/scripts`; on 23 Nov 2026 a shortage of GitHub's macOS runners left one such job without a runner and dropped a merge group. Pull requests that change the tooling, main's nightly and manual runs, and releases still run them on both platforms, and Ubuntu's tooling tests still run in every merge group. [PR #2689](https://github.com/pymedphys/pymedphys/pull/2689)
+- **[Contributor facing only]** The unit tests' `ct-defacing-variants` part builds each of its module's runs on one pytest worker. Its tests move, unchanged, into two classes by the runs they share, and the part runs with `--dist loadscope`, which keeps each class on one worker, so only the defaced run that both classes compare with is built on both; with `worksteal`, both workers could build any of the runs, each taking minutes, which took the part past its 30-minute limit at the NumPy and pandas minimum versions. Every other part keeps `worksteal`, and no time limit changes. [PR #2692](https://github.com/pymedphys/pymedphys/pull/2692)
+- **[Contributor facing only]** Each set of extras in a CI job keeps its own PyMedPhys data cache. `setup-project` passes its extras to `cache-data`, whose exact key now ends with them. The key was per job, which every combination of a matrix shares, and an exact hit saves nothing, so a combination that read other files than the first to save, such as the narrow-extras job's `trf`, downloaded them from Zenodo on every run and failed when Zenodo refused the request. The restore prefix is unchanged, so a new key starts from any cache of the same manifest. [PR #2693](https://github.com/pymedphys/pymedphys/pull/2693)
 - **[Contributor facing only]** De-identification tests reuse immutable conformance setup and file/table digest caches for ordinary assertions, while mutation and cold-read tests retain fresh inputs. Requirements traceability reuses actual pytest collection, and minimum/latest pydicom coverage can reuse the matching locked Ubuntu/Python 3.14 run with recorded evidence. The synthetic corpus's marker search rules out most forms by the 4-byte runs each published file holds before it scans the file, finding exactly what it found before in about a fifth of the time. The CT defacing and visual-features fixtures that review the same first run of the synthetic collection make it once. All test cases and the existing matrix policy remain in place. [PR #2243](https://github.com/pymedphys/pymedphys/pull/2243), [PR #2403](https://github.com/pymedphys/pymedphys/pull/2403), [PR #2416](https://github.com/pymedphys/pymedphys/pull/2416)
 - **[Contributor facing only]** CI runs its larger unit-test suites on two
   workers with bounded numerical thread pools and reports the slowest tests.
@@ -652,6 +714,7 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### (Potentially) breaking changes
 
+- `pymedphys.Delivery.to_dicom` writes different Cumulative Meterset Weights and jaw and leaf positions for some templates, leaves the Cumulative Dose Reference Coefficients of control points after the first empty, and raises `ValueError` for a template beam that does not define one ASYMY and one MLCX device, or whose Final Cumulative Meterset Weight is not a positive, finite number of at least `sys.float_info.min` (about 2.2e-308); see "RT Plans written by `Delivery.to_dicom`" above. [PR #2616](https://github.com/pymedphys/pymedphys/pull/2616)
 - The private `pymedphys._mosaiq.sessions` helpers return different sessions for some sites; see "Mosaiq treatment sessions follow Mosaiq's rule" above. Session numbers count one site's sessions, so they differ from the Treatment Chart's per-patient numbers when several sites are treated in the same visit. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
 - `pymedphys gui` now serves only the computer that runs it. It listens on `127.0.0.1` instead of every network interface, and accepts the WebSocket connections that run the apps only when they are addressed to `localhost` or `127.0.0.1`, which protects those connections against DNS rebinding. To serve other computers, for example from a department server, pass the address to listen on with the new `--address` option, such as `pymedphys gui --address 0.0.0.0`. The apps have no login and handle patient data, so anyone who can reach that address and port can use them, over unencrypted HTTP. The GUI also turns off Streamlit's usage statistics. It passes these settings to Streamlit on the command line, so they override Streamlit's configuration files and environment variables: a `server.address` set there no longer takes effect; use `--address` instead. See [Graphical apps](https://docs.pymedphys.com/en/latest/users/ref/cli/gui.html). [PR #2166](https://github.com/pymedphys/pymedphys/pull/2166), [PR #2167](https://github.com/pymedphys/pymedphys/pull/2167)
 - `pymedphys[mosaiq]` no longer installs attrs, scikit-learn, SQLAlchemy, or toml. Install `pymedphys[trf,mosaiq]` to identify TRF files against Mosaiq, and `pymedphys[user]` for everything else. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
