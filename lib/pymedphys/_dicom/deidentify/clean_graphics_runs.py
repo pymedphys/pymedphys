@@ -51,7 +51,9 @@ overlay groups that hold Overlay Data are removed whole, as under the Basic
 Profile (D-020); the bit plane of an overlay in unused bits of Pixel Data
 is cleared, so that each stored value holds only its sign above High Bit
 (:func:`unused_bits`), and its group is removed, in the write that blacks
-out text, which holds the image for review; an overlay group whose only
+out text, which holds the image for review, with its Pixel Data described
+as received and each stored value as received outside the regions in which
+text was found (:func:`stored_values_changed`); an overlay group whose only
 attribute is Overlay Activation Layer (60xx,1001), with which a
 Presentation State shows an overlay of the image that it references, places
 no overlay in the state, so it is kept and the state is released; and every
@@ -59,8 +61,9 @@ file written under the option claims it (D-041). A run that raises is
 counted by the exception's type and place, never its message.
 
 The annotations' digests, which the reviewed annotations list keeps
-confidential, the Overlay Activation Layers, Pixel Data, and the written
-files stay in memory: no summary holds them.
+confidential, the Overlay Activation Layers, Pixel Data, the regions in
+which text was found, and the written files stay in memory: no summary
+holds them.
 """
 
 from __future__ import annotations
@@ -101,6 +104,7 @@ from .reviewed_annotations import (
 )
 from .run_results import HoldForReview, Release, Sequestered, Transformed
 from .source import read_source
+from .text_detection import TextBox
 
 GRAYSCALE_SOFTCOPY_PRESENTATION_STATE = "1.2.840.10008.5.1.4.1.1.11.1"
 PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE = "1.2.840.10008.5.1.4.1.1.11.3"
@@ -193,6 +197,20 @@ _PIXEL_DATA_CODES = frozenset(
 # Implicit and Explicit VR Little Endian: the transfer syntaxes whose Pixel
 # Data is read here, as stored words.
 _NATIVE = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})
+# The attributes that say how Pixel Data holds its stored values, each with
+# the value that it takes where it is absent, or None where it must be
+# present; a written file must describe its Pixel Data as its source does.
+_PIXEL_DESCRIPTION: tuple[tuple[str, int | None], ...] = (
+    ("NumberOfFrames", 1),
+    ("Rows", None),
+    ("Columns", None),
+    ("SamplesPerPixel", 1),
+    ("PlanarConfiguration", 0),
+    ("BitsAllocated", None),
+    ("BitsStored", None),
+    ("HighBit", None),
+    ("PixelRepresentation", 0),
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -236,6 +254,32 @@ class _Written:
     nested_graphics: int
     claims_clean_graphics: bool
     activation_layers: tuple[pydicom.DataElement, ...]
+    # Of a run with Clean Pixel Data: how many regions of text the finder
+    # found, and how many stored values the file holds otherwise than its
+    # source outside them, as :func:`stored_values_changed` counts them.
+    text_regions: int | None = None
+    changed_outside_text_regions: int | None = None
+
+
+class _Recorded:
+    """A text finder that keeps, in memory, each region of text that the
+    finder that it is given finds, so that the stored values of a written
+    file can be compared with its source's outside them; no region leaves
+    the check."""
+
+    def __init__(self, finder: TextFinder):
+        self._finder = finder
+        self.boxes: list[TextBox] = []
+
+    @property
+    def method(self) -> Mapping[str, object]:
+        """The given finder's method, so that the method digest is its."""
+        return self._finder.method
+
+    def find(self, frame: np.ndarray) -> Sequence[TextBox]:
+        found = tuple(self._finder.find(frame))
+        self.boxes.extend(found)
+        return found
 
 
 @dataclasses.dataclass
@@ -499,6 +543,77 @@ def unused_bits(dataset: pydicom.Dataset) -> int | None:
     return int(np.count_nonzero(above != expected))
 
 
+def stored_values_changed(
+    source: pydicom.Dataset, written: pydicom.Dataset, boxes: Iterable[TextBox]
+) -> int | None:
+    """How many stored values a written file holds otherwise than its source
+    outside ``boxes``, in any frame or sample; or None where either has no
+    Pixel Data that is native and little endian, in words of 8, 16, or 32
+    bits, or where the written file describes its Pixel Data otherwise than
+    its source does.
+
+    Only the Bits Stored bits that end at High Bit are compared, so that
+    clearing the bit plane of an overlay in unused bits, as Clean Graphics
+    does, changes no stored value; :func:`unused_bits` counts what is left
+    in those bits. ``boxes`` are the regions of text that a finder found,
+    which Clean Pixel Data blacks out in each frame, as rows and columns of
+    every frame; the transform clips each to the frame, and so does this
+    count. As in :func:`unused_bits`, the words are read as stored.
+    """
+    described = _pixel_description(source)
+    if described is None or described != _pixel_description(written):
+        return None
+    frames, rows, columns, samples, planar, allocated, stored, high, _ = described
+    by_plane = planar == 1 and samples > 1
+    width = allocated // 8
+    count = frames * rows * columns * samples
+    shape = (
+        (frames, samples, rows, columns)
+        if by_plane
+        else (frames, rows, columns, samples)
+    )
+    found = []
+    for dataset in (source, written):
+        data = bytes(dataset[_PIXEL_DATA].value)
+        if len(data) < count * width:
+            return None
+        words = np.frombuffer(data, dtype=f"<u{width}", count=count).reshape(shape)
+        # As frames, samples, rows, and columns, however they are stored.
+        found.append(words if by_plane else np.moveaxis(words, 3, 1))
+    before, after = found
+    bits = np.asarray(((1 << stored) - 1) << (high - stored + 1), dtype=before.dtype)
+    changed = (before & bits) != (after & bits)
+    inside = np.zeros((rows, columns), dtype=bool)
+    for box in boxes:
+        inside[box.top : box.bottom, box.left : box.right] = True
+    return int(np.count_nonzero(changed[:, :, ~inside]))
+
+
+def _pixel_description(dataset: pydicom.Dataset) -> tuple[int, ...] | None:
+    """How a data set's Pixel Data holds its stored values, as the attributes
+    of :data:`_PIXEL_DESCRIPTION` give it, in their order; or None where it
+    has no Pixel Data that is native and little endian, in words of 8, 16,
+    or 32 bits, or the attributes do not describe one."""
+    meta = getattr(dataset, "file_meta", None)
+    syntax = None if meta is None else meta.get("TransferSyntaxUID")
+    element = dataset.get(_PIXEL_DATA)
+    if syntax not in _NATIVE or element is None or element.value is None:
+        return None
+    try:
+        found = tuple(
+            int(dataset.get(keyword, default))
+            for keyword, default in _PIXEL_DESCRIPTION
+        )
+    except (TypeError, ValueError):
+        return None
+    frames, rows, columns, samples, _, allocated, stored, high, _ = found
+    if min(frames, rows, columns, samples) < 1 or allocated not in (8, 16, 32):
+        return None
+    if not 0 < stored <= high + 1 <= allocated:
+        return None
+    return found
+
+
 def _groups(dataset: pydicom.Dataset, first: int) -> int:
     """How many of the repeating groups ``first`` to ``first`` + 0x1E, those
     of curves or of overlays, hold an attribute but their group length."""
@@ -528,6 +643,7 @@ def _run(
         # A run with Clean Pixel Data needs a text finder, and the transform
         # refuses one without it.
         found = finder() if finder is not None and name == "with_pixel_data" else None
+        recorded = None if found is None else _Recorded(found)
         reviewed = None
         counted: collections.Counter[str] | None = None
         if decisions is not None and annotations is not None:
@@ -537,7 +653,7 @@ def _run(
                 reviewed.record(annotations.digests[index], review)
                 counted[review.value] += 1
         passes = 1
-        result = _transform(options, reviewed, found)(
+        result = _transform(options, reviewed, recorded)(
             data, InstanceRecord.from_file(data)
         )
         while keeps_sets and reviewed is not None and counted is not None:
@@ -556,10 +672,20 @@ def _run(
                 reviewed.record(digest, Review.KEEP)
             counted["keep together"] += len(held)
             passes += 1
-            result = _transform(options, reviewed, found)(
+            result = _transform(options, reviewed, recorded)(
                 data, InstanceRecord.from_file(data)
             )
         ran = _outcome(result)
+        if recorded is not None and ran.written is not None:
+            ran.written = dataclasses.replace(
+                ran.written,
+                text_regions=len(recorded.boxes),
+                changed_outside_text_regions=stored_values_changed(
+                    pydicom.dcmread(io.BytesIO(data)),
+                    pydicom.dcmread(io.BytesIO(ran.written.data)),
+                    recorded.boxes,
+                ),
+            )
         ran.passes = passes if reviewed is not None else 0
         ran.decisions = counted
         for each in _materials(result):
@@ -743,6 +869,9 @@ def _written_summary(ran: _Ran, source: _Annotations | None) -> dict[str, Any]:
         }
     if written.unused_bits is not None:
         found["unused_bits"] = written.unused_bits
+    if written.text_regions is not None:
+        found["text_regions"] = written.text_regions
+        found["changed_outside_text_regions"] = written.changed_outside_text_regions
     return {
         **found,
         "graphics": sorted(written.graphics),
@@ -792,10 +921,11 @@ EXPECTATIONS: tuple[str, ...] = (
     "for that alone, under Modified Dates alone and with Clean Graphics.",
     "With Clean Graphics and Clean Pixel Data, each image with an overlay in "
     "unused bits of Pixel Data, whose stored values hold more than their "
-    "sign above High Bit, is written with none that does and with each of "
-    "its overlay groups removed, claims Clean Graphics, and is held for "
-    "review for its Pixel Data alone, as Clean Pixel Data holds each image "
-    "that it cleans.",
+    "sign above High Bit, is written with none that does, with its Pixel "
+    "Data described as received and each stored value as received outside "
+    "the regions in which text was found, and with each of its overlay "
+    "groups removed, claims Clean Graphics, and is held for review for its "
+    "Pixel Data alone, as Clean Pixel Data holds each image that it cleans.",
     "Each Presentation State without annotations has an overlay group whose "
     "only attribute is Overlay Activation Layer (60xx,1001), and is released "
     "under Modified Dates alone and with Clean Graphics, with each such group "
@@ -1064,6 +1194,7 @@ def _cleared_and_held(member: InstanceRuns) -> bool:
     written = ran.written
     return (
         written.unused_bits == 0
+        and written.changed_outside_text_regions == 0
         and written.overlay_groups == 0
         and written.claims_clean_graphics
         and ran.outcome == "held"

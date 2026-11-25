@@ -33,6 +33,7 @@ from pymedphys._dicom.deidentify import clean_graphics_runs as runs_module
 from pymedphys._dicom.deidentify import (
     compound_actions,
     instance_transform,
+    pixel_cleaning,
     pixel_risk,
     policy,
 )
@@ -60,6 +61,7 @@ from pymedphys._dicom.deidentify.clean_graphics_check import (
 from pymedphys._dicom.deidentify.clean_graphics_runs import (
     EXPECTATIONS,
     SECONDARY_CAPTURE,
+    stored_values_changed,
     unused_bits,
 )
 from pymedphys._dicom.deidentify.reviewed_annotations import annotation_digest
@@ -722,6 +724,10 @@ def test_each_expectation_is_met_where_the_engine_follows_the_design():
     assert cleaned["outcome"] == "held"
     assert cleaned["reasons"] == {"pixel-data: text-blacked-out": 1}
     assert cleaned["written"]["unused_bits"] == 0
+    # Only the region of text that the finder found, of 2 by 2 pixels, holds
+    # other stored values.
+    assert cleaned["written"]["text_regions"] == 1
+    assert cleaned["written"]["changed_outside_text_regions"] == 0
     assert cleaned["written"]["overlay_groups"] == 0
     assert cleaned["written"]["claims_clean_graphics"]
     assert "differences" not in capture
@@ -765,6 +771,9 @@ def test_a_finder_that_finds_no_text_still_holds_the_capture_for_review():
     assert summary["met"], _unmet(summary)
     assert cleaned["reasons"] == {"pixel-data: no-text-found": 1}
     assert cleaned["written"]["unused_bits"] == 0
+    # Every stored value is compared, and none changes.
+    assert cleaned["written"]["text_regions"] == 0
+    assert cleaned["written"]["changed_outside_text_regions"] == 0
 
 
 def test_the_finder_is_made_once_and_only_for_a_run_with_clean_pixel_data():
@@ -849,6 +858,25 @@ def test_an_engine_that_does_not_clear_an_overlay_in_pixel_data_fails(monkeypatc
     unmet = _unmet(_check(_found()))
 
     assert unmet[CLEARED_AND_HELD] == [f"{DCM4CHE} ovly_p01"]
+
+
+def test_an_engine_that_changes_stored_values_outside_the_text_fails(monkeypatch):
+    # As though clearing the overlays cleared every stored bit too, and the
+    # engine's own check of its write missed it.
+    monkeypatch.setattr(
+        pixel_cleaning,
+        "_cleared",
+        lambda _layout, words, _overlays: np.zeros_like(words),
+    )
+    monkeypatch.setattr(instance_transform, "redaction_problem", lambda *_: False)
+
+    summary = _check(_found())
+    cleaned = summary["members"][-1]["runs"]["with_pixel_data"]
+
+    assert _unmet(summary)[CLEARED_AND_HELD] == [f"{DCM4CHE} ovly_p01"]
+    assert cleaned["outcome"] == "held"
+    assert cleaned["written"]["unused_bits"] == 0
+    assert cleaned["written"]["changed_outside_text_regions"] > 0
 
 
 def test_an_image_with_an_overlay_in_pixel_data_that_is_not_a_capture_fails():
@@ -1011,6 +1039,64 @@ def test_unused_bits_count_the_values_that_hold_more_than_their_sign():
     # Read as stored, and the same in Implicit VR Little Endian.
     implicit = _stored([1 << 13], transfer_syntax=synthetic.IMPLICIT_VR_LITTLE_ENDIAN)
     assert unused_bits(implicit) == 1
+
+
+def test_stored_values_changed_count_stored_bits_outside_the_regions():
+    source = _stored([1, 2 | 1 << 14, 3, 4])
+    # Clearing a bit above High Bit changes no stored value.
+    assert stored_values_changed(source, _stored([1, 2, 3, 4]), ()) == 0
+    # A changed stored value counts, unless a region of text holds it.
+    written = _stored([1, 2, 0, 4])
+    assert stored_values_changed(source, written, ()) == 1
+    assert stored_values_changed(source, written, (TextBox(0, 2, 1, 3),)) == 0
+    # A region past the frame's edge holds its part within the frame.
+    assert stored_values_changed(source, written, (TextBox(0, 2, 5, 9),)) == 0
+    # The stored bits end at High Bit: here bits 4 to 15.
+    source, same, other = (_stored(each) for each in ([16, 1], [16, 2], [32, 1]))
+    for each in (source, same, other):
+        each.HighBit = 15
+    assert stored_values_changed(source, same, ()) == 0
+    assert stored_values_changed(source, other, ()) == 1
+
+
+def _colour(words, planar):
+    """One row of two pixels of three samples, as ``planar`` stores them."""
+    dataset = _stored(words)
+    dataset.Columns = 2
+    dataset.SamplesPerPixel = 3
+    dataset.PlanarConfiguration = planar
+    return dataset
+
+
+def test_stored_values_changed_read_each_planar_configuration():
+    source = [1, 2, 3, 4, 5, 6]
+    written = [1, 2, 3, 4, 0, 6]
+    # The fifth word is the second pixel's second sample by pixel, and the
+    # first pixel's third sample by plane; the region holds the second pixel.
+    region = (TextBox(0, 1, 1, 2),)
+    for planar, changed in ((0, 0), (1, 1)):
+        assert (
+            stored_values_changed(
+                _colour(source, planar), _colour(written, planar), region
+            )
+            == changed
+        )
+
+
+def test_stored_values_changed_need_pixel_data_described_alike():
+    source = _stored([1, 2])
+    # A written file that took the unused bits for stored ones.
+    assert stored_values_changed(source, _stored([1, 2], bits_stored=16), ()) is None
+    compressed = _stored([1, 2])
+    compressed.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"  # RLE Lossless
+    assert stored_values_changed(source, compressed, ()) is None
+    assert stored_values_changed(compressed, compressed, ()) is None
+    short = _stored([1, 2])
+    short.PixelData = short.PixelData[:2]
+    assert stored_values_changed(source, short, ()) is None
+    undescribed = _stored([1, 2])
+    del undescribed.BitsStored
+    assert stored_values_changed(undescribed, undescribed, ()) is None
 
 
 def test_unused_bits_are_not_read_without_native_pixel_data():
