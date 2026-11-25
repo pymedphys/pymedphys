@@ -63,6 +63,17 @@ def test_l_shape_width_is_the_same_on_every_run():
     assert len(set(widths)) == 1
 
 
+def test_non_square_rectangle_width_is_exact():
+    # A 10 by 4 cm rectangle: the largest circle has diameter 4 cm. Older
+    # Shapely releases needed over a million search cells for this shape.
+    x = np.array([0, 10, 10, 0])
+    y = np.array([0, 0, 4, 4])
+
+    width, _, _ = core.parameterise_insert(x, y)
+
+    assert width == pytest.approx(4, abs=1e-4)
+
+
 def test_callback_is_called_once_with_the_final_circle():
     x, y = _l_shape()
     calls = []

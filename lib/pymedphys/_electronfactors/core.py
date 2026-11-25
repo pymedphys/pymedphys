@@ -358,7 +358,7 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
     circle_centre = np.array(centre.coords[0])
 
     if callback is not None:
-        callback(circle_centre, -insert.boundary.distance(centre), True)
+        callback(circle_centre.copy(), -insert.boundary.distance(centre), True)
 
     return circle_centre
 
