@@ -89,6 +89,8 @@ def fetch(uuid: str, out: pathlib.Path) -> int:
     # S3 keys are hierarchical; flattening them to basename can silently
     # overwrite another DICOM object. Check the *whole listing* before any
     # download starts, including case-insensitive collisions on Windows.
+    # Keep untrusted object names from mapping to Windows devices or streams.
+    windows_device = re.compile(r"(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?", re.I)
     seen: set[str] = set()
     for key in names:
         name = key.rsplit("/", 1)[-1]
@@ -98,6 +100,10 @@ def fetch(uuid: str, out: pathlib.Path) -> int:
             or name.startswith(".")
             or "/" in name
             or "\\" in name
+            or ":" in name
+            or name.endswith((" ", "."))
+            or windows_device.fullmatch(name)
+            or any(ord(char) < 32 or ord(char) == 127 for char in name)
         ):
             raise SystemExit(f"Unexpected object name in series {uuid}.")
         folded = name.casefold()
