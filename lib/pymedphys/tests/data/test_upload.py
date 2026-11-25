@@ -16,6 +16,7 @@
 
 import dataclasses
 import hashlib
+import json
 
 from pymedphys._imports import pytest
 
@@ -144,3 +145,54 @@ def test_file_is_sent_in_full_when_the_upload_is_retried(zenodo, tmp_path):
 
     assert [call["sent"]["file"] for call in fake_requests.calls] == [content] * 2
     assert fake_requests.calls[1]["data"] == {"name": "data.zip"}
+
+def test_missing_upload_checksum_does_not_echo_remote_response(zenodo, tmp_path):
+    install, _ = zenodo
+    file = tmp_path / "synthetic.bin"
+    file.write_bytes(b"test bytes")
+    sentinel = "private-upstream-diagnostics-123"
+    install(_Response(201, {"message": sentinel}))
+
+    with pytest.raises(ValueError, match="did not include a checksum") as error:
+        upload.upload_filepaths([file], deposition_id=1)
+    assert sentinel not in str(error.value)
+
+
+def test_upload_checksum_error_does_not_echo_upstream_fields(zenodo, tmp_path):
+    install, _ = zenodo
+    file = tmp_path / "synthetic.bin"
+    file.write_bytes(b"test bytes")
+    sentinel = "remote-secret-checksum-value-123"
+    install(_Response(201, {"checksum": sentinel}))
+
+    with pytest.raises(ValueError, match="does not match") as error:
+        upload.upload_filepaths([file], deposition_id=1)
+    assert sentinel not in str(error.value)
+
+
+def test_missing_deposition_id_does_not_echo_remote_response(zenodo):
+    install, _ = zenodo
+    sentinel = "upstream-sensitive-metadata-123"
+    install(_Response(201, {"detail": sentinel}))
+
+    with pytest.raises(ValueError, match="did not include an id") as error:
+        upload.upload_files_to_zenodo([], "Synthetic test deposition")
+    assert sentinel not in str(error.value)
+
+
+def test_non_json_deposition_response_does_not_echo_body(zenodo):
+    install, _ = zenodo
+    sentinel = "Bearer private-upstream-auth-token"
+
+    class NonJSONResponse:
+        status_code = 201
+        text = sentinel
+
+        def json(self):
+            raise json.JSONDecodeError("invalid", "not json", 0)
+
+    install(NonJSONResponse())
+
+    with pytest.raises(ValueError, match="did not return JSON") as error:
+        upload.upload_files_to_zenodo([], "Synthetic test deposition")
+    assert sentinel not in str(error.value)
