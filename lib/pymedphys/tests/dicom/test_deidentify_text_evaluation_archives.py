@@ -396,14 +396,44 @@ class _Served:
     def __init__(self, data, status=206):
         self.data, self.status = data, status
 
-    def read(self):
-        return self.data
+    def read(self, size=-1):
+        return self.data if size < 0 else self.data[:size]
 
     def __enter__(self):
         return self
 
     def __exit__(self, *_):
         return False
+
+
+
+def test_range_reader_caps_untrusted_http_body_to_one_byte_above_range(monkeypatch):
+    # A server might ignore Range and return a full, much larger archive.
+    read_limits = []
+
+    class Oversized:
+        status = 206
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, limit=-1):
+            read_limits.append(limit)
+            return b"x" * (limit if limit >= 0 else 1_000_000)
+
+    monkeypatch.setattr(
+        archives.urllib.request, "urlopen", lambda _request, **_: Oversized()
+    )
+    reader = archives.RangeReader("https://zenodo.org/x", size=8, block=8)
+
+    with pytest.raises(EvaluationRefused, match="served by ranges"):
+        reader.read(8)
+
+    assert read_limits == [9]  # Never request the unbounded HTTP response.
+
 
 
 def test_a_range_reader_reads_by_cached_blocks(monkeypatch, tmp_path):
