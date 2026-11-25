@@ -12,7 +12,8 @@ and, on an exception other than ``SystemExit``, prints only the exception's
 type and, for each frame of its traceback, the code's location: a path
 inside an installed package or this checkout, a line number, and a function
 name, never a message or a value. The caller sends standard error, where
-libraries log, to a private file.
+libraries log, to a private file. String-valued SystemExit messages are withheld,
+since a dependency may quote a sensitive identifier in a refusal.
 
 A library can also log to standard output, so ``--private-stdout`` sends
 the module's standard output, and that of any process it starts, to a
@@ -94,9 +95,10 @@ def run(
     try:
         status = main(arguments)
     except SystemExit as error:
-        # A tool's own refusal: its message quotes no value, by contract.
+        # A dependency can raise SystemExit with patient text or a file path.
+        # Treat it as untrusted just like every other exception message.
         if isinstance(error.code, str):
-            print(error.code, file=report or sys.stdout, flush=True)
+            print("Command refused; message withheld.", file=report or sys.stdout, flush=True)
             return 1
         return 0 if error.code is None else int(error.code)
     except BaseException as error:  # pylint: disable = broad-exception-caught
