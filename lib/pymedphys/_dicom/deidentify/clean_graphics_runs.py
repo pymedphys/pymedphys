@@ -53,12 +53,13 @@ is cleared, so that each stored value holds only its sign above High Bit
 (:func:`unused_bits`), and its group is removed, in the write that blacks
 out text, which holds the image for review, with its Pixel Data described
 as received and each stored value as received outside the regions in which
-text was found (:func:`stored_values_changed`); an overlay group whose only
-attribute is Overlay Activation Layer (60xx,1001), with which a
-Presentation State shows an overlay of the image that it references, places
-no overlay in the state, so it is kept and the state is released; and every
-file written under the option claims it (D-041). A run that raises is
-counted by the exception's type and place, never its message.
+text was found in its frame (:func:`stored_values_changed`); an overlay
+group whose only attribute is Overlay Activation Layer (60xx,1001), with
+which a Presentation State shows an overlay of the image that it
+references, places no overlay in the state, so it is kept and the state is
+released; and every file written under the option claims it (D-041). A run
+that raises is counted by the exception's type and place, never its
+message.
 
 The annotations' digests, which the reviewed annotations list keeps
 confidential, the Overlay Activation Layers, Pixel Data, the regions in
@@ -255,21 +256,23 @@ class _Written:
     claims_clean_graphics: bool
     activation_layers: tuple[pydicom.DataElement, ...]
     # Of a run with Clean Pixel Data: how many regions of text the finder
-    # found, and how many stored values the file holds otherwise than its
-    # source outside them, as :func:`stored_values_changed` counts them.
+    # found in all frames, and how many stored values the file holds
+    # otherwise than its source outside the regions of their own frame, as
+    # :func:`stored_values_changed` counts them.
     text_regions: int | None = None
     changed_outside_text_regions: int | None = None
 
 
 class _Recorded:
-    """A text finder that keeps, in memory, each region of text that the
-    finder that it is given finds, so that the stored values of a written
-    file can be compared with its source's outside them; no region leaves
-    the check."""
+    """A text finder that keeps, in memory, the regions of text that the
+    finder that it is given finds in each frame, in the order in which the
+    frames are given to it, so that the stored values of a written file can
+    be compared with its source's outside each frame's own regions; no
+    region leaves the check."""
 
     def __init__(self, finder: TextFinder):
         self._finder = finder
-        self.boxes: list[TextBox] = []
+        self.frames: list[tuple[TextBox, ...]] = []
 
     @property
     def method(self) -> Mapping[str, object]:
@@ -278,7 +281,7 @@ class _Recorded:
 
     def find(self, frame: np.ndarray) -> Sequence[TextBox]:
         found = tuple(self._finder.find(frame))
-        self.boxes.extend(found)
+        self.frames.append(found)
         return found
 
 
@@ -544,26 +547,32 @@ def unused_bits(dataset: pydicom.Dataset) -> int | None:
 
 
 def stored_values_changed(
-    source: pydicom.Dataset, written: pydicom.Dataset, boxes: Iterable[TextBox]
+    source: pydicom.Dataset,
+    written: pydicom.Dataset,
+    regions: Sequence[Iterable[TextBox]],
 ) -> int | None:
     """How many stored values a written file holds otherwise than its source
-    outside ``boxes``, in any frame or sample; or None where either has no
-    Pixel Data that is native and little endian, in words of 8, 16, or 32
-    bits, or where the written file describes its Pixel Data otherwise than
-    its source does.
+    outside the regions of text of their frame, in any frame or sample; or
+    None where either has no Pixel Data that is native and little endian, in
+    words of 8, 16, or 32 bits, where the written file describes its Pixel
+    Data otherwise than its source does, or where ``regions`` does not give
+    the regions of each frame.
 
     Only the Bits Stored bits that end at High Bit are compared, so that
     clearing the bit plane of an overlay in unused bits, as Clean Graphics
     does, changes no stored value; :func:`unused_bits` counts what is left
-    in those bits. ``boxes`` are the regions of text that a finder found,
-    which Clean Pixel Data blacks out in each frame, as rows and columns of
-    every frame; the transform clips each to the frame, and so does this
-    count. As in :func:`unused_bits`, the words are read as stored.
+    in those bits. ``regions`` holds, for each frame in order, the regions
+    of text that a finder found in it, as rows and columns of the frame,
+    which Clean Pixel Data blacks out in that frame alone; the transform
+    clips each to the frame, and so does this count. As in
+    :func:`unused_bits`, the words are read as stored.
     """
     described = _pixel_description(source)
     if described is None or described != _pixel_description(written):
         return None
     frames, rows, columns, samples, planar, allocated, stored, high, _ = described
+    if len(regions) != frames:
+        return None
     by_plane = planar == 1 and samples > 1
     width = allocated // 8
     count = frames * rows * columns * samples
@@ -583,10 +592,13 @@ def stored_values_changed(
     before, after = found
     bits = np.asarray(((1 << stored) - 1) << (high - stored + 1), dtype=before.dtype)
     changed = (before & bits) != (after & bits)
-    inside = np.zeros((rows, columns), dtype=bool)
-    for box in boxes:
-        inside[box.top : box.bottom, box.left : box.right] = True
-    return int(np.count_nonzero(changed[:, :, ~inside]))
+    total = 0
+    for frame, boxes in zip(changed, regions, strict=True):
+        inside = np.zeros((rows, columns), dtype=bool)
+        for box in boxes:
+            inside[box.top : box.bottom, box.left : box.right] = True
+        total += int(np.count_nonzero(frame[:, ~inside]))
+    return total
 
 
 def _pixel_description(dataset: pydicom.Dataset) -> tuple[int, ...] | None:
@@ -679,11 +691,11 @@ def _run(
         if recorded is not None and ran.written is not None:
             ran.written = dataclasses.replace(
                 ran.written,
-                text_regions=len(recorded.boxes),
+                text_regions=sum(len(boxes) for boxes in recorded.frames),
                 changed_outside_text_regions=stored_values_changed(
                     pydicom.dcmread(io.BytesIO(data)),
                     pydicom.dcmread(io.BytesIO(ran.written.data)),
-                    recorded.boxes,
+                    recorded.frames,
                 ),
             )
         ran.passes = passes if reviewed is not None else 0
@@ -923,9 +935,10 @@ EXPECTATIONS: tuple[str, ...] = (
     "unused bits of Pixel Data, whose stored values hold more than their "
     "sign above High Bit, is written with none that does, with its Pixel "
     "Data described as received and each stored value as received outside "
-    "the regions in which text was found, and with each of its overlay "
-    "groups removed, claims Clean Graphics, and is held for review for its "
-    "Pixel Data alone, as Clean Pixel Data holds each image that it cleans.",
+    "the regions in which text was found in its frame, and with each of its "
+    "overlay groups removed, claims Clean Graphics, and is held for review "
+    "for its Pixel Data alone, as Clean Pixel Data holds each image that it "
+    "cleans.",
     "Each Presentation State without annotations has an overlay group whose "
     "only attribute is Overlay Activation Layer (60xx,1001), and is released "
     "under Modified Dates alone and with Clean Graphics, with each such group "

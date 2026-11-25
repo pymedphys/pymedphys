@@ -572,6 +572,35 @@ class _Finder:
         return (TextBox(1, 1, 3, 3),)
 
 
+# A stored value that only the second frame of _multi_frame_capture() holds.
+MARKED = 4000
+
+
+class _MarkedFinder:
+    """Finds one region of text in each frame whose first stored value is
+    MARKED, and none in any other."""
+
+    method = {"finder": "marked frames", "version": 1}
+
+    def find(self, frame) -> tuple[TextBox, ...]:
+        return (TextBox(1, 1, 3, 3),) if np.asarray(frame).flat[0] == MARKED else ()
+
+
+def _multi_frame_capture():
+    """A multi-frame Secondary Capture of two frames, each _capture()'s,
+    but for the second frame's first stored value, which is MARKED."""
+    capture = _capture()
+    capture.SOPClassUID = MULTI_FRAME_GRAYSCALE_WORD_SC_IMAGE_STORAGE
+    capture.NumberOfFrames = 2
+    capture.FrameIncrementPointer = 0x00182001  # Page Number Vector
+    capture.PageNumberVector = [1, 2]
+    first = np.frombuffer(capture.PixelData, dtype="<u2")
+    second = first.copy()
+    second[0] = second[0] & 0xF000 | MARKED
+    capture.PixelData = first.tobytes() + second.tobytes()
+    return capture
+
+
 def _check(found, detector=_Finder):
     return check(found, detector=detector)
 
@@ -893,19 +922,39 @@ def test_an_image_with_an_overlay_in_pixel_data_that_is_not_a_capture_fails():
 
 def test_a_multi_frame_capture_is_held_to_a_capture_s_expectations():
     # Each of the five Secondary Capture SOP Classes is sequestered without
-    # Clean Pixel Data, and not only Secondary Capture Image Storage.
-    capture = _capture()
-    capture.SOPClassUID = MULTI_FRAME_GRAYSCALE_WORD_SC_IMAGE_STORAGE
-    capture.NumberOfFrames = 1
-    capture.FrameIncrementPointer = 0x00182001  # Page Number Vector
-    capture.PageNumberVector = [1]
-
-    summary = _check(_found(capture=capture))
+    # Clean Pixel Data, and not only Secondary Capture Image Storage. With
+    # it, text is found in the second frame alone, and each frame's stored
+    # values are compared outside its own regions of text.
+    summary = _check(_found(capture=_multi_frame_capture()), detector=_MarkedFinder)
 
     assert summary["met"], _unmet(summary)
     runs = summary["members"][-1]["runs"]
     assert runs["no_list"]["reasons"] == {"transform: secondary-capture-not-cleaned": 1}
-    assert runs["with_pixel_data"]["outcome"] == "held"
+    cleaned = runs["with_pixel_data"]
+    assert cleaned["outcome"] == "held"
+    assert cleaned["written"]["unused_bits"] == 0
+    assert cleaned["written"]["text_regions"] == 1
+    assert cleaned["written"]["changed_outside_text_regions"] == 0
+
+
+def test_an_engine_that_blacks_out_text_where_none_was_found_fails(monkeypatch):
+    # As though the engine blacked out the second frame's region of text in
+    # the first frame too. Its own check of its write follows the regions
+    # that it blacked out, so only the first frame's own regions, which are
+    # none, show the 4 stored values changed there.
+    monkeypatch.setattr(
+        pixel_cleaning,
+        "clipped_boxes",
+        lambda _boxes, _rows, _columns: [TextBox(1, 1, 3, 3)],
+    )
+
+    summary = _check(_found(capture=_multi_frame_capture()), detector=_MarkedFinder)
+    cleaned = summary["members"][-1]["runs"]["with_pixel_data"]
+
+    assert _unmet(summary)[CLEARED_AND_HELD] == [f"{DCM4CHE} ovly_p01"]
+    assert cleaned["outcome"] == "held"
+    assert cleaned["written"]["text_regions"] == 1
+    assert cleaned["written"]["changed_outside_text_regions"] == 4
 
 
 def test_an_engine_that_does_not_apply_the_option_fails(monkeypatch):
@@ -1044,19 +1093,40 @@ def test_unused_bits_count_the_values_that_hold_more_than_their_sign():
 def test_stored_values_changed_count_stored_bits_outside_the_regions():
     source = _stored([1, 2 | 1 << 14, 3, 4])
     # Clearing a bit above High Bit changes no stored value.
-    assert stored_values_changed(source, _stored([1, 2, 3, 4]), ()) == 0
+    assert stored_values_changed(source, _stored([1, 2, 3, 4]), [()]) == 0
     # A changed stored value counts, unless a region of text holds it.
     written = _stored([1, 2, 0, 4])
-    assert stored_values_changed(source, written, ()) == 1
-    assert stored_values_changed(source, written, (TextBox(0, 2, 1, 3),)) == 0
+    assert stored_values_changed(source, written, [()]) == 1
+    assert stored_values_changed(source, written, [(TextBox(0, 2, 1, 3),)]) == 0
     # A region past the frame's edge holds its part within the frame.
-    assert stored_values_changed(source, written, (TextBox(0, 2, 5, 9),)) == 0
+    assert stored_values_changed(source, written, [(TextBox(0, 2, 5, 9),)]) == 0
     # The stored bits end at High Bit: here bits 4 to 15.
     source, same, other = (_stored(each) for each in ([16, 1], [16, 2], [32, 1]))
     for each in (source, same, other):
         each.HighBit = 15
-    assert stored_values_changed(source, same, ()) == 0
-    assert stored_values_changed(source, other, ()) == 1
+    assert stored_values_changed(source, same, [()]) == 0
+    assert stored_values_changed(source, other, [()]) == 1
+
+
+def _frames(words, frames):
+    """``frames`` frames of one row each, of ``words`` in order."""
+    dataset = _stored(words)
+    dataset.Columns = len(words) // frames
+    dataset.NumberOfFrames = frames
+    return dataset
+
+
+def test_stored_values_changed_keep_each_frame_s_regions_to_it():
+    source = _frames([11, 22, 33, 44], 2)
+    # The first stored value of each frame changes, and text was found over
+    # the first frame's alone, so the second frame's change counts.
+    written = _frames([0, 22, 0, 44], 2)
+    first = (TextBox(0, 0, 1, 1),)
+    assert stored_values_changed(source, written, [first, ()]) == 1
+    assert stored_values_changed(source, written, [first, first]) == 0
+    # The regions are given for each frame, and for no other.
+    assert stored_values_changed(source, written, [first]) is None
+    assert stored_values_changed(source, written, [first, (), ()]) is None
 
 
 def _colour(words, planar):
@@ -1073,11 +1143,11 @@ def test_stored_values_changed_read_each_planar_configuration():
     written = [1, 2, 3, 4, 0, 6]
     # The fifth word is the second pixel's second sample by pixel, and the
     # first pixel's third sample by plane; the region holds the second pixel.
-    region = (TextBox(0, 1, 1, 2),)
+    regions = [(TextBox(0, 1, 1, 2),)]
     for planar, changed in ((0, 0), (1, 1)):
         assert (
             stored_values_changed(
-                _colour(source, planar), _colour(written, planar), region
+                _colour(source, planar), _colour(written, planar), regions
             )
             == changed
         )
@@ -1086,17 +1156,17 @@ def test_stored_values_changed_read_each_planar_configuration():
 def test_stored_values_changed_need_pixel_data_described_alike():
     source = _stored([1, 2])
     # A written file that took the unused bits for stored ones.
-    assert stored_values_changed(source, _stored([1, 2], bits_stored=16), ()) is None
+    assert stored_values_changed(source, _stored([1, 2], bits_stored=16), [()]) is None
     compressed = _stored([1, 2])
     compressed.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"  # RLE Lossless
-    assert stored_values_changed(source, compressed, ()) is None
-    assert stored_values_changed(compressed, compressed, ()) is None
+    assert stored_values_changed(source, compressed, [()]) is None
+    assert stored_values_changed(compressed, compressed, [()]) is None
     short = _stored([1, 2])
     short.PixelData = short.PixelData[:2]
-    assert stored_values_changed(source, short, ()) is None
+    assert stored_values_changed(source, short, [()]) is None
     undescribed = _stored([1, 2])
     del undescribed.BitsStored
-    assert stored_values_changed(undescribed, undescribed, ()) is None
+    assert stored_values_changed(undescribed, undescribed, [()]) is None
 
 
 def test_unused_bits_are_not_read_without_native_pixel_data():
