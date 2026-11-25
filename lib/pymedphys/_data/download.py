@@ -179,7 +179,10 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
         try:
             with (
                 os.fdopen(file_descriptor, "wb") as temp_file,
-                _progress_bar(expected_size, url.split("/")[-1]) as progress,
+                _progress_bar(
+                    expected_size,
+                    urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1] or "download",
+                ) as progress,
             ):
                 received = 0
                 while chunk := response.read(_CHUNK_SIZE):
