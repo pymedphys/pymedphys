@@ -66,18 +66,26 @@ def code_location(filename: str) -> str:
 
 def describe(error: BaseException) -> list[str]:
     """Lines naming the exception's type and each frame's code location."""
-    kind = type(error)
-    lines = [f"{kind.__module__}.{kind.__qualname__} was raised at:"]
-    for frame in traceback.extract_tb(error.__traceback__):
-        lines.append(
-            f"  {code_location(frame.filename)}:{frame.lineno} in {frame.name}"
+    lines: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None:
+        if id(current) in seen:
+            lines.append("<exception chain cycle>")
+            break
+        seen.add(id(current))
+        kind = type(current)
+        lines.append(f"{kind.__module__}.{kind.__qualname__} was raised at:")
+        for frame in traceback.extract_tb(current.__traceback__):
+            lines.append(
+                f"  {code_location(frame.filename)}:{frame.lineno} in {frame.name}"
+            )
+        current = current.__cause__ or (
+            None if current.__suppress_context__ else current.__context__
         )
-    cause = error.__cause__ or (
-        None if error.__suppress_context__ else error.__context__
-    )
-    if cause is not None:
-        lines.append("while handling:")
-        lines.extend(describe(cause))
+        if current is not None:
+            lines.append("while handling:")
+
     return lines
 
 
@@ -127,7 +135,12 @@ def _main(argv: Sequence[str]) -> int:
         raise SystemExit(
             "usage: run_redacted.py [--private-stdout <file>] <module> [arguments...]"
         )
-    return run(importlib.import_module(argv[0]).main, argv[1:], report)
+
+    def module_main(arguments):
+        # Module initialisation can fail with the same private values as main.
+        return importlib.import_module(argv[0]).main(arguments)
+
+    return run(module_main, argv[1:], report)
 
 
 if __name__ == "__main__":

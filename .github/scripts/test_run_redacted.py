@@ -64,6 +64,45 @@ class RunRedactedTests(unittest.TestCase):
         self.assertIn("builtins.KeyError was raised at:", output)
         self.assertIn(" in inner", output)
 
+    def test_cyclic_and_deep_exception_chains_do_not_escape_redaction(self):
+        cyclic = ValueError(SECRET)
+        cyclic.__cause__ = cyclic
+        deep = ValueError(SECRET)
+        for _ in range(1500):
+            outer = RuntimeError(SECRET)
+            outer.__cause__ = deep
+            deep = outer
+        for error in (cyclic, deep):
+            with self.subTest(cyclic=error is cyclic):
+
+                def main(arguments):
+                    raise error
+
+                status, output = _quiet(main)
+                self.assertEqual(status, CRASHED)
+                self.assertNotIn(SECRET, output)
+                self.assertIn("builtins.ValueError was raised at:", output)
+                if error is cyclic:
+                    self.assertIn("<exception chain cycle>", output)
+
+    def test_module_import_failures_are_redacted(self):
+        script = Path(__file__).with_name("run_redacted.py")
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "leaky_import.py").write_text(
+                f"raise RuntimeError({SECRET!r})\n", encoding="utf-8"
+            )
+            completed = subprocess.run(
+                [sys.executable, script, "leaky_import"],
+                capture_output=True,
+                text=True,
+                cwd=directory,
+                env={**os.environ, "PYTHONPATH": directory},
+                check=False,
+            )
+        self.assertEqual(completed.returncode, CRASHED)
+        self.assertNotIn(SECRET, completed.stdout + completed.stderr)
+        self.assertIn("builtins.RuntimeError was raised at:", completed.stdout)
+
     def test_a_private_stdout_keeps_the_modules_output_and_not_the_report(self):
         script = Path(__file__).with_name("run_redacted.py")
         with tempfile.TemporaryDirectory() as directory:
