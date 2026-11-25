@@ -253,7 +253,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/values.py",
         "lib/pymedphys/_dicom/deidentify/walker.py",
         "lib/pymedphys/_experimental/cube.py",
-        "lib/pymedphys/_gamma/__init__.py",
+        "lib/pymedphys/_gamma/calculate.py",
         "lib/pymedphys/_metersetmap/metersetmap.py",
         "lib/pymedphys/_mosaiq/api.py",
         "lib/pymedphys/_mosaiq/sessions.py",

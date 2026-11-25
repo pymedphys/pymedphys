@@ -27,25 +27,31 @@ def test_counts_of_a_gamma_calculation():
     axis = np.arange(5.0)
     reference = np.array([0.1, 1.0, 1.0, 1.0, 1.0])
     evaluation = np.array([0.1, 1.0, 1.02, 1.05, 1.0])
-    gamma = pymedphys.gamma(axis, reference, axis, evaluation, 3, 0.1)
+    result = pymedphys.gamma(axis, reference, axis, evaluation, 3, 0.1)
+    gamma = result.gamma
 
     # The first point is below the cutoff; 1.05 fails even at its neighbours.
     assert np.isnan(gamma[0])
     assert gamma_pass_counts(gamma) == GammaPassCounts(passed=3, analysed=4)
     assert gamma_percent_passed(gamma) == pytest.approx(75)
+    # The result reports the counts of its own array.
+    assert (result.passed, result.analysed) == (3, 4)
+    assert result.percent_passed == pytest.approx(75)
 
 
 def test_nan_reference_points_left_out_of_gamma_are_not_counted():
     axis = np.arange(5.0)
     reference = np.array([np.nan, 1.0, 1.0, 1.0, 1.0])
     evaluation = np.array([1.0, 1.0, 1.02, 1.05, 1.0])
-    gamma = pymedphys.gamma(
+    result = pymedphys.gamma(
         axis, reference, axis, evaluation, 3, 0.1, exclude_nan_reference=True
     )
+    gamma = result.gamma
 
     assert np.isnan(gamma[0])
     assert gamma_pass_counts(gamma) == GammaPassCounts(passed=3, analysed=4)
     assert gamma_percent_passed(gamma) == pytest.approx(75)
+    assert (result.passed, result.analysed, result.eligible) == (3, 4, 4)
 
 
 def test_gamma_of_exactly_one_passes():
@@ -87,14 +93,22 @@ def test_negative_gamma_is_rejected(function, negative):
 
 
 @pytest.mark.parametrize("function", [gamma_pass_counts, gamma_percent_passed])
-def test_results_for_several_thresholds_are_rejected(function):
+def test_results_are_rejected_in_favour_of_their_arrays(function):
     axis = np.arange(5.0)
     dose = np.ones(5)
-    gamma = pymedphys.gamma(axis, dose, axis, dose, [2, 3], 3)
+    results = pymedphys.gamma(axis, dose, axis, dose, [2, 3], 3)
 
-    with pytest.raises(TypeError, match="one pair of thresholds"):
-        function(gamma)
-    assert gamma_percent_passed(gamma[(2, 3)]) == pytest.approx(100)
+    with pytest.raises(TypeError, match=r"result\.gamma"):
+        function(results)
+    with pytest.raises(TypeError, match=r"result\.gamma"):
+        function(results[0])
+    assert gamma_percent_passed(results[0].gamma) == pytest.approx(100)
+
+
+@pytest.mark.parametrize("function", [gamma_pass_counts, gamma_percent_passed])
+def test_a_mapping_of_arrays_is_rejected(function):
+    with pytest.raises(TypeError, match="one array at a time"):
+        function({"target": np.array([0.5, 2.0])})
 
 
 NO_ANALYSED_POINTS = [
@@ -161,8 +175,8 @@ def test_counts_are_plain_integers():
 def _subset(**kwargs):
     axis = np.arange(50.0)
     dose = np.ones(50)
-    gamma = pymedphys.gamma(axis, dose, axis, dose, 3, 3, random_subset=10, **kwargs)
-    return ~np.isnan(gamma)
+    result = pymedphys.gamma(axis, dose, axis, dose, 3, 3, random_subset=10, **kwargs)
+    return ~np.isnan(result.gamma)
 
 
 def test_random_subset_selects_the_requested_number_of_points():

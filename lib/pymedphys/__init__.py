@@ -14,8 +14,9 @@ from . import (
 )
 from ._data import data_path, zenodo_data_paths, zip_data_paths
 from ._delivery import Delivery
-from ._gamma.implementation.shell import gamma_shell as gamma
+from ._gamma.calculate import gamma
 from ._gamma.counts import GammaPassCounts, gamma_pass_counts, gamma_percent_passed
+from ._gamma.result import GammaProvenance, GammaResult, GammaSettings
 from ._trf.decode import read_trf as _read_trf
 from ._vendor.deprecated import deprecated as _deprecated
 from ._version import __version__, version_info

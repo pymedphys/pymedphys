@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A range of functions for calculating the gamma index. Available
-functions include:
+"""The gamma index.
 
->>> from pymedphys import gamma
-
-Note that all of these functions are still in the process of
-verification and refinement. The gamma shell function is the most
-mature.
+:func:`pymedphys.gamma` is in :mod:`pymedphys._gamma.calculate`, the results
+it returns in :mod:`pymedphys._gamma.result`, and the counting of analysed
+and passing points in :mod:`pymedphys._gamma.counts`.
 """

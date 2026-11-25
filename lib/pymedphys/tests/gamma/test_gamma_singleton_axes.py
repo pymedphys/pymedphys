@@ -67,9 +67,11 @@ def _assert_within_search_resolution(result, exact, dose_criterion, step):
 
 
 @pytest.mark.filterwarnings(OUTSIDE)
-@pytest.mark.parametrize("local_gamma", [False, True])
-@pytest.mark.parametrize("interp_algo", INTERPOLATORS)
-def test_volume_against_a_plane_matches_the_analytic_minimum(interp_algo, local_gamma):
+@pytest.mark.parametrize("normalisation", ["global", "local"])
+@pytest.mark.parametrize("interpolator", INTERPOLATORS)
+def test_volume_against_a_plane_matches_the_analytic_minimum(
+    interpolator, normalisation
+):
     # Reference slices on, beside and well away from the evaluation plane,
     # including points beyond the plane's in-plane extent.
     z = np.array([-0.5, 1.0, 1.4, 4.0])
@@ -84,25 +86,27 @@ def test_volume_against_a_plane_matches_the_analytic_minimum(interp_algo, local_
         _plane_dose()[None],
         3,
         DTA,
-        lower_percent_dose_cutoff=0,
-        interp_fraction=20,
-        local_gamma=local_gamma,
-        interp_algo=interp_algo,
-        ram_available=2**14,
-    )
+        lower_dose_cutoff_percent=0,
+        search_step_fraction=0.05,
+        normalisation=normalisation,
+        interpolator=interpolator,
+        memory_budget_bytes=2**14,
+    ).gamma
 
     points = np.stack(np.meshgrid(z, y, x, indexing="ij"), axis=-1).reshape(-1, 3)
     doses = reference_dose.ravel()
-    dose_criterion = 0.03 * (doses if local_gamma else reference_dose.max())
+    dose_criterion = 0.03 * (
+        doses if normalisation == "local" else reference_dose.max()
+    )
     exact = _exact_plane_gamma(points, doses, dose_criterion)
     _assert_within_search_resolution(
         result.ravel(), exact, dose_criterion, step=DTA / 20
     )
 
 
-@pytest.mark.parametrize("interp_algo", INTERPOLATORS)
+@pytest.mark.parametrize("interpolator", INTERPOLATORS)
 @pytest.mark.parametrize("origin", [0.0, 300.0, -1234.5])
-def test_plane_gamma_does_not_depend_on_the_origin(interp_algo, origin):
+def test_plane_gamma_does_not_depend_on_the_origin(interpolator, origin):
     reference_points = np.array([[PLANE_Z, -1.3, 0.4], [PLANE_Z + 0.5, 0.7, -0.2]])
     reference_dose = np.array([1.0, 1.02])
 
@@ -115,17 +119,17 @@ def test_plane_gamma_does_not_depend_on_the_origin(interp_algo, origin):
             _plane_dose()[None],
             3,
             DTA,
-            interp_algo=interp_algo,
-        )
+            interpolator=interpolator,
+        ).gamma
         results.append(result.item())
 
     np.testing.assert_allclose(results[1], results[0], rtol=0, atol=1e-9)
 
 
 @pytest.mark.filterwarnings(OUTSIDE)
-@pytest.mark.parametrize("interp_algo", INTERPOLATORS)
+@pytest.mark.parametrize("interpolator", INTERPOLATORS)
 @pytest.mark.parametrize("fixed_axis", [0, 1, 2])
-def test_the_fixed_axis_can_be_any_axis(interp_algo, fixed_axis):
+def test_the_fixed_axis_can_be_any_axis(interpolator, fixed_axis):
     z = np.array([0.0, 1.0, 2.5])
     y = np.array([-1.3, 0.0, 2.2])
     x = np.array([-0.5, 1.1])
@@ -140,8 +144,8 @@ def test_the_fixed_axis_can_be_any_axis(interp_algo, fixed_axis):
         evaluation_dose,
         3,
         DTA,
-        interp_algo=interp_algo,
-    )
+        interpolator=interpolator,
+    ).gamma
 
     order = [1, 2]
     order.insert(fixed_axis, 0)
@@ -152,23 +156,23 @@ def test_the_fixed_axis_can_be_any_axis(interp_algo, fixed_axis):
         np.transpose(evaluation_dose, order),
         3,
         DTA,
-        interp_algo=interp_algo,
-    )
+        interpolator=interpolator,
+    ).gamma
 
     np.testing.assert_allclose(
         result, np.transpose(expected, order), rtol=0, atol=1e-12
     )
 
 
-@pytest.mark.parametrize("interp_algo", INTERPOLATORS)
-def test_coplanar_plane_matches_native_two_dimensional_gamma(interp_algo):
+@pytest.mark.parametrize("interpolator", INTERPOLATORS)
+def test_coplanar_plane_matches_native_two_dimensional_gamma(interpolator):
     y = np.array([-2.0, -0.7, 0.0, 1.4, 2.6])
     x = np.array([-1.5, 0.3, 1.8])
     reference_dose = 1.0 + 0.02 * np.cos(np.add.outer(y, x))
 
     native = pymedphys.gamma(
-        (y, x), reference_dose, (Y, X), _plane_dose(), 3, DTA, interp_algo=interp_algo
-    )
+        (y, x), reference_dose, (Y, X), _plane_dose(), 3, DTA, interpolator=interpolator
+    ).gamma
     embedded = pymedphys.gamma(
         (np.array([PLANE_Z]), y, x),
         reference_dose[None],
@@ -176,15 +180,15 @@ def test_coplanar_plane_matches_native_two_dimensional_gamma(interp_algo):
         _plane_dose()[None],
         3,
         DTA,
-        interp_algo=interp_algo,
-    )
+        interpolator=interpolator,
+    ).gamma
 
     np.testing.assert_allclose(embedded[0], native, rtol=0, atol=1e-12)
 
 
 @pytest.mark.filterwarnings(OUTSIDE)
-@pytest.mark.parametrize("interp_algo", INTERPOLATORS)
-def test_line_of_evaluation_points(interp_algo):
+@pytest.mark.parametrize("interpolator", INTERPOLATORS)
+def test_line_of_evaluation_points(interpolator):
     # An evaluation line along z at (y, x) = (0.5, -1), with uniform dose.
     line_z = np.linspace(-2.0, 2.0, 9)
     reference = (np.array([-3.0, 0.0, 1.0]), np.array([0.5, 2.5]), np.array([-1.0]))
@@ -195,8 +199,8 @@ def test_line_of_evaluation_points(interp_algo):
         np.ones((9, 1, 1)),
         3,
         3,
-        interp_algo=interp_algo,
-    )
+        interpolator=interpolator,
+    ).gamma
 
     z, y, x = np.meshgrid(*reference, indexing="ij")
     distance = np.sqrt(
@@ -206,9 +210,9 @@ def test_line_of_evaluation_points(interp_algo):
 
 
 @pytest.mark.filterwarnings(OUTSIDE)
-@pytest.mark.parametrize("interp_algo", INTERPOLATORS)
+@pytest.mark.parametrize("interpolator", INTERPOLATORS)
 @pytest.mark.parametrize("dimensions", [1, 3])
-def test_single_evaluation_point(interp_algo, dimensions):
+def test_single_evaluation_point(interpolator, dimensions):
     point = np.array([0.5, -1.0, 2.0])[:dimensions]
     reference_axes = tuple(np.array([-1.0, 0.5, 3.0]) for _ in range(dimensions))
     reference_dose = np.full((3,) * dimensions, 1.0)
@@ -221,8 +225,8 @@ def test_single_evaluation_point(interp_algo, dimensions):
         np.full((1,) * dimensions, 1.01),
         3,
         3,
-        interp_algo=interp_algo,
-    )
+        interpolator=interpolator,
+    ).gamma
 
     grid = np.stack(np.meshgrid(*reference_axes, indexing="ij"), axis=-1)
     distance = np.linalg.norm(grid - point, axis=-1)
@@ -231,16 +235,16 @@ def test_single_evaluation_point(interp_algo, dimensions):
 
 
 @pytest.mark.filterwarnings(OUTSIDE)
-@pytest.mark.parametrize("interp_algo", INTERPOLATORS)
-def test_plane_with_max_gamma_and_several_criteria(interp_algo):
+@pytest.mark.parametrize("interpolator", INTERPOLATORS)
+def test_plane_with_gamma_cap_and_several_criteria(interpolator):
     z = np.array([PLANE_Z, PLANE_Z + 3.0, PLANE_Z + 30.0])
     y = np.array([-1.3, 0.0, 2.2])
     x = np.array([0.4])
     reference_dose = np.ones((3, 3, 1))
     common = {
-        "lower_percent_dose_cutoff": 0,
-        "interp_fraction": 20,
-        "interp_algo": interp_algo,
+        "lower_dose_cutoff_percent": 0,
+        "search_step_fraction": 0.05,
+        "interpolator": interpolator,
     }
 
     uncapped = pymedphys.gamma(
@@ -259,14 +263,20 @@ def test_plane_with_max_gamma_and_several_criteria(interp_algo):
         _plane_dose()[None],
         [2, 3],
         [DTA, 3.0],
-        max_gamma=2,
+        gamma_cap=2,
         **common,
     )
 
-    assert len(capped) == 4
-    for key, value in uncapped.items():
-        assert np.all(np.isfinite(value))
-        np.testing.assert_array_equal(capped[key] <= 1, value <= 1)
-        np.testing.assert_allclose(capped[key], np.minimum(value, 2))
+    assert len(capped) == len(uncapped) == 4
+    for limited, free in zip(capped, uncapped, strict=True):
+        distance_criterion = free.settings.distance_criterion_mm
+        assert limited.settings.distance_criterion_mm == distance_criterion
+        assert (
+            limited.settings.dose_criterion_percent
+            == free.settings.dose_criterion_percent
+        )
+        assert np.all(np.isfinite(free.gamma))
+        np.testing.assert_array_equal(limited.gamma <= 1, free.gamma <= 1)
+        np.testing.assert_allclose(limited.gamma, np.minimum(free.gamma, 2))
         # Beyond the plane by 30 mm, only the perpendicular distance matters.
-        assert np.all(value[2] >= 30 / key[1])
+        assert np.all(free.gamma[2] >= 30 / distance_criterion)

@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import warnings
 
 from pymedphys._imports import numpy as np
 
+# Frames in the gamma package are skipped when a warning is attributed, so
+# that it names the line that called pymedphys.gamma.
+_GAMMA_PACKAGE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "")
+
+
+def warn_caller(message: str) -> None:
+    """Warn the user, naming the line of their code that called gamma."""
+    warnings.warn(message, UserWarning, skip_file_prefixes=(_GAMMA_PACKAGE,))
+
 
 def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evaluation):
-    """Check user inputs."""
+    """Check that the axes and doses fit together.
+
+    Returns the reference and evaluation axes as tuples.
+    """
 
     if not isinstance(axes_evaluation, tuple) or not isinstance(axes_reference, tuple):
         if isinstance(axes_evaluation, np.ndarray) and isinstance(
@@ -32,13 +46,16 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
 
             else:
                 raise ValueError(
-                    "Can only use numpy arrays as input for one dimensional gamma."
+                    "axes_reference and axes_evaluation may be single NumPy "
+                    "arrays only for one-dimensional doses, where each is a "
+                    "1D array. Otherwise pass a tuple of 1D arrays."
                 )
         else:
             raise ValueError(
-                "Input coordinates must be inputted as a tuple, for "
-                "one dimension input is (x,), for two dimensions, "
-                "(x, y), for three dimensions input is (x, y, z)."
+                "axes_reference and axes_evaluation must each be a tuple with "
+                "one 1D array of coordinates for each dimension of the dose, "
+                "in the order of its dimensions. For one-dimensional doses a "
+                "single 1D NumPy array is also accepted for each."
             )
 
     reference_coords_shape = tuple(len(item) for item in axes_reference)

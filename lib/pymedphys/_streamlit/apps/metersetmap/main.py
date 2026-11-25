@@ -221,28 +221,46 @@ def to_tuple(array):
     return tuple(map(tuple, array))
 
 
-def plot_gamma_hist(gamma, percent, dist):
-    valid_gamma = gamma[~np.isnan(gamma)]
+def gamma_description(settings):
+    """What a gamma result tested: its normalisation, criteria and cutoff."""
+    return (
+        f"{settings.normalisation.capitalize()} Gamma "
+        f"({settings.dose_criterion_percent:g}%/"
+        f"{settings.distance_criterion_mm:g}mm, "
+        f"{settings.lower_dose_cutoff_percent:g}% dose cutoff)"
+    )
+
+
+def gamma_statistics(gamma_result):
+    """How many analysed points passed, with the mean and largest gamma."""
+    valid_gamma = gamma_result.gamma[~np.isnan(gamma_result.gamma)]
+
+    return (
+        f"Passed: {gamma_result.percent_passed:.2f}% "
+        f"({gamma_result.passed} of {gamma_result.analysed} points) | "
+        f"Mean Gamma: {np.mean(valid_gamma):.2f} | "
+        f"Max Gamma: {np.max(valid_gamma):.2f}"
+    )
+
+
+def plot_gamma_hist(gamma_result):
+    valid_gamma = gamma_result.gamma[~np.isnan(gamma_result.gamma)]
 
     plt.hist(valid_gamma, 50, density=True)
-    percent_pass = pymedphys.gamma_percent_passed(gamma)
-
     plt.title(
-        "Local Gamma ({}%/{}mm) | Percent Pass: {:.2f} % | Mean Gamma: {:.2f} | Max Gamma: {:.2f}".format(
-            percent, dist, percent_pass, np.mean(valid_gamma), np.max(valid_gamma)
-        )
+        f"{gamma_description(gamma_result.settings)}\n{gamma_statistics(gamma_result)}"
     )
 
 
 def plot_and_save_results(
     reference_metersetmap,
     evaluation_metersetmap,
-    gamma,
-    gamma_options,
+    gamma_result,
     png_record_directory,
     header_text="",
     footer_text="",
 ):
+    gamma = gamma_result.gamma
     reference_filepath = png_record_directory.joinpath("reference.png")
     evaluation_filepath = png_record_directory.joinpath("evaluation.png")
     diff_filepath = png_record_directory.joinpath("diff.png")
@@ -327,18 +345,10 @@ def plot_and_save_results(
 
     plt.sca(axs[3, 1])
     pymedphys.metersetmap.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
-    plt.title(
-        "Local Gamma | "
-        f"{gamma_options['dose_percent_threshold']}%/"
-        f"{gamma_options['distance_mm_threshold']}mm"
-    )
+    plt.title(gamma_description(gamma_result.settings))
 
     plt.sca(ax_hist)
-    plot_gamma_hist(
-        gamma,
-        gamma_options["dose_percent_threshold"],
-        gamma_options["distance_mm_threshold"],
-    )
+    plot_gamma_hist(gamma_result)
 
     return fig
 
@@ -363,15 +373,13 @@ def calculate_batch_metersetmap(deliveries):
 
 @st.cache_data
 def calculate_gamma(reference_metersetmap, evaluation_metersetmap, gamma_options):
-    gamma = pymedphys.gamma(
+    return pymedphys.gamma(
         COORDS,
         to_tuple(reference_metersetmap),
         COORDS,
         to_tuple(evaluation_metersetmap),
         **gamma_options,
     )
-
-    return gamma
 
 
 def advanced_debugging(config):
@@ -454,8 +462,11 @@ def run_calculation(
     )
 
     st.write("Calculating Gamma...")
-    gamma = calculate_gamma(
+    gamma_result = calculate_gamma(
         reference_metersetmap, evaluation_metersetmap, gamma_options
+    )
+    st.write(
+        f"{gamma_description(gamma_result.settings)} | {gamma_statistics(gamma_result)}"
     )
 
     patient_id = reference_results["patient_id"]
@@ -500,8 +511,7 @@ def run_calculation(
     fig = plot_and_save_results(
         reference_metersetmap,
         evaluation_metersetmap,
-        gamma,
-        gamma_options,
+        gamma_result,
         png_record_directory,
         header_text=header_text,
         footer_text=footer_text,

@@ -16,10 +16,10 @@ name = "a-demo-site-name"
 [output]
 png_directory = '~/pymedphys-gui-metersetmap'
 
+# Options for pymedphys.gamma, under its option names.
 [gamma]
-dose_percent_threshold = 2
-distance_mm_threshold = 0.5
-local_gamma = true
-quiet = true
-max_gamma = 5
-lower_percent_dose_cutoff = 20
+dose_criterion_percent = 2
+distance_criterion_mm = 0.5
+normalisation = "local"
+gamma_cap = 5
+lower_dose_cutoff_percent = 20

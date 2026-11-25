@@ -126,9 +126,12 @@ def get_default_icom_directories(config):
 
 @st.cache_data
 def get_default_gamma_options(config):
-    default_gamma_options = config["gamma"]
+    """The options that the ``[gamma]`` table sets for ``pymedphys.gamma``.
 
-    return default_gamma_options
+    The table is passed to ``pymedphys.gamma`` as written, so it uses that
+    function's option names.
+    """
+    return config["gamma"]
 
 
 @st.cache_data
@@ -157,32 +160,33 @@ def get_indexed_trf_directory(config):
 def get_gamma_options(config, advanced_mode):
     default_gamma_options = get_default_gamma_options(config)
 
-    if advanced_mode:
-        st.sidebar.markdown(
-            """
-            # Gamma parameters
-            """
-        )
-        result = {
-            **default_gamma_options,
-            **{
-                "dose_percent_threshold": st.sidebar.number_input(
-                    "MU Percent Threshold",
-                    value=default_gamma_options["dose_percent_threshold"],
-                ),
-                "distance_mm_threshold": st.sidebar.number_input(
-                    "Distance (mm) Threshold",
-                    value=default_gamma_options["distance_mm_threshold"],
-                ),
-                "local_gamma": st.sidebar.checkbox(
-                    "Local Gamma", default_gamma_options["local_gamma"]
-                ),
-                "max_gamma": st.sidebar.number_input(
-                    "Max Gamma", value=default_gamma_options["max_gamma"]
-                ),
-            },
-        }
-    else:
-        result = default_gamma_options
+    if not advanced_mode:
+        return default_gamma_options
 
-    return result
+    st.sidebar.markdown(
+        """
+        # Gamma parameters
+        """
+    )
+    dose_criterion_percent = st.sidebar.number_input(
+        "MU criterion (%)", value=default_gamma_options["dose_criterion_percent"]
+    )
+    distance_criterion_mm = st.sidebar.number_input(
+        "Distance criterion (mm)",
+        value=default_gamma_options["distance_criterion_mm"],
+    )
+    local_normalisation = st.sidebar.checkbox(
+        "Local normalisation",
+        default_gamma_options.get("normalisation", "global") == "local",
+    )
+    gamma_cap = st.sidebar.number_input(
+        "Gamma cap", value=default_gamma_options.get("gamma_cap")
+    )
+
+    return {
+        **default_gamma_options,
+        "dose_criterion_percent": dose_criterion_percent,
+        "distance_criterion_mm": distance_criterion_mm,
+        "normalisation": "local" if local_normalisation else "global",
+        "gamma_cap": gamma_cap,
+    }

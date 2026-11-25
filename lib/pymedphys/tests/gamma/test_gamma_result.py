@@ -23,13 +23,8 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 import pymedphys
-from pymedphys._gamma.result import (
-    GammaProvenance,
-    GammaResult,
-    GammaSettings,
-    build_result,
-    current_provenance,
-)
+from pymedphys import GammaProvenance, GammaResult, GammaSettings
+from pymedphys._gamma.result import build_result, current_provenance
 
 
 def _settings(**changes):
@@ -277,6 +272,17 @@ def test_provenance_lists_installed_versions():
     assert provenance.versions["numpy"] == np.__version__
     assert set(provenance.versions) <= {"pymedphys", "numpy", "scipy", "numba"}
     assert list(provenance.versions)[0] == "pymedphys"
+
+
+def test_installed_versions_are_read_once_for_the_process():
+    # Reading package metadata costs more than a small gamma calculation.
+    assert current_provenance() is current_provenance()
+
+    axis = np.arange(3.0)
+    first = pymedphys.gamma(axis, np.ones(3), axis, np.ones(3), 3, 1)
+    second = pymedphys.gamma(axis, np.ones(3), axis, np.ones(3), 2, 1)
+
+    assert first.provenance is second.provenance is current_provenance()
 
 
 def test_provenance_versions_cannot_be_changed():

@@ -23,6 +23,7 @@ apart.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import importlib.metadata
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -151,8 +152,14 @@ def _rebuild_provenance(versions: dict[str, str]) -> GammaProvenance:
     return GammaProvenance(versions=versions)
 
 
+@functools.cache
 def current_provenance() -> GammaProvenance:
-    """The provenance of a calculation made now, in this environment."""
+    """The provenance of a calculation made in this process.
+
+    Reading the installed versions takes longer than a small gamma
+    calculation, and they do not change while a process runs, so they are
+    read once. The provenance cannot be changed, so results share it.
+    """
     versions = {"pymedphys": __version__}
     for package in _VERSIONED_PACKAGES:
         try:
@@ -184,8 +191,10 @@ class GammaResult(ResultMarker):
     Results are created by :func:`pymedphys.gamma`. Creating one directly is
     not supported, so that attributes can be added in later versions.
 
-    A result is not an array. Use ``gamma`` for the values. NumPy functions
-    given the result itself raise a ``TypeError`` that says so.
+    A result is not an array. Use ``gamma`` for the values. Given the result
+    itself, most NumPy functions, and arithmetic or comparisons with a NumPy
+    array, raise a ``TypeError`` that says so; ``numpy.asarray`` and
+    ``numpy.array`` give an object array that holds it.
 
     Attributes
     ----------

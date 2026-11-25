@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import itertools
 import numbers
-import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, overload
 
@@ -26,14 +25,13 @@ from pymedphys._imports import numpy as np
 
 from .implementation import shell
 from .result import GammaResult, GammaSettings, build_result, current_provenance
-from .utilities import run_input_checks
+from .utilities import run_input_checks, warn_caller
 
 if TYPE_CHECKING:
     import numpy.typing as npt
 
     _Criteria = Sequence[float] | npt.NDArray
 
-_DEFAULT_SEARCH_STEP_FRACTION = 0.1
 _INTERPOLATORS = ("pymedphys", "scipy")
 
 
@@ -208,7 +206,8 @@ def gamma(
         The reference coordinates: one 1D array for each dimension of
         ``dose_reference``, in the order of its dimensions. Ascending and
         descending axes are both accepted and keep their order in the
-        result. A single 1D array is accepted for one-dimensional doses.
+        result. A single 1D NumPy array is accepted for one-dimensional
+        doses.
     dose_reference : array_like
         The reference dose grid. Gamma is found for each point of this grid
         and returned on it.
@@ -217,7 +216,8 @@ def gamma(
         need the SciPy interpolator. An axis with a single value makes the
         evaluation grid a plane, line or point with no thickness, such as a
         single-frame RT Dose. Gamma then searches within that plane, line or
-        point only, and adds each reference point's distance from it.
+        point only, and adds each reference point's distance from it, so
+        results do not depend on the coordinate origin.
     dose_evaluation : array_like
         The evaluation dose grid, which is interpolated and searched around
         each reference point.
@@ -258,21 +258,34 @@ def gamma(
     random_state : int or numpy.random.Generator, optional
         A seed or generator that selects the ``random_subset``. Defaults to
         NumPy's global random state, so :func:`numpy.random.seed` applies.
+        The result identifies the analysed points exactly. A seed selects
+        the same points again only with the same version of NumPy.
     exclude_nan_reference : bool, optional
         Leave reference points whose dose is NaN out of the analysis, for
         example unmeasured detector positions or points outside a region of
-        interest. Defaults to False, which raises ``ValueError`` if
-        ``dose_reference`` contains NaN, so that NaN from an upstream error
-        is not silently dropped.
+        interest. They are not analysed, and the default
+        ``normalisation_dose`` ignores them. Defaults to False, which raises
+        ``ValueError`` if ``dose_reference`` contains NaN, so that NaN from
+        an upstream error is not silently dropped. Infinite reference doses,
+        and NaN or infinite evaluation doses, always raise.
     search_step_fraction : float, optional
-        The step between search shells as a fraction of the distance
-        criterion, greater than 0 and at most 1. A smaller step finds gamma
-        more accurately and takes longer. Lower it where a large distance
-        criterion is combined with a tight dose criterion. Defaults to 0.1.
+        The step between search shells, and between the points sampled on
+        each shell, as a fraction of the distance criterion. It must be
+        greater than 0 and at most 1, and defaults to 0.1. A smaller step
+        finds gamma more accurately and takes longer. The search can only
+        overestimate gamma, so too coarse a step reports passing points as
+        failing, never the reverse. Where the evaluation dose changes by
+        ``G`` dose criteria across one distance criterion, gamma can be
+        overestimated by up to about ``search_step_fraction * sqrt(1 +
+        G**2)``. Lower the step where a tight dose criterion meets a large
+        distance criterion or a steep dose gradient, until the percentage
+        passed stops changing.
     interpolator : {"pymedphys", "scipy"}, optional
         The implementation that interpolates the evaluation dose. Both
         interpolate linearly. By default the calculation uses "pymedphys",
-        or "scipy" where the evaluation axes are unevenly spaced.
+        or "scipy" where the evaluation axes are unevenly spaced, and the
+        result records which was used. Asking for "pymedphys" with unevenly
+        spaced evaluation axes raises ``ValueError``.
     memory_budget_bytes : int, optional
         A budget for the search's working memory, used to split the work
         into chunks. It does not change results and is not a limit on the
@@ -289,15 +302,22 @@ def gamma(
 
         A result holds the gamma values on the reference grid, the reference
         axes, the numbers of eligible, analysed and passing points, and every
-        setting used. A reference point is analysed when its dose is at or
-        above the lower dose cutoff and, if ``random_subset`` is set, it was
-        selected. Every analysed point has a gamma value; NaN marks only the
-        points that were not analysed.
+        setting used. ``result.gamma`` has the shape and index order of
+        ``dose_reference``, and ``result.axes`` are its coordinates; use them
+        when plotting. If the reference came from
+        :func:`pymedphys.dicom.zyx_and_dose_from_dataset`, that order can
+        differ from the DICOM dataset's raw ``pixel_array``.
+
+        A reference point is analysed when its dose is at or above the lower
+        dose cutoff and, if ``random_subset`` is set, it was selected. Every
+        analysed point has a gamma value; NaN marks only the points that
+        were not analysed.
 
         An analysed reference point outside the evaluation grid is compared
         with the evaluation data up to the grid's edge, so it may fail. A
         warning gives the number of such points more than one search step
-        outside the grid.
+        outside the grid. Crop the reference grid to the region the
+        evaluation grid covers if only that region should be analysed.
 
     Raises
     ------
@@ -305,16 +325,52 @@ def gamma(
         If an option has the wrong type.
     ValueError
         If a criterion is not finite and greater than zero, a list of
-        criteria is empty or repeats a value, either dose grid contains
-        infinite values, ``dose_evaluation`` contains NaN, ``dose_reference``
-        contains NaN (unless ``exclude_nan_reference=True``), local
+        criteria is empty or repeats a value, the axes do not match the
+        doses, either dose grid contains infinite values, ``dose_evaluation``
+        contains NaN, ``dose_reference`` contains NaN (unless
+        ``exclude_nan_reference=True``) or no finite values, local
         normalisation meets an analysed reference point of zero dose, or
         another option is outside its documented range.
 
     Warns
     -----
     UserWarning
-        If no reference point was analysed.
+        If no reference point was analysed, or if analysed reference points
+        lie more than one search step outside the evaluation grid.
+
+    See Also
+    --------
+    pymedphys.gamma_pass_counts : Count the analysed and passing points of
+        part of a gamma array, such as a region of interest.
+
+    Examples
+    --------
+    Compare two dose profiles sampled every millimetre, with criteria of 3%
+    and 0.1 mm. The first reference point is below the lower dose cutoff, so
+    it is not analysed, and one of the other four points fails.
+
+    >>> import numpy as np
+    >>> import pymedphys
+    >>> position = np.arange(5.0)
+    >>> reference = np.array([0.1, 1.0, 1.0, 1.0, 1.0])
+    >>> evaluation = np.array([0.1, 1.0, 1.02, 1.05, 1.0])
+    >>> result = pymedphys.gamma(position, reference, position, evaluation, 3, 0.1)
+    >>> result.passed, result.analysed
+    (3, 4)
+    >>> result.percent_passed
+    75.0
+    >>> np.isnan(result.gamma)
+    array([ True, False, False, False, False])
+    >>> result.settings.lower_dose_cutoff_percent
+    20.0
+
+    A list of criteria gives one result for each combination.
+
+    >>> results = pymedphys.gamma(
+    ...     position, reference, position, evaluation, [3, 6], 0.1
+    ... )
+    >>> [(r.settings.dose_criterion_percent, r.passed) for r in results]
+    [(3.0, 3), (6.0, 4)]
     """
     doses, dose_is_list = _criteria(dose_criterion_percent, "dose_criterion_percent")
     distances, distance_is_list = _criteria(
@@ -354,7 +410,7 @@ def gamma(
     )
 
     if search_step_fraction is None:
-        search_step_fraction = _DEFAULT_SEARCH_STEP_FRACTION
+        search_step_fraction = shell.DEFAULT_SEARCH_STEP_FRACTION
     else:
         search_step_fraction = _real_number(
             search_step_fraction, "search_step_fraction"
@@ -372,7 +428,7 @@ def gamma(
         )
 
     if memory_budget_bytes is None:
-        memory_budget_bytes = shell.DEFAULT_RAM
+        memory_budget_bytes = shell.DEFAULT_MEMORY_BUDGET_BYTES
     else:
         memory_budget_bytes = _whole_number(memory_budget_bytes, "memory_budget_bytes")
         if memory_budget_bytes <= 0:
@@ -385,18 +441,17 @@ def gamma(
         dose_evaluation,
         list(doses),
         list(distances),
-        lower_dose_cutoff_percent,
-        1 / search_step_fraction,
-        np.inf if gamma_cap is None else gamma_cap,
-        normalisation == "local",
-        normalisation_dose,
-        bool(skip_once_passed),
-        random_subset,
-        memory_budget_bytes,
-        None,
-        "pymedphys" if interpolator is None else interpolator,
-        random_state,
-        bool(exclude_nan_reference),
+        lower_dose_cutoff_percent=lower_dose_cutoff_percent,
+        search_step_fraction=search_step_fraction,
+        gamma_cap=gamma_cap,
+        normalisation=normalisation,
+        normalisation_dose=normalisation_dose,
+        skip_once_passed=bool(skip_once_passed),
+        random_subset=random_subset,
+        memory_budget_bytes=memory_budget_bytes,
+        interpolator="pymedphys" if interpolator is None else interpolator,
+        random_state=random_state,
+        exclude_nan_reference=bool(exclude_nan_reference),
         uneven_axes="switch" if interpolator is None else "raise",
     )
 
@@ -410,12 +465,10 @@ def gamma(
         )
     selected = int(np.count_nonzero(options.reference_points_to_calc))
     if selected == 0:
-        warnings.warn(
+        warn_caller(
             "No reference point was analysed, so every gamma value is NaN. "
             "Check lower_dose_cutoff_percent, normalisation_dose and "
-            "random_subset.",
-            UserWarning,
-            stacklevel=3,
+            "random_subset."
         )
 
     reference_axes, _ = run_input_checks(
@@ -435,7 +488,7 @@ def gamma(
                 dose_criterion_percent=dose,
                 distance_criterion_mm=distance,
                 normalisation=normalisation,
-                normalisation_dose=float(options.global_normalisation),
+                normalisation_dose=float(options.normalisation_dose),
                 normalisation_dose_supplied=normalisation_dose is not None,
                 lower_dose_cutoff_percent=lower_dose_cutoff_percent,
                 lower_dose_cutoff=float(options.lower_dose_cutoff),
@@ -447,7 +500,7 @@ def gamma(
                 random_seed=random_seed,
                 method="shell",
                 search_step_fraction=search_step_fraction,
-                interpolator=str(options.interp_algo).lower(),
+                interpolator=str(options.interpolator).lower(),
             ),
             provenance=provenance,
         )
@@ -462,3 +515,9 @@ def gamma(
         return tuple(results)
 
     return results[0]
+
+
+# pymedphys.gamma is this function's public name, so that is the module that
+# help() gives for it. The documentation tool then also shows its one real
+# signature, where it would otherwise list each typing overload above.
+gamma.__module__ = "pymedphys"
