@@ -69,6 +69,8 @@ function with the same input arrays and shared `gamma_options`. Those shared
 options cannot override controls defined by a case or select the interpolator;
 set `interp_algo` on each version. Unsupported options fail explicitly.
 
+Cases, `gamma_options`, and `interp_algo` name gamma's options as they were before PyMedPhys 0.42.0, whichever versions are compared. Version 0.42.0 renamed several options and returns results in place of arrays. For a version with the new names, the harness passes the equivalent options, for example `gamma_cap` for `max_gamma` and `search_step_fraction=0.1` for `interp_fraction=10`, and reads each gamma array from its result, so one plan runs on either side of that release. It passes `quiet`, which had no effect, only to earlier versions, because 0.42.0 removed it.
+
 Review the generated `settings` before running. Defaults are one warm-up, an
 absolute gamma tolerance of `1e-6`, no pass/fail disagreements, exact
 repeatability, ten minutes per worker, 8 GiB sampled process-tree RSS, and four
