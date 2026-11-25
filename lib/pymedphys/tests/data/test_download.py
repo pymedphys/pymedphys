@@ -285,6 +285,42 @@ def test_data_directory_can_be_overridden(tmp_path: pathlib.Path, monkeypatch):
     assert override.is_dir()
 
 
+def test_new_data_directory_has_private_permissions(tmp_path: pathlib.Path, monkeypatch):
+    # POSIX honours mkdir mode modulo the caller's umask; Windows does not.
+    import os
+    import stat
+
+    if os.name != "posix":
+        pytest.skip("POSIX directory permission semantics")
+
+    override = tmp_path / "nested" / "sensitive-data"
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(override))
+    # Simulate an ordinary multi-user machine where defaults would be 0755.
+    old_umask = os.umask(0o022)
+    try:
+        assert download.get_data_dir() == override
+    finally:
+        os.umask(old_umask)
+    assert stat.S_IMODE(override.stat().st_mode) == 0o700
+
+
+def test_existing_data_directory_permissions_are_not_changed(
+    tmp_path: pathlib.Path, monkeypatch
+):
+    import os
+    import stat
+
+    if os.name != "posix":
+        pytest.skip("POSIX directory permission semantics")
+
+    existing = tmp_path / "existing-data"
+    existing.mkdir(mode=0o750)
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(existing))
+
+    assert download.get_data_dir() == existing
+    assert stat.S_IMODE(existing.stat().st_mode) == 0o750
+
+
 @pytest.mark.usefixtures("no_sleep")
 def test_retry_diagnostics_do_not_disclose_exception_details(capsys):
     """Sensitive URL query parameters from failed downloads never reach stdout."""
