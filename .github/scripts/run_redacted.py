@@ -98,7 +98,11 @@ def run(
         # A dependency can raise SystemExit with patient text or a file path.
         # Treat it as untrusted just like every other exception message.
         if isinstance(error.code, str):
-            print("Command refused; message withheld.", file=report or sys.stdout, flush=True)
+            print(
+                "Command refused; message withheld.",
+                file=report or sys.stdout,
+                flush=True,
+            )
             return 1
         return 0 if error.code is None else int(error.code)
     except BaseException as error:  # pylint: disable = broad-exception-caught
