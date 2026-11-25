@@ -394,9 +394,11 @@ _RUN = ("model", "settings", "variant", "grid", "evaluated", "converted")
 def _measure(arguments: argparse.Namespace) -> dict[str, str]:
     detector, settings = _detector(arguments)
     cases = _cases(arguments)
+    # A case's frames, as its headers give them, place it in a shard and,
+    # where it is heavier than a worker's share, split it across workers.
+    weights = [case_weight(each) for each in cases]
     if arguments.shard is not None:
         shard, shards = arguments.shard
-        weights = [case_weight(each) for each in cases]
         owners = placement(case_groups(cases), shards, weights)
         positions = [place for place, owner in enumerate(owners) if owner == shard]
         run = evaluate(
@@ -404,6 +406,7 @@ def _measure(arguments: argparse.Namespace) -> dict[str, str]:
             detector,
             settings,
             workers=arguments.workers,
+            weights=[weights[place] for place in positions],
         )
         named = {key: getattr(arguments, key) for key in _RUN}
         record = shard_record(
@@ -416,7 +419,9 @@ def _measure(arguments: argparse.Namespace) -> dict[str, str]:
             owners=owners,
         )
         return {"shard.json": _json(record)}
-    run = evaluate(cases, detector, settings, workers=arguments.workers)
+    run = evaluate(
+        cases, detector, settings, workers=arguments.workers, weights=weights
+    )
     return _written(summarise(run), cases_report(run), arguments)
 
 
