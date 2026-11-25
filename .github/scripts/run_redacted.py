@@ -113,7 +113,13 @@ def private_stdout(path: str) -> TextIO:
     """
     sys.stdout.flush()
     original = os.fdopen(os.dup(sys.stdout.fileno()), "w", encoding="utf-8")
-    with open(path, "w", encoding="utf-8") as private:
+    # Benchmark output can contain clinical identifiers. Create its private
+    # file with owner-only permissions, even if the process umask is permissive.
+    # Refuse an existing symlink where the platform supports O_NOFOLLOW.
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    with os.fdopen(os.open(path, flags, 0o600), "w", encoding="utf-8") as private:
+        if os.name != "nt":
+            os.fchmod(private.fileno(), 0o600)
         os.dup2(private.fileno(), sys.stdout.fileno())
     return original
 
