@@ -314,7 +314,8 @@ def test_existing_data_directory_permissions_are_not_changed(
         pytest.skip("POSIX directory permission semantics")
 
     existing = tmp_path / "existing-data"
-    existing.mkdir(mode=0o750)
+    existing.mkdir()
+    existing.chmod(0o750)  # Deterministic regardless of the test worker umask.
     monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(existing))
 
     assert download.get_data_dir() == existing
