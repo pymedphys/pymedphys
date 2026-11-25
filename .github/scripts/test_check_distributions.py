@@ -1103,6 +1103,29 @@ class PublishedTests(unittest.TestCase):
         self.assertEqual(len(sleeps), 1)
         self.assertIn(WHEEL_NAME, url)
 
+    def test_rejects_oversized_simple_api_listing_without_unbounded_read(self):
+        index = self._publish(WHEEL_NAME, SDIST_NAME)
+        read_limits = []
+
+        class OversizedIndex:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def read(self, limit=-1):
+                read_limits.append(limit)
+                return b"x" * limit
+
+        with mock.patch("urllib.request.urlopen", return_value=OversizedIndex()):
+            with self.assertRaisesRegex(ValueError, "size limit"):
+                _published_url(index, "wheel", VERSION, wait=0, sleep=self.fail)
+
+        self.assertEqual(
+            read_limits, [check_distributions.MAX_INDEX_JSON_BYTES + 1]
+        )
+
     def test_a_permanent_index_error_is_not_retried(self):
         index = self._publish(WHEEL_NAME, SDIST_NAME)
         error = urllib.error.HTTPError(index.project_url, 403, "Forbidden", {}, None)
