@@ -411,7 +411,7 @@ class RangeReader(io.RawIOBase):
         request = urllib.request.Request(
             self._url, headers={"Range": f"bytes={start}-{end}"}
         )
-        status, data = self._get(request)
+        status, data = self._get(request, end - start + 1)
         if status != 206 or len(data) != end - start + 1:
             raise EvaluationRefused("An archive must be served by ranges.")
         self._cache[index] = data
@@ -419,12 +419,14 @@ class RangeReader(io.RawIOBase):
             self._cache.popitem(last=False)
         return data
 
-    def _get(self, request: urllib.request.Request) -> tuple[int, bytes]:
-        """A response's status and body, tried again after a network error."""
+    def _get(self, request: urllib.request.Request, expected_size: int) -> tuple[int, bytes]:
+        """Read at most a range's length plus one byte to detect oversized replies."""
         for attempt in range(4):
             try:
                 with urllib.request.urlopen(request, timeout=self._timeout) as response:  # nosec B310
-                    return response.status, response.read()
+                    # A remote server may ignore Range and send its entire ZIP.
+                    # Never buffer more than the requested range plus one byte.
+                    return response.status, response.read(expected_size + 1)
             except OSError:
                 if attempt < 3:
                     time.sleep(10 * 2**attempt)
