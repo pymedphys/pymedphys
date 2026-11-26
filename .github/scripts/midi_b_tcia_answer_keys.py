@@ -553,7 +553,7 @@ def _tables(path: Path) -> list[str]:
     with path.open("rb") as file:
         if file.read(len(_SQLITE)) != _SQLITE:
             return []
-    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    connection = sqlite3.connect(f"{path.absolute().as_uri()}?mode=ro", uri=True)
     try:
         names = [
             row[0]
@@ -603,6 +603,8 @@ def listing(destination: Path) -> list[str]:
     """Each received file's package, name, size, and SHA-256, and its members."""
     lines = []
     for path in sorted(destination.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("Refusing a symbolic link in the answer-key package.")
         if not path.is_file() or path.name == "ascli.log":
             continue
         relative = path.relative_to(destination)
