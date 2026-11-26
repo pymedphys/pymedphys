@@ -187,13 +187,13 @@ def refuse_dtd(path: Path) -> None:
 
 
 def check_junit(path: Path) -> None:
-    """Require readable, nonempty test evidence with no failed or errored cases."""
+    """Require at least one executed test and no failed or errored cases."""
     refuse_dtd(path)
     # nosemgrep: python.lang.security.use-defused-xml-parse
     root = ET.parse(path).getroot()  # nosec B314
     if (
         root.tag not in ("testsuite", "testsuites")
-        or not list(root.iter("testcase"))
+        or not any(case.find("skipped") is None for case in root.iter("testcase"))
         or any(
             item.tag in ("failure", "error")
             or int(item.get("failures", "0")) != 0
