@@ -165,14 +165,13 @@ def upload_filepaths(filepaths, deposition_id, use_sandbox=False):
             record_checksum = response["checksum"]
         except KeyError:
             raise ValueError(
-                f"The response when uploading was not as expected:\n {response}"
+                "The Zenodo upload response did not include a checksum."
             )
 
         if md5.hexdigest() != record_checksum:
             raise ValueError(
                 "The uploaded Zenodo's checksum does not match the local checksum.\n"
-                f"  Zenodo's Checksum: {record_checksum}\n"
-                f"  Local Checksum: {md5.hexdigest()}"
+                "  The response checksum does not match the uploaded file."
             )
 
 
@@ -207,12 +206,12 @@ def upload_files_to_zenodo(
         try:
             response = r.json()
         except json.JSONDecodeError:
-            raise ValueError(f"Unexpected response: {r.text}")
+            raise ValueError("Zenodo did not return JSON for the new deposition.") from None
 
         try:
             deposition_id = response["id"]
         except KeyError:
-            raise ValueError(f"Unexpected response: {response}")
+            raise ValueError("Zenodo deposition response did not include an id.") from None
 
     metadata = create_metadata(title, author)
     set_metadata(metadata, deposition_id, use_sandbox=use_sandbox)
