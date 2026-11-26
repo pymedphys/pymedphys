@@ -56,9 +56,10 @@ def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
         try:
             # Exclusive creation rejects a destination added after the check,
             # including a symlink aimed outside the diagnostic data directory.
-            with open(nss_filepath, "rb") as source, open(
-                storage_filepath, "xb"
-            ) as destination:
+            with (
+                open(nss_filepath, "rb") as source,
+                open(storage_filepath, "xb") as destination,
+            ):
                 shutil.copyfileobj(source, destination)
         except FileExistsError:
             print("    {} has already been copied.".format(basename))
