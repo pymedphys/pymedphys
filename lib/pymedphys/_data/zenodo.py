@@ -7,6 +7,7 @@ from pymedphys._imports import keyring, requests
 
 ZENODO_HOSTNAME = "zenodo.org"
 BASE_URL = f"https://{ZENODO_HOSTNAME}/api/records/"
+MAX_RECORD_METADATA_BYTES = 8 * 1024 * 1024
 HERE = pathlib.Path(__file__).resolve().parent
 
 
@@ -28,11 +29,20 @@ def get_all_zenodo_file_data(record_name):
 
 @functools.lru_cache()
 def get_all_zenodo_file_data_by_id(record_id):
-    response = requests.get(f"{BASE_URL}{record_id}", timeout=30)
-    data = json.loads(response.text)
-    files = data["files"]
+    # Stream and cap untrusted API metadata before decoding JSON. A 30-second
+    # network timeout does not limit response size or JSON parsing memory.
+    chunks = []
+    total = 0
+    with requests.get(f"{BASE_URL}{record_id}", timeout=30, stream=True) as response:
+        response.raise_for_status()
+        for chunk in response.iter_content(chunk_size=65536):
+            total += len(chunk)
+            if total > MAX_RECORD_METADATA_BYTES:
+                raise ValueError("Zenodo metadata response exceeds the size limit")
+            chunks.append(chunk)
 
-    return files
+    data = json.loads(b"".join(chunks))
+    return data["files"]
 
 
 @functools.lru_cache()
