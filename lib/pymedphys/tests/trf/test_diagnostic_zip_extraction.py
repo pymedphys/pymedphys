@@ -25,7 +25,9 @@ def _archive(root, name):
     return archive
 
 
-@pytest.mark.parametrize("name", ["../outside.trf", "/absolute.trf", "C:/outside.trf", "nested\\outside.trf"])
+@pytest.mark.parametrize(
+    "name", ["../outside.trf", "/absolute.trf", "C:/outside.trf", "nested\\outside.trf"]
+)
 def test_diagnostic_zip_rejects_unsafe_member_names(tmp_path, name):
     archive = _archive(tmp_path, name)
     with pytest.raises(ValueError, match="Unsafe diagnostic ZIP member"):
@@ -52,5 +54,9 @@ def test_diagnostic_zip_rejects_preexisting_symlink_escape(tmp_path):
 def test_diagnostic_zip_extracts_safe_trf_and_archives_source(tmp_path):
     _archive(tmp_path, "machine/good.trf")
     extract_diagnostic_zips_and_archive(tmp_path)
-    assert (tmp_path / "to_be_indexed" / "machine" / "good.trf").read_bytes() == b"synthetic log bytes"
-    assert (tmp_path / "diagnostics" / "already_indexed" / "linac-1" / "SDD+fixture.zip").exists()
+    assert (
+        tmp_path / "to_be_indexed" / "machine" / "good.trf"
+    ).read_bytes() == b"synthetic log bytes"
+    assert (
+        tmp_path / "diagnostics" / "already_indexed" / "linac-1" / "SDD+fixture.zip"
+    ).exists()
