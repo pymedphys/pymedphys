@@ -40,7 +40,9 @@ def test_archive_path_rejects_linked_source(tmp_path):
     except (OSError, NotImplementedError):
         pytest.skip("Directory symlinks are unavailable")
     with pytest.raises(ValueError, match="outside the to-be-indexed"):
-        already_indexed_path(incoming / "linked" / "a.zip", incoming, tmp_path / "already_indexed")
+        already_indexed_path(
+            incoming / "linked" / "a.zip", incoming, tmp_path / "already_indexed"
+        )
 
 
 def test_archive_path_rejects_symlinked_destination(tmp_path):

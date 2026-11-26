@@ -113,7 +113,9 @@ def already_indexed_path(current_location, to_be_indexed, already_indexed):
     archived_root = pathlib.Path(already_indexed).resolve()
     destination = (archived_root / source.relative_to(incoming_root)).resolve()
     if not destination.is_relative_to(archived_root):
-        raise ValueError("Diagnostic ZIP destination is outside the already-indexed directory")
+        raise ValueError(
+            "Diagnostic ZIP destination is outside the already-indexed directory"
+        )
 
     return str(destination)
 
