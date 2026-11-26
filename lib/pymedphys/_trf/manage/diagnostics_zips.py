@@ -45,14 +45,22 @@ def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
         storage_filepath = os.path.join(storage_directory, basename)
         other_filepath = os.path.join(other_directory, basename)
 
-        doesnt_exist_in_either_directory = not os.path.exists(
-            storage_filepath
-        ) and not os.path.exists(other_filepath)
+        # lexists also detects dangling symlinks, which exists() misses.
+        already_present = os.path.lexists(storage_filepath) or os.path.lexists(
+            other_filepath
+        )
+        if already_present:
+            print("    {} has already been copied.".format(basename))
+            continue
 
-        if doesnt_exist_in_either_directory:
-            print("    Copying {}...".format(basename))
-            shutil.copyfile(nss_filepath, storage_filepath)
-        else:
+        try:
+            # Exclusive creation rejects a destination added after the check,
+            # including a symlink aimed outside the diagnostic data directory.
+            with open(nss_filepath, "rb") as source, open(
+                storage_filepath, "xb"
+            ) as destination:
+                shutil.copyfileobj(source, destination)
+        except FileExistsError:
             print("    {} has already been copied.".format(basename))
 
 
