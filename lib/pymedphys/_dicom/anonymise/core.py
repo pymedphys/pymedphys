@@ -15,6 +15,7 @@
 
 import functools
 import json
+import re
 import logging
 from copy import copy  # , deepcopy
 from glob import glob
@@ -205,8 +206,17 @@ def get_anonymous_replacement_value(
 
 
 def create_filename_from_dataset(ds, dirpath=""):
+    """Build a DICOM filename only from a valid numeric SOP Instance UID.
+
+    The UID comes from an input dataset. Reject malformed identifiers before
+    using them as part of an output path; do not quote their values in errors.
+    """
+    uid = str(ds.SOPInstanceUID)
+    if len(uid) > 64 or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", uid):
+        raise ValueError("Invalid SOP Instance UID for generated filename")
+
     mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
-    return pjoin(dirpath, "{}.{}.dcm".format(mode_prefix, ds.SOPInstanceUID))
+    return pjoin(dirpath, f"{mode_prefix}.{uid}.dcm")
 
 
 def label_dicom_filepath_as_anonymised(filepath):
