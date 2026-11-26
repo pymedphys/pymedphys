@@ -12,6 +12,13 @@ This project adheres to
 
 ## Unreleased
 
+### Mosaiq credential deletion attempts both stored entries
+
+Removing Mosaiq credentials now attempts to delete the password even when
+deleting its separate username entry fails. Keyring errors still propagate
+so the caller can report incomplete removal.
+[PR #2715](https://github.com/pymedphys/pymedphys/pull/2715)
+
 ### RT Plans written by `Delivery.to_dicom`
 
 `pymedphys.Delivery.to_dicom` wrote wrong monitor units, without an error, when a template beam's Final Cumulative Meterset Weight (300A,010E) was not 1. It wrote Cumulative Meterset Weights ending at 1 but kept the template's final weight, so every control point's meterset was divided by that final weight: 100 times too small for a template that gives the weights as percentages. When a template's control points listed the MLCX before the ASYMY jaws, it swapped the jaw and leaf positions. The weights now keep the template beam's scale, each to within a millionth of its Final Cumulative Meterset Weight, whatever that weight is, and the last equals it as a decimal number. Positions go to the item of their device type. **Re-export plans written from such templates, and recalculate any dose computed from them**, for example plans made from TRF logfiles. Templates with a final weight of 1 that list the jaws first give the same weights and positions as before. Written control points after the first no longer copy the Cumulative Dose Reference Coefficients of the template's last control point, which gave each of them the beam's full dose to the reference. They keep the template's Referenced Dose Reference Sequence with those coefficients left empty, because the coefficients come from the dose calculated for the template. Templates whose later control points list only the devices that move, or none, as PS3.3 specifies, now work instead of raising `IndexError` or `AttributeError`. A template beam without a Final Cumulative Meterset Weight is given one of 1. A template beam that does not define one ASYMY and one MLCX device raises `ValueError`, and so does one whose Final Cumulative Meterset Weight is not a positive, finite number or is below `sys.float_info.min` (about 2.2e-308), where a float no longer has full precision. `pymedphys.Delivery.from_dicom` now divides each Cumulative Meterset Weight by the Final Cumulative Meterset Weight before multiplying by the Beam Meterset, so a plan whose Beam Meterset times a weight would pass the largest float, such as one with a final weight of 1E308, no longer reads back as non-finite monitor units; for a final weight of 1 its monitor units are unchanged. [PR #2616](https://github.com/pymedphys/pymedphys/pull/2616)
