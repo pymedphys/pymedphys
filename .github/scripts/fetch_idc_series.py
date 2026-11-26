@@ -44,15 +44,20 @@ _NAMESPACE = "{http://s3.amazonaws.com/doc/2006-03-01/}"
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _ATTEMPTS = 5
 _WORKERS = 16
+# S3 ListObjectsV2 returns at most 1000 keys; allow room for metadata/XML.
+_MAX_LISTING_BYTES = 8 << 20
 
 
-def _get(url: str, timeout: float = 120.0) -> bytes:
-    """The body of a GET, retried with a growing wait."""
+def _get(url: str, timeout: float = 120.0, *, max_bytes: int | None = None) -> bytes:
+    """The body of a GET, optionally capped for untrusted XML listings."""
     for attempt in range(_ATTEMPTS):
         try:
             # Only the fixed https bucket URL is ever opened.
             with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310
-                return response.read()
+                data = response.read(max_bytes + 1 if max_bytes is not None else -1)
+                if max_bytes is not None and len(data) > max_bytes:
+                    raise ValueError("IDC object listing exceeds the size limit")
+                return data
         except OSError:
             if attempt == _ATTEMPTS - 1:
                 raise
@@ -68,7 +73,12 @@ def keys(uuid: str) -> list[str]:
         query = {"list-type": "2", "prefix": f"{uuid}/"}
         if token:
             query["continuation-token"] = token
-        root = ET.fromstring(_get(BUCKET + "?" + urllib.parse.urlencode(query)))
+        root = ET.fromstring(
+            _get(
+                BUCKET + "?" + urllib.parse.urlencode(query),
+                max_bytes=_MAX_LISTING_BYTES,
+            )
+        )
         found += [key.text or "" for key in root.iter(f"{_NAMESPACE}Key") if key.text]
         truncated = root.findtext(f"{_NAMESPACE}IsTruncated") == "true"
         token = root.findtext(f"{_NAMESPACE}NextContinuationToken")
