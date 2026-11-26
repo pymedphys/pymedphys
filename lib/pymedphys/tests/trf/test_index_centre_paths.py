@@ -28,9 +28,7 @@ def _directory(centre):
         field_name="Beam",
         machine="LINAC1",
     )
-    return create_logfile_directory_name(
-        centre, delivery, header, "2026-11-26T010101"
-    )
+    return create_logfile_directory_name(centre, delivery, header, "2026-11-26T010101")
 
 
 def test_normal_centre_name_remains_unchanged():
