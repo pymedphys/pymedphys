@@ -563,3 +563,48 @@ def test_dicom_sender_cli(test_dataset):
         dcm_file = next(dcm_files)
         ds = pydicom.dcmread(dcm_file)
         check_dicom_agrees(ds, test_dataset)
+
+@pytest.mark.pydicom
+def test_dicom_listener_refuses_symlinked_destination(tmp_path, test_dataset):
+    storage = tmp_path / "storage"
+    storage.mkdir()
+    series = hierarchical_dicom_storage_directory(storage, test_dataset)
+    series.mkdir(parents=True)
+    external = tmp_path / "external.dcm"
+    external.write_bytes(b"synthetic file")
+    destination = series / f"RP.{test_dataset.SOPInstanceUID}.dcm"
+    try:
+        destination.symlink_to(external)
+    except (OSError, NotImplementedError):
+        pytest.skip("File symlinks are unavailable")
+    listener = DicomListener(storage_directory=storage)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+
+    result = listener.on_c_store(event)
+    assert result.Status == 0xA700
+    assert external.read_bytes() == b"synthetic file"
+
+
+@pytest.mark.pydicom
+def test_dicom_listener_duplicate_never_rewrites_existing_file(
+    tmp_path, test_dataset, monkeypatch
+):
+    listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+    assert listener.on_c_store(event).Status == 0x0000
+
+    def reject_rewrite(*_args, **_kwargs):
+        pytest.fail("An identical DICOM should not be rewritten")
+
+    monkeypatch.setattr(pydicom.FileDataset, "save_as", reject_rewrite)
+    assert listener.on_c_store(event).Status == 0x0000
