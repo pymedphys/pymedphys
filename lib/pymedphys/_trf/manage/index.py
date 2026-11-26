@@ -90,6 +90,19 @@ def create_index_entry(
 # unnecessarily duplicated.
 
 
+def confined_index_path(indexed_directory, relative_path):
+    """Resolve a previously indexed logfile within its designated data tree.
+
+    Index JSON can be imported from older deployments. Reject entries that
+    would cause a hash check to read a file outside the indexed directory.
+    """
+    root = pathlib.Path(indexed_directory).resolve()
+    resolved = (root / relative_path).resolve()
+    if not resolved.is_relative_to(root):
+        raise ValueError("Existing logfile path resolves outside the indexed directory")
+    return str(resolved)
+
+
 def file_already_in_index(indexed_filepath, to_be_indexed_filepath, filehash):
     try:
         new_hash = hash_file(indexed_filepath)
@@ -338,7 +351,7 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
 
         for filehash in list(hashset.intersection(indexset)):
             file_already_in_index(
-                os.path.join(indexed_directory, index[filehash]["filepath"]),
+                confined_index_path(indexed_directory, index[filehash]["filepath"]),
                 to_be_indexed_dict[filehash],
                 filehash,
             )
