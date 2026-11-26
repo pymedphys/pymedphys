@@ -564,6 +564,10 @@ def _matches_distribution(filename: str, kind: str, version: str) -> bool:
     return filename == f"pymedphys-{version}.tar.gz"
 
 
+# Limit untrusted Simple API metadata before decoding or parsing it.
+MAX_INDEX_JSON_BYTES = 4 * 1024 * 1024
+
+
 def _published_url(
     index: PackageIndex,
     kind: str,
@@ -581,7 +585,10 @@ def _published_url(
     while True:
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                listing = json.load(response)
+                raw = response.read(MAX_INDEX_JSON_BYTES + 1)
+                if len(raw) > MAX_INDEX_JSON_BYTES:
+                    raise ValueError("Package index JSON listing exceeds the size limit")
+                listing = json.loads(raw)
         except urllib.error.HTTPError as error:
             # Not yet listed, or a transient index error: retry within wait.
             if error.code != 404 and error.code != 429 and error.code < 500:
