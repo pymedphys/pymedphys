@@ -217,7 +217,7 @@ def get_data_dir():
     else:
         data_dir = pmp_config.get_config_dir().joinpath("data")
 
-    data_dir.mkdir(parents=True, exist_ok=True)
+    # Restrict newly created caches: downloaded files can contain clinical data.\n    # Do not alter the permissions of a caller-supplied existing directory.\n    data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
 
     return data_dir
 
