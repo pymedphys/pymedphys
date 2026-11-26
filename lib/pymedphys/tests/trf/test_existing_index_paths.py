@@ -19,7 +19,9 @@ def test_existing_index_accepts_nested_logfile(tmp_path):
     assert confined_index_path(root, "centre/delivery.trf") == str(expected)
 
 
-@pytest.mark.parametrize("path", ["../../elsewhere.trf", "../elsewhere.trf", "/tmp/elsewhere.trf"])
+@pytest.mark.parametrize(
+    "path", ["../../elsewhere.trf", "../elsewhere.trf", "/tmp/elsewhere.trf"]
+)
 def test_existing_index_rejects_parent_or_absolute_escape(tmp_path, path):
     root = tmp_path / "indexed"
     root.mkdir()
