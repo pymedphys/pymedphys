@@ -161,23 +161,24 @@ class DicomListener(DicomConnectBase):
         status_ds = pydicom.Dataset()
         status_ds.Status = 0x0000
 
+        if filepath.is_symlink():
+            # Even a dangling link can redirect an incoming DICOM write.
+            status_ds.ErrorComment = "SCP internal error - Unsafe storage path"
+            status_ds.Status = 0xA700
+            return status_ds
+
         if filepath.exists():
-            # If the file already exists, open it up and compare the contents
-            # (converting to JSON string to perform comparison)
+            # Do not rewrite an existing file, including an identical one.
             existing_ds = pydicom.dcmread(filepath)
+            if existing_ds.to_json() == dataset.to_json():
+                return status_ds
 
-            if not existing_ds.to_json() == dataset.to_json():
-                # If the contents don't match, save conflicting incoming file in an
-                # "orphan" sub-directory.
-
-                # Just give the file a unique name in the orphan directory
-                filename = str(uuid.uuid4())
-                filepath = series_dir.joinpath("orphan", filename)
-                filepath.parent.mkdir(exist_ok=True)
-
-                logging.warning(
-                    "DICOM file exists, storing in orphan directory: %s", filename
-                )
+            filename = str(uuid.uuid4())
+            filepath = series_dir.joinpath("orphan", filename)
+            filepath.parent.mkdir(exist_ok=True)
+            logging.warning(
+                "DICOM file exists, storing in orphan directory: %s", filename
+            )
 
         context = event.context
         meta = pydicom.Dataset()
@@ -203,7 +204,10 @@ class DicomListener(DicomConnectBase):
         try:
             # `enforce_file_format` ensures that a compliant File Meta
             # Information Header is written
-            file_ds.save_as(filepath, enforce_file_format=True)
+            # Exclusive creation also rejects a link installed after the
+            # earlier check; opening a path for an ordinary write would follow it.
+            with filepath.open("xb") as output:
+                file_ds.save_as(output, enforce_file_format=True)
             status_ds.Status = 0x0000  # Success
 
             logging.info("DICOM object received: %s", filepath)
