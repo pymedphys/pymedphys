@@ -19,6 +19,7 @@ import pathlib
 import signal
 import sys
 import tempfile
+import time
 import uuid
 
 from pymedphys._imports import pydicom, pynetdicom
@@ -248,4 +249,4 @@ def listen_cli(args):
     signal.signal(signal.SIGTERM, handler_stop_signals)
 
     while True:
-        pass
+        time.sleep(1)
