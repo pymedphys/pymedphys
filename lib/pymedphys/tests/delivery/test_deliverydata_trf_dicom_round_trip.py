@@ -187,6 +187,54 @@ def test_to_dicom_with_single_beam_template():
         )
 
 
+@pytest.mark.pydicom
+@pytest.mark.parametrize("final_weight", [1.0, 100.0])
+@pytest.mark.parametrize(
+    "first_segment, expected_monitor_units",
+    [
+        # Two halves of 60 MU, as the template's segments are.
+        (0.5, [0.0, 30.0, 30.0, 60.0]),
+        # A quarter and three quarters, so that weights copied from the
+        # template would give the wrong monitor units.
+        (0.25, [0.0, 15.0, 15.0, 60.0]),
+    ],
+)
+def test_single_beam_template_keeps_its_weight_scale(
+    final_weight, first_segment, expected_monitor_units
+):
+    # A template that gives its weights as percentages has a Final
+    # Cumulative Meterset Weight of 100. DICOM PS3.3 C.8.8.14.1 gives a
+    # control point's meterset as the Beam Meterset times its Cumulative
+    # Meterset Weight divided by the Final Cumulative Meterset Weight, and
+    # the weight at the end of the beam equals that final weight.
+    template = single_beam_plan(
+        meterset=100.0, gantry_angle=90.0, final_weight=final_weight
+    )
+    delivered = Delivery.from_dicom(
+        single_beam_plan(meterset=60.0, gantry_angle=90.5, first_segment=first_segment)
+    )
+
+    dicom = delivered.to_dicom(template)
+
+    (beam,) = dicom.BeamSequence
+    (referenced_beam,) = dicom.FractionGroupSequence[0].ReferencedBeamSequence
+    beam_meterset = float(referenced_beam.BeamMeterset)
+    final = float(beam.FinalCumulativeMetersetWeight)
+    weights = [
+        float(control_point.CumulativeMetersetWeight)
+        for control_point in beam.ControlPointSequence
+    ]
+    assert final == final_weight
+    assert weights[-1] == final
+    np.testing.assert_allclose(
+        [beam_meterset * weight / final for weight in weights],
+        expected_monitor_units,
+    )
+    np.testing.assert_allclose(
+        Delivery.from_dicom(dicom).monitor_units, expected_monitor_units
+    )
+
+
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_metersetmap_agreement(loaded_dicom_dataset, logfile_delivery_data):
@@ -251,25 +299,27 @@ def first_mlc_positions(dicom_dataset):
     return result
 
 
-def single_beam_plan(meterset, gantry_angle):
+def single_beam_plan(meterset, gantry_angle, final_weight=1.0, first_segment=0.5):
     """An RT Plan with one static-gantry beam of two step-and-shoot
-    segments, each delivering half of ``meterset``."""
+    segments, the first delivering the fraction ``first_segment`` of
+    ``meterset`` and the second the rest, with Cumulative Meterset Weights
+    on the scale of ``final_weight``."""
     jaw = [-50.0, 60.0]
     first_segment_mlc = [-5.0, -6.0, -7.0, -8.0, 15.0, 16.0, 17.0, 18.0]
     second_segment_mlc = [-25.0, -26.0, -27.0, -28.0, 5.0, 6.0, 7.0, 8.0]
 
     control_points = []
-    for index, (weight, mlc) in enumerate(
+    for index, (fraction, mlc) in enumerate(
         [
             (0.0, first_segment_mlc),
-            (0.5, first_segment_mlc),
-            (0.5, second_segment_mlc),
+            (first_segment, first_segment_mlc),
+            (first_segment, second_segment_mlc),
             (1.0, second_segment_mlc),
         ]
     ):
         control_point = {
             "ControlPointIndex": index,
-            "CumulativeMetersetWeight": weight,
+            "CumulativeMetersetWeight": fraction * final_weight,
             "BeamLimitingDevicePositionSequence": [
                 {"RTBeamLimitingDeviceType": "ASYMY", "LeafJawPositions": jaw},
                 {"RTBeamLimitingDeviceType": "MLCX", "LeafJawPositions": mlc},
@@ -285,7 +335,7 @@ def single_beam_plan(meterset, gantry_angle):
             "BeamSequence": [
                 {
                     "BeamNumber": 1,
-                    "FinalCumulativeMetersetWeight": 1.0,
+                    "FinalCumulativeMetersetWeight": final_weight,
                     "NumberOfControlPoints": len(control_points),
                     "BeamLimitingDeviceSequence": [
                         {
