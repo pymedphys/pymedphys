@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import logging
 from collections.abc import Awaitable, Callable, Sequence
 from functools import partial
 from itertools import chain
@@ -35,6 +36,8 @@ NUM_PARALLEL_QUERY_CREATION_AGENTS = 6
 NUM_PARALLEL_QUERY_VOTER_AGENTS = 4
 
 MAX_QUERY_STRING_LENGTH = 2048
+
+logger = logging.getLogger(__name__)
 
 
 async def sql_tool_pipeline(
@@ -75,6 +78,13 @@ async def sql_tool_pipeline(
     selected_query_ids = set(chain.from_iterable(nested_selected_query_ids))
     filtered_query_result_pairs = [query_result_pairs[id] for id in selected_query_ids]
 
+    logger.info(
+        "MOSAIQ SQL agent query stage completed "
+        "(candidate_queries=%d, selected_queries=%d)",
+        len(query_result_pairs),
+        len(filtered_query_result_pairs),
+    )
+
     xml_output = "<mosaiq_sql_agent_result>"
 
     for query, result in filtered_query_result_pairs:
@@ -97,8 +107,22 @@ async def _execute_query_with_truncated_string_result(
     try:
         result = await execute_query(connection, query)
         string_result = repr(result)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        string_result = str(e)
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        # Database exceptions can echo SQL text and patient identifiers.
+        # Only report numeric driver error codes, never the exception message.
+        error_code = getattr(error, "number", None)
+        if not isinstance(error_code, int):
+            error_code = getattr(error, "code", None)
+        if not isinstance(error_code, int):
+            error_code = error.args[0] if error.args else None
+        if not isinstance(error_code, int) or isinstance(error_code, bool):
+            error_code = "unavailable"
+        logger.warning(
+            "MOSAIQ SQL query failed (error_type=%s, error_code=%s)",
+            type(error).__name__,
+            error_code,
+        )
+        string_result = str(error)
 
     if len(string_result) > MAX_QUERY_STRING_LENGTH:
         string_result = (

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import logging
 from typing import Any, Awaitable, Callable
 
 from anthropic import AsyncAnthropic
@@ -23,6 +24,8 @@ import pymedphys
 from pymedphys._ai import model_versions
 
 from ._pipeline import sql_tool_pipeline
+
+logger = logging.getLogger(__name__)
 
 AsyncCallable = Callable[[Any, Any], Awaitable[Any]]
 
@@ -190,9 +193,11 @@ async def _conversation_with_tool_use(
     messages.append(api_response.to_dict())
 
     if api_response.stop_reason == "tool_use":
+        logger.info(
+            "MOSAIQ SQL agent requested %d tool call(s)",
+            sum(item.type == "tool_use" for item in api_response.content),
+        )
         for item in api_response.content:
-            print(item)
-
             if item.type == "tool_use":
                 tool = tools_mappings[item.name]
 
@@ -220,8 +225,6 @@ async def _conversation_with_tool_use(
                 }
 
                 messages.append(response_message)
-
-                print(response_message)
 
         await _conversation_with_tool_use(
             anthropic_client=anthropic_client,

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import logging
 import pathlib
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
@@ -27,6 +28,7 @@ from anthropic.types import TextBlock
 import pymedphys
 
 HERE = pathlib.Path(__file__).parent.resolve()
+logger = logging.getLogger(__name__)
 
 
 GET_ALL_COLUMNS_BY_TABLE_NAME = """\
@@ -118,8 +120,6 @@ async def words_in_mouth_prompting(
     else:
         messages_to_submit = []
 
-    print(messages_to_submit)
-
     if messages_to_submit and messages_to_submit[-1]["role"] == "user":
         messages_to_submit[-1]["content"] += f"\n\n{appended_user_prompt}"
     else:
@@ -142,6 +142,8 @@ async def words_in_mouth_prompting(
 
     text: str = content_response.text
     result = start_of_assistant_prompt + text
-    print(result)
-
+    logger.debug(
+        "MOSAIQ SQL prompt step completed (message_count=%d)",
+        len(messages_to_submit),
+    )
     return result

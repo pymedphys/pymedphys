@@ -242,6 +242,16 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### Bug fixes
 
+- **[Privacy]** The private MOSAIQ SQL agent no longer prints tool inputs,
+  patient-related query results, submitted transcripts, generated SQL, or model
+  responses to stdout. The SQL agent still returns these values to its caller;
+  captured terminal output no longer includes them. INFO-level logging now
+  records SQL tool-call and query counts, and WARNING-level logging reports
+  query failures by exception type and numeric database error code, where
+  available, without printing SQL text or result values. Operators needing
+  query details should inspect the agent's returned output rather than logs.
+  [PR #2652](https://github.com/pymedphys/pymedphys/pull/2652)
+
 - **[Security]** The mock Mosaiq SQL Server backup restore helper now passes the administrator password to Docker through environment-variable forwarding rather than embedding its value in `docker run` process arguments. This prevents exposure of the password through process command-line listings and logs; Docker still receives it as an environment variable. [PR #2631](https://github.com/pymedphys/pymedphys/pull/2631)
 
 - **[Security]** The `pymedphys` command line no longer retries a subcommand
