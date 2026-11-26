@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeff
 # Copyright (C) 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,6 +91,17 @@ def test_unsupported_scheme_is_rejected(url: str, tmp_path: pathlib.Path):
     assert not destination.exists()
 
 
+def test_unsupported_scheme_error_omits_sensitive_url(tmp_path):
+    url = "ftp://example.invalid/private-file?token=synthetic-credential"
+
+    with pytest.raises(ValueError, match="Unsupported URL scheme") as error:
+        download.download_with_progress(url, tmp_path / "unused.bin")
+
+    assert "synthetic-credential" not in str(error.value)
+    assert "private-file" not in str(error.value)
+    assert "ftp" in str(error.value)
+
+
 def test_download_uses_a_timeout(tmp_path: pathlib.Path, monkeypatch):
     seen = {}
 
@@ -176,6 +188,27 @@ def test_truncated_response_is_rejected(tmp_path: pathlib.Path, monkeypatch):
         )
 
     assert _leftovers(tmp_path, "truncated.bin") == []
+
+
+@pytest.mark.usefixtures("no_sleep")
+def test_truncated_response_error_omits_sensitive_url(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda _url, **_kwargs: _FakeResponse(b"short", content_length=100),
+    )
+    destination = tmp_path / "cached.bin"
+    destination.write_bytes(b"previous validated contents")
+    url = "https://example.invalid/private-file?token=synthetic-credential"
+
+    with pytest.raises(urllib.error.ContentTooShortError) as error:
+        download.download_with_progress(url, destination)
+
+    assert "synthetic-credential" not in str(error.value)
+    assert "private-file" not in str(error.value)
+    assert "5 of 100 bytes" in str(error.value)
+    assert destination.read_bytes() == b"previous validated contents"
+    assert _leftovers(tmp_path, "cached.bin") == [destination]
 
 
 def test_oversized_response_is_rejected_without_replacing_cached_file(

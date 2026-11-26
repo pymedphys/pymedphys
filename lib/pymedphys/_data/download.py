@@ -138,7 +138,7 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
     scheme = urllib.parse.urlsplit(url).scheme
     if scheme not in SUPPORTED_URL_SCHEMES:
         raise ValueError(
-            f"Unsupported URL scheme {scheme!r} in {url!r}; "
+            f"Unsupported URL scheme {scheme!r}; "
             f"expected one of {SUPPORTED_URL_SCHEMES}"
         )
 
@@ -194,8 +194,7 @@ def download_with_progress(url: str, filepath: str | os.PathLike[str]) -> None:
 
             if expected_size is not None and received < expected_size:
                 raise urllib.error.ContentTooShortError(
-                    f"Download of {url} stopped after {received} of "
-                    f"{expected_size} bytes",
+                    f"Download stopped after {received} of {expected_size} bytes",
                     (str(filepath), response.headers),
                 )
 
