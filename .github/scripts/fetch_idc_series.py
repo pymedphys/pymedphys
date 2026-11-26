@@ -32,6 +32,7 @@ import argparse
 import concurrent.futures
 import pathlib
 import re
+import shutil
 import sys
 import time
 import urllib.parse
@@ -58,6 +59,23 @@ def _get(url: str, timeout: float = 120.0) -> bytes:
                 raise
             time.sleep(2 ** (attempt + 1))
     raise AssertionError("unreachable")
+
+
+def _download_to_file(url: str, destination: pathlib.Path, timeout: float = 120.0):
+    """Stream an object using bounded memory, retrying from the beginning."""
+    for attempt in range(_ATTEMPTS):
+        try:
+            # Keep only one chunk in memory, regardless of DICOM object size.
+            with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310
+                with destination.open("wb") as target:
+                    shutil.copyfileobj(response, target, length=1 << 20)
+            return
+        except OSError:
+            # Never leave failed partial downloads to be mistaken for objects.
+            destination.unlink(missing_ok=True)
+            if attempt == _ATTEMPTS - 1:
+                raise
+            time.sleep(2 ** (attempt + 1))
 
 
 def keys(uuid: str) -> list[str]:
@@ -107,7 +125,7 @@ def fetch(uuid: str, out: pathlib.Path) -> int:
 
     def download(key: str) -> None:
         name = key.rsplit("/", 1)[-1]
-        (folder / name).write_bytes(_get(BUCKET + urllib.parse.quote(key)))
+        _download_to_file(BUCKET + urllib.parse.quote(key), folder / name)
 
     with concurrent.futures.ThreadPoolExecutor(_WORKERS) as pool:
         list(pool.map(download, names))
