@@ -14,7 +14,9 @@
 
 """Verify the mock Mosaiq Docker invocation does not expose credentials in argv."""
 
+import os
 import types
+from unittest.mock import Mock
 
 from pymedphys._mosaiq.mock import server_from_bak
 
@@ -33,11 +35,12 @@ def test_sql_password_passed_via_environment_not_process_arguments(
         cursor=lambda: types.SimpleNamespace(execute=lambda *_args: None),
         close=lambda: None,
     )
+    connect = Mock(return_value=connection)
     monkeypatch.setattr(
-        server_from_bak,
-        "pymssql",
-        types.SimpleNamespace(connect=lambda *_args, **_kwargs: connection),
+        server_from_bak, "pymssql", types.SimpleNamespace(connect=connect)
     )
+    monkeypatch.setenv("MSSQL_SA_PASSWORD", "synthetic-existing-password")
+    monkeypatch.setenv("PYMEDPHYS_TEST_INHERITED", "sentinel")
     password = "synthetic-not-a-live-password"
 
     server_from_bak.start_mssql_docker_image_with_bak_restore(
@@ -51,3 +54,8 @@ def test_sql_password_passed_via_environment_not_process_arguments(
         == "MSSQL_SA_PASSWORD"
     )
     assert kwargs["env"]["MSSQL_SA_PASSWORD"] == password
+    assert kwargs["env"]["PYMEDPHYS_TEST_INHERITED"] == "sentinel"
+    assert os.environ["MSSQL_SA_PASSWORD"] == "synthetic-existing-password"
+    connect.assert_called_once_with(
+        "localhost", "sa", password=password, port="1433", autocommit=True
+    )
