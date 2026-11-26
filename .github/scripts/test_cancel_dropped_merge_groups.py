@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeff
 # Copyright (C) 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -211,6 +212,33 @@ class GithubRequestTests(unittest.TestCase):
         for url in ("http://api.github.com", "file:///etc/passwd", "api.github.com"):
             with self.subTest(url=url), self.assertRaises(ValueError):
                 cleanup.github_request(url, "o/r", "t")
+
+    def test_redirected_requests_do_not_carry_the_token(self):
+        request = cleanup.github_request("https://api.example.com", "o/r", "secret")
+
+        class Response(io.BytesIO):
+            status = 200
+
+        for target in (
+            "https://other.example.com/stolen",
+            "http://api.example.com/insecure",
+            "https://api.example.com/renamed",
+        ):
+            with self.subTest(target=target):
+
+                def urlopen(call, timeout):
+                    self.assertEqual(call.get_header("Authorization"), "Bearer secret")
+                    redirect = (
+                        cleanup.urllib.request.HTTPRedirectHandler().redirect_request(
+                            call, None, 302, "Found", {}, target
+                        )
+                    )
+                    self.assertIsNotNone(redirect)
+                    self.assertFalse(redirect.has_header("Authorization"))
+                    return Response(b"{}")
+
+                with mock.patch.object(cleanup.urllib.request, "urlopen", urlopen):
+                    self.assertEqual(request("GET", "actions/runs"), (200, {}))
 
     def test_requests_carry_the_token_and_decode_errors(self):
         request = cleanup.github_request("https://api.example.com/", "o/r", "secret")

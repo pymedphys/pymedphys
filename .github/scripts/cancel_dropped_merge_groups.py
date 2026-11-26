@@ -159,10 +159,12 @@ def github_request(api_url: str, repository: str, token: str) -> Request:
             method=method,
             headers={
                 "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {token}",
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
+        # urllib copies ordinary headers to redirected requests, including a
+        # redirect to another host. Authenticate only the original API call.
+        call.add_unredirected_header("Authorization", f"Bearer {token}")
         try:
             # The scheme is checked above, so this opens no local file.
             with urllib.request.urlopen(call, timeout=30) as response:  # nosec B310
