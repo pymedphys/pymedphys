@@ -3,7 +3,6 @@ import pathlib
 import re
 import socket
 import time
-import traceback
 
 from . import patients
 
@@ -95,10 +94,9 @@ def listen_cli(args):
     while True:
         try:
             listen(args.ip, args.directory)
-        except KeyboardInterrupt:
-            raise
-        except:  # pylint: disable = bare-except  # noqa: E722
-            traceback.print_exc()
+        except Exception:  # pylint: disable = broad-exception-caught
+            # The exception can contain original iCOM data or identifying paths.
+            logging.error("iCOM listener failed; exception details omitted")
 
         logging.warning(
             "The iCOM listener dropped out. Will wait 15 minutes, and "

@@ -1,7 +1,6 @@
 import logging
 import lzma
 import pathlib
-import traceback
 
 import pymedphys
 from pymedphys._utilities.filesystem import encode_file_name
@@ -26,11 +25,11 @@ def validate_data(data_to_be_saved):
     try:
         delivery = pymedphys.Delivery.from_icom(data_to_be_saved)
         logging.debug("iCOM dataset was found to be valid.")
-    except Exception as _:
+    except Exception:
+        # Parser exceptions can contain original DICOM/iCOM values or file paths.
+        # Preserve the outward failure type without emitting or chaining details.
         logging.debug("Was not able to transform the iCOM dataset.")
-
-        traceback.print_exc()
-        raise UnableToReadIcom()
+        raise UnableToReadIcom() from None
 
     if len(delivery.mu) == 0:
         logging.debug("Was able to read the iCOM dataset, but no MU was delivered.")
@@ -185,12 +184,9 @@ class PatientIcomData:
                     usage_start, self._current_patient_data[ip], self._output_dir
                 )
             except OSError:
-                # A delivery that cannot be archived must not stop the
-                # recording of the deliveries that follow it.
-                logging.exception(
-                    "Could not archive the delivery that started at %s.",
-                    usage_start,
-                )
+                # Preserve subsequent recordings, but avoid logging exception
+                # tracebacks, patient-bearing file paths or treatment dates.
+                logging.error("Could not archive iCOM delivery (OSError)")
             finally:
                 self._current_patient_data[ip] = None
                 self._usage_start[ip] = None

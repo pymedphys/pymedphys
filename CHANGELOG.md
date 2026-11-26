@@ -78,6 +78,13 @@ duplicate when Python runs with `-O`. A checksum mismatch raises the
 existing error and preserves the incoming logfile.
 [PR #2394](https://github.com/pymedphys/pymedphys/pull/2394)
 
+### iCOM errors no longer emit clinical data in tracebacks
+
+The iCOM decoder and listener now suppress traceback and exception text that
+could include patient values or path names. A failed archive still reports a
+safe error and does not interrupt the collection of later deliveries. Parser
+errors retain their public exception type and listener recovery continues. [PR #2639](https://github.com/pymedphys/pymedphys/pull/2639)
+
 ### Corrected DICOM RT Dose coordinates
 
 Corrected patient coordinates and dose ordering for non-HFS orientations and
