@@ -564,6 +564,7 @@ def test_dicom_sender_cli(test_dataset):
         ds = pydicom.dcmread(dcm_file)
         check_dicom_agrees(ds, test_dataset)
 
+
 @pytest.mark.pydicom
 def test_dicom_listener_refuses_symlinked_destination(tmp_path, test_dataset):
     storage = tmp_path / "storage"
