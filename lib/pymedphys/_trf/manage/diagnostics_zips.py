@@ -136,8 +136,28 @@ def extract_diagnostic_zips_and_archive(logfile_data_directory):
         print("    Extracting {}".format(diagnostic_filepath))
 
         with zipfile.ZipFile(diagnostic_filepath, "r") as zip_file:
-            for file_name in zip_file.namelist():
-                if file_name.endswith(".trf"):
-                    zip_file.extract(file_name, logfiles_to_be_indexed)
+            members = [
+                item for item in zip_file.infolist() if item.filename.endswith(".trf")
+            ]
+            root = pathlib.Path(logfiles_to_be_indexed).resolve()
+
+            # Inspect every chosen member before extracting any: zipfile
+            # normalises traversal names, but it follows existing symlinked
+            # directories in the extraction destination.
+            for member in members:
+                name = pathlib.PurePosixPath(member.filename)
+                target = (root / name).resolve()
+                if (
+                    name.is_absolute()
+                    or pathlib.PureWindowsPath(member.filename).drive
+                    or ".." in name.parts
+                    or "\\" in member.filename
+                    or not target.is_relative_to(root)
+                    or member.is_dir()
+                ):
+                    raise ValueError("Unsafe diagnostic ZIP member path")
+
+            for member in members:
+                zip_file.extract(member, root)
 
         shutil.move(diagnostic_filepath, path_to_be_moved_to)
