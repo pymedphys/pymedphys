@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeff
 # Copyright (C) 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,8 @@
 
 import logging
 import lzma
+
+from pymedphys._imports import pytest
 
 from pymedphys._icom import patients
 
@@ -35,6 +38,29 @@ def _icom_item(index, patient_id=None, patient_name=None):
     if patient_name is not None:
         item += b"0\x10\x00PN\x00P\x07\x00\x00\x00" + patient_name.encode() + b"\x00"
     return item
+
+
+def test_sequence_validation_keeps_only_the_latest_item(tmp_path):
+    recorder = patients.PatientIcomData(tmp_path)
+    for sequence in range(1024):
+        last = _icom_item(sequence % 256)
+        recorder.update_data(IP, last)
+
+    # The full active delivery has a separate buffer. Idle sequence checking
+    # must not retain every message ever received by this long-lived service.
+    assert recorder._data[IP] == [last]
+
+    recorder.update_data(IP, last)
+    assert recorder._data[IP] == [last]
+    with pytest.raises(ValueError, match="Duplicate ID, but not duplicate data"):
+        recorder.update_data(IP, last + b"changed")
+    with pytest.raises(ValueError, match="out of order"):
+        recorder.update_data(IP, _icom_item(1))
+
+    other_ip = "192.0.2.2"
+    recorder.update_data(other_ip, _icom_item(42))
+    assert recorder._data[IP] == [last]
+    assert recorder._data[other_ip] == [_icom_item(42)]
 
 
 def test_patient_folder_name_is_valid_on_windows(tmp_path):
