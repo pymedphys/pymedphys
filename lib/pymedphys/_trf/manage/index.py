@@ -18,6 +18,7 @@
 import json
 import os
 import pathlib
+import tempfile
 import traceback
 from glob import glob
 
@@ -70,6 +71,33 @@ def create_logfile_directory_name(
         field_directory_name,
         delivery_directory,
     )
+
+
+def write_index(index_filepath, index):
+    """Atomically persist a logfile index using a private, unique temp file.
+
+    A predictable temporary filename could be replaced with a symlink before
+    an update, redirecting patient-bearing index JSON to another file.
+    """
+    target = pathlib.Path(index_filepath)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as output:
+            temporary = pathlib.Path(output.name)
+            json.dump(index, output, indent=2)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def create_index_entry(
@@ -215,15 +243,7 @@ def file_ready_to_be_indexed(
             os.path.join(indexed_directory, new_filepath)
         )
 
-        index_extension_split = os.path.splitext(index_filepath)
-        temp_index_path = "{}_temp{}".format(
-            index_extension_split[0], index_extension_split[1]
-        )
-
-        with open(temp_index_path, "w") as json_data_file:
-            json.dump(index, json_data_file, indent=2)
-
-        os.replace(temp_index_path, index_filepath)
+        write_index(index_filepath, index)
 
         os.rename(to_be_indexed_dict[filehash], abs_new_filepath)
 
