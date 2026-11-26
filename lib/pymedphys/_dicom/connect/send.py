@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Jeff
 # Copyright (C) 2020 University of New South Wales & Ingham Institute
 # Copyright (C) 2020 Stuart Swerdloff and Simon Biggs
 
@@ -42,13 +43,13 @@ class DicomSender(DicomConnectBase):
         result = None
 
         if assoc.is_established:
-            status = assoc.send_c_echo()
+            try:
+                status = assoc.send_c_echo()
 
-            if status:
-                result = status.Status
-
-            # Release the association
-            assoc.release()
+                if status:
+                    result = status.Status
+            finally:
+                assoc.release()
 
         return result is not None
 
@@ -82,23 +83,24 @@ class DicomSender(DicomConnectBase):
 
         statuses = []
         if assoc.is_established:
-            for dataset in dcm_files:
-                if not isinstance(dataset, (pydicom.Dataset, pathlib.Path, str)):
-                    raise TypeError(
-                        "dcm_files must be  str, pathlib.Path or pydicom.Dataset"
+            try:
+                for dataset in dcm_files:
+                    if not isinstance(dataset, (pydicom.Dataset, pathlib.Path, str)):
+                        raise TypeError(
+                            "dcm_files must be  str, pathlib.Path or pydicom.Dataset"
+                        )
+
+                    if not isinstance(dataset, pydicom.Dataset):
+                        dataset = pydicom.dcmread(dataset)
+
+                    logging.debug(
+                        "Sending DICOM object with SOPInstanceUID: %s",
+                        dataset.SOPInstanceUID,
                     )
 
-                if not isinstance(dataset, pydicom.Dataset):
-                    dataset = pydicom.dcmread(dataset)
-
-                logging.debug(
-                    "Sending DICOM object with SOPInstanceUID: %s",
-                    dataset.SOPInstanceUID,
-                )
-
-                statuses.append(assoc.send_c_store(dataset))
-
-            assoc.release()
+                    statuses.append(assoc.send_c_store(dataset))
+            finally:
+                assoc.release()
 
         return statuses
 
