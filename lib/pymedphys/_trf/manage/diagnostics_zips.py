@@ -100,11 +100,24 @@ def fetch_system_diagnostics_multi_linac(
 
 
 def already_indexed_path(current_location, to_be_indexed, already_indexed):
-    machine_and_zip_filepath = os.path.relpath(current_location, to_be_indexed)
+    """Confine diagnostic archives to the corresponding incoming and archive trees.
 
-    path_to_be_moved_to = os.path.join(already_indexed, machine_and_zip_filepath)
+    Both source and destination are resolved to reject parent components and
+    symlinked directories that would otherwise escape the machine's storage.
+    """
+    incoming_root = pathlib.Path(to_be_indexed).resolve()
+    source = pathlib.Path(current_location).resolve()
+    if not source.is_relative_to(incoming_root):
+        raise ValueError("Diagnostic ZIP is outside the to-be-indexed directory")
 
-    return os.path.abspath(path_to_be_moved_to)
+    archived_root = pathlib.Path(already_indexed).resolve()
+    destination = (archived_root / source.relative_to(incoming_root)).resolve()
+    if not destination.is_relative_to(archived_root):
+        raise ValueError(
+            "Diagnostic ZIP destination is outside the already-indexed directory"
+        )
+
+    return str(destination)
 
 
 def extract_diagnostic_zips_and_archive(logfile_data_directory):
