@@ -47,6 +47,17 @@ class WorkflowStatusTests(unittest.TestCase):
             **{job: {"result": "skipped"} for job in self.conditional},
         }
 
+    def test_empty_dependency_evidence_fails_closed(self):
+        for merge_group in (False, True):
+            with self.subTest(merge_group=merge_group):
+                failures = check_jobs({}, {}, merge_group=merge_group)
+                self.assertTrue(failures)
+                summary = make_summary(
+                    "CI Results", {}, {}, failures, merge_group=merge_group
+                )
+                self.assertNotIn("All required checks passed", summary)
+                self.assertIn("no dependency results", summary)
+
     def test_intentionally_skipped_extended_jobs_pass(self):
         self.assertEqual(check_jobs(self.needs, self.conditional), [])
 

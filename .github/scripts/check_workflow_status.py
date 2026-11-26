@@ -43,6 +43,9 @@ def check_jobs(
     so there the changes job must have been skipped and every other job must
     succeed.
     """
+    if not needs:
+        return ["The summary has no dependency results to validate."]
+
     failures: list[str] = []
     if merge_group:
         for job, details in needs.items():
