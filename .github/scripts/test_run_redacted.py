@@ -128,6 +128,30 @@ class RunRedactedTests(unittest.TestCase):
         # Each process buffers its own output, so either line may come first.
         self.assertCountEqual(kept.splitlines(), [SECRET, f"{SECRET} child"])
 
+    @unittest.skipUnless(os.name == "posix", "POSIX file permissions")
+    def test_private_stdout_file_is_owner_only_even_when_reused(self):
+        script = Path(__file__).with_name("run_redacted.py")
+        with tempfile.TemporaryDirectory() as directory:
+            module = Path(directory, "brief.py")
+            module.write_text(
+                "def main(arguments):\n    print('SYNTHETIC-PATIENT-NAME')\n",
+                encoding="utf-8",
+            )
+            private = Path(directory, "stdout.log")
+            for preexisting in (False, True):
+                if preexisting:
+                    private.chmod(0o644)
+                result = subprocess.run(
+                    [sys.executable, script, "--private-stdout", private, "brief"],
+                    capture_output=True,
+                    cwd=directory,
+                    env={**os.environ, "PYTHONPATH": directory},
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(private.stat().st_mode & 0o777, 0o600)
+                self.assertIn(SECRET, private.read_text(encoding="utf-8"))
+
     def test_code_locations_drop_installation_paths(self):
         self.assertEqual(
             code_location("/v/lib/python3.14/site-packages/pydicom/x.py"),
