@@ -27,7 +27,7 @@ import pymedphys._mosaiq.api as _pp_mosaiq
 from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import Header, decode_header_from_file
 from pymedphys._utilities.filehash import hash_file
-from pymedphys._utilities.filesystem import make_a_valid_directory_name
+from pymedphys._utilities.filesystem import encode_file_name, make_a_valid_directory_name
 
 from .identify import date_convert
 
@@ -64,7 +64,7 @@ def create_logfile_directory_name(
     delivery_directory = make_a_valid_directory_name(proposed_delivery_directory)
 
     return os.path.join(
-        centre,
+        encode_file_name(centre),
         patient_directory_name,
         clinical_or_qa,
         field_directory_name,
