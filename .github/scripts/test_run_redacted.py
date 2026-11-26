@@ -33,11 +33,15 @@ class RunRedactedTests(unittest.TestCase):
         _quiet(seen.extend, ["--a", "b"])
         self.assertEqual(seen, ["--a", "b"])
 
-    def test_prints_a_refusal_which_quotes_no_value_by_contract(self):
+    def test_string_refusal_cannot_disclose_patient_data(self):
         def main(arguments):
-            raise SystemExit("the work directory must not exist")
+            raise SystemExit(f"Cannot open /private/{SECRET}/plan.dcm")
 
-        self.assertEqual(_quiet(main), (1, "the work directory must not exist\n"))
+        status, output = _quiet(main)
+        self.assertEqual(status, 1)
+        self.assertEqual(output, "Command refused; message withheld.\n")
+        self.assertNotIn(SECRET, output)
+        self.assertNotIn("/private/", output)
 
     def test_keeps_a_numeric_exit(self):
         def main(arguments):
