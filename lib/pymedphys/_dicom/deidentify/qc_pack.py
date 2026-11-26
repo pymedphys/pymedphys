@@ -32,11 +32,13 @@ A pack holds, for one run:
   written, or the opaque per-run label by which the release report refers
   to it if sequestered, and why (D-026), and, for each released or held
   instance whose written file the gate handed over, the SHA-256 of that
-  file's pixel data, contours, and deformation grids, which binds a face
-  verdict to what the reviewer saw (D-046);
+  file's pixel data, contours, deformation grids, and surface meshes,
+  which binds a face verdict to what the reviewer saw (D-046);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
-  around it (D-027);
+  around it (D-027), and the SHA-256 of the value that holds it with the
+  match's offset in that value and its length, which bind a reviewer's
+  clearing of it to the bytes matched (D-042);
 - ``drops`` and ``not_searched``: each value dropped from the search, because
   the policy retains it or it equals a constant that the engine always
   writes, and each form not searched, by instance and place; the release
@@ -57,6 +59,14 @@ A pack holds, for one run:
   each by the attribute that a decision on it names: its tag, or, for
   private text under the Retain Safe Private Option, its private creator,
   group, element within the block, and VR (D-035);
+- ``annotations``: what the run decided for each item of Graphic
+  Annotation Sequence (0070,0001) of a Presentation State under the Clean
+  Graphics Option with a reviewed annotations list, kept, removed, or held
+  for review, with why a held one was held, its digest, by which the list
+  decides on it, its text values, and an SVG drawing of its graphics and
+  text as received (:mod:`~pymedphys._dicom.deidentify.annotation_drawing`),
+  for the reviewer's decision on each annotation that later runs apply,
+  and the audit of each kept or removed (D-062);
 - ``reference_findings``: each reference finding that the run reports
   without acting on it, such as a dangling reference, or a written reference
   to an instance that was not written, at each instance it names, with the
@@ -84,11 +94,11 @@ A pack holds, for one run:
   received or sets it to zero anyway (D-051); and ``undefaced_instances``:
   each instance that the run released or held in a defaced CT series'
   Frame of Reference, naming none, or referring to a defaced slice, whose
-  outline, pixel data, or deformation grids it does not clean of the face,
-  with whether the pack's previews show its pixel data, contours, and
-  grids as written, which they do only where they draw every frame,
-  contour, and grid in a way that could show a face, by which an
-  attestation gives it a face verdict of its own
+  outline, pixel data, deformation grids, or surface meshes it does not
+  clean of the face, with whether the pack's previews show its pixel data,
+  contours, grids, and meshes as written, which they do only where they
+  draw every frame, contour, grid, and mesh in a way that could show a
+  face, by which an attestation gives it a face verdict of its own
   (D-050);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
@@ -106,12 +116,14 @@ A pack holds, for one run:
   attestation of the pack covers them, among them a contour sheet of each
   instance with contours, such as an RT Structure Set, a segments sheet
   of each Segmentation, the sheets of each deformation grid of a
-  deformable registration, and a sheet of each eye check's globes
+  deformable registration, a surfaces sheet of each Surface
+  Segmentation, and a sheet of each eye check's globes
   beside its eye ROIs, drawn from the slices as received; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
   whose contours could not be shown, for an RT Dose, whose dose levels
   could not be drawn, for a Segmentation, whose segments could not be
-  drawn, or whose deformation grids could not be drawn, with why (D-017).
+  drawn, whose deformation grids could not be drawn, or whose surface
+  meshes could not be drawn, with why (D-017).
   The images are made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
@@ -165,6 +177,8 @@ from .run_written import REPORTED_ONLY
 from .written_references import WrittenFindingKind
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
+from .reviewed_annotations import Held as AnnotationHeld
+from .reviewed_annotations import Outcome as AnnotationOutcome
 from .reviewed_descriptors import CleanedDescriptor
 from .reviewed_descriptors import Held as DescriptorHeld
 from .reviewed_descriptors import Outcome as DescriptorOutcome
@@ -173,7 +187,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/34"
+FORMAT = "pymedphys-deid-qc-pack/38"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -185,6 +199,9 @@ NO_PIXELS_SHA256 = hashlib.sha256(b"").hexdigest()
 # The SHA-256 that face_review.grid_data_sha256 gives a file without a
 # deformation grid: of a count of no grids.
 NO_GRIDS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
+# The SHA-256 that face_review.surface_data_sha256 gives a file without a
+# surface mesh: of a count of no meshes.
+NO_SURFACES_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
 
 # A UID as PS3.5 Section 9.1 has it: up to 64 characters of digits and
 # dots, each component without a leading zero.
@@ -318,6 +335,12 @@ class InstanceEntry:
         grids that the run wrote; also ``None`` for a file with grids that
         the pack's grid sheets do not all show, so that no verdict releases
         them.
+    surface_sha256 : str, optional
+        Likewise, the :func:`~.face_review.surface_data_sha256` of the file
+        written, which binds a series' face verdict to the surface meshes
+        that the run wrote; also ``None`` for a file with meshes that the
+        pack's surfaces sheet does not show, so that no verdict releases
+        them.
     """
 
     position: int
@@ -330,6 +353,7 @@ class InstanceEntry:
     pixel_sha256: str | None = None
     contour_sha256: str | None = None
     grid_sha256: str | None = None
+    surface_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -374,6 +398,15 @@ class InstanceEntry:
         ):
             raise QcPackError(
                 f"instance {self.position} needs its deformation grids' SHA-256 "
+                "as 64 lower-case hexadecimal digits, and only if released or held"
+            )
+        if self.surface_sha256 is not None and not (
+            isinstance(self.surface_sha256, str)
+            and _SHA256.fullmatch(self.surface_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its surface meshes' SHA-256 "
                 "as 64 lower-case hexadecimal digits, and only if released or held"
             )
         problem = self._problem()
@@ -557,11 +590,23 @@ class ResidualEntry:
     finding : ~pymedphys._dicom.deidentify.residuals.Finding
     excerpt : Excerpt, optional
         The bytes around it, from :func:`excerpt`.
+    value_sha256 : str, optional
+        The SHA-256 of the value that holds it in the written file, from
+        :func:`~pymedphys._dicom.deidentify.residuals.reviewed_findings`;
+        ``None`` where it lies outside an element's value, or where its
+        match is longer than the excerpt shows.
+    value_offset, match_length : int, optional
+        Where its match starts in that value, from 0, and how many bytes it
+        spans; given exactly with ``value_sha256``. With it they give the
+        bytes matched, to which a reviewer's clearing is bound (D-042).
     """
 
     position: int
     finding: residuals.Finding
     excerpt: Excerpt | None = None
+    value_sha256: str | None = None
+    value_offset: int | None = None
+    match_length: int | None = None
 
     def __post_init__(self) -> None:
         _check_position("a residual", self.position)
@@ -572,6 +617,22 @@ class ResidualEntry:
         if self.excerpt is not None and not isinstance(self.excerpt, Excerpt):
             raise QcPackError(
                 f"the residual of instance {self.position} has a bad excerpt"
+            )
+        if self.value_sha256 is not None and not (
+            isinstance(self.value_sha256, str) and _SHA256.fullmatch(self.value_sha256)
+        ):
+            raise QcPackError(
+                f"the residual of instance {self.position} has a bad value SHA-256"
+            )
+        bound = (self.value_sha256, self.value_offset, self.match_length)
+        if bound != (None, None, None) and not (
+            self.value_sha256 is not None
+            and _is_index(self.value_offset)
+            and _is_count(self.match_length)
+        ):
+            raise QcPackError(
+                f"the residual of instance {self.position} needs its value's "
+                "SHA-256, its offset in the value, and its length together"
             )
 
 
@@ -891,6 +952,99 @@ class DescriptorEntry:
         )
 
 
+_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+
+_GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class AnnotationEntry:
+    """What the run decided for one graphic annotation, and a drawing of it.
+
+    Or for a set of an instance's annotations that the list does not remove
+    and that a display shows together, on one frame of one image, so that
+    strokes split across them are drawn as one: its path then has no items,
+    and an instance has one for each such set. The held annotations are the reviewer's list, whose
+    decisions a reviewed annotations list carries to later runs by their
+    digests; the kept and removed ones are the audit of what the list
+    decided (D-062). Its ``repr`` leaves out the text and the drawing.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    path : ElementPath
+        Graphic Annotation Sequence (0070,0001), with the annotation's item
+        last in its ``items``, or with no items for the annotations
+        together.
+    digest : str
+        The annotation's digest
+        (:func:`~pymedphys._dicom.deidentify.reviewed_annotations.annotation_digest`),
+        or the annotations' together
+        (:func:`~pymedphys._dicom.deidentify.reviewed_annotations.together_digest`),
+        64 lowercase hexadecimal digits.
+    texts : tuple of str
+        Its text values, at any depth, in file order.
+    outcome : ~pymedphys._dicom.deidentify.reviewed_annotations.Outcome
+    held_because : ~pymedphys._dicom.deidentify.reviewed_annotations.Held, optional
+        Why a held annotation was held; None for every other outcome.
+    drawing : str
+        An SVG document that draws it as received
+        (:func:`~pymedphys._dicom.deidentify.annotation_drawing.draw_annotation`).
+    """
+
+    position: int
+    path: ElementPath
+    digest: str
+    texts: tuple[str, ...]
+    outcome: AnnotationOutcome
+    held_because: AnnotationHeld | None
+    drawing: str
+
+    def __post_init__(self) -> None:
+        _check_position("an annotation", self.position)
+        problems = (
+            (
+                not isinstance(self.path, ElementPath)
+                or self.path.tag != _GRAPHIC_ANNOTATION_SEQUENCE,
+                "needs its Graphic Annotation Sequence ElementPath",
+            ),
+            (
+                not isinstance(self.digest, str) or not _DIGEST.fullmatch(self.digest),
+                "needs its digest as 64 lowercase hexadecimal digits",
+            ),
+            (
+                not isinstance(self.texts, tuple)
+                or not all(isinstance(text, str) for text in self.texts),
+                "needs its text values as a tuple of text",
+            ),
+            (
+                not isinstance(self.outcome, AnnotationOutcome),
+                "needs an annotation Outcome",
+            ),
+            (
+                (self.outcome is AnnotationOutcome.HELD)
+                != isinstance(self.held_because, AnnotationHeld),
+                "has a reason for review exactly when it was held",
+            ),
+            (
+                not isinstance(self.drawing, str)
+                or not self.drawing.startswith("<svg "),
+                "needs its drawing as an SVG document",
+            ),
+        )
+        problem = next((problem for failed, problem in problems if failed), None)
+        if problem:
+            raise QcPackError(f"an annotation of instance {self.position} {problem}")
+
+    def __repr__(self) -> str:
+        return (
+            f"AnnotationEntry(position={self.position}, path={str(self.path)!r}, "
+            f"outcome={self.outcome.value!r})"
+        )
+
+
 def _descriptor_problem(source: str, result: CleanedDescriptor) -> str | None:
     """Return why a descriptor value's result cannot be listed, or None."""
     if not isinstance(result.outcome, DescriptorOutcome):
@@ -954,6 +1108,11 @@ class PreviewKind(enum.Enum):
     REGISTRATION_GRID_X = "registration-grid-x"
     REGISTRATION_GRID_Y = "registration-grid-y"
     REGISTRATION_GRID_Z = "registration-grid-z"
+    # renders of an instance's surface meshes, as written, united and each
+    # alone (qc_meshes), such as a Surface Segmentation's. It lists one
+    # frame for each mesh, its instance's run position and the mesh's index
+    # among the instance's meshes, with how many meshes it has.
+    SURFACE_MESHES = "surface-meshes"
 
 
 # The kinds of a grid's sheets, in the order that qc_grids.QUANTITIES draws
@@ -1007,6 +1166,12 @@ class NotPreviewedReason(enum.Enum):
     # or whose sheets would have too many levels or be too tall. Its other
     # previews, if any, are kept, as an RT Dose's are.
     GRIDS_NOT_SHOWN = "grids-not-shown"
+    # an instance that holds a surface mesh, by
+    # face_review.holds_surface_mesh, such as a Surface Segmentation, that
+    # no surfaces sheet shows (qc_meshes): one whose meshes cannot be read
+    # or placed, are too large, or whose sheet would be too tall. Its other
+    # previews, if any, are kept, as an RT Dose's are.
+    SURFACES_NOT_SHOWN = "surfaces-not-shown"
 
 
 # The reasons that say only that no preview that could show a face shows an
@@ -1017,6 +1182,7 @@ FACE_PREVIEW_REASONS = frozenset(
         NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN,
         NotPreviewedReason.SEGMENTS_NOT_SHOWN,
         NotPreviewedReason.GRIDS_NOT_SHOWN,
+        NotPreviewedReason.SURFACES_NOT_SHOWN,
     }
 )
 
@@ -1285,6 +1451,10 @@ def _is_count(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 1
 
 
+def _is_index(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 def _is_frame_regions(entry: object, frames: int) -> bool:
     if not (isinstance(entry, tuple) and len(entry) == 2):
         return False
@@ -1476,7 +1646,8 @@ class DoseCheckEntry:
 class UndefacedEntry:
     """An instance in a defaced CT series' Frame of Reference, naming none,
     or referring to a defaced slice, whose outline, pixel data, or
-    deformation grids its run does not clean of the face, which a reviewer
+    deformation grids, or surface meshes its run does not clean of the face,
+    which a reviewer
     may give a face verdict of its own, from its own previews (D-050).
 
     A verdict on its series does not cover it, since the reviewer may have
@@ -1489,9 +1660,9 @@ class UndefacedEntry:
         Its run position.
     shown : bool
         Whether the pack's previews that could show a face draw every frame
-        of the pixel data, every contour, and every deformation grid that
-        the run wrote of it, as its instance entry's pixel, contour, and
-        grid digests, all given, record.
+        of the pixel data, every contour, every deformation grid, and every
+        surface mesh that the run wrote of it, as its instance entry's
+        pixel, contour, grid, and surface digests, all given, record.
     """
 
     position: int
@@ -1623,6 +1794,7 @@ class QcPack:
         Each value once.
     roi_names : tuple of RoiNameEntry
     descriptors : tuple of DescriptorEntry
+    annotations : tuple of AnnotationEntry
     reference_findings : tuple of ReferenceFindingEntry
     pixel_risks : tuple of PixelRiskEntry
         Each high-risk instance once, in run position order.
@@ -1657,7 +1829,8 @@ class QcPack:
     undefaced_instances : tuple of UndefacedEntry
         Each instance once, in run position order, each released or held
         for review, with its source's SHA-256, and shown exactly where its
-        instance entry has all of its pixel, contour, and grid digests.
+        instance entry has all of its pixel, contour, grid, and surface
+        digests.
     several_patient_studies : tuple of SeveralPatientStudyEntry
         In order of their first instance; each instance sequestered, and in
         at most one.
@@ -1713,6 +1886,7 @@ class QcPack:
     dose_checks: tuple[DoseCheckEntry, ...] = ()
     undefaced_instances: tuple[UndefacedEntry, ...] = ()
     several_patient_studies: tuple[SeveralPatientStudyEntry, ...] = ()
+    annotations: tuple[AnnotationEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -1731,6 +1905,7 @@ class QcPack:
             "retained_strings": RetainedString,
             "roi_names": RoiNameEntry,
             "descriptors": DescriptorEntry,
+            "annotations": AnnotationEntry,
             "reference_findings": ReferenceFindingEntry,
             "pixel_risks": PixelRiskEntry,
             "series_risks": SeriesRiskEntry,
@@ -1762,6 +1937,7 @@ class QcPack:
             "not_searched",
             "roi_names",
             "descriptors",
+            "annotations",
             "reference_findings",
             "pixel_risks",
             "redactions",
@@ -1833,7 +2009,7 @@ class QcPack:
     def _check_undefaced(self) -> None:
         """Each undefaced instance is released or held for review, with its
         source's SHA-256, and shown exactly where its entry has all of its
-        pixel, contour, and grid digests."""
+        pixel, contour, grid, and surface digests."""
         for entry in self.undefaced_instances:
             instance = self.instances[entry.position]
             if instance.disposition not in _REVIEWED:
@@ -1849,11 +2025,12 @@ class QcPack:
                 instance.pixel_sha256 is not None
                 and instance.contour_sha256 is not None
                 and instance.grid_sha256 is not None
+                and instance.surface_sha256 is not None
             )
             if entry.shown is not digested:
                 raise QcPackError(
                     "an undefaced instance is shown exactly where its pixel, "
-                    "contour, and grid digests are all given"
+                    "contour, grid, and surface digests are all given"
                 )
 
     def _check_series(self) -> None:
@@ -1932,6 +2109,7 @@ class QcPack:
         self._check_redaction_previews()
         self._check_contour_previews()
         self._check_grid_previews()
+        self._check_surface_previews()
         self._check_pixel_previews()
         self._check_eye_previews()
 
@@ -2064,6 +2242,50 @@ class QcPack:
                 "a grid sheet nor its grids' SHA-256"
             )
 
+    def _check_surface_previews(self) -> None:
+        """An instance's surface meshes' SHA-256, other than that of none,
+        is recorded only where a surfaces sheet shows each of its meshes,
+        so that no verdict releases meshes that no one saw; each surfaces
+        sheet lists each mesh of one instance once, from the first, as many
+        as it gives, at least one, and no instance has two, nor one whose
+        meshes are not shown."""
+        shown: set[int] = set()
+        for preview in self.previews:
+            if preview.kind is not PreviewKind.SURFACE_MESHES:
+                continue
+            positions = {position for position, _ in preview.frames}
+            meshes = sorted(mesh for _, mesh in preview.frames)
+            if len(positions) != 1 or meshes != list(range(preview.total_frames)):
+                raise QcPackError(
+                    "a surfaces sheet must show each mesh of one instance once"
+                )
+            (position,) = positions
+            if position in shown:
+                raise QcPackError("an instance must have at most one surfaces sheet")
+            shown.add(position)
+        if any(
+            entry.surface_sha256 not in (None, NO_SURFACES_SHA256)
+            and entry.position not in shown
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance's surface meshes' SHA-256 needs a surfaces sheet "
+                "that shows each mesh"
+            )
+        unshown = {
+            entry.position
+            for entry in self.not_previewed
+            if entry.reason is NotPreviewedReason.SURFACES_NOT_SHOWN
+        }
+        if unshown & shown or any(
+            entry.position in unshown and entry.surface_sha256 is not None
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance whose surface meshes are not shown has neither a "
+                "surfaces sheet nor its meshes' SHA-256"
+            )
+
     def _check_redaction_previews(self) -> None:
         """Each cleaned instance has a redaction preview and a review frame of
         each frame, in order, unless it is listed as not previewed for a
@@ -2132,6 +2354,7 @@ class QcPack:
             f"retained_strings={len(self.retained_strings)}, "
             f"roi_names={len(self.roi_names)}, "
             f"descriptors={len(self.descriptors)}, "
+            f"annotations={len(self.annotations)}, "
             f"reference_findings={len(self.reference_findings)}, "
             f"pixel_risks={len(self.pixel_risks)}, "
             f"series_risks={len(self.series_risks)}, "
@@ -2161,8 +2384,8 @@ def pictured_frames(
         The run positions listed as not previewed, which are left out.
     kinds : collection of str, optional
         The kinds of preview to count, as :class:`PreviewKind` values; by
-        default every kind but a contour sheet, a grid sheet, or a sheet
-        of a series' eyes. Only dose-levels previews show an RT Dose as
+        default every kind but a contour sheet, a grid sheet, a surfaces
+        sheet, or a sheet of a series' eyes. Only dose-levels previews show an RT Dose as
         it could show a face, and only segments sheets a Segmentation.
 
     Returns
@@ -2174,13 +2397,14 @@ def pictured_frames(
         as a surface, and a segments sheet's count only for its
         Segmentation, the position of its first frame, for the same reason.
         A grid sheet's never count either, since it lists grids, not
-        frames of pixel data, nor do a sheet of a series' eyes', since it
+        frames of pixel data, nor a surfaces sheet's, which lists meshes, nor do a sheet of a series' eyes', since it
         shows the slices as received, not the pixel data written of them.
     """
     uncounted = {
         PreviewKind.STRUCTURE_SET_CONTOURS.value,
         PreviewKind.SERIES_EYES.value,
         *(kind.value for kind in GRID_KINDS),
+        PreviewKind.SURFACE_MESHES.value,
     }
     segments = PreviewKind.SEGMENTATION_SEGMENTS.value
     framed: dict[int, set[int]] = {}
@@ -2324,6 +2548,20 @@ def pack_document(pack: QcPack) -> dict:
             }
             for entry in pack.descriptors
         ],
+        "annotations": [
+            {
+                "position": entry.position,
+                "element": str(entry.path),
+                "digest": entry.digest,
+                "texts": list(entry.texts),
+                "outcome": entry.outcome.value,
+                "held_because": (
+                    None if entry.held_because is None else entry.held_because.value
+                ),
+                "drawing": entry.drawing,
+            }
+            for entry in pack.annotations
+        ],
         "reference_findings": [
             {
                 "position": entry.position,
@@ -2450,6 +2688,7 @@ def _instance(entry: InstanceEntry) -> dict:
         "pixel_sha256": entry.pixel_sha256,
         "contour_sha256": entry.contour_sha256,
         "grid_sha256": entry.grid_sha256,
+        "surface_sha256": entry.surface_sha256,
     }
 
 
@@ -2474,6 +2713,9 @@ def _residual(entry: ResidualEntry) -> dict:
         "location": _location(finding.location),
         "offset": finding.offset,
         "excerpt": None,
+        "value_sha256": entry.value_sha256,
+        "value_offset": entry.value_offset,
+        "match_length": entry.match_length,
     }
     if entry.excerpt is not None:
         document["excerpt"] = dataclasses.asdict(entry.excerpt)
@@ -2526,10 +2768,24 @@ def entries_for_search(
     """
     if not isinstance(search, residuals.ResidualSearch):
         raise TypeError("search must be a ResidualSearch")
+    # A clearing is bound only to a match that the excerpt shows whole.
+    seen = [
+        None if each is None or each.length > 2 * EXCERPT_BYTES else each
+        for each in residuals.reviewed_findings(data, search.findings)
+    ]
     return (
         tuple(
-            ResidualEntry(position, finding, excerpt(data, finding))
-            for finding in search.findings
+            ResidualEntry(
+                position,
+                finding,
+                excerpt(data, finding),
+                *(
+                    (None, None, None)
+                    if each is None
+                    else (each.value_sha256, each.value_offset, each.length)
+                ),
+            )
+            for finding, each in zip(search.findings, seen, strict=True)
         ),
         tuple(NotSearchedEntry(position, omission) for omission in search.not_searched),
     )

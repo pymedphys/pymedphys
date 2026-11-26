@@ -11,12 +11,18 @@
 #   the finding, and the engine applies it as PS3.15 requires;
 # - validator: a limitation or heuristic of the validator, where the output
 #   conforms;
+# - source: a defect of the input that the de-identification cannot repair,
+#   where each output conforms to its own IOD, which the per-file
+#   validators check;
 # - engine: a defect of the engine's output, recorded here until it is
 #   fixed, when its entry is removed.
 #
-# An entry whose explanation rests on a property of the output names it in
-# requires, one of dicom_validation.PREMISES, and explains the finding only
-# in an output that has it.
+# An entry whose explanation rests on a property of the output, or of the
+# output with its input, names it in requires, one of
+# dicom_validation.PREMISES, and explains the finding only where the files
+# have it. One of dicom_validation.ATTRIBUTE_PREMISES, which
+# dcentvfy's comparison of a patient's outputs evaluates, explains it only
+# for an attribute that the premise holds for.
 #
 # Keep entries narrow: a pattern of "*" is for findings that do not depend
 # on the attribute's place.
@@ -195,4 +201,71 @@ applies only to an output that still references, outside the module, an
 instance that the sequence lists.
 Where no reference to an instance survives outside the module, the engine
 removes both of the module's sequences.
+"""
+
+[[difference]]
+validator = "dicom-validator"
+severity = "error"
+message = "TagUnexpected (Type Undefined)"
+paths = [
+  "(0018,0060)",
+  "(0018,1110)",
+  "(0018,1111)",
+  "(0018,1150)",
+  "(0018,1151)",
+  "(0018,1152)",
+  "(0018,1153)",
+  "(0018,1156)",
+  "(0018,1160)",
+  "(0018,1191)",
+  "(0018,11A0)",
+  "(0018,7050)",
+  "(0018,7052)",
+  "(0018,7054)",
+  "(0018,7056)",
+  "(0018,7058)",
+  "(0018,8150)",
+  "(0018,8151)",
+]
+category = "validator"
+reason = """
+In the Digital X-Ray Image IOD (PS3.3 Table A.26-1), the user-optional X-Ray
+Acquisition Dose Module (Table C.8-33) shares these attributes with the
+user-optional DX Positioning, X-Ray Filtration, and X-Ray Generation Modules.
+Each module defines each of them as Type 3, so an output that keeps them
+conforms. dicom-validator checks a user-optional module only where the data
+set holds an attribute of it that no other module present holds. X-Ray
+Filtration has none of its own, and the Basic Profile removes attributes
+that are the other three modules' own: Comments on Radiation Dose
+(0040,0310) of X-Ray Acquisition Dose, Generator ID (0018,1005) and Exposure
+Control Mode Description (0018,7062) of X-Ray Generation, and Paddle
+Description (0018,11A4) of DX Positioning. Where an output keeps no
+attribute of a module's own, the validator checks none of the modules that
+share these attributes and reports each of them as unexpected, as it does in
+a source that never held such an attribute.
+"""
+
+[[difference]]
+validator = "dcentvfy"
+severity = "warning"
+message = "Attribute present in one instance but not the other"
+paths = ["*"]
+category = "source"
+requires = "each-iod-decides-in-a-series-of-mixed-modalities"
+reason = """
+PS3.3 Section A.1.2.3 requires every instance of a series to be of one
+modality and to have the same Series information. An input series of more
+than one modality, such as a PET series that holds CT Image instances under
+its Series Instance UID, already breaks the first requirement, which no
+de-identification can repair. Each instance's own IOD then decides the
+action of each attribute. Table E.1-1 gives Series Date (0008,0021) and
+Series Time (0008,0031) X/D, a dummy value where the IOD makes them Type 1,
+as the PET Series Module does, and removal where it makes them Type 3, as
+the General Series Module does; and the engine removes a sequence that the
+IOD does not define, such as Radiopharmaceutical Information Sequence
+(0054,0016) in a CT Image. So outputs whose inputs all held the attribute
+differ by SOP Class, although each conforms to its own IOD. A series of one
+modality, which A.1.2.3 allows to mix IODs, gets no such explanation, nor
+does an attribute whose outputs differ within one SOP Class, nor an
+occurrence beyond those that the mixed series gives when checked alone.
 """

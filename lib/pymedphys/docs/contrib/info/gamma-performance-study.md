@@ -278,12 +278,19 @@ Preparation inside gamma is included. These measurements describe warmed use,
 not the first-ever wait. Changing resolution also changes discretisation and
 interpolation error, so the curves are not a pure complexity experiment.
 
-Every timed array must exactly match its warm-up. Old/new gamma arrays and NaN
-positions must match exactly for each interpolator. PyMedPhys/SciPy arrays are
+Every timed array must exactly match its warm-up. For each interpolator, old
+and new gamma arrays must have NaN and infinite values in the same places and
+the same pass or fail at every point, and may differ by at most `1e-10` in
+dimensionless gamma. From PyMedPhys 0.42.0 the search step is the distance
+criterion multiplied by the step fraction, where earlier revisions divided it,
+so the two can round differently; the largest such differences observed were
+about `3e-13`. The comparison records whether the arrays were equal and their
+largest difference, and stops on any other disagreement, such as one from a
+change in the points that a search shell samples. PyMedPhys/SciPy arrays are
 compared element by element with absolute tolerance `1e-10` in dimensionless
 gamma and zero relative tolerance. Maximum difference and pass-classification
-disagreements are recorded. This arithmetic allowance is not a physical or
-clinical tolerance. Every eligible point must have finite gamma. Hashes record
+disagreements are recorded. These arithmetic allowances are not physical or
+clinical tolerances. Every eligible point must have finite gamma. Hashes record
 provenance but do not replace full-array comparisons.
 
 Only fully verified four-way groups contribute to the comparison figures:

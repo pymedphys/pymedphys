@@ -89,6 +89,10 @@ and codes that the engine defines, never by a source value or path:
   frames required, and how many frames of those files the reviewer was not
   shown, which only an instance of an IOD whose review needs only its
   flagged frames can have (D-059); None otherwise.
+- ``residual_review``: the opaque reference of the earlier run's attested
+  QC pack whose clearings of residual findings the run applied (D-042);
+  None otherwise. ``exempted_findings`` counts the findings it cleared as
+  ``reviewed``.
 - ``pixel_regions``: under the Clean Pixel Data Option, how many regions
   the option blacked out in the instances that the run released or held
   without a reviewer's verdict, by what gave them: the text finder or a
@@ -144,6 +148,12 @@ and codes that the engine defines, never by a source value or path:
   and took their action without Clean Descriptors instead, from
   :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorReviewQueue.report_counts`,
   naming none of them (D-009). Only the QC pack lists the values.
+- ``annotations``: the outcome of each graphic annotation of the softcopy
+  Presentation States that the Clean Graphics Option reviewed, every
+  annotation counted, and how many distinct annotations it held for review
+  for each reason, from
+  :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.AnnotationReviewQueue.report_counts`,
+  with no text or digest (D-062). Only the QC pack lists the annotations.
 - ``icc_profiles``: how many ICC Profiles (0028,2000) of the released and
   held instances D replaced with the source profile cleaned of everything
   but its colorimetry (``cleaned``), and how many with the fixed sRGB
@@ -165,8 +175,10 @@ and codes that the engine defines, never by a source value or path:
   finding that an exemption kept from review, such as a removed value found
   in a kept standard term or equipment name (D-032), a date that Modified
   Dates shifted (D-039), a value that an option keeps, or text in a private
-  creator that the run's safe private list keeps (D-042), by the
-  exemption, the source attribute, and the
+  creator that the run's safe private list keeps (D-042), or a value found
+  wholly inside the method digest that the run writes (D-032) or, under
+  Modified Dates, the nominal UTC offset that the option writes (D-039), by
+  the exemption, the source attribute, and the
   attribute in which it was found, each instance once for each, from
   :func:`exempted_findings`. The QC pack lists each finding by instance and
   place, with its excerpt.
@@ -219,6 +231,7 @@ from .preserving_writer import WriteReason
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import (
     DescriptorReason,
+    HeldAnnotation,
     HeldDescriptor,
     HeldPixelData,
     HeldRoiName,
@@ -240,6 +253,9 @@ from .reviewed_roi_names import RoiNameCounts
 from .roi_names import Reason as RoiNameReason
 from .residual_exemptions import Exemption
 from .residuals import Finding, NotSearched, Omission, Unsearched, UnsearchedReason
+from .reviewed_annotations import AnnotationCounts
+from .reviewed_annotations import Held as AnnotationHeld
+from .reviewed_annotations import Outcome as AnnotationOutcome
 from .runtime import RuntimeEnvironment, runtime_environment
 from .safe_private import SafePrivateList
 from .scope import Disposition, UnsupportedIod, unsupported_iods
@@ -248,7 +264,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/69"
+FORMAT = "pymedphys-deid-release-report/87"
 # The modes of a redaction review, as qc_attestation.ReviewMode's values
 # name them, in the order that the report gives them (D-059).
 REVIEW_MODES = ("every-frame", "flagged-frames")
@@ -293,6 +309,7 @@ PIXEL_AND_FACE_REASONS = (
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
     ReviewReason.OTHER_GRIDS,
+    ReviewReason.OTHER_SURFACES,
 )
 ATTESTATION_REASONS = (
     *_REVIEW_REASONS,
@@ -377,6 +394,7 @@ _HOLDING = {
     "descriptors": frozenset(r.value for r in DescriptorHeld),
     "pixel-data": frozenset(r.value for r in PixelDataReason),
     "visual-features": frozenset(r.value for r in VisualFeaturesReason),
+    "annotations": frozenset(r.value for r in AnnotationHeld),
     "release": _SEQUESTERING["release"],
 }
 # The dispositions of the instances whose pixel data risks are counted: those
@@ -552,8 +570,9 @@ class HeldForReview:
         ``"visual-features"`` (an instance that can show a face does not
         satisfy Clean Recognizable Visual Features, a CT slice's series has
         a target in its face block, or an RT Structure Set, RT Dose, or PET
-        instance is beside a defaced CT series), or ``"release"`` (the
-        release gate requires QC review).
+        instance is beside a defaced CT series), ``"annotations"`` (Clean
+        Graphics held a Presentation State's graphic annotation), or
+        ``"release"`` (the release gate requires QC review).
     code : str
         The stage's reason code, such as ``"unmatched"``.
     count : int
@@ -872,6 +891,7 @@ class ReleaseReport:
         With ``redaction_review``, how many of the source files that its
         verdicts approved were reviewed in each mode, by the mode's value,
         as :data:`REVIEW_MODES` names them; None without it.
+    residual_review : str or None
     pixel_regions : PixelRegionCounts or None
     readiness : Readiness or None
     released : tuple of pathlib.PurePosixPath
@@ -881,6 +901,7 @@ class ReleaseReport:
     held_for_review : tuple of HeldForReview
     roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts
     descriptors : ~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorCounts
+    annotations : ~pymedphys._dicom.deidentify.reviewed_annotations.AnnotationCounts
     icc_profiles : IccProfileCounts
     reference_findings : tuple of ReferenceFindings
     pixel_risks : tuple of PixelRiskCount
@@ -901,6 +922,7 @@ class ReleaseReport:
     redaction_review: str | None = None
     redaction_frames_not_shown: int | None = None
     redaction_review_modes: Mapping[str, int] | None = None
+    residual_review: str | None = None
     pixel_regions: PixelRegionCounts | None = None
     readiness: Readiness | None = None
     released: tuple[PurePosixPath, ...] = ()
@@ -913,6 +935,9 @@ class ReleaseReport:
     )
     descriptors: DescriptorCounts = dataclasses.field(
         default_factory=lambda: DescriptorCounts({}, {})
+    )
+    annotations: AnnotationCounts = dataclasses.field(
+        default_factory=lambda: AnnotationCounts({}, {})
     )
     icc_profiles: IccProfileCounts = dataclasses.field(default_factory=IccProfileCounts)
     reference_findings: tuple[ReferenceFindings, ...] = ()
@@ -1164,6 +1189,7 @@ def held_for_review(
             | HeldDescriptor
             | HeldPixelData
             | HeldVisualFeatures
+            | HeldAnnotation
             | ReleaseReason
         ]
     ],
@@ -1175,8 +1201,9 @@ def held_for_review(
     option's cleaner left to the reviewed descriptors list that descriptor
     cleaning held (D-038), why a pixel option held its pixel data
     (D-037), the reason that an instance that can show a face does not
-    satisfy the Clean Recognizable Visual Features Option, or a release
-    gate's reason that requires QC review. An instance
+    satisfy the Clean Recognizable Visual Features Option, a graphic
+    annotation that Clean Graphics held (D-062), or a release gate's reason
+    that requires QC review. An instance
     counts once for each stage and code, however many of its names or
     attributes have it. The counts are in the order of their stages and
     codes.
@@ -1196,6 +1223,7 @@ def held_for_review(
                 HeldDescriptor,
                 HeldPixelData,
                 HeldVisualFeatures,
+                HeldAnnotation,
                 ReleaseReason,
             ),
         ):
@@ -1210,6 +1238,8 @@ def held_for_review(
                 codes.add(("pixel-data", reason.reason.value))
             elif isinstance(reason, HeldVisualFeatures):
                 codes.add(("visual-features", reason.reason.value))
+            elif isinstance(reason, HeldAnnotation):
+                codes.add(("annotations", reason.reason.value))
             elif (
                 isinstance(reason, ReleaseReason)
                 and reason.decision is Decision.QC_REVIEW
@@ -1219,7 +1249,7 @@ def held_for_review(
             else:
                 raise TypeError(
                     "a held reason must be a HeldRoiName, a HeldDescriptor, a "
-                    "HeldPixelData, a HeldVisualFeatures, "
+                    "HeldPixelData, a HeldVisualFeatures, a HeldAnnotation, "
                     "or a release reason that requires QC review"
                 )
         counts.update(codes)
@@ -1345,6 +1375,7 @@ def release_report(
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
     pixel_region_rules: str | None = None,
+    reviewed_annotations: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     project_key: str | None = None,
     qc_review: AttestationRecord | None = None,
@@ -1355,6 +1386,7 @@ def release_report(
     redaction_review: str | None = None,
     redaction_frames_not_shown: int | None = None,
     redaction_review_modes: Mapping[str, int] | None = None,
+    residual_review: str | None = None,
     pixel_regions: PixelRegionCounts | None = None,
     readiness: Readiness | None = None,
     released: Iterable[PurePosixPath] = (),
@@ -1364,6 +1396,7 @@ def release_report(
     held: Iterable[HeldForReview] = (),
     roi_names: RoiNameCounts | None = None,
     descriptors: DescriptorCounts | None = None,
+    annotations: AnnotationCounts | None = None,
     icc_profiles: IccProfileCounts | None = None,
     findings: Iterable[ReferenceFindings] = (),
     pixel: Iterable[PixelRiskCount] = (),
@@ -1407,6 +1440,12 @@ def release_report(
         :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
         gives it, or None, the default, without rules. The report records
         only this digest.
+    reviewed_annotations : str or None, optional
+        The keyed digest of the reviewed annotations list whose decisions
+        the Clean Graphics Option applies to graphic annotations, as
+        :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.ReviewedAnnotations.keyed_digest`
+        gives it, or None, the default, without a list. The report records
+        only this digest.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -1446,6 +1485,11 @@ def release_report(
         files that its verdicts approved were reviewed in each mode, every
         mode that :data:`REVIEW_MODES` names given
         (:attr:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview.modes`).
+    residual_review : str, optional
+        The reference of the attested QC pack whose clearings of residual
+        findings the run applied, from
+        :class:`~pymedphys._dicom.deidentify.residual_review.ResidualReview`;
+        None, the default, otherwise.
     pixel_regions : PixelRegionCounts, optional
         Under the Clean Pixel Data Option, how many regions the option
         blacked out in the run's instances without a reviewer's verdict, by
@@ -1480,6 +1524,11 @@ def release_report(
         What descriptor cleaning wrote for the run's free-text descriptors,
         from
         :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorReviewQueue.report_counts`;
+        None, the default, counts none.
+    annotations : ~pymedphys._dicom.deidentify.reviewed_annotations.AnnotationCounts, optional
+        What the Clean Graphics Option wrote for the graphic annotations of
+        the run's Presentation States, from
+        :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.AnnotationReviewQueue.report_counts`;
         None, the default, counts none.
     icc_profiles : IccProfileCounts, optional
         What D wrote in place of the ICC Profiles of the run's released and
@@ -1523,7 +1572,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'icc_profiles', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks', 'studies_with_several_patients']
+    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'residual_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'annotations', 'icc_profiles', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks', 'studies_with_several_patients']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1542,6 +1591,7 @@ def release_report(
             technique_vocabulary=technique_vocabulary,
             text_finder=text_finder,
             pixel_region_rules=pixel_region_rules,
+            reviewed_annotations=reviewed_annotations,
             safe_private_list=safe_private_list,
         ),
         runtime=runtime_environment(),
@@ -1562,6 +1612,7 @@ def release_report(
         redaction_review=redaction_review,
         redaction_frames_not_shown=redaction_frames_not_shown,
         redaction_review_modes=redaction_review_modes,
+        residual_review=residual_review,
         pixel_regions=(
             PixelRegionCounts()
             if pixel_regions is None and CLEAN_PIXEL_DATA in policy.options
@@ -1575,6 +1626,7 @@ def release_report(
         held_for_review=tuple(held),
         roi_names=RoiNameCounts({}, {}) if roi_names is None else roi_names,
         descriptors=DescriptorCounts({}, {}) if descriptors is None else descriptors,
+        annotations=AnnotationCounts({}, {}) if annotations is None else annotations,
         icc_profiles=IccProfileCounts() if icc_profiles is None else icc_profiles,
         reference_findings=tuple(findings),
         pixel_risks=tuple(pixel),
@@ -1674,6 +1726,9 @@ def _method_section(method: MethodDigestComponents) -> dict:
         ),
         "pixel_region_rules": _optional_digest(
             "pixel_region_rules", method.pixel_region_rules
+        ),
+        "reviewed_annotations": _optional_digest(
+            "reviewed_annotations", method.reviewed_annotations
         ),
         "safe_private_list": (
             None
@@ -1970,6 +2025,16 @@ def _redaction_review_section(
     }
 
 
+def _residual_review_section(reference: str | None) -> dict | None:
+    """Return the section that names the earlier run's attested QC pack whose
+    clearings of residual findings the run applied."""
+    if reference is None:
+        return None
+    if _string(reference) is None or not _REFERENCE.fullmatch(reference):
+        raise _refuse("residual_review", "is not a QC pack's reference")
+    return {"reference": reference}
+
+
 def _pixel_regions_section(
     counts: PixelRegionCounts | None, policy: PolicyRecord
 ) -> dict | None:
@@ -2184,6 +2249,8 @@ def _code_counts(
     | type[RoiNameReason]
     | type[DescriptorOutcome]
     | type[DescriptorHeld]
+    | type[AnnotationOutcome]
+    | type[AnnotationHeld]
     | type[IccRefusal]
     | tuple[type[FaceBlockProblem], type[SeriesProblem]],
 ) -> list[tuple[str, int]]:
@@ -2245,6 +2312,25 @@ def _descriptors_section(counts: DescriptorCounts) -> dict:
             )
         ],
         "fell_back": fell_back,
+    }
+
+
+def _annotations_section(counts: AnnotationCounts) -> dict:
+    if not isinstance(counts, AnnotationCounts):
+        raise _refuse("annotations", "is not counts of annotations")
+    return {
+        "outcomes": [
+            {"outcome": code, "count": count}
+            for code, count in _code_counts(
+                "annotations outcome", counts.outcomes, AnnotationOutcome
+            )
+        ],
+        "held": [
+            {"reason": code, "count": count}
+            for code, count in _code_counts(
+                "annotations reason", counts.held, AnnotationHeld
+            )
+        ],
     }
 
 
@@ -2409,8 +2495,8 @@ def report_document(report: ReleaseReport) -> dict:
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``key``, ``qc_review``, ``face_review``,
-    ``redaction_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
-    ``descriptors``, ``icc_profiles``,
+    ``redaction_review``, ``residual_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
+    ``descriptors``, ``annotations``, ``icc_profiles``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
     ``exempted_findings``, ``source_gaps``, ``structural_checks``, and
     ``studies_with_several_patients``, in that order, each section's
@@ -2424,6 +2510,7 @@ def report_document(report: ReleaseReport) -> dict:
     ``not_defaced`` by code,
     ``redaction_review`` null or an object with the reference,
     ``review_modes``, and ``frames_not_shown``,
+    ``residual_review`` null or an object with the reference,
     ``pixel_regions`` null without the Clean Pixel Data Option and
     otherwise an object with the ``detected`` and ``rule`` counts,
     ``readiness`` null or an object with ``ready``, the ``review`` and
@@ -2432,8 +2519,8 @@ def report_document(report: ReleaseReport) -> dict:
     codes, each null where its gate passed, the released
     output names sorted, the sequestered instances by label, each with its
     reasons once, in the order given, the held counts by stage and code, the
-    ROI Names' and the descriptors' ``outcomes`` and ``held`` counts each by
-    code, the descriptors' ``fell_back`` count of elements, the ICC
+    ROI Names', the descriptors', and the annotations' ``outcomes`` and
+    ``held`` counts each by code, the descriptors' ``fell_back`` count of elements, the ICC
     profiles' ``cleaned`` count and ``replaced`` counts by reason, the reference
     findings' counts by kind, the pixel risks' ``instances`` counts by
     disposition and risk and ``indicators`` counts by disposition, risk, and
@@ -2499,6 +2586,7 @@ def report_document(report: ReleaseReport) -> dict:
             report.redaction_frames_not_shown,
             report.redaction_review_modes,
         ),
+        "residual_review": _residual_review_section(report.residual_review),
         "pixel_regions": _pixel_regions_section(report.pixel_regions, report.policy),
         "readiness": _readiness_section(report.readiness, report.policy),
         "released": _released_section(report.released),
@@ -2506,6 +2594,7 @@ def report_document(report: ReleaseReport) -> dict:
         "held_for_review": _held_section(report.held_for_review),
         "roi_names": _roi_names_section(report.roi_names),
         "descriptors": _descriptors_section(report.descriptors),
+        "annotations": _annotations_section(report.annotations),
         "icc_profiles": _icc_profiles_section(report.icc_profiles),
         "reference_findings": _reference_findings_section(report.reference_findings),
         "pixel_risks": _pixel_risks_section(report.pixel_risks),

@@ -25,17 +25,24 @@ import pymedphys
 def test_gamma_logs_to_its_module_logger(caplog):
     axis = np.array([0.0, 1.0, 2.0])
     with caplog.at_level(logging.INFO):
-        pymedphys.gamma(axis, np.ones(3), axis, np.ones(3), 3, 3)
+        pymedphys.gamma(axis, np.ones(3), axis, np.ones(3), [3, 2], 1.5)
 
     names = {record.name for record in caplog.records}
     assert names == {"pymedphys._gamma.implementation.shell"}
-    # Every message must format; array thresholds once failed under NumPy 2.
+    # Every message must format; array criteria once failed under NumPy 2.
     messages = [record.getMessage() for record in caplog.records]
-    assert any("Global dose threshold set to [0.03]" in m for m in messages)
+    assert "Normalisation dose set to 1.000" in messages
+    assert (
+        "Dose criterion set to 0.03, 0.02 (3, 2% of the normalisation dose)" in messages
+    )
+    assert "Distance criterion set to 1.5" in messages
+    assert (
+        "Lower dose cutoff set to 0.200 (20.0% of the normalisation dose)" in messages
+    )
 
 
 @pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
-def test_ram_available_none_uses_the_default():
+def test_memory_budget_of_none_uses_the_default():
     # The point at x = 5 is outside the evaluation grid, so the chunked
     # nearest-point comparison runs.
     arguments = (
@@ -45,5 +52,5 @@ def test_ram_available_none_uses_the_default():
         np.ones(2),
     )
     expected = pymedphys.gamma(*arguments, 3, 3)
-    result = pymedphys.gamma(*arguments, 3, 3, ram_available=None)
-    np.testing.assert_array_equal(result, expected)
+    result = pymedphys.gamma(*arguments, 3, 3, memory_budget_bytes=None)
+    np.testing.assert_array_equal(result.gamma, expected.gamma)

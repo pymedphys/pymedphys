@@ -26,12 +26,11 @@ GRID_RESOLUTION = 1
 
 
 GAMMA_OPTIONS = {
-    "dose_percent_threshold": 2,
-    "distance_mm_threshold": 0.5,
-    "local_gamma": True,
-    "quiet": True,
-    "max_gamma": 5,
-    "lower_percent_dose_cutoff": 20,
+    "dose_criterion_percent": 2,
+    "distance_criterion_mm": 0.5,
+    "normalisation": "local",
+    "gamma_cap": 5,
+    "lower_dose_cutoff_percent": 20,
 }
 
 
@@ -67,7 +66,7 @@ def test_dicom_trf_comparison(_data_paths):
             leaf_pair_widths=LEAF_PAIR_WIDTHS,
         )
 
-        gamma = pymedphys.gamma(
+        result = pymedphys.gamma(
             COORDS,
             _to_tuple(dicom_metersetmap),
             COORDS,
@@ -75,7 +74,7 @@ def test_dicom_trf_comparison(_data_paths):
             **GAMMA_OPTIONS,
         )
 
-        assert pymedphys.gamma_pass_rate(gamma) >= 98
+        assert result.percent_passed >= 98
 
 
 @pytest.fixture()

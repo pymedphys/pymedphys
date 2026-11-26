@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import pathlib
 import subprocess
 import time
@@ -37,12 +38,13 @@ def start_mssql_docker_image_with_bak_restore(
             "-e",
             "ACCEPT_EULA=Y",
             "-e",
-            f"MSSQL_SA_PASSWORD={sa_password}",
+            "MSSQL_SA_PASSWORD",
             "-p",
             "1433:1433",
             "-d",
             "mcr.microsoft.com/mssql/server:2017-latest",
-        ]
+        ],
+        env={**os.environ, "MSSQL_SA_PASSWORD": sa_password},
     )
 
     for i in range(5):

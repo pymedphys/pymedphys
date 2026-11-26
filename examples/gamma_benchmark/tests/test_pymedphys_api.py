@@ -14,6 +14,7 @@
 """PyMedPhys selection and output checks using mock packages, never real gamma."""
 
 import hashlib
+import inspect
 from pathlib import Path
 import subprocess
 import sys
@@ -22,7 +23,12 @@ import types
 import numpy as np
 import pytest
 
+import pymedphys
+
 from gamma_bench import pymedphys_api as api
+
+# The signature of this checkout's gamma. No test here calls the function.
+_GAMMA_SIGNATURE = inspect.signature(pymedphys.gamma)
 
 
 @pytest.fixture
@@ -75,6 +81,130 @@ def test_multiple_criteria_remain_identifiable(inputs, mock_version):
     outputs, _ = api.invoke(spec, inputs + ([2, 3], 2), {})
     assert list(outputs) == [api.criterion_key(2, 2), api.criterion_key(3, 2)]
     assert outputs[api.criterion_key(3, 2)][0, 0] == 0.3
+
+
+def _renamed_gamma(observed, returned):
+    """A stand-in with the signature of this checkout's ``pymedphys.gamma``.
+
+    Each call is bound to that signature, so an option the function does not
+    take raises a TypeError, as it would from the function itself.
+    """
+
+    def gamma(*args, **options):
+        _GAMMA_SIGNATURE.bind(*args, **options)
+        observed.update(criteria=args[4:], options=options)
+        return returned
+
+    gamma.__signature__ = _GAMMA_SIGNATURE
+    return gamma
+
+
+def _result(dose, distance, values):
+    settings = types.SimpleNamespace(
+        dose_criterion_percent=dose, distance_criterion_mm=distance
+    )
+    return types.SimpleNamespace(gamma=values, settings=settings)
+
+
+def test_options_are_translated_for_a_version_that_renamed_them(inputs, mock_version):
+    spec, module = mock_version
+    spec["interp_algo"] = "scipy"
+    observed = {}
+    values = np.full((2, 2), 0.25)
+    module.gamma = _renamed_gamma(observed, _result(3.0, 2.0, values))
+
+    outputs, _ = api.invoke(
+        spec,
+        inputs + (3, 2),
+        {
+            "lower_percent_dose_cutoff": 10,
+            "interp_fraction": 20,
+            "max_gamma": 2,
+            "local_gamma": False,
+            "global_normalisation": 2.0,
+            "ram_available": 2**20,
+            "skip_once_passed": True,
+        },
+    )
+
+    assert observed["criteria"] == (3, 2)
+    assert observed["options"] == {
+        "lower_dose_cutoff_percent": 10,
+        "search_step_fraction": 1 / 20,
+        "gamma_cap": 2,
+        "normalisation": "global",
+        "normalisation_dose": 2.0,
+        "memory_budget_bytes": 2**20,
+        "skip_once_passed": True,
+        "interpolator": "scipy",
+    }
+    # The array is passed on as the result holds it, without a copy or cast.
+    assert outputs[api.criterion_key(3, 2)] is values
+
+
+def test_local_gamma_selects_local_normalisation(inputs, mock_version):
+    spec, module = mock_version
+    observed = {}
+    module.gamma = _renamed_gamma(observed, _result(3, 2, np.zeros((2, 2))))
+
+    api.invoke(spec, inputs + (3, 2), {"local_gamma": True})
+
+    assert observed["options"]["normalisation"] == "local"
+
+
+def test_quiet_is_left_out_for_a_version_that_removed_it(inputs, mock_version):
+    # quiet had no effect; from 0.42.0 gamma does not take it.
+    spec, module = mock_version
+    observed = {}
+    module.gamma = _renamed_gamma(observed, _result(3, 2, np.zeros((2, 2))))
+
+    api.invoke(spec, inputs + (3, 2), {"quiet": None})
+
+    assert observed["options"] == {"interpolator": "pymedphys"}
+
+
+def test_quiet_still_reaches_a_version_with_the_earlier_names(inputs, mock_version):
+    spec, module = mock_version
+    observed = {}
+
+    def gamma(*args, **kwargs):
+        observed.update(kwargs)
+        return np.full_like(args[1], 0.5)
+
+    module.gamma = gamma
+    api.invoke(spec, inputs + (3, 2), {"quiet": None})
+
+    assert observed == {"quiet": None, "interp_algo": "pymedphys"}
+
+
+def test_a_tuple_of_results_is_keyed_by_the_criteria_of_each_result(
+    inputs, mock_version
+):
+    spec, module = mock_version
+    module.gamma = _renamed_gamma(
+        {},
+        (
+            _result(2.0, 2.0, np.full((2, 2), 0.2)),
+            _result(3.0, 2.0, np.full((2, 2), 0.3)),
+        ),
+    )
+
+    outputs, _ = api.invoke(spec, inputs + ([2, 3], 2), {})
+
+    assert list(outputs) == [api.criterion_key(2, 2), api.criterion_key(3, 2)]
+    assert outputs[api.criterion_key(3, 2)][0, 0] == 0.3
+
+
+def test_results_that_do_not_match_the_case_are_rejected(inputs, mock_version):
+    spec, module = mock_version
+    module.gamma = _renamed_gamma({}, _result(1.0, 2.0, np.zeros((2, 2))))
+    with pytest.raises(ValueError, match="do not match"):
+        api.invoke(spec, inputs + (3, 2), {})
+
+    duplicated = (_result(3, 2, np.zeros((2, 2))), _result(3.0, 2.0, np.zeros((2, 2))))
+    module.gamma = _renamed_gamma({}, duplicated)
+    with pytest.raises(ValueError, match="Duplicate"):
+        api.invoke(spec, inputs + ([3], [2]), {})
 
 
 def test_preparation_does_not_execute_gamma(inputs, mock_version):

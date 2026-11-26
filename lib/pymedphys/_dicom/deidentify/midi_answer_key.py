@@ -38,6 +38,12 @@ evaluated rather than dropped.
 
 Nothing here quotes a value from the key in a message: the key holds the test
 data set's identifiers, synthetic or not.
+
+A MIDI-B answer key holds millions of checks, which repeat a few thousand
+places, categories, and action names, and many values. The reader keeps one
+copy of each of these, which every check that repeats it shares, and its
+classes keep their fields in slots, so that a whole key fits in the memory
+of a CI runner. Each copy is frozen, so sharing it changes no check.
 """
 
 from __future__ import annotations
@@ -48,7 +54,7 @@ import hashlib
 import json
 import re
 import sqlite3
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 
 ANSWER_TABLE = "answer_data"
@@ -109,7 +115,7 @@ RETAINING_ACTIONS = frozenset(
 )
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class Element:
     """One element on an attribute's place.
 
@@ -140,7 +146,7 @@ class Element:
         return f"({self.group:04X},xx{self.element:02X})"
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class AttributePath:
     """The place of an attribute: its elements, outermost first.
 
@@ -166,7 +172,7 @@ class AttributePath:
         return "/".join(str(element) for element in self.elements)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class Categories:
     """The answer-key categories of a check, each a code or ``None``.
 
@@ -184,7 +190,7 @@ class Categories:
     tcia_rev: str | None = None
 
 
-@dataclasses.dataclass(frozen=True, order=True)
+@dataclasses.dataclass(frozen=True, order=True, slots=True)
 class Category:
     """The category a check is scored under: a family and a code."""
 
@@ -195,7 +201,7 @@ class Category:
         return f"{self.family} {self.code}"
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class Check:
     """One check of an instance.
 
@@ -230,7 +236,7 @@ class Check:
         return category_of(self.action, self.categories)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class AnswerInstance:
     """An instance of the test data set, with its checks."""
 
@@ -244,7 +250,7 @@ class AnswerInstance:
     checks: tuple[Check, ...]
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class AnswerKey:
     """An answer key, and the SHA-256 of its file, which names its version."""
 
@@ -350,6 +356,14 @@ def parse_path(text: str) -> AttributePath | None:
     >>> parse_path("(0010,0010)") is None
     True
     """
+    return _parse_path(text, Element)
+
+
+def _parse_path(
+    text: str, element_of: Callable[[int, int, str | None], Element]
+) -> AttributePath | None:
+    """Parse a place as :func:`parse_path` does, taking each element from
+    ``element_of``, which may give one shared copy of each."""
     elements: list[Element] = []
     items: list[int] = []
     position = 0
@@ -359,9 +373,9 @@ def parse_path(text: str) -> AttributePath | None:
             return None
         group = int(match["group"], 16)
         if match["creator"] is None:
-            elements.append(Element(group, int(match["element"], 16)))
+            elements.append(element_of(group, int(match["element"], 16), None))
         else:
-            elements.append(Element(group, int(match["low"], 16), match["creator"]))
+            elements.append(element_of(group, int(match["low"], 16), match["creator"]))
         position = match.end()
         if position == len(text):
             return AttributePath(tuple(elements), tuple(items))
@@ -370,6 +384,41 @@ def parse_path(text: str) -> AttributePath | None:
             return None
         items.append(int(item["item"]))
         position = item.end()
+
+
+class _Shared:
+    """One copy of each repeated part of a key's checks, while it is read."""
+
+    def __init__(self) -> None:
+        self._paths: dict[str, AttributePath | None] = {}
+        self._elements: dict[tuple[int, int, str | None], Element] = {}
+        self._categories: dict[tuple[str | None, ...], Categories] = {}
+        self._texts: dict[str, str] = {}
+
+    def path(self, text: str) -> AttributePath | None:
+        try:
+            return self._paths[text]
+        except KeyError:
+            path = self._paths[text] = _parse_path(text, self.element)
+            return path
+
+    def element(self, group: int, number: int, creator: str | None) -> Element:
+        key = (group, number, creator)
+        try:
+            return self._elements[key]
+        except KeyError:
+            element = self._elements[key] = Element(group, number, creator)
+            return element
+
+    def categories(self, codes: tuple[str | None, ...]) -> Categories:
+        try:
+            return self._categories[codes]
+        except KeyError:
+            categories = self._categories[codes] = Categories(*codes)
+            return categories
+
+    def text(self, text: str | None) -> str | None:
+        return None if text is None else self._texts.setdefault(text, text)
 
 
 def unwrap(value: object) -> str | None:
@@ -396,10 +445,11 @@ def read_answer_key(path: str | Path) -> AnswerKey:
     """
     path = Path(path)
     try:
-        data = path.read_bytes()
+        with path.open("rb") as file:
+            sha256 = hashlib.file_digest(file, "sha256").hexdigest()
     except OSError:
         raise AnswerKeyError("the answer key could not be read") from None
-    return AnswerKey(tuple(_instances(path)), hashlib.sha256(data).hexdigest())
+    return AnswerKey(tuple(_instances(path)), sha256)
 
 
 def _instances(path: Path) -> Iterator[AnswerInstance]:
@@ -426,18 +476,33 @@ def _instances(path: Path) -> Iterator[AnswerInstance]:
             f"SELECT {', '.join(columns)} FROM {ANSWER_TABLE} "  # nosec B608
             "ORDER BY rowid"
         )
-        try:
-            rows = connection.execute(query).fetchall()
-        except sqlite3.Error:
-            raise AnswerKeyError("the answer key could not be read") from None
-        for number, row in enumerate(rows, start=1):
-            yield _instance(number, dict(zip(columns, row)))
+        shared = _Shared()
+        for number, row in enumerate(_rows(connection, query), start=1):
+            yield _instance(number, dict(zip(columns, row)), shared)
     finally:
         connection.close()
 
 
-def _instance(number: int, row: Mapping[str, object]) -> AnswerInstance:
-    identifiers = {column: _identifier(row[column]) for column in _COLUMNS[:-1]}
+def _rows(connection: sqlite3.Connection, query: str) -> Iterator[tuple]:
+    """Each row of ``query``, a few at a time, so that the key's text is not
+    held whole while its checks are read."""
+    try:
+        cursor = connection.execute(query)
+        while rows := cursor.fetchmany(_ROWS_AT_ONCE):
+            yield from rows
+    except sqlite3.Error:
+        raise AnswerKeyError("the answer key could not be read") from None
+
+
+_ROWS_AT_ONCE = 256
+
+
+def _instance(
+    number: int, row: Mapping[str, object], shared: _Shared
+) -> AnswerInstance:
+    identifiers = {
+        column: shared.text(_identifier(row[column])) for column in _COLUMNS[:-1]
+    }
     if identifiers["SOPInstanceUID"] is None:
         raise AnswerKeyError(f"row {number} has no SOPInstanceUID")
     try:
@@ -458,8 +523,10 @@ def _instance(number: int, row: Mapping[str, object]) -> AnswerInstance:
         sop_instance_uid=identifiers["SOPInstanceUID"],  # type: ignore[arg-type]
         sop_class_uid=identifiers["SOPClassUID"],
         modality=identifiers["Modality"],
-        scope=unwrap(scope) if isinstance(scope, str) else None,
-        checks=tuple(parse_check(answer, row=number) for answer in answers),
+        scope=shared.text(unwrap(scope)) if isinstance(scope, str) else None,
+        checks=tuple(
+            parse_check(answer, row=number, shared=shared) for answer in answers
+        ),
     )
 
 
@@ -476,15 +543,25 @@ def _identifier(value: object) -> str | None:
     return None
 
 
-def parse_check(answer: Mapping[str, object], *, row: int | None = None) -> Check:
+def parse_check(
+    answer: Mapping[str, object],
+    *,
+    row: int | None = None,
+    shared: _Shared | None = None,
+) -> Check:
     """Return the check that one object of a row's ``AnswerData`` describes.
+
+    ``shared``, given by the reader, gives the check the copy of each of its
+    parts that the key's other checks share.
 
     Raises
     ------
     AnswerKeyError
         If the check has no action, naming ``row`` if it is given.
     """
-    action_name = unwrap(answer.get("action"))
+    if shared is None:
+        shared = _Shared()
+    action_name = shared.text(unwrap(answer.get("action")))
     if action_name is None:
         where = "a check" if row is None else f"a check of row {row}"
         raise AnswerKeyError(f"{where} has no action")
@@ -495,27 +572,27 @@ def parse_check(answer: Mapping[str, object], *, row: int | None = None) -> Chec
     place = answer.get("tag_ds")
     path = None
     if isinstance(place, str) and place:
-        path = parse_path(place)
+        path = shared.path(place)
     return Check(
         action=action,
         action_name=action_name,
         path=path,
         path_unreadable=isinstance(place, str) and bool(place) and path is None,
-        value=unwrap(answer.get("value")),
-        action_text=unwrap(answer.get("action_text")),
-        categories=_categories(answer.get("answer_category_v2")),
+        value=shared.text(unwrap(answer.get("value"))),
+        action_text=shared.text(unwrap(answer.get("action_text"))),
+        categories=_categories(answer.get("answer_category_v2"), shared),
     )
 
 
-def _categories(value: object) -> Categories:
+def _categories(value: object, shared: _Shared) -> Categories:
     """Return the categories of ``answer_category_v2``, nested or dotted."""
     if isinstance(value, str):
         try:
             value = json.loads(unwrap(value) or value)
         except ValueError:
-            return Categories()
+            return shared.categories(_NO_CATEGORIES)
     if not isinstance(value, Mapping):
-        return Categories()
+        return shared.categories(_NO_CATEGORIES)
     flat: dict[str, object] = {}
     for family, codes in value.items():
         if isinstance(codes, Mapping):
@@ -523,10 +600,14 @@ def _categories(value: object) -> Categories:
                 flat[f"{family}_{name}"] = code
         else:
             flat[str(family).replace(".", "_")] = codes
-    return Categories(
-        **{
-            field.name: code if isinstance(code, str) and code else None
-            for field in dataclasses.fields(Categories)
-            for code in [flat.get(field.name)]
-        }
+    return shared.categories(
+        tuple(
+            code if isinstance(code, str) and code else None
+            for code in (flat.get(name) for name in _CATEGORY_FIELDS)
+        )
     )
+
+
+# The fields of Categories, in order.
+_CATEGORY_FIELDS = tuple(field.name for field in dataclasses.fields(Categories))
+_NO_CATEGORIES: tuple[str | None, ...] = (None,) * len(_CATEGORY_FIELDS)

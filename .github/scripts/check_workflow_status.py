@@ -28,15 +28,37 @@ def _selection(needs: Needs) -> Mapping[str, Any]:
     return needs.get("changes", {}).get("outputs", {})
 
 
-def check_jobs(needs: Needs, conditional_jobs: Mapping[str, str]) -> list[str]:
+def check_jobs(
+    needs: Needs,
+    conditional_jobs: Mapping[str, str],
+    *,
+    merge_group: bool = False,
+) -> list[str]:
     """Return failures; unlisted dependencies are required to succeed.
 
     Conditional jobs may be skipped only when their selection output from the
     changes job is explicitly false. Missing outputs fail closed. A summary
     without conditional jobs, such as the release workflow's, needs no changes
-    job.
+    job. A merge group skips the changes job and runs every conditional job,
+    so there the changes job must have been skipped and every other job must
+    succeed.
     """
     failures: list[str] = []
+    if merge_group:
+        for job, details in needs.items():
+            result = details.get("result")
+            expected = "skipped" if job == "changes" else "success"
+            if result != expected:
+                failures.append(
+                    f"{job}: expected {expected} in a merge group, "
+                    f"got {result or 'missing'}."
+                )
+        for job in conditional_jobs:
+            if job not in needs:
+                failures.append(f"{job}: missing from the summary dependencies.")
+        if conditional_jobs and "changes" not in needs:
+            failures.append("The changes job is missing from the summary dependencies.")
+        return failures
     selection = _selection(needs)
     if conditional_jobs and "changes" not in needs:
         failures.append("The changes job is missing from the summary dependencies.")
@@ -65,14 +87,19 @@ def make_summary(
     needs: Needs,
     conditional_jobs: Mapping[str, str],
     failures: list[str],
+    *,
+    merge_group: bool = False,
 ) -> str:
     selection = _selection(needs)
     lines = [f"## {title}", "", "| Check | Required | Status |", "|---|---|---|"]
     for job, details in needs.items():
-        required = (
-            job not in conditional_jobs
-            or selection.get(conditional_jobs[job]) != "false"
-        )
+        if merge_group:
+            required = job != "changes"
+        else:
+            required = (
+                job not in conditional_jobs
+                or selection.get(conditional_jobs[job]) != "false"
+            )
         lines.append(
             f"| {job} | {'yes' if required else 'no'} | "
             f"{details.get('result', 'missing')} |"
@@ -116,11 +143,27 @@ def main() -> int:
         metavar="JOB=OUTPUT",
         help="Allow JOB to be skipped when changes.outputs.OUTPUT is false.",
     )
+    parser.add_argument(
+        "--merge-group-runs-every-check",
+        action="store_true",
+        help=(
+            "In a merge group (GITHUB_EVENT_NAME merge_group), require the "
+            "changes job to be skipped and every other job to succeed."
+        ),
+    )
     args = parser.parse_args()
     conditional_jobs = parse_conditional(args.conditional)
     needs: dict[str, dict[str, Any]] = json.loads(os.environ["NEEDS_JSON"])
-    failures = check_jobs(needs, conditional_jobs)
-    summary = make_summary(args.title, needs, conditional_jobs, failures)
+    # Without the option a merge group is judged by the changes job's
+    # selection, as before; with it, outside a merge group, nothing changes.
+    merge_group = (
+        args.merge_group_runs_every_check
+        and os.environ.get("GITHUB_EVENT_NAME") == "merge_group"
+    )
+    failures = check_jobs(needs, conditional_jobs, merge_group=merge_group)
+    summary = make_summary(
+        args.title, needs, conditional_jobs, failures, merge_group=merge_group
+    )
     with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as output:
         output.write(summary)
     for failure in failures:

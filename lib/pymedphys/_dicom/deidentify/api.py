@@ -138,12 +138,14 @@ def deidentify(  # pylint: disable = too-many-arguments
     reviewed_descriptors: str | os.PathLike[str] | None = None,
     redaction_review: str | os.PathLike[str] | None = None,
     region_rules: str | os.PathLike[str] | None = None,
+    reviewed_annotations: str | os.PathLike[str] | None = None,
     safe_private_list: str = "reviewed",
     key_file: str | os.PathLike[str] | None = None,
     profile_store: str | os.PathLike[str] | None = None,
     face_review: str | os.PathLike[str] | None = None,
     readiness_review: str | os.PathLike[str] | None = None,
     readiness_report: str | os.PathLike[str] | None = None,
+    residual_review: str | os.PathLike[str] | None = None,
     sequester_studies_with_several_patients: bool = False,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
@@ -214,6 +216,21 @@ def deidentify(  # pylint: disable = too-many-arguments
         regions are blacked out in every frame of a matching image beside
         the text detector's, and the image is still held for review. By
         default, none.
+    reviewed_annotations : str or os.PathLike, optional
+        Under Clean Graphics, the custodian's reviewed annotations list,
+        which must exist, outside ``source``, ``release``, and ``qc_pack``,
+        since a run records no decision. Each graphic annotation of a
+        Presentation State that it keeps is written as received but for its
+        UIDs, which are replaced as the instance's own are, its private
+        data elements, and any standard element that the IOD does not
+        define at its place in the annotation, such as a Patient's Birth
+        Date, which each take their own rules; each that it removes is
+        removed, and one that it has no
+        decision on holds its instance for review, with its text and a
+        drawing of it in the QC pack;
+        ``python -m pymedphys._dicom.deidentify.reviewed_annotations_command``
+        records a reviewer's decisions in it (D-062). By default, none, so a
+        Presentation State with graphic annotations is sequestered.
     safe_private_list : str, optional
         Under Retain Safe Private, the list whose rules settle private
         attributes: ``"reviewed"``, the default, for the reviewed rules of
@@ -264,6 +281,15 @@ def deidentify(  # pylint: disable = too-many-arguments
         The release report, ``release-report.json``, of the run whose QC
         pack is ``readiness_review``, which records that run's policy. It
         is given with ``readiness_review``.
+    residual_review : str or os.PathLike, optional
+        Under any policy, the QC pack of an earlier run of the same files,
+        attested with the residual findings of instances cleared by ``python
+        -m pymedphys._dicom.deidentify.attestation_command``. A file that
+        only such findings would hold for review, each one that the pack
+        showed for a cleared instance with the same source file, at the same
+        place in a value with the same SHA-256, is released, and the release report counts
+        each as reviewed (D-042). By default, none, so every such file is
+        held for review.
     sequester_studies_with_several_patients : bool, optional
         Whether to sequester every instance of a study whose instances name
         several patients, each a Patient ID with its issuer, the instances
@@ -299,7 +325,9 @@ def deidentify(  # pylint: disable = too-many-arguments
         ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
         ``roi_list``, or ``reviewed_descriptors`` is given with a policy
         without Clean Descriptors, or ``redaction_review`` or
-        ``region_rules`` with a policy without Clean Pixel Data, or if ``safe_private_list`` is not
+        ``region_rules`` with a policy without Clean Pixel Data, or
+        ``reviewed_annotations`` with a policy without Clean Graphics, or
+        if ``safe_private_list`` is not
         ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
         Retain Safe Private, or if ``face_review`` is given with a policy
         without Clean Recognizable Visual Features, or if
@@ -367,6 +395,13 @@ def deidentify(  # pylint: disable = too-many-arguments
             "redaction_review and region_rules apply only under Clean Pixel Data: "
             "with options that include clean_pixel_data"
         )
+    if reviewed_annotations is not None and not command.annotations_option_applies(
+        preset, chosen
+    ):
+        raise ValueError(
+            "reviewed_annotations applies only under Clean Graphics: with "
+            "options that include clean_graphics"
+        )
     try:
         chosen_list = SafePrivateList(safe_private_list)
     except ValueError:
@@ -414,11 +449,13 @@ def deidentify(  # pylint: disable = too-many-arguments
                 reviewed_descriptors=reviewed_descriptors,
                 redaction_review=redaction_review,
                 region_rules=region_rules,
+                reviewed_annotations=reviewed_annotations,
                 safe_private_list=chosen_list,
                 profiles=profiles,
                 face_review=face_review,
                 readiness_review=readiness_review,
                 readiness_report=readiness_report,
+                residual_review=residual_review,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None

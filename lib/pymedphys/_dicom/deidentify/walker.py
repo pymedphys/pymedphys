@@ -70,11 +70,12 @@ item of Interlock Resolution User Sequence (300A,0746), and only there,
 whose items' are compared too, for Referenced Performed Procedure Step Sequence
 (0008,1111), whose items' Referenced SOP Instance UID (0008,1155) is read
 for its keyed replacement, and for ICC Profile (0028,2000) of VR OB
-(D-021). D on Verifying Observer Sequence (0040,A073) keeps the sequence as
-a container, as K does, but each element of its items other than the
-attributes of
-:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES` is
-removed, with everything in it, whatever its own rule (D-021). A dummy
+(D-021). D on Verifying Observer Sequence (0040,A073), and on Operator
+Identification Sequence (0008,1072) directly in an item of Override Sequence
+(3008,0060), keeps the sequence as a container, as K does, but each element
+of its items other than the attributes that
+:func:`~pymedphys._dicom.deidentify.dummy_values.kept_item_attributes` gives
+it there is removed, with everything in it, whatever its own rule (D-021). A dummy
 value on any other element, such as another sequence, adds a
 :class:`Sequestration` to the plan, as
 :func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d` would refuse
@@ -90,8 +91,12 @@ every reason is known.
 
 A plain X removes its attribute (D-020), but for Requested Procedure ID
 (0040,1001) in a Structured Report's Referenced Request Sequence (0040,A370),
-and Source Manufacturer (300A,0216) in an RT Brachy Treatment Record's
-Recorded Source Sequence (3008,0100), which it empties
+Source Manufacturer (300A,0216) in an RT Brachy Treatment Record's
+Recorded Source Sequence (3008,0100), Patient Treatment Preparation Procedure
+Parameter Description (300A,078E) in an RT Treatment Preparation's Patient
+Treatment Preparation Procedure Sequence (300A,0790), and Prior Treatment Dose
+Description (3010,0061) in an RT Physician Intent's RT Prescription Sequence
+(3010,006B), which it empties
 (:data:`~pymedphys._dicom.deidentify.compound_actions.EMPTIED_PLAIN_X`).
 Where the IOD requires the attribute at its place,
 :func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
@@ -171,7 +176,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from .common_instance_reference import (
     is_common_instance_reference,
@@ -185,7 +190,13 @@ from .compound_actions import (
     resolve_plain_in_iod,
     resolve_plain_x_in_iod,
 )
-from .dummy_values import DUMMY_VRS, ICC_PROFILE, KEPT_ITEM_ATTRIBUTES, reviewed_within
+from .encapsulated_documents import ENCAPSULATED_DOCUMENT, releases_document
+from .dummy_values import (
+    DUMMY_VRS,
+    ICC_PROFILE,
+    kept_item_attributes,
+    reviewed_within,
+)
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
@@ -217,19 +228,27 @@ def has_reviewed_items(path: ElementPath) -> bool:
     for the sequences that enclose it (D-021).
     """
     return path.tag in REVIEWED_DUMMY_SEQUENCES and reviewed_within(
-        path.tag, tuple(tag for tag, _ in path.items)
+        path.tag, _within(path)
     )
 
 
-def descends(tag: str, action: str) -> bool:
+def _within(path: ElementPath) -> tuple[str, ...]:
+    """Return the tags of the sequences that enclose an element, outermost first."""
+    return tuple(tag for tag, _ in path.items)
+
+
+def descends(tag: str, action: str, within: Sequence[str]) -> bool:
     """Return whether a sequence under ``action`` is kept as a container.
 
     Its items' elements then take their own rules: under K and U, and under
-    D for a sequence whose reviewed rule keeps its source items
-    (:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES`,
-    D-021), which keeps only some of their attributes.
+    D for a sequence whose reviewed rule keeps its source items at its place
+    (:func:`~pymedphys._dicom.deidentify.dummy_values.kept_item_attributes`,
+    D-021), which keeps only some of their attributes. ``within`` holds the
+    tags of the sequences that enclose the place, outermost first.
     """
-    return action in DESCENDED or (action == "D" and tag in KEPT_ITEM_ATTRIBUTES)
+    return action in DESCENDED or (
+        action == "D" and kept_item_attributes(tag, within) is not None
+    )
 
 
 class Consumer(enum.Enum):
@@ -265,6 +284,10 @@ class SequesterReason(enum.Enum):
     # a plain X on an attribute that the IOD requires there, with no enclosing
     # sequence that is Type 3 at its own place to remove with it (D-020)
     REQUIRED_BY_IOD = "required-by-iod"
+    # a dummy value with fewer values than its source, on an attribute that
+    # Frame Increment Pointer (0028,0009) indexes the frames by, so that it
+    # would no longer give a value for each frame (PS3.3 Section C.7.6.6.1.1)
+    FRAME_INDEX = "frame-index"
 
 
 _EXPLANATIONS = {
@@ -285,6 +308,10 @@ _EXPLANATIONS = {
         "{action} on {path} removes an attribute that the IOD requires there, "
         "and no enclosing sequence that the IOD makes Type 3 can be removed "
         "with it"
+    ),
+    SequesterReason.FRAME_INDEX: (
+        "{action} on {path} writes fewer values than its source holds, and "
+        "Frame Increment Pointer indexes the frames by it"
     ),
 }
 
@@ -451,7 +478,7 @@ def _has_dummy(path: ElementPath, vr: str | None, container: bool, action: str) 
     """Whether a generic or reviewed dummy value exists for the element."""
     if container:
         return action == "D" and (
-            has_reviewed_items(path) or path.tag in KEPT_ITEM_ATTRIBUTES
+            has_reviewed_items(path) or descends(path.tag, action, _within(path))
         )
     return vr in DUMMY_VRS or (path.tag == ICC_PROFILE and vr == "OB")
 
@@ -614,7 +641,12 @@ def _plan(
         rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
         if path in content_items:
             rule = ElementRule(
-                path.tag, RuleSource.CONTENT_ITEM, content_items[path], path.tag
+                path.tag,
+                RuleSource.ANNOTATION
+                if path in content_items.annotations
+                else RuleSource.CONTENT_ITEM,
+                content_items[path],
+                path.tag,
             )
         elif path in content_items.emptied:
             rule = ElementRule(path.tag, RuleSource.CONTENT_ITEM, _REMOVED, path.tag)
@@ -643,14 +675,26 @@ def _plan(
                     path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
                 )
             )
-        elif action == "D" and not _has_dummy(path, vr, container, action):
+        elif (
+            action == "D"
+            and not _has_dummy(path, vr, container, action)
+            and not (
+                path == ENCAPSULATED_DOCUMENT
+                and vr == "OB"
+                and releases_document(rules.policy.options, iod.name)
+            )
+        ):
+            # Under Clean Pixel Data, an Encapsulated PDF's document takes
+            # its reviewed rendering for D, which the edit leaves to come
+            # (D-061).
             sequestrations.append(
                 Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
             )
-        if container and not descends(path.tag, action):
+        kept = kept_item_attributes(path.tag, _within(path))
+        if container and not descends(path.tag, action, _within(path)):
             removing[path] = action
-        elif container and action == "D":
-            kept_items[path] = KEPT_ITEM_ATTRIBUTES[path.tag]
+        elif container and action == "D" and kept is not None:
+            kept_items[path] = kept
         consumers = _consumers(action, container, False)
         elements.append(
             ElementPlan(path, vr, rule, action, None, consumers, removed_for, lapses)

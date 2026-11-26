@@ -23,20 +23,30 @@ if __name__ == "__main__":
     )
 
     gamma_options = {
-        "dose_percent_threshold": 1,  # This is a bit overkill here at 1%/1mm
-        "distance_mm_threshold": 1,
-        "lower_percent_dose_cutoff": 20,
-        "interp_fraction": 10,  # Should be 10 or more, see the paper referenced above
-        "max_gamma": 2,
+        "dose_criterion_percent": 1,  # This is a bit overkill here at 1%/1mm
+        "distance_criterion_mm": 1,
+        "lower_dose_cutoff_percent": 20,
+        # Should be 0.1 or less, see the paper referenced above
+        "search_step_fraction": 0.1,
+        "gamma_cap": 2,
         "random_subset": None,  # Can be used to get quick pass rates
-        "local_gamma": True,  # Change to false for global gamma
-        "ram_available": 2**29,  # 1/2 GB
+        "normalisation": "local",  # Change to "global" for global gamma
+        "memory_budget_bytes": 2**29,  # 1/2 GB
     }
 
-    gamma = pymedphys.gamma(
+    result = pymedphys.gamma(
         axes_reference,
         dose_reference,
         axes_evaluation,
         dose_evaluation,
         **gamma_options,
+    )
+
+    # The gamma value at each point of the reference grid; NaN where the
+    # reference dose is below the lower dose cutoff.
+    gamma = result.gamma
+
+    print(
+        f"{result.percent_passed:.1f}% passed "
+        f"({result.passed} of {result.analysed} analysed points)"
     )

@@ -18,8 +18,10 @@ From the repository root, using the project's Python environment:
     python examples/gamma_performance.py
 
 The default comparison uses previous main 866f83e and current HEAD. It creates
-temporary detached worktrees, verifies imported source and full-array equality,
-then writes a labelled PNG/SVG, raw timings and provenance to a new directory.
+temporary detached worktrees and verifies imported source. It requires each
+revision to repeat its gamma arrays exactly, and the two revisions to agree
+element by element as REVISION_ABSOLUTE_TOLERANCE describes. It then writes a
+labelled PNG/SVG, raw timings and provenance to a new directory.
 No patient data or downloads are required. Git and an environment with the
 PyMedPhys gamma dependencies, NumPy and Matplotlib must already be available.
 The notebook at docs/contrib/info/gamma-performance explains the methodology.
@@ -39,6 +41,67 @@ import tempfile
 from pathlib import Path
 
 CASES = ["3d", "3d-maxgamma", "3d-local", "3d-scipy", "2d", "2d-scipy"]
+
+# Gamma from two revisions can differ by rounding alone. From PyMedPhys 0.42.0
+# the search step is the distance criterion multiplied by search_step_fraction,
+# where earlier revisions divided it by interp_fraction, and 3 * 0.1 is not
+# 3 / 10. Such differences were at most 3.0e-13 in 809 calculations on 1D, 2D
+# and 3D grids, 5.6e-17 in a controlled model of the search, and 7.3e-15 in
+# this script's 2D workload against 866f83e. This allowance leaves a wide
+# margin above them and is the scaling study's allowance between the PyMedPhys
+# and SciPy interpolators. It checks that two revisions time the same
+# calculation; it is not a clinical tolerance. Rounding can also change which
+# points a search shell samples and move gamma by much more, which is reported
+# as a disagreement rather than accepted.
+REVISION_ABSOLUTE_TOLERANCE = 1e-10
+
+
+def compare_revisions(previous, current, tolerance=REVISION_ABSOLUTE_TOLERANCE):
+    """Check that two revisions' gamma arrays describe the same calculation.
+
+    The arrays must have the same shape, NaN (not analysed) and infinite values
+    in the same places, the same pass or fail at every finite point, and differ
+    by at most ``tolerance`` in dimensionless gamma. Raises AssertionError that
+    lists every disagreement. Within one revision, gamma must instead repeat
+    exactly; callers check that separately.
+    """
+    previous, current = np.asarray(previous), np.asarray(current)
+    if previous.shape != current.shape:
+        raise AssertionError(
+            f"Gamma shapes differ between revisions: {previous.shape} and {current.shape}"
+        )
+    finite = np.isfinite(previous) & np.isfinite(current)
+    same_non_finite = (previous == current) | (np.isnan(previous) & np.isnan(current))
+    non_finite_disagreements = int(np.count_nonzero(~finite & ~same_non_finite))
+    pass_disagreements = int(
+        np.count_nonzero((previous[finite] <= 1) != (current[finite] <= 1))
+    )
+    largest = float(np.max(np.abs(previous[finite] - current[finite]), initial=0))
+    problems = []
+    if non_finite_disagreements:
+        problems.append(
+            f"{non_finite_disagreements} points are NaN or infinite in one revision "
+            "and not the same in the other"
+        )
+    if pass_disagreements:
+        problems.append(
+            f"{pass_disagreements} points pass in one revision and fail in the other"
+        )
+    if not largest <= tolerance:
+        problems.append(
+            f"finite gamma differs by up to {largest:.3g}, more than {tolerance:g}"
+        )
+    if problems:
+        raise AssertionError(
+            "The two revisions do not compute the same gamma: "
+            + "; ".join(problems)
+            + ". Their timings would not compare the same calculation."
+        )
+    return {
+        "exact": bool(np.array_equal(previous, current, equal_nan=True)),
+        "max_abs_difference": largest,
+        "pass_disagreements": pass_disagreements,
+    }
 
 
 def checked_checkout(path, revision):
@@ -90,8 +153,9 @@ def run_benchmark(
         raise ValueError("Select at least one supported benchmark case")
     if min(rounds, repeats, threads) < 1:
         raise ValueError("Rounds, repeats and threads must be positive")
-    records, arrays, timings = (
+    records, arrays, agreement, timings = (
         [],
+        {},
         {},
         {case: {version: [] for version in roots} for case in cases},
     )
@@ -146,11 +210,31 @@ def run_benchmark(
                                 f"Unexpected import provenance: {origin}"
                             )
                     gamma_values = np.load(array_path, allow_pickle=False)
-                    if case in arrays:
-                        # Compare every element and NaN position, across versions and rounds.
-                        np.testing.assert_array_equal(gamma_values, arrays[case])
-                    else:
-                        arrays[case] = gamma_values
+                    # Each revision must repeat its gamma exactly, including
+                    # NaN positions, in every round.
+                    np.testing.assert_array_equal(
+                        gamma_values,
+                        arrays.setdefault((case, version), gamma_values),
+                        err_msg=f"{case}: the {version} revision did not repeat its gamma",
+                    )
+                    # Compare the revisions once both have run this case.
+                    if case not in agreement and all(
+                        (case, other) in arrays for other in roots
+                    ):
+                        try:
+                            agreement[case] = compare_revisions(
+                                arrays[(case, "previous")], arrays[(case, "current")]
+                            )
+                        except AssertionError as error:
+                            raise AssertionError(f"{case}: {error}") from None
+                        print(
+                            "  Revisions equal exactly"
+                            if agreement[case]["exact"]
+                            else "  Revisions agree within "
+                            f"{REVISION_ABSOLUTE_TOLERANCE:g}; largest difference "
+                            f"{agreement[case]['max_abs_difference']:.3g}",
+                            flush=True,
+                        )
                     record.update(
                         version=version,
                         round=round_index,
@@ -165,7 +249,7 @@ def run_benchmark(
                     record["gamma_sha256"] = hashlib.sha256(
                         gamma_values.tobytes()
                     ).hexdigest()
-                    record["elementwise_equal"] = True
+                    record["repeat_equal"] = True
                     records.append(record)
                     if progress_path is not None:
                         Path(progress_path).write_text(
@@ -179,7 +263,8 @@ def run_benchmark(
     return {
         "times": timings,
         "records": records,
-        "elementwise_equal": True,
+        "revision_agreement": agreement,
+        "revision_absolute_tolerance": REVISION_ABSOLUTE_TOLERANCE,
         "worker_sha256": hashlib.sha256(WORKER.encode()).hexdigest(),
         "rounds": rounds,
         "repeats": repeats,
@@ -197,6 +282,7 @@ Checks module origins, saves the full gamma array and prints timing/provenance J
 import json
 import hashlib
 import importlib
+import inspect
 import platform
 from pathlib import Path
 import numba
@@ -259,6 +345,39 @@ def case_inputs(case):
     return ref_axes, ref, eval_axes, ev, options
 
 
+# Options that pymedphys.gamma renamed in version 0.42.0.
+RENAMED_OPTIONS = {
+    "dose_percent_threshold": "dose_criterion_percent",
+    "distance_mm_threshold": "distance_criterion_mm",
+    "lower_percent_dose_cutoff": "lower_dose_cutoff_percent",
+    "global_normalisation": "normalisation_dose",
+    "max_gamma": "gamma_cap",
+    "interp_algo": "interpolator",
+    "ram_available": "memory_budget_bytes",
+}
+
+
+def gamma_call(options):
+    """Options and a result reader for the imported checkout's pymedphys.gamma.
+
+    The options here use the names from before version 0.42.0, so that one
+    worker can time revisions on either side of it. From 0.42.0 the function
+    takes renamed options and returns a result, whose gamma attribute is the
+    array that earlier revisions returned.
+    """
+    if "dose_criterion_percent" not in inspect.signature(pymedphys.gamma).parameters:
+        return dict(options), "array", lambda returned: returned
+    translated = {}
+    for name, value in options.items():
+        if name == "local_gamma":
+            translated["normalisation"] = "local" if value else "global"
+        elif name == "interp_fraction":
+            translated["search_step_fraction"] = 1 / value
+        else:
+            translated[RENAMED_OPTIONS.get(name, name)] = value
+    return translated, "result", lambda returned: returned.gamma
+
+
 def main():
     case, repeats = sys.argv[1], int(sys.argv[2])
     ref_axes, ref, eval_axes, ev, options = case_inputs(case)
@@ -271,16 +390,18 @@ def main():
             raise RuntimeError(f"Wrong imported module: {name} from {origin}; expected {root}")
         origins[name] = str(origin)
     warnings.simplefilter("error")
+    call_options, interface, as_array = gamma_call(options)
     # Warm-up: loads cached Numba kernels and SciPy code paths.
     warmup_start = time.perf_counter()
-    gamma = pymedphys.gamma(ref_axes, ref, eval_axes, ev, **options)
+    gamma = as_array(pymedphys.gamma(ref_axes, ref, eval_axes, ev, **call_options))
     warmup_seconds = time.perf_counter() - warmup_start
     baseline = gamma.copy()
     times = []
     for _ in range(repeats):
         start = time.perf_counter()
-        gamma = pymedphys.gamma(ref_axes, ref, eval_axes, ev, **options)
+        returned = pymedphys.gamma(ref_axes, ref, eval_axes, ev, **call_options)
         times.append(time.perf_counter() - start)
+        gamma = as_array(returned)
         np.testing.assert_array_equal(gamma, baseline)
     np.save(sys.argv[4], gamma, allow_pickle=False)
     print(
@@ -289,6 +410,7 @@ def main():
                 "case": case,
                 "shape": list(ref.shape),
                 "options": options,
+                "gamma_interface": interface,
                 "input_sha256": hashlib.sha256(b"".join(
                     array.tobytes() for array in (*ref_axes, ref, *eval_axes, ev)
                 )).hexdigest(),
@@ -352,14 +474,36 @@ def machine_description():
     return f"{description or platform.machine()}; {os.cpu_count()} logical CPUs"
 
 
+def revision_agreement(result):
+    """The cross-revision comparison of each case, and the allowance it used.
+
+    Results saved before the allowance existed required the revisions' arrays
+    to be equal, and record that instead.
+    """
+    if "revision_agreement" in result:
+        return result["revision_agreement"], result["revision_absolute_tolerance"]
+    assert result["elementwise_equal"]
+    assert all(record["elementwise_equal"] for record in result["records"])
+    for case in result["times"]:
+        hashes = {r["gamma_sha256"] for r in result["records"] if r["case"] == case}
+        assert len(hashes) == 1
+    exact = {"exact": True, "max_abs_difference": 0.0, "pass_disagreements": 0}
+    return {case: dict(exact) for case in result["times"]}, 0.0
+
+
 def validate_result(result):
-    """Refuse to plot incomplete, inconsistent or numerically unequal results."""
+    """Refuse to plot incomplete, inconsistent or disagreeing results.
+
+    Returns the cross-revision comparison of each case and its allowance.
+    """
     records = result["records"]
     cases = list(result["times"])
-    assert result["elementwise_equal"]
+    agreement, tolerance = revision_agreement(result)
+    assert 0 <= tolerance <= REVISION_ABSOLUTE_TOLERANCE
     assert cases and set(cases) <= set(CASES)
+    assert set(agreement) == set(cases)
     assert len(records) == len(cases) * 2 * result["rounds"]
-    assert all(record["elementwise_equal"] for record in records)
+    assert all(r.get("repeat_equal", r.get("elementwise_equal")) for r in records)
     assert len({json.dumps(r["versions"], sort_keys=True) for r in records}) == 1
     assert len({r["python"] for r in records}) == 1
     assert len({r["platform"] for r in records}) == 1
@@ -372,11 +516,21 @@ def validate_result(result):
     for case in cases:
         selected = [r for r in records if r["case"] == case]
         assert len({r["input_sha256"] for r in selected}) == 1
-        assert len({r["gamma_sha256"] for r in selected}) == 1
         assert all(r["finite_points"] == r["eligible_points"] for r in selected)
         assert all(r["nan_count"] + r["finite_points"] == r["points"] for r in selected)
+        # Between revisions: the same counts, and agreement within the allowance.
+        for key in ("points", "eligible_points", "nan_count", "pass_count"):
+            assert len({r[key] for r in selected}) == 1
+        compared = agreement[case]
+        assert compared["pass_disagreements"] == 0
+        assert 0 <= compared["max_abs_difference"] <= tolerance
+        assert not compared["exact"] or compared["max_abs_difference"] == 0
+        if len({r["gamma_sha256"] for r in selected}) == 1:
+            assert compared["exact"]
         for version in ("previous", "current"):
             by_version = [r for r in selected if r["version"] == version]
+            # Within a revision, every round repeats the same gamma exactly.
+            assert len({r["gamma_sha256"] for r in by_version}) == 1
             assert sorted(r["round"] for r in by_version) == list(
                 range(result["rounds"])
             )
@@ -385,6 +539,7 @@ def validate_result(result):
             assert np.isfinite(times).all() and np.all(np.array(times) > 0)
             assert all(r["numba_threads"] == result["threads"] for r in by_version)
             np.testing.assert_array_equal(times, result["times"][case][version])
+    return agreement, tolerance
 
 
 def save_comparison(result, output):
@@ -397,7 +552,7 @@ def save_comparison(result, output):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    validate_result(result)
+    agreement, tolerance = validate_result(result)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     (output / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -433,11 +588,23 @@ def save_comparison(result, output):
                 "current_median_seconds",
                 "time_saved_percent",
                 "speedup",
+                "revisions_equal",
+                "revision_max_abs_gamma_difference",
             ]
         )
         for case, values in medians.items():
             old, new = values["previous"], values["current"]
-            writer.writerow([case, old, new, 100 * (1 - new / old), old / new])
+            writer.writerow(
+                [
+                    case,
+                    old,
+                    new,
+                    100 * (1 - new / old),
+                    old / new,
+                    agreement[case]["exact"],
+                    agreement[case]["max_abs_difference"],
+                ]
+            )
             print(
                 f"{case:14s} {old:8.3f} -> {new:8.3f} s; {100 * (1 - new / old):+6.1f}% time saved; {old / new:.2f}x speed-up"
             )
@@ -589,10 +756,18 @@ def save_comparison(result, output):
     fig.suptitle(
         "PyMedPhys gamma: old vs new", x=0.55, y=0.99, fontsize=19, fontweight="bold"
     )
+    if all(compared["exact"] for compared in agreement.values()):
+        numerical = "exact full-array agreement in every measured case"
+    else:
+        largest = max(c["max_abs_difference"] for c in agreement.values())
+        numerical = (
+            f"full arrays agree within {tolerance:g} (largest difference "
+            f"{largest:.1e}), with the same NaN positions and pass/fail"
+        )
     fig.text(
         0.55,
         0.94,
-        "Same inputs and criteria · exact full-array agreement in every measured case",
+        f"Same inputs and criteria · {numerical}",
         ha="center",
         fontsize=11,
     )

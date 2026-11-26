@@ -15,7 +15,7 @@
 # pylint: disable = protected-access
 
 
-"""Tests for gamma shell."""
+"""Tests for gamma's shell search."""
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
@@ -25,17 +25,17 @@ import pymedphys._utilities.createshells
 
 
 def does_gamma_scale_as_expected(
-    init_distance_threshold, threshold_ratio, scales_to_test
+    init_distance_criterion, criterion_ratio, scales_to_test
 ):
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
     all_scales = np.concatenate([[1], scales_to_test])
 
-    distance_thresholds_to_test = init_distance_threshold * all_scales
-    dose_thresholds_to_test = distance_thresholds_to_test * threshold_ratio
+    distance_criteria_to_test = init_distance_criterion * all_scales
+    dose_criteria_to_test = distance_criteria_to_test * criterion_ratio
 
     gamma_results = []
-    for dose, distance in zip(dose_thresholds_to_test, distance_thresholds_to_test):
+    for dose, distance in zip(dose_criteria_to_test, distance_criteria_to_test):
         gamma_results.append(
             pymedphys.gamma(
                 coords,
@@ -44,8 +44,8 @@ def does_gamma_scale_as_expected(
                 evaluation,
                 dose,
                 distance,
-                lower_percent_dose_cutoff=0,
-            )
+                lower_dose_cutoff_percent=0,
+            ).gamma
         )
 
     for i, scale in enumerate(scales_to_test):
@@ -64,23 +64,26 @@ def test_a_set_of_gamma_scaling():
     does_gamma_scale_as_expected(0.6, 20, [2, 3, 4])
 
 
-def test_multiple_threshold_inputs():
+def test_multiple_criteria_inputs():
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
-    pymedphys.gamma(
+    results = pymedphys.gamma(
         coords,
         reference,
         coords,
         evaluation,
         [3],
         [0.3, 0.5],
-        lower_percent_dose_cutoff=0,
+        lower_dose_cutoff_percent=0,
     )
+
+    assert [result.settings.distance_criterion_mm for result in results] == [0.3, 0.5]
+    assert all(result.gamma.shape == reference.shape for result in results)
 
 
 @pytest.mark.filterwarnings("ignore:.*outside the evaluation grid:UserWarning")
-def test_lower_dose_threshold():
-    """Verify that the lower dose threshold works as expected"""
+def test_lower_dose_cutoff():
+    """Verify that the lower dose cutoff works as expected"""
     ref = [0, 1, 1.9, 2, 2.1, 3, 4, 5, 10, 10]
     coords_ref = (np.arange(len(ref)),)
 
@@ -89,7 +92,7 @@ def test_lower_dose_threshold():
 
     result = pymedphys.gamma(coords_ref, ref, coords_evl, evl, 10, 1)
 
-    assert np.array_equal(ref < 0.2 * np.max(ref), np.isnan(result))
+    assert np.array_equal(ref < 0.2 * np.max(ref), np.isnan(result.gamma))
 
 
 def get_dummy_gamma_set():
@@ -120,8 +123,8 @@ def test_regression_of_gamma_3d():
 
     gamma3d = np.round(
         pymedphys.gamma(
-            coords, reference, coords, evaluation, 3, 0.3, lower_percent_dose_cutoff=0
-        ),
+            coords, reference, coords, evaluation, 3, 0.3, lower_dose_cutoff_percent=0
+        ).gamma,
         decimals=1,
     )
 
@@ -140,8 +143,8 @@ def test_regression_of_gamma_2d():
             evaluation[5, :, :],
             3,
             0.3,
-            lower_percent_dose_cutoff=0,
-        ),
+            lower_dose_cutoff_percent=0,
+        ).gamma,
         decimals=1,
     )
 
@@ -161,8 +164,8 @@ def test_regression_of_gamma_1d():
             evaluation[5, 5, :],
             3,
             0.3,
-            lower_percent_dose_cutoff=0,
-        ),
+            lower_dose_cutoff_percent=0,
+        ).gamma,
         decimals=1,
     )
 

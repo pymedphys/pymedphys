@@ -17,10 +17,23 @@ runs:
       shell: bash
       env:
         DICOM3TOOLS: '1.00~20240118131615-1'
+      # Each attempt is bounded and retried: on 23 Nov 2026 an update hung on
+      # the archive until the job reached its time limit, which dropped a
+      # merge group from the queue.
       run: |
         set -euxo pipefail
-        sudo apt-get update
-        sudo apt-get install --yes --no-install-recommends "dicom3tools=${DICOM3TOOLS}"
+        apt_options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+        for attempt in 1 2 3; do
+          if sudo timeout 120 apt-get "${apt_options[@]}" update \
+            && sudo timeout 180 apt-get "${apt_options[@]}" install --yes --no-install-recommends "dicom3tools=${DICOM3TOOLS}"; then
+            break
+          fi
+          if [[ ${attempt} -eq 3 ]]; then
+            echo "::error::Installing dicom3tools failed three times."
+            exit 1
+          fi
+          sleep $((attempt * 20))
+        done
         dciodvfy -version 2>&1 || true
 
     - name: Name dicom-validator's tables

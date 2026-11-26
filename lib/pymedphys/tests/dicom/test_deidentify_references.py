@@ -58,6 +58,11 @@ STRUCTURED_REPORTS = (
     "Spectacle Prescription Report",
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
 )
 # The softcopy Presentation States, which reference the images they apply to
 # in the Presentation State Relationship Module or, for the Blending
@@ -71,6 +76,13 @@ PRESENTATION_STATES = (
     "Variable Modality LUT Softcopy Presentation State",
 )
 BLENDING_PRESENTATION_STATE = "Blending Softcopy Presentation State"
+# The waveform Presentation States, which reference the waveforms they apply
+# to in the Presentation State Relationship Module and include no Common
+# Instance Reference Module.
+WAVEFORM_PRESENTATION_STATES = (
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+)
 # Blending Sequence (0070,0402).
 BLENDING = "(0070,0402)"
 # An encapsulated document, which names its sources, predecessors, and
@@ -283,6 +295,7 @@ RT_REFERENCES = [
         if iod not in STRUCTURED_REPORTS
         and iod not in PRESENTATION_STATES
         and iod != BLENDING_PRESENTATION_STATE
+        and iod not in WAVEFORM_PRESENTATION_STATES
         and iod != ENCAPSULATED_PDF
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
@@ -298,6 +311,14 @@ RT_REFERENCES = [
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (iod, attribute, level)
+        for iod in WAVEFORM_PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,113A)", "(0008,1155)"), Level.INSTANCE),
         ]
     ),
     *(
@@ -369,6 +390,7 @@ STUDY_SEQUENCES = {"(0008,1110)", "(3006,0012)"}
 OTHER_SEQUENCES = {
     "(0008,1111)",  # Referenced Performed Procedure Step Sequence
     "(0008,1120)",  # Referenced Patient Sequence
+    "(0008,113A)",  # Referenced Waveform Sequence
     "(0008,1140)",  # Referenced Image Sequence
     "(0008,114A)",  # Referenced Instance Sequence
     "(0008,114B)",  # Referenced Real World Value Mapping Instance Sequence
@@ -380,13 +402,17 @@ OTHER_SEQUENCES = {
     "(0018,990D)",  # Referenced Performed Protocol Sequence
     "(0020,9172)",  # Conversion Source Attributes Sequence
     "(0038,0100)",  # Pertinent Documents Sequence
+    "(003A,020A)",  # Source Waveform Sequence
     "(0040,A390)",  # HL7 Structured Document Reference Sequence
+    "(0040,B030)",  # Structured Waveform Annotation Sequence
     "(0042,0013)",  # Source Instance Sequence
     "(0062,0012)",  # Used Segments Sequence
     "(0066,002E)",  # Segment Surface Source Instance Sequence
     "(0070,0314)",  # Used Fiducials Sequence
     "(0070,0315)",  # Used RT Structure Set ROI Sequence
     "(0070,0404)",  # Referenced Spatial Registration Sequence
+    "(0070,1104)",  # Rendered Image Reference Sequence
+    "(0070,1903)",  # Referenced Structured Context Sequence
     "(0074,1040)",  # Related Reference RT Image Sequence
     "(3006,0016)",  # Contour Image Sequence
     "(3006,0018)",  # Predecessor Structure Set Sequence
@@ -394,8 +420,11 @@ OTHER_SEQUENCES = {
     "(300A,0401)",  # Referenced Setup Image Sequence
     "(300A,0616)",  # RT Radiation Sequence
     "(300A,0630)",  # Referenced RT Radiation Sequence
+    "(300A,0631)",  # Referenced RT Instance Sequence
     "(300A,063B)",  # Referenced RT Physician Intent Sequence
     "(300A,0702)",  # Referenced RT Radiation Set Sequence
+    "(300A,0703)",  # Referenced RT Radiation Record Sequence
+    "(300A,0780)",  # Additional Parameter Recording Instance Sequence
     "(300A,078B)",  # Referenced RT Treatment Preparation Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
     "(300C,0002)",  # Referenced RT Plan Sequence
@@ -407,15 +436,20 @@ OTHER_SEQUENCES = {
     "(3010,0009)",  # Equivalent Conceptual Volume Instance Reference Sequence
     "(3010,0044)",  # Instance-Level Referenced Performed Procedure Step Sequence
     "(3010,004A)",  # Referenced Direct Segment Instance Sequence
+    "(3010,0055)",  # RT Physician Intent Predecessor Sequence
+    "(3010,0062)",  # Prior Treatment Reference Sequence
+    "(3002,011E)",  # Referenced Baseline Parameters RT Radiation Instance Sequence
 }
 # Every other UI attribute that uid_roles.toml marks "instance" and that a
 # first release IOD defines inside a sequence, with why it is not followed.
 NOT_FOLLOWED = {
     "(0008,010D)": "identifies the organisation that extended a context group",
+    "(0008,9123)": "identifies the software version that created an instance",
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",
     "(0018,100B)": "identifies a class of device",
+    "(0028,1199)": "identifies a palette colour lookup table",
     "(0020,9164)": "identifies a dimension organisation",
     "(0040,0554)": "identifies a specimen",
     "(0040,A124)": "is the value of a content item",
@@ -427,6 +461,8 @@ NOT_FOLLOWED = {
     "(0062,0021)": "identifies a finding or feature tracked across instances",
     "(0070,031A)": "refers to a fiducial within an instance",
     "(0070,031B)": "refers to a fiducial within an instance",
+    "(0070,1209)": "identifies a set of inputs within a Presentation State",
+    "(0070,1904)": "refers to a content item within a structured context",
     "(0088,0140)": "identifies a file set",
     "(0400,0100)": "identifies a digital signature",
     "(300A,0013)": "identifies a dose reference within a plan",
@@ -440,6 +476,10 @@ NOT_FOLLOWED = {
     "(3010,0015)": "refers to a conceptual volume, not an instance",
     "(0040,A171)": "identifies an observation, not an instance",
     "(3010,0031)": "refers to a fiducial within an instance",
+    "(3010,003B)": "identifies a treatment phase, not an instance",
+    "(3010,006E)": "identifies a dosimetric objective, not an instance",
+    "(3010,006F)": "refers to a dosimetric objective, not an instance",
+    "(0072,007F)": "is the value that a parameter's constraint compares",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",
     "(0064,0003)": "refers to a frame of reference",

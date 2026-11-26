@@ -45,11 +45,17 @@ from .conformance import (
     AttributeAction,
     ConformanceStatement,
 )
-from .conformance_values import code as _code
+from .conformance_prose import code as _code
 from .conformance_safe_private import safe_private_section
-from .conformance_values import join as _join
+from .conformance_prose import join as _join
 from .markers import PROFILE_CODE
-from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
+from .policy import (
+    CLEAN_GRAPHICS,
+    CLEAN_PIXEL_DATA,
+    CLEAN_STRUCTURED_CONTENT,
+    ENGINE_OPTIONS,
+    UIDS,
+)
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
@@ -652,6 +658,10 @@ def _cleaned(
             f"{tags}, which hold content items, and the engine cleans them by "
             "their concept names."
             if cleaned.option == CLEAN_STRUCTURED_CONTENT
+            else f"{tags}, which holds the graphic annotations of a "
+            "Presentation State, and the engine cleans each by a reviewer's "
+            "decision on it."
+            if cleaned.option == CLEAN_GRAPHICS
             else f"{tags}, wherever they are in the data set, and a reviewed "
             "cleaner settles them."
         )
@@ -697,19 +707,31 @@ _REVIEW_CONDITIONS = {
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
         "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, "
-        "MR Spectroscopy, Spatial "
+        "RT Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface "
-        "Segmentation, X-Ray Radiation Dose "
-        "SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation "
-        "Dose SR, Patient Radiation Dose SR, Basic Text SR, Enhanced SR, "
-        "Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object "
-        "Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, "
-        "Procedure Log, Spectacle Prescription Report, Macular Grid Thickness "
-        "and Volume Report, Waveform Annotation SR, Real World Value Mapping, "
+        "Segmentation, X-Ray Radiation Dose SR, Enhanced X-Ray Radiation Dose "
+        "SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose SR, "
+        "Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, "
+        "Extensible SR, Key Object Selection Document, Mammography CAD SR, "
+        "Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription "
+        "Report, Macular Grid Thickness and Volume Report, Waveform Annotation "
+        "SR, Implantation Plan SR Document, Simplified Adult Echo SR, Planned "
+        "Imaging Agent Administration SR, Performed Imaging Agent "
+        "Administration SR, Acquisition Context SR, Real World Value Mapping, "
         "Grayscale Softcopy Presentation State, Color Softcopy Presentation "
         "State, Pseudo-Color Softcopy Presentation State, Blending Softcopy "
-        "Presentation State, XA/XRF Grayscale Softcopy Presentation State, and "
-        "Variable Modality LUT Softcopy Presentation State. There it is a "
+        "Presentation State, XA/XRF Grayscale Softcopy Presentation State, "
+        "Variable Modality LUT Softcopy Presentation State, Planar MPR "
+        "Volumetric Presentation State, Volume Rendering Volumetric "
+        "Presentation State, Advanced Blending Presentation State, Waveform "
+        "Presentation State, and Waveform Acquisition Presentation State. "
+        "There it is a "
         "standard attribute of a Standard Extended SOP Class (PS3.2 Section "
         "7.3), added to the top level of the data set as an attribute of the "
         "instance, where every PS3.3 module that defines it, such as the "
@@ -726,9 +748,10 @@ _REVIEW_CONDITIONS = {
         "free of a recognisable face in the attested "
         "QC pack of an earlier run of the same files, and whose pixel data, "
         "by their SHA-256, are written as that run wrote them, which its "
-        "review showed, as are an RT Structure Set's contours and a "
-        "deformable registration's grids, which their own sheets in that "
-        "pack showed. Such an instance also "
+        "review showed, as are an RT Structure Set's contours, a "
+        "deformable registration's grids, and a Surface Segmentation's "
+        "meshes, which their own sheets in that pack showed. Such an "
+        "instance also "
         "has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
         "E.3.2 requires, including in an IOD that does not define the "
         "attribute, which of the supported IODs are RT Plan, RT Structure "
@@ -738,28 +761,37 @@ _REVIEW_CONDITIONS = {
         "Annotation, RT Radiation Set, C-Arm Photon-Electron Radiation, "
         "Tomotherapeutic Radiation, Robotic-Arm Radiation, RT Beams Delivery "
         "Instruction, RT Brachy Application Setup Delivery Instruction, RT "
-        "Radiation Set Delivery Instruction, MR Spectroscopy, Spatial "
+        "Radiation Set Delivery Instruction, RT Physician Intent, RT Treatment "
+        "Preparation, RT Patient Position Acquisition Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial "
         "Registration, Surface Segmentation, X-Ray Radiation Dose SR, "
-        "Enhanced X-Ray Radiation Dose "
-        "SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose "
-        "SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D "
-        "SR, Extensible SR, Key Object Selection Document, Mammography CAD "
-        "SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
-        "Prescription Report, Macular Grid Thickness and Volume Report, "
-        "Waveform Annotation SR, Real World Value Mapping, Grayscale Softcopy "
+        "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose "
+        "SR, Patient Radiation Dose SR, Basic Text SR, Enhanced SR, "
+        "Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object "
+        "Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, "
+        "Procedure Log, Spectacle Prescription Report, Macular Grid Thickness "
+        "and Volume Report, Waveform Annotation SR, Implantation Plan SR "
+        "Document, Simplified Adult Echo SR, Planned Imaging Agent "
+        "Administration SR, Performed Imaging Agent Administration SR, "
+        "Acquisition Context SR, Real World Value Mapping, Grayscale Softcopy "
         "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
         "Softcopy Presentation State, Blending Softcopy Presentation State, "
-        "XA/XRF Grayscale Softcopy Presentation State, and Variable Modality "
-        "LUT Softcopy Presentation State. There it is a "
+        "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
+        "State, Volume Rendering Volumetric Presentation State, Advanced "
+        "Blending Presentation State, Waveform Presentation State, and "
+        "Waveform Acquisition Presentation State. There it is a "
         "standard attribute of a "
         "Standard Extended SOP Class (PS3.2 Section 7.3), added to the top "
         "level of the data set as an attribute of the instance, where every "
         "PS3.3 module that defines it, such as the General Image Module, "
         "places it. Any other instance that can show a face does not gain "
-        "that code, and is held for review, so it is never released; so is "
-        "every Surface Segmentation, and any other instance with a surface "
-        "mesh, since no preview of the pack draws a mesh. The "
+        "that code, and is held for review, so it is never released. The "
         "run also sets to air the region in front of a plane just behind the "
         "centres of the eyes, from their lower edge up, of each CT Image "
         "series in which it finds both eyes, keeping the brain in the "
@@ -1070,7 +1102,21 @@ def render_markdown(statement: ConformanceStatement) -> str:
         f"Instances of the {_join(statement.iods)} IODs, of these Storage SOP "
         "Classes and in these transfer syntaxes, are de-identified. Every "
         "other instance is sequestered: it is not written, and is excluded "
-        "from any claim.",
+        "from any claim. "
+        + (
+            "An instance of a Secondary Capture IOD, captured from a screen, "
+            "a video signal, or a scanned document or film, is cleaned and "
+            "held for review as any other image is, and released only on a "
+            "reviewer's verdict; a Multi-frame Single Bit Secondary Capture "
+            "Image, whose pixels are single bits, cannot be cleaned and is "
+            "sequestered as `uncleanable-pixel-data`."
+            if CLEAN_PIXEL_DATA in statement.options
+            else "An instance of a Secondary Capture IOD, captured from a "
+            "screen, a video signal, or a scanned document or film, is "
+            "sequestered as `secondary-capture-not-cleaned`, since only the "
+            "Clean Pixel Data Option, which this policy does not select, "
+            "cleans the text burned into its pixel data."
+        ),
         "",
         *_table(
             ("SOP Class UID", "SOP Class", "IOD"),
@@ -1129,7 +1175,14 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "Manufacturer (300A,0216), which Table E.1-1 gives X, is Type 2 in "
         "Recorded Source Sequence (3008,0100), which every RT Brachy "
         "Treatment Record holds, and no Type 3 sequence encloses it there, so "
-        "it is emptied there too, rather than sequester the record. Each "
+        "it is emptied there too, rather than sequester the record. So are "
+        "Patient Treatment Preparation Procedure Parameter Description "
+        "(300A,078E), which Table E.1-1 gives X, Type 2 in Patient Treatment "
+        "Preparation Procedure Sequence (300A,0790) at the top level of an RT "
+        "Treatment Preparation, and Prior Treatment Dose Description "
+        "(3010,0061), which it also gives X, Type 2 in RT Prescription "
+        "Sequence (3010,006B) of an RT Physician Intent, where no Type 3 "
+        "sequence encloses either. Each "
         "departs from the table's X; the zero-length value discloses "
         "nothing that removal would not.",
         "",

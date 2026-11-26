@@ -1,0 +1,116 @@
+name: Clean Graphics on Public Data
+
+# On demand, run the Clean Graphics Option on fourteen public instances, and
+# count what it does: six softcopy Presentation States of 0.55 T MRI of
+# consented volunteers, three of the heart (Zenodo record 23089164,
+# https://doi.org/10.5281/zenodo.23089164) and three of the knee (record
+# 23964089, https://doi.org/10.5281/zenodo.23964089), both CC BY 4.0, four
+# of them with Graphic Annotation Sequences that hold text and graphic
+# objects, and two without annotations, whose overlay groups hold only
+# Overlay Activation Layer (60xx,1001); four RT Images of the BRAVEHeart
+# trial's patients, in the University of Sydney's research data store
+# (https://doi.org/10.25910/7by0-vf89, CC BY 4.0), each with four curve
+# groups; three PET images of the ACRIN-FLT-Breast trial's patients, in
+# NCI's Imaging Data Commons (https://doi.org/10.7937/k9/tcia.2017.ol20zmxg,
+# CC BY 3.0), each with an overlay group that holds Overlay Data; and
+# dcm4che's test pattern ovly_p01.dcm, a Secondary Capture of no patient,
+# at a pinned commit of its repository (MPL 1.1, GPL 2.0 or later, or LGPL
+# 2.1 or later), with two overlays in unused bits of Pixel Data. MIDI-B's
+# instances hold no graphics, so this is the option's own public check.
+# pymedphys._dicom.deidentify.clean_graphics_check reads each archive's
+# instances over HTTP ranges, refusing an archive unless its size and
+# central directory are those that text_evaluation_archives pins, and each
+# instance unless its CRC-32, SHA-256, and SOP Class are those that it
+# pins; it reads each other instance whole from IDC's public bucket or from
+# GitHub, refusing it unless its size, SHA-256, and SOP Class are those
+# that it pins. It runs each under Modified Dates, alone and with Clean
+# Graphics, with reviewed annotations lists built from its own annotations
+# where it has any, and the test pattern also with Clean Graphics and Clean
+# Pixel Data, whose text detector downloads its pinned model, and fails
+# unless every expectation is met.
+#
+# These are real people's data, but for the test pattern, and this
+# repository's logs and artefacts are public. So only counts, codes,
+# digests, versions, the text detector's method, and the data sets' public
+# identifiers leave the runner: the command's standard output and error go
+# to files on the runner, the job shows the result files instead, and a
+# crash is reported by .github/scripts/run_redacted.py as its type and code
+# locations alone. The instances are held in memory only, and never
+# written, cached, or uploaded.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clean-graphics-check-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Clean Graphics on public data
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The user extra holds pydicom, NumPy, and SciPy; text-detection holds
+      # ONNX Runtime, which runs the text detector's model.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user text-detection'
+
+      - name: Prepare the private directory
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/graphics/private"
+
+      # The command writes clean-graphics-check.json and
+      # clean-graphics-check.md, which hold only counts, codes, tag numbers,
+      # digests, versions, the text detector's method, and the data sets'
+      # public identifiers, and exits with 1 where an expectation is not met;
+      # the commit is recorded beside them either way.
+      - name: Run the check
+        timeout-minutes: 20
+        run: |
+          results="${RUNNER_TEMP}/graphics/results"
+          status=0
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/graphics/private/check-stdout.log" \
+            pymedphys._dicom.deidentify.clean_graphics_check check \
+            --out "${results}" \
+            2> "${RUNNER_TEMP}/graphics/private/check-stderr.log" || status=$?
+          if [[ -d "${results}" ]]; then
+            echo "${GITHUB_SHA}" > "${results}/commit.txt"
+          fi
+          exit "${status}"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          page="${RUNNER_TEMP}/graphics/results/clean-graphics-check.md"
+          if [[ -f "${page}" ]]; then
+            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+          else
+            echo "The check wrote no results; the log shows why." \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: clean-graphics-check-results${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/graphics/results/
+          if-no-files-found: warn
+          retention-days: 90

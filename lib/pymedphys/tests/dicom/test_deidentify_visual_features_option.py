@@ -84,6 +84,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     Disposition,
     InstanceEntry,
     Preview,
+    NO_SURFACES_SHA256,
     PreviewKind,
     QcPack,
     QcPackError,
@@ -761,6 +762,14 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "RT Radiation Record Set",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -782,6 +791,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
         "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
@@ -789,6 +803,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
@@ -797,8 +816,14 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Enhanced Continuous RT Image, RT Segment Annotation, RT Radiation Set, "
         "C-Arm Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application Setup "
-        "Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
-        "Spectroscopy, Spatial "
+        "Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
+        "Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, "
+        "C-Arm Photon-Electron Radiation Record, "
+        "Tomotherapeutic Radiation Record, "
+        "Robotic-Arm Radiation Record, "
+        "RT Radiation Salvage Record, "
+        "RT Radiation Record Set, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface Segmentation, "
         "X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, "
@@ -806,11 +831,16 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, "
         "Spectacle Prescription Report, Macular Grid Thickness and Volume Report, "
-        "Waveform Annotation SR, Real World Value Mapping, Grayscale Softcopy "
-        "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
-        "Softcopy Presentation State, Blending Softcopy Presentation State, "
-        "XA/XRF Grayscale Softcopy Presentation State, and Variable Modality "
-        "LUT Softcopy Presentation State."
+        "Waveform Annotation SR, Implantation Plan SR Document, Simplified Adult Echo "
+        "SR, Planned Imaging Agent Administration SR, Performed Imaging Agent "
+        "Administration SR, Acquisition Context SR, Real World Value Mapping, "
+        "Grayscale Softcopy Presentation State, Color Softcopy Presentation State, "
+        "Pseudo-Color Softcopy Presentation State, Blending Softcopy Presentation "
+        "State, XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, Advanced Blending Presentation "
+        "State, Waveform Presentation State, and Waveform Acquisition Presentation "
+        "State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -845,7 +875,8 @@ def test_with_clean_pixel_data_both_options_are_claimed_after_review():
         (
             ("clean_pixel_data",),
             "claims Clean Pixel Data only for an instance without top-level "
-            "pixel data or whose regions a reviewer approved, and Clean "
+            "pixel data or an encapsulated document, or whose regions a "
+            "reviewer approved, and Clean "
             "Recognizable Visual Features only for one that cannot show a face "
             "or whose source file a reviewer found free of one.",
         ),
@@ -1069,6 +1100,14 @@ _FACELESS = (
     "75-rt-beams-delivery-instruction.dcm",
     "76-rt-brachy-delivery-instruction.dcm",
     "77-rt-radiation-set-delivery-instruction.dcm",
+    "78-rt-radiation-record-set.dcm",
+    "79-rt-physician-intent.dcm",
+    "80-rt-treatment-preparation.dcm",
+    "81-rt-position-acquisition-instruction.dcm",
+    "82-c-arm-radiation-record.dcm",
+    "83-tomotherapeutic-radiation-record.dcm",
+    "84-robotic-arm-radiation-record.dcm",
+    "85-rt-radiation-salvage-record.dcm",
 )
 
 
@@ -1130,8 +1169,8 @@ def _first_run():
                 # Its grid sheets show its grid, so this verdict releases
                 # the grid that the first run wrote.
                 by_first[_DEFORMABLE]["positions"][0]: Face.ABSENT,
-                # No preview draws its meshes, so this verdict releases
-                # nothing of it.
+                # Its surfaces sheet shows its meshes, so this verdict
+                # releases the meshes that the first run wrote.
                 by_first[_SURFACE]["positions"][0]: Face.ABSENT,
             },
         )
@@ -1192,10 +1231,10 @@ def _codes(dataset):
 def test_a_series_marked_absent_is_released_with_the_option(second_run):
     _, outcomes, _, _ = second_run
 
-    # The RT Structure Set's and the Deformable Spatial Registration's IODs
-    # do not define the attribute, but E.3.2 adds it with the option's code
-    # all the same.
-    for name in (*_CT, _STRUCTURE_SET, _DEFORMABLE):
+    # The RT Structure Set's, the Deformable Spatial Registration's, and the
+    # Surface Segmentation's IODs do not define the attribute, but E.3.2 adds
+    # it with the option's code all the same.
+    for name in (*_CT, _STRUCTURE_SET, _DEFORMABLE, _SURFACE):
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert dataset.RecognizableVisualFeatures == "NO"
@@ -1208,16 +1247,21 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
     can_show = {
         name
         for name in outcomes
-        if name not in (*_CT, _STRUCTURE_SET, _DEFORMABLE)
+        if name not in (*_CT, _STRUCTURE_SET, _DEFORMABLE, _SURFACE)
         and name != corpus_module.SEQUESTERED_FILE
         and name not in _FACELESS
         and name not in corpus_module.STRUCTURED_REPORT_FILES
+        and name not in corpus_module.SECONDARY_CAPTURE_FILES
     }
 
     assert can_show >= set(_DOSE)
     # The reports cannot show a face, and their Content Sequence sequesters
     # them, as it does without the option (D-021).
     for name in corpus_module.STRUCTURED_REPORT_FILES:
+        assert outcomes[name] == ("sequestered", None), name
+    # The Secondary Captures can, but without Clean Pixel Data their
+    # burned-in text sequesters them first.
+    for name in corpus_module.SECONDARY_CAPTURE_FILES:
         assert outcomes[name] == ("sequestered", None), name
     for name in can_show:
         assert outcomes[name] == ("held-for-review", None), name
@@ -1240,18 +1284,36 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-def test_a_surface_segmentation_is_held_whatever_its_verdict(second_run):
-    _, outcomes, _, result = second_run
-    entries = json.loads(result.qc_pack.read_text("utf-8"))["instances"]
-    names = {entry["position"]: Path(entry["source"]).name[2:] for entry in entries}
-    reasons = {names[o.position]: set(o.reasons) for o in result.outcomes}
+def test_a_surface_segmentation_is_released_on_a_verdict_on_its_meshes(
+    first_run, second_run
+):
+    directory, _, review, _ = first_run
+    _, outcomes, _, _ = second_run
+    (path,) = (directory / "qc1").rglob("qc-pack.json")
+    pack = json.loads(path.read_text("utf-8"))
+    names = {e["position"]: Path(e["source"]).name for e in pack["instances"]}
+    (position,) = (p for p, name in names.items() if name == _SURFACE)
+    (sheet,) = (
+        preview
+        for preview in pack["previews"]
+        if preview["kind"] == PreviewKind.SURFACE_MESHES.value
+    )
 
-    # Its series is marked absent, but no preview of the pack drew its
-    # meshes, so the verdict is of none of them.
-    assert outcomes[_SURFACE] == ("held-for-review", None)
-    assert reasons[_SURFACE] == {
-        HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
-    }
+    # The first run's surfaces sheet drew its one mesh, so its pack binds
+    # the verdict on its series to the meshes written, which the second run
+    # writes again, so releases.
+    assert sheet["frames"] == [{"position": position, "frame": 0}]
+    assert sheet["total_frames"] == 1
+    (entry,) = (e for e in pack["instances"] if e["position"] == position)
+    assert entry["surface_sha256"] not in (None, NO_SURFACES_SHA256)
+    pair = (
+        bytes.fromhex(entry["source_sha256"]),
+        bytes.fromhex(entry["surface_sha256"]),
+    )
+    assert pair in review.absent_surfaces
+    disposition, dataset = outcomes[_SURFACE]
+    assert disposition == "released"
+    assert dataset.RecognizableVisualFeatures == "NO"
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
@@ -1280,8 +1342,9 @@ def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
     # What has no pixel data is released, and claims both options, since
     # it has nothing for Clean Pixel Data to clean; the deformable
     # registration too, whose grid its verdict covers, as the grid sheets
-    # showed it.
-    released = (_STRUCTURE_SET, _DEFORMABLE, *_FACELESS)
+    # showed it, and the Surface Segmentation, whose meshes its surfaces
+    # sheet showed.
+    released = (_STRUCTURE_SET, _DEFORMABLE, _SURFACE, *_FACELESS)
     for name in released:
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
@@ -1311,7 +1374,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/69"
+    assert report["format"] == "pymedphys-deid-release-report/87"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):

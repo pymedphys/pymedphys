@@ -120,6 +120,35 @@ def test_a_subjects_cases_stay_in_one_part_and_resample_as_one():
     assert "patient/one" not in published and "patient/two" not in published
 
 
+def test_the_bootstraps_seeds_do_not_follow_the_summarys_format(monkeypatch):
+    # A new label for the summary's layout must not move its intervals,
+    # so that runs before and after it compare.
+    cases = [
+        Subjected(
+            "c", f"case-{index}", f"patient/{index}", (_frame(case=f"case-{index}"),)
+        )
+        for index in range(4)
+    ]
+    run = evaluation.evaluate(cases, box_detector, _settings())
+    bootstrap = evaluation.cluster_bootstrap
+
+    def seeds():
+        used = []
+
+        def recorded(*args, seed, **kwargs):
+            used.append(seed)
+            return bootstrap(*args, seed=seed, **kwargs)
+
+        monkeypatch.setattr(evaluation, "cluster_bootstrap", recorded)
+        evaluation.summarise(run, replicates=200)
+        return used
+
+    before = seeds()
+    assert before
+    monkeypatch.setattr(evaluation, "FORMAT", "another layout/9")
+    assert seeds() == before
+
+
 def test_a_subject_must_be_a_name():
     case = Subjected("c", "a", "", (_frame(),))
     with pytest.raises(EvaluationRefused):
@@ -161,6 +190,21 @@ def test_the_cluster_bootstrap_resamples_cases():
     )
     assert first == again
     assert first[0] < 0.5 < first[1]
+
+
+def test_the_cluster_bootstrap_takes_no_order_from_the_clusters():
+    # Its intervals depend on each cluster's counts alone, so that clusters
+    # gathered in any order, such as from a run's shards, give the same.
+    numerators = np.array([0, 10, 3, 10, 5, 7])
+    denominators = np.array([10, 10, 4, 12, 10, 9])
+    first = evaluation.cluster_bootstrap(
+        numerators, denominators, replicates=500, seed=1
+    )
+    for order in ([5, 4, 3, 2, 1, 0], [2, 0, 5, 1, 4, 3]):
+        again = evaluation.cluster_bootstrap(
+            numerators[order], denominators[order], replicates=500, seed=1
+        )
+        assert again == first
 
 
 # -- Measures -----------------------------------------------------------------

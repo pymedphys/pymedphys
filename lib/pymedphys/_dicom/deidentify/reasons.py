@@ -33,6 +33,7 @@ import dataclasses
 import enum
 
 from .file_layout import ElementPath
+from .reviewed_annotations import Held as AnnotationHeld
 from .reviewed_descriptors import Held
 from .roi_names import Reason
 
@@ -132,6 +133,20 @@ class TransformReason(enum.Enum):
     # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
     # rejected in an attested QC pack, so that it is never released
     REDACTION_REJECTED = "redaction-rejected"
+    # an instance of a Secondary Capture IOD under a policy without Clean
+    # Pixel Data, which alone blacks out the text that a screen capture or a
+    # scanned document carries in its pixel data and releases it only on a
+    # reviewer's verdict (D-037, D-048)
+    SECONDARY_CAPTURE_NOT_CLEANED = "secondary-capture-not-cleaned"
+    # under Clean Pixel Data, an Encapsulated PDF whose document cannot be
+    # rendered for review: encrypted, of no page or too many, too large,
+    # with a page too large once rendered, or that PDFium cannot open or
+    # render (D-061)
+    UNCLEANABLE_DOCUMENT = "uncleanable-document"
+    # under Clean Pixel Data, an Encapsulated PDF whose document cannot be
+    # rendered because pypdfium2 is not installed or the decoding child
+    # cannot be run (D-061)
+    NO_RENDERER = "no-renderer"
     # under tps-import, an instance of a subject whose instances in the run
     # contradict the reference study from which its profile's synthetic
     # birth date was derived, so that the subject is stopped for review
@@ -186,6 +201,25 @@ class HeldDescriptor:
 
 
 @dataclasses.dataclass(frozen=True)
+class HeldAnnotation:
+    """A graphic annotation held for review, by its item and reason, never its text.
+
+    Under the Clean Graphics Option, the reviewed annotations list holds an
+    annotation that it has no decision on, or keeps but whose text echoes
+    one of its instance's identifiers (D-062). ``path`` is Graphic
+    Annotation Sequence (0070,0001), with the annotation's item last in its
+    ``items``.
+    """
+
+    path: ElementPath
+    reason: AnnotationHeld
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, AnnotationHeld):
+            raise TypeError("a held annotation needs its reason")
+
+
+@dataclasses.dataclass(frozen=True)
 class HeldPixelData:
     """An instance held for review because its pixel data await review."""
 
@@ -210,9 +244,8 @@ class VisualFeaturesReason(enum.Enum):
     # held it beside a CT series that it defaced, so the verdict was of the
     # defaced images rather than of the file, it is a Segmentation whose
     # segments reach such a series' face block, which the QC pack does not
-    # show, or the QC pack could not show its contours or deformation grids,
-    # so the verdict was given without them, or it holds a surface mesh,
-    # such as a Surface Segmentation's, which no preview of the QC pack draws
+    # show, or the QC pack could not show its contours, deformation grids,
+    # or surface meshes, so the verdict was given without them
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the
@@ -228,6 +261,11 @@ class VisualFeaturesReason(enum.Enum):
     # grid sheets did not all show, so the verdict is not of what it
     # releases
     OTHER_GRIDS = "face-verdict-on-other-grids"
+    # its series is marked absent, but the run writes other surface meshes
+    # of it than the reviewed run did, or meshes that the QC pack's
+    # surfaces sheet did not show, so the verdict is not of what it
+    # releases
+    OTHER_SURFACES = "face-verdict-on-other-surfaces"
     # an RT Dose in the Frame of Reference of a CT series that the run
     # defaces, whose dose in the series' face block is too great to set to
     # zero there, so that it is written as received, and for which no
@@ -238,22 +276,31 @@ class VisualFeaturesReason(enum.Enum):
     # or pixel data the run does not clean of the face, such as one in other frames
     # too or that cannot be cut, or a deformable registration with a grid
     # that names such a frame as its own or as a source, whose grid the run
-    # does not clean, and which a reviewer may have judged from the defaced
+    # does not clean, or a Surface Segmentation, or other instance that
+    # holds a surface mesh, that names such a frame or none, or refers to a
+    # defaced slice, whose meshes the run does not clean, and which a
+    # reviewer may have judged from the defaced
     # CT, so that only a verdict of its own, from its own previews, which no
     # reviewed QC pack gave it, could decide it
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
-    # a CT slice of a series whose face block a target may reach, so that
-    # the series is not defaced
+    # a CT slice of a series whose face block a target may reach where the
+    # run cannot keep it within the series' slices, so that the series is
+    # not defaced (SeriesProblem.TARGET_IN_BLOCK)
     TARGET_IN_FACE_BLOCK = "target-in-face-block"
     # a CT slice of a series whose structure set draws an eye away from the
-    # globes that its face block was found from, so that the series is not
-    # defaced
+    # globes that its face block was found from, or an instance cleaned by
+    # that block: the series is defaced, and each is held until a face review
+    # confirms the block (SeriesProblem.EYES_DISAGREE, EyeCheck.DISAGREE)
     EYES_DISAGREE_WITH_ROIS = "eyes-disagree-with-rois"
     # an RT Dose with too much dose in a defaced series' face block to set
     # to zero there, which a reviewer chose to set to zero anyway, and whose
     # grid as set to zero no reviewed QC pack has shown, so that only a
     # verdict on this run's previews of it can release it
     DOSE_SET_TO_ZERO_ON_REVIEW = "dose-set-to-zero-on-review"
+    # an Encapsulated PDF released as its rendered pages under Clean Pixel
+    # Data, whose pages can show a photograph of a face and which no face
+    # review has yet covered, so that it is held (D-061)
+    DOCUMENT_PAGES = "document-pages"
 
 
 class DoseChoice(enum.Enum):
@@ -347,3 +394,6 @@ class ReviewReason(enum.Enum):
     # its series is marked absent, but the run writes deformation grids of
     # it that the reviewed run's grid sheets did not all show
     OTHER_GRIDS = VisualFeaturesReason.OTHER_GRIDS.value
+    # its series is marked absent, but the run writes surface meshes of it
+    # that the reviewed run's surfaces sheet did not show
+    OTHER_SURFACES = VisualFeaturesReason.OTHER_SURFACES.value

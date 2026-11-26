@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2018 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +27,6 @@ from pymedphys._imports import pydicom, pytest
 
 import pymedphys
 from pymedphys._data import download
-from pymedphys._gamma.utilities import calculate_pass_rate
 
 # pylint: disable=C0103,C1801
 
@@ -60,9 +60,9 @@ def run_gamma(
     filepath_ref,
     filepath_eval,
     random_subset=None,
-    max_gamma=1.1,
-    dose_threshold=1,
-    distance_threshold=1,
+    gamma_cap=1.1,
+    dose_criterion=1,
+    distance_criterion=1,
 ):
     if random_subset is not None:
         np.random.seed(42)
@@ -76,55 +76,51 @@ def run_gamma(
     axes_evaluation = load_yx_from_dicom(ds_eval)
     dose_evaluation = dose_from_dataset(ds_eval)
 
-    gamma = pymedphys.gamma(
+    return pymedphys.gamma(
         axes_reference,
         dose_reference,
         axes_evaluation,
         dose_evaluation,
-        dose_threshold,
-        distance_threshold,
-        lower_percent_dose_cutoff=20,
-        interp_fraction=10,
-        max_gamma=max_gamma,
-        local_gamma=True,
+        dose_criterion,
+        distance_criterion,
+        lower_dose_cutoff_percent=20,
+        search_step_fraction=0.1,
+        gamma_cap=gamma_cap,
+        normalisation="local",
         skip_once_passed=True,
         random_subset=random_subset,
     )
-
-    return gamma
 
 
 def local_gamma(
     filepath_ref,
     filepath_eval,
-    result,
+    expected_percent_passed,
     random_subset=None,
-    max_gamma=1.1,
-    dose_threshold=1,
-    distance_threshold=1,
+    gamma_cap=1.1,
+    dose_criterion=1,
+    distance_criterion=1,
 ):
-    gamma = run_gamma(
+    result = run_gamma(
         filepath_ref,
         filepath_eval,
         random_subset,
-        max_gamma,
-        dose_threshold,
-        distance_threshold,
+        gamma_cap,
+        dose_criterion,
+        distance_criterion,
     )
 
-    gamma_pass = calculate_pass_rate(gamma)
-
-    assert np.round(gamma_pass, decimals=1) == result
+    assert np.round(result.percent_passed, decimals=1) == expected_percent_passed
 
 
 @pytest.mark.pydicom
-def test_max_gamma():
+def test_gamma_cap():
     local_gamma(
         get_data_file("H&N_VMAT_Reference_1mmPx.dcm"),
         get_data_file("H&N_VMAT_Evaluated_1mmPx.dcm"),
         93.6,
         random_subset=RANDOM_SUBSET,
-        max_gamma=1.4,
+        gamma_cap=1.4,
     )
 
     local_gamma(
@@ -132,7 +128,7 @@ def test_max_gamma():
         get_data_file("H&N_VMAT_Evaluated_1mmPx.dcm"),
         93.6,
         random_subset=RANDOM_SUBSET,
-        max_gamma=1.0001,
+        gamma_cap=1.0001,
     )
 
 
@@ -162,21 +158,36 @@ def test_local_gamma_0_25mm():
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_multi_inputs():
-    gamma = run_gamma(
+    files = (
         get_data_file("H&N_VMAT_Reference_0_25mmPx.dcm"),
         get_data_file("H&N_VMAT_Evaluated_0_25mmPx.dcm"),
-        random_subset=RANDOM_SUBSET,
-        max_gamma=1.0001,
-        dose_threshold=[1, 0.2],
-        distance_threshold=[1, 4],
+    )
+    options = {"random_subset": RANDOM_SUBSET, "gamma_cap": 1.0001}
+    results = run_gamma(
+        *files, dose_criterion=[1, 0.2], distance_criterion=[1, 4], **options
     )
 
+    # Each pair is searched at its own step, the distance criterion times
+    # search_step_fraction, so a list gives what separate calls give. The
+    # 1 mm pairs are unchanged. The 4 mm pairs were 99.8 and 99.2 while a list
+    # searched them at a finer step than they get alone. With
+    # search_step_fraction=0.025 the four pairs give 97.1, 99.9, 94.3 and
+    # 99.6.
     baseline = {
         (1, 1): LOCAL_GAMMA_0_25_BASELINE,
-        (1, 4): 99.8,  # 99.9 with higher interp_fraction
-        (0.2, 1): 91.8,  # 94.4 with higher interp_fraction
-        (0.2, 4): 99.2,  # 99.7 with higher interp_fraction
+        (1, 4): 99.4,
+        (0.2, 1): 91.8,
+        (0.2, 4): 90.4,
     }
 
-    for key, value in gamma.items():
-        assert np.round(calculate_pass_rate(value), decimals=1) == baseline[key]
+    assert len(results) == len(baseline)
+    for result, pair in zip(results, baseline, strict=True):
+        settings = result.settings
+        assert (settings.dose_criterion_percent, settings.distance_criterion_mm) == pair
+        assert result.analysed == RANDOM_SUBSET
+        assert np.round(result.percent_passed, decimals=1) == baseline[pair]
+
+        alone = run_gamma(
+            *files, dose_criterion=pair[0], distance_criterion=pair[1], **options
+        )
+        np.testing.assert_array_equal(result.gamma, alone.gamma, err_msg=str(pair))

@@ -73,7 +73,7 @@ from .text_evaluation_sources import (
     dicom_frames,
 )
 
-PHANTOM_REPORT_FORMAT = "pymedphys-deid-text-detector-phantom-report/1"
+PHANTOM_REPORT_FORMAT = "pymedphys-deid-text-detector-phantom-report/2"
 # The tiers of the corpus whose frames may be previewed: wholly synthetic
 # frames and allow-listed phantoms' frames.
 PREVIEWED_TIERS = frozenset({"T1", "T2"})

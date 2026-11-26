@@ -68,6 +68,9 @@ user = [
   "pandas>=2.2.2",
   "plotly",
   "pydicom>=3.0.2",
+  # Renders an Encapsulated PDF's pages, and reads back the image-only PDF
+  # written in its place, for DICOM de-identification's Clean Pixel Data.
+  "pypdfium2>=5.15.0",
   "pylibjpeg>=2.0",  # pydicom decodes JPEG 2000 and HTJ2K through it
   "pylibjpeg-openjpeg>=2.0",
   "pymssql",
@@ -122,7 +125,7 @@ all = ["pymedphys[user,ai,tests]"]
 # Smaller installs for one feature each. Each lists every package its feature
 # uses, and a CI job installs it alone and runs that feature's tests. Combine
 # them as needed, for example "pymedphys[gamma,dicom]" for gamma on DICOM files.
-# Gamma: pymedphys.gamma and gamma_pass_rate. numba runs the default
+# Gamma: pymedphys.gamma and its pass-count helpers. numba runs the default
 # interpolation; SciPy the "scipy" option and unevenly spaced axes.
 gamma = [
   "numba",

@@ -319,7 +319,7 @@ def test_the_statement_describes_the_kept_items(options, action):
     assert (
         "D on Verifying Observer Sequence (0040,A073) keeps each source item, "
         "and in it only these attributes, each under the action that the "
-        "policy gives it: Verifying Organization (0040,A027), `D`; "
+        "policy gives it there: Verifying Organization (0040,A027), `D`; "
         f"Verification DateTime (0040,A030), `{action}`; Verifying Observer "
         "Name (0040,A075), `D`; Verifying Observer Identification Code "
         "Sequence (0040,A088), `Z`."
