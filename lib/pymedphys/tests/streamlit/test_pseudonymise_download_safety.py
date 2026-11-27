@@ -15,9 +15,7 @@ def test_zip_download_uses_native_api_and_sanitizes_filename(monkeypatch):
     monkeypatch.setattr(pseudonymise.st.sidebar, "download_button", download_button)
     monkeypatch.setattr(pseudonymise.st.sidebar, "markdown", unexpected_html)
     payload = b"synthetic ZIP data"
-    pseudonymise.link_to_zipbuffer_download(
-        r"C:\patient\example.zip", payload
-    )
+    pseudonymise.link_to_zipbuffer_download(r"C:\patient\example.zip", payload)
     assert len(calls) == 1
     args, kwargs = calls[0]
     assert args == ("Download pseudonymised ZIP",)
