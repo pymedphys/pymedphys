@@ -216,7 +216,7 @@ def get_input_data_ui(
     return results
 
 
-@st.cache_data
+@st.cache_data(scope="session")
 def to_tuple(array):
     return tuple(map(tuple, array))
 
@@ -353,7 +353,7 @@ def plot_and_save_results(
     return fig
 
 
-@st.cache_data(hash_funcs={pymedphys.Delivery: hash})
+@st.cache_data(scope="session", hash_funcs={pymedphys.Delivery: hash})
 def calculate_metersetmap(delivery):
     return delivery.metersetmap(
         max_leaf_gap=MAX_LEAF_GAP,
@@ -371,7 +371,7 @@ def calculate_batch_metersetmap(deliveries):
     return metersetmap
 
 
-@st.cache_data
+@st.cache_data(scope="session")
 def calculate_gamma(reference_metersetmap, evaluation_metersetmap, gamma_options):
     return pymedphys.gamma(
         COORDS,
