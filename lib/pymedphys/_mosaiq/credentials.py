@@ -233,8 +233,13 @@ def delete_credentials(hostname: str, port: int = 1433, database: str = "MOSAIQ"
     storage_name = get_keyring_storage_name(
         hostname=hostname, port=port, database=database
     )
-    keyring.delete_password(storage_name, USERNAME_KEY)
-    keyring.delete_password(storage_name, PASSWORD_KEY)
+    # Missing usernames must not prevent removal of a stored password.
+    # Each key is deleted independently so this operation is idempotent.
+    for key in (USERNAME_KEY, PASSWORD_KEY):
+        try:
+            keyring.delete_password(storage_name, key)
+        except keyring.errors.PasswordDeleteError:
+            pass
 
 
 @functools.lru_cache()
