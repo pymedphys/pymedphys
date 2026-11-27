@@ -109,9 +109,7 @@ def main():
         st.stop()
 
     try:
-        xml_contents = _iviewdb_xml.read_database_xml(
-            database_directory, chosen_file
-        )
+        xml_contents = _iviewdb_xml.read_database_xml(database_directory, chosen_file)
     except (OSError, ValueError):
         st.error("The selected XML file could not be safely read.")
         st.stop()
