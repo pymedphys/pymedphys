@@ -61,6 +61,16 @@ def _path_within(directory: str | os.PathLike[str], name: str) -> pathlib.Path:
     return pathlib.Path(path)
 
 
+def _reject_source_links(directory: pathlib.Path) -> None:
+    """Refuse source links before copying clinical files into an export."""
+    if directory.is_symlink():
+        raise ValueError("The patient source contains a symbolic link.")
+    for parent, directories, files in os.walk(directory, followlinks=False):
+        for name in (*directories, *files):
+            if (pathlib.Path(parent) / name).is_symlink():
+                raise ValueError("The patient source contains a symbolic link.")
+
+
 def main():
     config = _config.get_config()
 
@@ -107,6 +117,7 @@ def main():
 
             st.write("Copying to temp directory, skipping DICOM files...")
 
+            _reject_source_links(patient_directory)
             shutil.copytree(
                 patient_directory,
                 new_temp_location,
