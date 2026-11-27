@@ -26,6 +26,18 @@ from pymedphys._streamlit.utilities import misc
 
 CATEGORY = categories.DRAFT
 TITLE = "iView Database Explorer"
+# Cap untrusted XML before parsing; reading an entire oversized export can
+# exhaust the server process shared by Streamlit sessions.
+MAX_XML_BYTES = 32 * 1024 * 1024
+
+
+def read_iview_xml(path):
+    """Read and parse no more than MAX_XML_BYTES of XML."""
+    with open(path, "rb") as source:
+        content = source.read(MAX_XML_BYTES + 1)
+    if len(content) > MAX_XML_BYTES:
+        raise ValueError("XML export exceeds the permitted size")
+    return xmltodict.parse(content)
 
 
 @st.cache_data()
@@ -109,7 +121,10 @@ def main():
     except TypeError:
         st.stop()
 
-    with open(xml_path) as fd:
-        doc = xmltodict.parse(fd.read())
+    try:
+        doc = read_iview_xml(xml_path)
+    except ValueError:
+        st.error("Unable to load XML export within the permitted size")
+        st.stop()
 
     st.write(doc)
