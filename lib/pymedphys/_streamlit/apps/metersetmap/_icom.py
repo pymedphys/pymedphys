@@ -24,11 +24,17 @@ from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._utilities import patient as utl_patient
 
 
-@st.cache_data
-def load_icom_stream(icom_path):
-    with lzma.open(icom_path, "r") as f:
-        contents = f.read()
+# iCOM records may contain patient data; do not store their bytes in Streamlit's
+# process-wide cache, which is shared by sessions.
+MAX_DECOMPRESSED_ICOM_BYTES = 512 * 1024 * 1024
 
+
+def load_icom_stream(icom_path):
+    with lzma.open(icom_path, "rb") as f:
+        contents = f.read(MAX_DECOMPRESSED_ICOM_BYTES + 1)
+
+    if len(contents) > MAX_DECOMPRESSED_ICOM_BYTES:
+        raise ValueError("iCOM logfile exceeds the decompressed data limit")
     return contents
 
 
