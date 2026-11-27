@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### MetersetMap searches use literal patient identifiers
+
+Patient ID input is now matched literally in Monaco DICOM exports, iCOM files, and indexed TRF logfiles. Glob wildcards cannot expand a patient-specific search, and IDs containing directory separators or traversal components are refused. [PR #2787](https://github.com/pymedphys/pymedphys/pull/2787)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes
