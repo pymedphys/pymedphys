@@ -25,6 +25,7 @@ pytest.importorskip("streamlit")
 # come after the skip guard.
 from pymedphys._experimental.streamlit.apps.anonymise_monaco import (  # noqa: E402
     _path_within,
+    _reject_source_links,
 )
 
 
@@ -98,3 +99,43 @@ def test_symbolic_link_to_a_file_outside_directory_is_refused(tmp_path):
 
     with pytest.raises(ValueError):
         _path_within(directory, "012345.zip")
+
+
+def test_monaco_source_without_links_is_accepted(tmp_path):
+    patient = tmp_path / "patient"
+    patient.mkdir()
+    (patient / "nested").mkdir()
+    (patient / "nested" / "safe.txt").write_text("synthetic", encoding="utf-8")
+
+    _reject_source_links(patient)
+
+
+@pytest.mark.parametrize("link_is_directory", [False, True])
+def test_monaco_source_refuses_linked_external_content(tmp_path, link_is_directory):
+    patient = tmp_path / "patient"
+    patient.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside if link_is_directory else outside / "private.txt"
+    if not link_is_directory:
+        target.write_text("synthetic-private", encoding="utf-8")
+    try:
+        (patient / "linked").symlink_to(target, target_is_directory=link_is_directory)
+    except OSError:
+        pytest.skip("Creating symbolic links is not permitted here")
+
+    with pytest.raises(ValueError, match="symbolic link"):
+        _reject_source_links(patient)
+
+
+def test_monaco_source_refuses_symlinked_root(tmp_path):
+    patient = tmp_path / "patient"
+    patient.mkdir()
+    link = tmp_path / "linked-patient"
+    try:
+        link.symlink_to(patient, target_is_directory=True)
+    except OSError:
+        pytest.skip("Creating symbolic links is not permitted here")
+
+    with pytest.raises(ValueError, match="symbolic link"):
+        _reject_source_links(link)
