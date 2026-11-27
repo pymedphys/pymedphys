@@ -100,7 +100,7 @@ def preprocess_ct_slice_datasets(
             )
         except Exception as unknown_e:
             st.warning(
-                f"Failure processing in CT slice {idx + 1}: {unknown_e}. This slice will be skipped."
+                f"Failed to process CT slice {idx + 1} ({type(unknown_e).__name__}); skipping."
             )
     if not preprocessed_data:
         raise ValueError("No valid CT slices found after preprocessing.")
@@ -244,10 +244,10 @@ def load_ct_as_memmap(
                 ct_slice_datasets.append(ds)
         except pydicom.errors.InvalidDicomError:
             st.warning(
-                f"File {fpath.name} is not a valid DICOM file and will be skipped."
+                "An invalid CT DICOM file was skipped."
             )
         except Exception as e:
-            st.warning(f"Error reading {fpath.name}: {e}. This file will be skipped.")
+            st.warning(f"Failed to read CT DICOM ({type(e).__name__}); skipping file.")
 
     if not ct_slice_datasets:
         raise ValueError("No valid CT slices found in the provided directory.")
@@ -915,7 +915,7 @@ if dicom_dir and rtstruct_file:
                 contour_map = preprocess_contours(structures)
                 st.sidebar.success("CT and RTSTRUCT files loaded successfully.")
             except Exception as e:
-                st.error(f"Error loading CT or RTSTRUCT data: {e}")
+                st.error(f"Error loading CT or RTSTRUCT data: {type(e).__name__}")
                 st.stop()
         else:
             st.error("RTSTRUCT file path does not exist.")
@@ -944,7 +944,7 @@ if rtdose_file:
             )
             st.sidebar.success("RTDOSE loaded successfully.")
         except Exception as e:
-            st.sidebar.error(f"Error loading RTDOSE: {e}")
+            st.sidebar.error(f"Error loading RTDOSE: {type(e).__name__}")
             dose_map = {}
             dose_units = ""
             dose_X = {}
