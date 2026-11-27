@@ -17,7 +17,7 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys._dicom.uid import DICOM_PLAN_UID
-from pymedphys._streamlit.apps.metersetmap import _config
+from pymedphys._streamlit.apps.metersetmap import _config, _patient_pattern
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._utilities import patient as utl_patient
@@ -101,7 +101,15 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
         )
 
-        found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}_*.dcm"))
+        try:
+            literal_patient_id = _patient_pattern.escape_patient_id(patient_id)
+        except ValueError:
+            st.error("Patient ID must be a single directory component.")
+            return {"patient_id": patient_id}
+
+        found_dicom_files = list(
+            monaco_export_directory.glob(f"{literal_patient_id}_*.dcm")
+        )
 
         dicom_plans = {}
 
