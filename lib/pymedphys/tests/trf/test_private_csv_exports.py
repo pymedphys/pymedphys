@@ -26,7 +26,7 @@ trf2csv = import_module("pymedphys._trf.decode.trf2csv")
 
 class Frame:
     def to_csv(self, destination):
-        Path(destination).write_text("synthetic,record\n", encoding="utf-8")
+        destination.write("synthetic,record\n")
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX permissions")
@@ -61,7 +61,7 @@ def test_failed_write_keeps_previous_csv_and_removes_temporary_file(tmp_path):
 
     class BrokenFrame:
         def to_csv(self, temporary):
-            Path(temporary).write_text("partial,sensitive")
+            temporary.write("partial,sensitive")
             raise RuntimeError("synthetic failure")
 
     with pytest.raises(RuntimeError, match="synthetic failure"):
