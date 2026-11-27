@@ -1,4 +1,4 @@
-# Copyright (C) 2026 PyMedPhys contributors
+# Copyright (C) 2026 Jeffrey D. Cooney
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,3 +58,34 @@ def test_anonymity_audit_never_scans_matching_sibling(tmp_path, monkeypatch):
 
     assert core.is_anonymised_directory(patient) is True
     assert visited == [intended]
+
+
+def test_anonymity_audit_rejects_linked_subtree(tmp_path):
+    root = tmp_path / "requested"
+    outside = tmp_path / "other_patient"
+    root.mkdir()
+    outside.mkdir()
+    (outside / "plan.dcm").write_bytes(b"synthetic sensitive record")
+    try:
+        (root / "linked").symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        import pytest
+
+        pytest.skip("Directory symlinks are unavailable")
+
+    assert core.is_anonymised_directory(root) is False
+
+
+def test_anonymity_audit_rejects_linked_dicom_file(tmp_path):
+    root = tmp_path / "requested"
+    root.mkdir()
+    outside = tmp_path / "other_patient.dcm"
+    outside.write_bytes(b"synthetic sensitive record")
+    try:
+        (root / "linked.dcm").symlink_to(outside)
+    except (OSError, NotImplementedError):
+        import pytest
+
+        pytest.skip("File symlinks are unavailable")
+
+    assert core.is_anonymised_directory(root) is False
