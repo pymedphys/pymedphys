@@ -29,7 +29,9 @@ def _redact_progress_paths():
 
 
 def trf2csv_by_directory(input_directory, output_directory):
-    filepaths = glob(os.path.join(input_directory, "*.trf"))
+    # The supplied root is a literal directory, not a glob pattern. Brackets
+    # in centre or patient folder names must never select a sibling folder.
+    filepaths = [str(path) for path in pathlib.Path(input_directory).glob("*.trf")]
 
     for filepath in filepaths:
         filename = os.path.basename(filepath)
