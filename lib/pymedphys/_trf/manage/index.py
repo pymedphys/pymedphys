@@ -106,10 +106,13 @@ def file_already_in_index(indexed_filepath, to_be_indexed_filepath, filehash):
 
 
 def rename_and_handle_fileexists(old_filepath, new_filepath):
+    """Move a logfile without replacing an existing patient's archive."""
     pathlib.Path(new_filepath).parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        os.rename(old_filepath, new_filepath)
+        # Unlike os.rename on POSIX, creating a hard link fails atomically
+        # when the destination exists. Both paths normally share a volume.
+        os.link(old_filepath, new_filepath)
     except FileExistsError:
         files_hashes_match = hash_file(old_filepath) == hash_file(new_filepath)
         print("    File already exists at {}".format(new_filepath))
@@ -117,6 +120,8 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
             os.remove(old_filepath)
         else:
             raise FileExistsError("File already exists and the hash does not match")
+    else:
+        os.remove(old_filepath)
 
 
 def get_logfile_mosaiq_info(
