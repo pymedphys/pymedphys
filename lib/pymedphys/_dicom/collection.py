@@ -58,7 +58,7 @@ class DicomBase:
 
         destination = pathlib.Path(os.fsdecode(fp))
         descriptor, temporary = tempfile.mkstemp(
-            prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+            prefix=".pmp-dicom-", suffix=".tmp", dir=destination.parent
         )
         try:
             with os.fdopen(descriptor, "wb") as stream:
