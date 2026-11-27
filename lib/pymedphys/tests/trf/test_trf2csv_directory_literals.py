@@ -1,4 +1,4 @@
-# Copyright (C) 2026 PyMedPhys contributors
+# Copyright (C) 2026 Jeffrey D. Cooney
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ def test_trf_directory_with_brackets_does_not_read_a_sibling(tmp_path, monkeypat
     target = requested / "one.trf"
     target.write_bytes(b"synthetic TRF test data")
     (sibling / "two.trf").write_bytes(b"unrelated synthetic data")
+    (requested / ".withheld.trf").write_bytes(b"hidden synthetic data")
     export = tmp_path / "exports"
     export.mkdir()
 
@@ -35,7 +36,10 @@ def test_trf_directory_with_brackets_does_not_read_a_sibling(tmp_path, monkeypat
 
     class Frame:
         def to_csv(self, path):
-            Path(path).write_text("synthetic data", encoding="utf-8")
+            if hasattr(path, "write"):
+                path.write("synthetic data")
+            else:
+                Path(path).write_text("synthetic data", encoding="utf-8")
 
     def fake_parser(path):
         read.append(path)
