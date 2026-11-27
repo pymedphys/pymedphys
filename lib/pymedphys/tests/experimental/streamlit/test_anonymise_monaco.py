@@ -24,6 +24,7 @@ pytest.importorskip("streamlit")
 # The app imports the Streamlit utilities at import time, so this import must
 # come after the skip guard.
 from pymedphys._experimental.streamlit.apps.anonymise_monaco import (  # noqa: E402
+    _ignore_patient_data_files,
     _path_within,
 )
 
@@ -98,3 +99,19 @@ def test_symbolic_link_to_a_file_outside_directory_is_refused(tmp_path):
 
     with pytest.raises(ValueError):
         _path_within(directory, "012345.zip")
+
+
+@pytest.mark.parametrize(
+    ("name", "excluded"),
+    [
+        ("RTDOSE.DCM", True),
+        ("rtplan.dcm", True),
+        ("series.DcM", True),
+        ("instance.dicom", True),
+        ("DEMOGRAPHIC.012345", True),
+        ("demographic.000000", True),
+        ("safe-readme.txt", False),
+    ],
+)
+def test_patient_data_exclusion_is_case_insensitive(name, excluded):
+    assert (name in _ignore_patient_data_files("unused", [name])) is excluded
