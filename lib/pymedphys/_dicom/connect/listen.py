@@ -148,6 +148,13 @@ class DicomListener(DicomConnectBase):
         series_dir = hierarchical_dicom_storage_directory(
             self.storage_directory, dataset
         )
+        # Encoded DICOM identifiers cannot escape with "..", but an
+        # existing symlink within a shared receiver directory could.
+        if not series_dir.resolve().is_relative_to(self.storage_directory.resolve()):
+            failed = pydicom.Dataset()
+            failed.Status = 0xA700
+            failed.ErrorComment = "SCP internal error - Unsafe storage directory"
+            return failed
         series_dir.mkdir(parents=True, exist_ok=True)
         self.association_directory = series_dir
 
