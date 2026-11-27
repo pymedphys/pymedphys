@@ -224,7 +224,7 @@ def _dbf_to_pandas_without_cache(path: pathlib.Path) -> "pd.DataFrame":
     return pd.DataFrame(iter(dbf.get_dbf_table(path)))
 
 
-@st.cache_data()
+@st.cache_data(scope="session")
 def _dbf_to_pandas_with_cache(path: pathlib.Path) -> "List[pd.DataFrame]":
     """Streamlit cached dbf read.
 
