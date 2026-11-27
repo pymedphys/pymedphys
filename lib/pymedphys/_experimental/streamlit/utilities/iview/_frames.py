@@ -296,9 +296,9 @@ def _safe_iview_xml_path(database_directory: pathlib.Path, filename: str) -> pat
 def _calc_xml_filepaths(table):
     return (
         "patient_"
-        + table["patient_id"].astype("str").map(_safe_iview_component).map(_safe_iview_component)
+        + table["patient_id"].astype("str").map(_safe_iview_component)
         + "/MV_IMAGES/img_"
-        + table["DICOM_UID"].astype("str").map(_safe_iview_component).map(_safe_iview_component)
+        + table["DICOM_UID"].astype("str").map(_safe_iview_component)
         + "/_Frame.xml"
     )
 
