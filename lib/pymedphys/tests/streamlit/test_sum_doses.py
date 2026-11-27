@@ -70,3 +70,39 @@ def test_rejected_grid_mismatch_states_the_limit():
         pytest.raises(ValueError, match="within 0.1 mm"),
     ):
         sum_doses._sum_doses_showing_warnings([reference, shifted])
+
+
+@pytest.mark.pydicom
+def test_invalid_dicom_upload_does_not_echo_patient_filename():
+    import io
+
+    uploaded = io.BytesIO(b"not-a-dicom")
+    uploaded.name = "PatientName_MRN_12345.dcm"
+
+    with pytest.raises(ValueError, match="not a valid DICOM") as error:
+        sum_doses._load_dicom_file(uploaded)
+
+    assert uploaded.name not in str(error.value)
+
+
+@pytest.mark.pydicom
+def test_dicom_validation_warning_omits_uploaded_filename():
+    import io
+
+    reference, _ = _datasets(0.0)
+    uploaded = io.BytesIO()
+    uploaded.name = "PatientName_MRN_12345.dcm"
+    reference.save_as(uploaded)
+    uploaded.seek(0)
+
+    with (
+        mock.patch.object(sum_doses, "st") as st,
+        mock.patch.object(
+            sum_doses, "_validate_dicom_dataset", side_effect=ValueError("Invalid modality")
+        ),
+        pytest.raises(ValueError, match="Invalid modality"),
+    ):
+        sum_doses._load_dicom_file(uploaded)
+
+    st.error.assert_called_once_with("Unable to validate an uploaded DICOM file:")
+    assert uploaded.name not in str(st.error.call_args)
