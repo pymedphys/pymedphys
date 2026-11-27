@@ -1,4 +1,4 @@
-# Copyright (C) 2026 PyMedPhys contributors
+# Copyright (C) 2026 Jeffrey D. Cooney
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,16 @@ ROOT = Path(__file__).resolve().parents[2]
             "_experimental/streamlit/apps/iviewdb.py",
             "get_files_for_extension",
         ),
+        *[
+            ("_experimental/streamlit/utilities/iview/_frames.py", name)
+            for name in (
+                "_calc_filepath_from_frames_dbid",
+                "_load_xml",
+                "_data_from_doc",
+                "_calc_xml_filepaths",
+                "_calc_xml_based_jpg_filepaths",
+            )
+        ],
     ],
 )
 def test_iview_patient_cache_is_session_scoped(path, function):
