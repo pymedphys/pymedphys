@@ -61,6 +61,12 @@ def _path_within(directory: str | os.PathLike[str], name: str) -> pathlib.Path:
     return pathlib.Path(path)
 
 
+def _reserve_private_export(path: pathlib.Path) -> None:
+    """Reserve an output archive without following links or granting group access."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(descriptor)
+
+
 def main():
     config = _config.get_config()
 
@@ -130,11 +136,18 @@ def main():
 
             st.write("Creating zip file...")
 
-            shutil.make_archive(
-                str(zip_path.with_suffix("")),
-                "zip",
-                root_dir=str(pl_temp_dir.resolve()),
-                base_dir=f"{patient_directory.name}",
-            )
+            # The archive can contain identifying source content. Create it
+            # exclusively with private permissions before shutil writes to it.
+            _reserve_private_export(zip_path)
+            try:
+                shutil.make_archive(
+                    str(zip_path.with_suffix("")),
+                    "zip",
+                    root_dir=str(pl_temp_dir.resolve()),
+                    base_dir=f"{patient_directory.name}",
+                )
+            except Exception:
+                zip_path.unlink(missing_ok=True)
+                raise
 
             st.write("Complete!")
