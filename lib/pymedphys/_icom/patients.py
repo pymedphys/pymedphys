@@ -1,3 +1,5 @@
+import datetime
+import re
 import logging
 import lzma
 import pathlib
@@ -67,6 +69,19 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
         "The patient archive directory to be used is %(patient_dir)s.",
         {"patient_dir": patient_dir},
     )
+
+    # This timestamp comes from the untrusted iCOM stream and becomes a
+    # filename. Reject separators, traversal components and malformed dates
+    # before it can name a path outside the patient archive directory.
+    if not isinstance(start_timestamp, str) or not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}",
+        start_timestamp,
+    ):
+        raise ValueError("Invalid iCOM archive timestamp")
+    try:
+        datetime.datetime.strptime(start_timestamp, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        raise ValueError("Invalid iCOM archive timestamp") from None
 
     reformatted_timestamp = (
         start_timestamp.replace(":", "").replace("T", "_").replace("-", "")
