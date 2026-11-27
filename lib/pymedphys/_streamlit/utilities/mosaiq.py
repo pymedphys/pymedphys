@@ -328,8 +328,7 @@ def get_single_mosaiq_connection_with_config(config) -> _connect.Connection:
         ),
     )
 
-    # Streamlit's @st.cache_resource() decorator erases the wrapped function's
-    # return type to Any; cast at the call boundary so callers see Connection.
+    # Preserve the declared connection type for callers.
     return cast(_connect.Connection, connection)
 
 
@@ -419,11 +418,10 @@ def get_uncached_mosaiq_connection(
     raise RuntimeError("unreachable")  # pylint: disable=unreachable  # st.stop() always raises StopException
 
 
-@st.cache_resource()
 def get_cached_mosaiq_connection(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
 ) -> _connect.Connection:
-    """A streamlit cached version of ``get_uncached_mosaiq_connection``.
+    """Reuse a MOSAIQ connection only within the current Streamlit session.
 
     Parameters
     ----------
@@ -443,16 +441,21 @@ def get_cached_mosaiq_connection(
     connection : pymedphys.mosaiq.Connection
         The Mosaiq SQL connection for the database.
     """
-    return get_uncached_mosaiq_connection(
-        hostname=hostname, port=port, database=database, alias=alias
-    )
+    # Streamlit's resource cache is shared across sessions and must not hold
+    # a credential-bearing SQL connection opened by another visitor.
+    cache = st.session_state.setdefault("_mosaiq_connections", {})
+    key = (hostname, port, database, alias)
+    if key not in cache:
+        cache[key] = get_uncached_mosaiq_connection(
+            hostname=hostname, port=port, database=database, alias=alias
+        )
+    return cache[key]
 
 
-@st.cache_resource()
 def get_cached_mosaiq_connection_in_dict(
     hostname: str, port: int = 1433, database: str = "MOSAIQ", alias=None
 ) -> Dict[Literal["connection"], _connect.Connection]:
-    """A streamlit cached version of ``get_uncached_mosaiq_connection`` with mutable output.
+    """Reuse a mutable MOSAIQ connection bucket only within this session.
 
     This is designed so that the cached connection can be mutated as needed
     within the calling code.
@@ -476,8 +479,12 @@ def get_cached_mosaiq_connection_in_dict(
         A dictionary containing the Mosaiq SQL connection for the database.
 
     """
-    return {
-        "connection": get_uncached_mosaiq_connection(
-            hostname=hostname, port=port, database=database, alias=alias
-        )
-    }
+    cache = st.session_state.setdefault("_mosaiq_connection_dicts", {})
+    key = (hostname, port, database, alias)
+    if key not in cache:
+        cache[key] = {
+            "connection": get_uncached_mosaiq_connection(
+                hostname=hostname, port=port, database=database, alias=alias
+            )
+        }
+    return cache[key]
