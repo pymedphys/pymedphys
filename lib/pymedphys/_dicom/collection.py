@@ -13,6 +13,9 @@
 # limitations under the License.
 
 
+import os
+import pathlib
+import tempfile
 from copy import deepcopy
 
 from pymedphys._imports import pydicom
@@ -43,10 +46,27 @@ class DicomBase:
         return cls(dataset)
 
     def to_file(self, fp):
-        """Write the DicomBase instance's dataset to a file denoted by
-        a filepath or file-like object.
+        """Write a dataset without exposing clinical bytes in new path outputs.
+
+        A file-like object is written directly, as before. A path is replaced
+        with a privately created, complete DICOM file; this avoids world-readable
+        outputs, partial writes and following an existing destination symlink.
         """
-        self.dataset.save_as(fp)
+        if not isinstance(fp, (str, os.PathLike)):
+            self.dataset.save_as(fp)
+            return
+
+        destination = pathlib.Path(fp)
+        descriptor, temporary = tempfile.mkstemp(
+            prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+        )
+        try:
+            with os.fdopen(descriptor, "wb") as stream:
+                self.dataset.save_as(stream)
+            os.replace(temporary, destination)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
     @classmethod
     def from_dict(cls, dictionary):
