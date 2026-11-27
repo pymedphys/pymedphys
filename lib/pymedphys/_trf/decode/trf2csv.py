@@ -38,14 +38,21 @@ def _write_private_csv(frame, destination):
     """
     destination = pathlib.Path(destination)
     descriptor, temporary = tempfile.mkstemp(
-        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
+        prefix=".pmp-csv-", suffix=".tmp", dir=destination.parent
     )
-    os.close(descriptor)
     try:
-        frame.to_csv(temporary)
+        # Keep the exclusive file descriptor open while writing. Reopening a
+        # temporary pathname allows an attacker to substitute a symlink.
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as stream:
+            identity = os.fstat(stream.fileno())
+            frame.to_csv(stream)
+
+        current = os.stat(temporary, follow_symlinks=False)
+        if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
+            raise OSError("Temporary clinical CSV changed during export")
         os.replace(temporary, destination)
     finally:
-        if os.path.exists(temporary):
+        if os.path.lexists(temporary):
             os.unlink(temporary)
 
 
