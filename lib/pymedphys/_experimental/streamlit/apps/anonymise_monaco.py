@@ -61,6 +61,16 @@ def _path_within(directory: str | os.PathLike[str], name: str) -> pathlib.Path:
     return pathlib.Path(path)
 
 
+def _ignore_patient_data_files(_directory, names):
+    """Exclude DICOM and source demographics regardless of filename casing."""
+    return [
+        name
+        for name in names
+        if name.casefold().endswith((".dcm", ".dicom"))
+        or name.casefold().startswith("demographic.")
+    ]
+
+
 def main():
     config = _config.get_config()
 
@@ -110,7 +120,7 @@ def main():
             shutil.copytree(
                 patient_directory,
                 new_temp_location,
-                ignore=shutil.ignore_patterns("*.DCM", "demographic.*"),
+                ignore=_ignore_patient_data_files,
             )
 
             st.write("Creating anonymised demographic file...")
