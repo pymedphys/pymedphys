@@ -68,3 +68,24 @@ def test_failed_write_keeps_previous_csv_and_removes_temporary_file(tmp_path):
 
     assert destination.read_text(encoding="utf-8") == "old,record\n"
     assert list(tmp_path.iterdir()) == [destination]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX symlink semantics")
+def test_temporary_path_replacement_is_detected_before_publication(tmp_path):
+    destination = tmp_path / "clinical.csv"
+    outside = tmp_path / "outside.csv"
+    outside.write_text("untouched", encoding="utf-8")
+
+    class ReplacingFrame:
+        def to_csv(self, stream):
+            stream.write("synthetic,private\n")
+            temporary = next(tmp_path.glob(".pmp-csv-*.tmp"))
+            temporary.unlink()
+            temporary.symlink_to(outside)
+
+    with pytest.raises(OSError, match="changed during export"):
+        trf2csv._write_private_csv(ReplacingFrame(), destination)
+
+    assert outside.read_text(encoding="utf-8") == "untouched"
+    assert not destination.exists()
+    assert list(tmp_path.iterdir()) == [outside]
