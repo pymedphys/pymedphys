@@ -96,11 +96,13 @@ def dicom_file_loader(
             dataset = pydicom.dcmread(
                 a_file, force=True, stop_before_pixels=stop_before_pixels
             )
-        except Exception as e:  # pylint: disable = W0718
-            st.warning(
-                f'Failed reading the file "`{a_file.name}`". The error was the following:'
+        except Exception:  # pylint: disable = broad-exception-caught
+            # Uploaded filenames and pydicom exception messages may identify a
+            # patient. Do not render those details in a browser error message.
+            st.error(
+                "Unable to read the uploaded DICOM file. Decoder details are "
+                "withheld because they may contain patient information."
             )
-            st.error(e)
             st.stop()
 
         datasets.append(dataset)
