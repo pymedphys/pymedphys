@@ -178,7 +178,8 @@ def xml_frame_based_database(
     xml_filepaths = _calc_xml_filepaths(filtered_table)
 
     xml_docs = [
-        _load_xml(database_directory.joinpath(filepath)) for filepath in xml_filepaths
+        _load_xml(_safe_iview_xml_path(database_directory, filepath))
+        for filepath in xml_filepaths
     ]
     frame_table_rows = []
     for doc in xml_docs:
@@ -270,13 +271,34 @@ def _data_from_doc(doc):
     return table_rows
 
 
+def _safe_iview_component(value: str) -> str:
+    """Keep untrusted DBF/XML identifiers within one filesystem component."""
+    if (
+        not value
+        or value in (".", "..")
+        or any(char in value for char in "/\\:\x00")
+        or any(ord(char) < 32 for char in value)
+    ):
+        raise ValueError("Invalid iView image path component")
+    return value
+
+
+def _safe_iview_xml_path(database_directory: pathlib.Path, filename: str) -> pathlib.Path:
+    """Reject XML paths and symlinks escaping the configured iView data root."""
+    root = pathlib.Path(database_directory).resolve()
+    candidate = (root / filename).resolve()
+    if not candidate.is_relative_to(root) or candidate.suffix.lower() != ".xml":
+        raise ValueError("iView frame XML path escapes the database directory")
+    return candidate
+
+
 @st.cache_data()
 def _calc_xml_filepaths(table):
     return (
         "patient_"
-        + table["patient_id"].astype("str")
+        + table["patient_id"].astype("str").map(_safe_iview_component).map(_safe_iview_component)
         + "/MV_IMAGES/img_"
-        + table["DICOM_UID"].astype("str")
+        + table["DICOM_UID"].astype("str").map(_safe_iview_component).map(_safe_iview_component)
         + "/_Frame.xml"
     )
 
@@ -285,12 +307,12 @@ def _calc_xml_filepaths(table):
 def _calc_xml_based_jpg_filepaths(table):
     return (
         "patient_"
-        + table["patient_id"].astype("str")
+        + table["patient_id"].astype("str").map(_safe_iview_component)
         + "/MV_IMAGES/img_"
-        + table["DICOM_UID"].astype("str")
+        + table["DICOM_UID"].astype("str").map(_safe_iview_component)
         + "/"
-        + table["sequence"].str.zfill(5)
+        + table["sequence"].astype("str").map(_safe_iview_component).str.zfill(5)
         + "."
-        + table["DICOM_UID"].astype("str")
+        + table["DICOM_UID"].astype("str").map(_safe_iview_component)
         + ".jpg"
     )
