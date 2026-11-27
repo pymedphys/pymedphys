@@ -232,12 +232,19 @@ def _final_frame_column_adjustment(table):
     ]
 
 
+# Bound imported frame metadata before XML parsing; no treatment metadata should
+# require a multi-megabyte frame index within a single _Frame.xml.
+MAX_IVIEW_FRAME_XML_BYTES = 16 * 1024 * 1024
+
+
 @st.cache_data()
 def _load_xml(filepath):
-    with open(filepath) as fd:
-        doc = xmltodict.parse(fd.read())
-
-    return doc
+    with open(filepath, "rb") as fd:
+        raw = fd.read(MAX_IVIEW_FRAME_XML_BYTES + 1)
+    if len(raw) > MAX_IVIEW_FRAME_XML_BYTES:
+        # Do not echo the patient-bearing filename or XML content.
+        raise ValueError("iView frame XML exceeds its permitted size")
+    return xmltodict.parse(raw)
 
 
 @st.cache_data()
