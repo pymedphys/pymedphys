@@ -22,7 +22,9 @@ import plotly.graph_objects as go
 import pydicom
 import streamlit as st
 
-from ._private_cache import open_private_ct_memmap
+from pymedphys._experimental.dicomrtvisualisation._private_cache import (
+    open_private_ct_memmap,
+)
 
 st.set_page_config(layout="wide")
 
@@ -308,7 +310,7 @@ def load_ct_as_memmap(
                 memmap[i, :, :] = rescaled
             memmap.flush()
             st.info("CT volume cache was saved privately.")
-        except Exception as e:
+        except Exception :
             raise RuntimeError("Failed to create a private CT volume cache") from None
     else:
         try:
@@ -319,7 +321,7 @@ def load_ct_as_memmap(
                 shape=(num_slices, height, width),
             )
             st.info("Existing CT volume cache was loaded privately.")
-        except Exception as e:
+        except Exception :
             raise RuntimeError("Failed to load a private CT volume cache") from None
 
     first_data = preprocessed_data[0]
