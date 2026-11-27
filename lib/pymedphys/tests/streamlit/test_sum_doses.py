@@ -70,3 +70,17 @@ def test_rejected_grid_mismatch_states_the_limit():
         pytest.raises(ValueError, match="within 0.1 mm"),
     ):
         sum_doses._sum_doses_showing_warnings([reference, shifted])
+
+
+@pytest.mark.pydicom
+def test_summed_dicom_download_is_an_in_memory_payload(tmp_path):
+    import io
+
+    from pymedphys._imports import pydicom
+
+    reference, _ = _datasets(0.0)
+    payload = sum_doses._summed_dicom_bytes(reference)
+
+    assert isinstance(payload, bytes)
+    assert pydicom.dcmread(io.BytesIO(payload)).PatientID == "SYNTHETIC"
+    assert not list(tmp_path.iterdir())
