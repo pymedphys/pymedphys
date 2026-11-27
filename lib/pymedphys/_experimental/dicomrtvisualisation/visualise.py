@@ -22,6 +22,8 @@ import plotly.graph_objects as go
 import pydicom
 import streamlit as st
 
+from ._private_cache import open_private_ct_memmap
+
 st.set_page_config(layout="wide")
 
 st.title("Interactive DICOM RT Viewer")
@@ -264,6 +266,13 @@ def load_ct_as_memmap(
     height = preprocessed_data[0].Rows
     width = preprocessed_data[0].Columns
 
+    if (
+        not isinstance(memmap_file, str)
+        or not memmap_file
+        or memmap_file in (".", "..")
+        or any(char in memmap_file for char in "/\\:\x00")
+    ):
+        raise ValueError("CT cache name must be a single filename")
     memmap_path = dirpath / memmap_file
 
     # Determine dtype based on BitsStored
@@ -283,10 +292,10 @@ def load_ct_as_memmap(
 
     if not memmap_path.exists():
         try:
-            memmap = np.memmap(
+            memmap = open_private_ct_memmap(
                 memmap_path,
                 dtype=dtype,
-                mode="w+",
+                create=True,
                 shape=(num_slices, height, width),
             )
             for i, data in enumerate(preprocessed_data):
@@ -298,20 +307,20 @@ def load_ct_as_memmap(
                     rescaled = rescaled.astype(np.float32)
                 memmap[i, :, :] = rescaled
             memmap.flush()
-            st.info(f"CT volume data saved to {memmap_path}.")
+            st.info("CT volume cache was saved privately.")
         except Exception as e:
-            raise RuntimeError(f"Failed to create memory-mapped file: {e}") from e
+            raise RuntimeError("Failed to create a private CT volume cache") from None
     else:
         try:
-            memmap = np.memmap(
+            memmap = open_private_ct_memmap(
                 memmap_path,
                 dtype=dtype,
-                mode="r",
+                create=False,
                 shape=(num_slices, height, width),
             )
-            st.info(f"CT volume data loaded from existing memmap file {memmap_path}.")
+            st.info("Existing CT volume cache was loaded privately.")
         except Exception as e:
-            raise RuntimeError(f"Failed to load memory-mapped file: {e}") from e
+            raise RuntimeError("Failed to load a private CT volume cache") from None
 
     first_data = preprocessed_data[0]
     pixel_min = float(memmap.min())
