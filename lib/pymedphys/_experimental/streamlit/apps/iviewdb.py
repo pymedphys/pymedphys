@@ -40,10 +40,28 @@ def get_files_for_extension(directory: pathlib.Path, extension: str):
         The extension to recursively search for
 
     """
+    root = pathlib.Path(directory).resolve()
     return [
-        str(item.relative_to(directory)) for item in directory.glob(f"**/*{extension}")
+        str(item.relative_to(directory))
+        for item in directory.glob(f"**/*{extension}")
+        if item.is_file() and item.resolve().is_relative_to(root)
     ]
 
+
+def safe_iview_xml_path(database_directory, relative_filename):
+    """Resolve a selected XML without following links outside its data root."""
+    if not isinstance(relative_filename, str):
+        raise ValueError("No XML file selected")
+    root = pathlib.Path(database_directory).resolve()
+    candidate = root / relative_filename
+    target = candidate.resolve()
+    if (
+        candidate.suffix.lower() != ".xml"
+        or not target.is_relative_to(root)
+        or not target.is_file()
+    ):
+        raise ValueError("XML file is not a regular file inside the database folder")
+    return target
 
 def main():
     config = _config.get_config()
@@ -105,8 +123,8 @@ def main():
     chosen_file = st.selectbox("Select XML file", options=xml_files)
 
     try:
-        xml_path = database_directory.joinpath(chosen_file)
-    except TypeError:
+        xml_path = safe_iview_xml_path(database_directory, chosen_file)
+    except (TypeError, ValueError, OSError):
         st.stop()
 
     with open(xml_path) as fd:
