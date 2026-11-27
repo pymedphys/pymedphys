@@ -82,23 +82,26 @@ class DicomSender(DicomConnectBase):
 
         statuses = []
         if assoc.is_established:
-            for dataset in dcm_files:
-                if not isinstance(dataset, (pydicom.Dataset, pathlib.Path, str)):
-                    raise TypeError(
-                        "dcm_files must be  str, pathlib.Path or pydicom.Dataset"
+            try:
+                for dataset in dcm_files:
+                    if not isinstance(dataset, (pydicom.Dataset, pathlib.Path, str)):
+                        raise TypeError(
+                            "dcm_files must be  str, pathlib.Path or pydicom.Dataset"
+                        )
+
+                    if not isinstance(dataset, pydicom.Dataset):
+                        dataset = pydicom.dcmread(dataset)
+
+                    logging.debug(
+                        "Sending DICOM object with SOPInstanceUID: %s",
+                        dataset.SOPInstanceUID,
                     )
 
-                if not isinstance(dataset, pydicom.Dataset):
-                    dataset = pydicom.dcmread(dataset)
-
-                logging.debug(
-                    "Sending DICOM object with SOPInstanceUID: %s",
-                    dataset.SOPInstanceUID,
-                )
-
-                statuses.append(assoc.send_c_store(dataset))
-
-            assoc.release()
+                    statuses.append(assoc.send_c_store(dataset))
+            finally:
+                # Parse failures and C-STORE exceptions must not leave the
+                # remote association open and consume a connection slot.
+                assoc.release()
 
         return statuses
 
