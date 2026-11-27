@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import pathlib
+import io
 import warnings
 from typing import BinaryIO, List, Sequence
 
@@ -72,12 +72,12 @@ def main():
         st.write("Summing doses...")
 
         ds_summed = _sum_doses_showing_warnings(datasets)
-        _save_dataset_to_downloads_dir(ds_summed)
-
         st.write("Done!")
-        st.markdown(
-            "*Download the summed DICOM dose file from "
-            "[downloads/RD.summed.dcm](downloads/RD.summed.dcm)*"
+        st.download_button(
+            "Download summed DICOM RT Dose",
+            data=_summed_dicom_bytes(ds_summed),
+            file_name="RD.Summed.dcm",
+            mime="application/dicom",
         )
 
 
@@ -141,10 +141,8 @@ def _validate_dicom_dataset(ds):
         raise ValueError("DICOM dataset must contain absolute dose")
 
 
-def _save_dataset_to_downloads_dir(ds: "pydicom.dataset.Dataset"):
-    STREAMLIT_STATIC_PATH = pathlib.Path(st.__path__[0]) / "static"
-
-    DOWNLOADS_PATH = STREAMLIT_STATIC_PATH / "downloads"
-    DOWNLOADS_PATH.mkdir(parents=True, exist_ok=True)
-
-    ds.save_as(DOWNLOADS_PATH / "RD.Summed.dcm")
+def _summed_dicom_bytes(ds: "pydicom.dataset.Dataset") -> bytes:
+    """Return a private download payload without writing it to shared static files."""
+    destination = io.BytesIO()
+    ds.save_as(destination)
+    return destination.getvalue()
