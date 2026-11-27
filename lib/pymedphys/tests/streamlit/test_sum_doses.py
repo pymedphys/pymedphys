@@ -70,3 +70,20 @@ def test_rejected_grid_mismatch_states_the_limit():
         pytest.raises(ValueError, match="within 0.1 mm"),
     ):
         sum_doses._sum_doses_showing_warnings([reference, shifted])
+
+
+@pytest.mark.pydicom
+def test_different_patient_ids_are_rejected_before_dose_summation():
+    first, second = _datasets(0.0)
+    second.PatientID = "DIFFERENT_SYNTHETIC_PATIENT"
+
+    with (
+        mock.patch.object(sum_doses, "_load_dicom_file", side_effect=[first, second]),
+        mock.patch.object(sum_doses, "st") as st,
+        pytest.raises(ValueError, match="different patient identifiers") as error,
+    ):
+        sum_doses._load_and_check_files_valid([object(), object()])
+
+    st.error.assert_not_called()
+    assert first.PatientID not in str(error.value)
+    assert second.PatientID not in str(error.value)
