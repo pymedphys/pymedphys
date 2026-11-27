@@ -10,12 +10,19 @@ from safe_filter import evaluate_filter
 class FilterTests(unittest.TestCase):
     def test_numeric_and_chained_comparisons(self):
         values = pd.Series([1, 2, 3, 4])
-        self.assertEqual(evaluate_filter(values, "_ >= 2").tolist(), [False, True, True, True])
-        self.assertEqual(evaluate_filter(values, "1 < _ < 4").tolist(), [False, True, True, False])
+        self.assertEqual(
+            evaluate_filter(values, "_ >= 2").tolist(), [False, True, True, True]
+        )
+        self.assertEqual(
+            evaluate_filter(values, "1 < _ < 4").tolist(), [False, True, True, False]
+        )
 
     def test_composed_conditions_and_literal_underscores(self):
         values = pd.Series(["a_b", "a", "b"])
-        self.assertEqual(evaluate_filter(values, "(_ == 'a_b') | (_ == 'b')").tolist(), [True, False, True])
+        self.assertEqual(
+            evaluate_filter(values, "(_ == 'a_b') | (_ == 'b')").tolist(),
+            [True, False, True],
+        )
 
     def test_rejects_executable_expressions(self):
         values = pd.Series([1, 2])
