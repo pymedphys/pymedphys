@@ -15,6 +15,8 @@
 import logging
 import lzma
 
+import pytest
+
 from pymedphys._icom import patients
 
 IP = "192.168.100.200"
@@ -75,3 +77,22 @@ def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, ca
     assert archive.parent.name == "654321_JONES"
     with lzma.open(archive) as f:
         assert f.read() == next_delivery
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "../../outside",
+        "2026-09-28T10:00:00/../../outside",
+        r"2026-09-28T10:00:00\\..\\outside",
+        "2026-02-30T10:00:00",
+        "2026-09-28T25:00:00",
+    ],
+)
+def test_icom_archive_rejects_untrusted_timestamp_paths(tmp_path, timestamp):
+    item = _icom_item(0, patient_id="123456", patient_name="SMITH")
+
+    with pytest.raises(ValueError, match="Invalid iCOM archive timestamp"):
+        patients.save_patient_data(timestamp, [item], tmp_path)
+
+    assert list(tmp_path.rglob("*.xz")) == []
+
