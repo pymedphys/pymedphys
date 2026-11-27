@@ -13,12 +13,12 @@
 # limitations under the License.
 
 
-import lzma
 import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+from pymedphys._icom.archive import read_icom_archive
 from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._utilities import patient as utl_patient
@@ -26,10 +26,7 @@ from pymedphys._utilities import patient as utl_patient
 
 @st.cache_data
 def load_icom_stream(icom_path):
-    with lzma.open(icom_path, "r") as f:
-        contents = f.read()
-
-    return contents
+    return read_icom_archive(icom_path)
 
 
 def load_icom_streams(icom_paths):
