@@ -15,22 +15,20 @@
 
 import collections
 import datetime
-import lzma
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+from pymedphys._icom.archive import read_icom_archive
+
 import pymedphys._icom.delivery as pmp_icom_delivery
 import pymedphys._icom.extract as pmp_icom_extract
 
 
 def read_icom_log(filepath):
-    with lzma.open(filepath, "r") as f:
-        icom_stream = f.read()
-
-    return icom_stream
+    return read_icom_archive(filepath)
 
 
 def get_paths_by_date(icom_patients_directory, selected_date=None):
