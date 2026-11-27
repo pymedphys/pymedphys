@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### Bounded patient iCOM decompression
+
+MetersetMap now rejects iCOM logfiles whose decompressed contents exceed 512 MiB and no longer stores their patient-bearing bytes in Streamlit's session-shared data cache. Sites with larger individual logfiles must review that limit. [PR #2788](https://github.com/pymedphys/pymedphys/pull/2788)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes
