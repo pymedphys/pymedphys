@@ -87,7 +87,8 @@ def test_icom_patient_details_never_appear_in_logs(tmp_path, caplog, capsys):
         data.update_data(IP, item)
         data.update_data(IP, _icom_item(1))
 
-    output = caplog.text + capsys.readouterr().out + capsys.readouterr().err
+    captured = capsys.readouterr()
+    output = caplog.text + captured.out + captured.err
     for secret in (patient_id, patient_name):
         assert secret not in output
 
