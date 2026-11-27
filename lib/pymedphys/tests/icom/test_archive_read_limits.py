@@ -1,4 +1,4 @@
-# Copyright (C) 2026 PyMedPhys contributors
+# Copyright (C) 2026 Jeffrey D. Cooney
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import lzma
 
 from pymedphys._imports import pytest
 
+from pymedphys._icom import archive
 from pymedphys._icom.archive import read_icom_archive
 
 
@@ -44,3 +45,30 @@ def test_rejects_expansion_above_limit_without_exposing_path(tmp_path):
 def test_invalid_limits_rejected(tmp_path, limit):
     with pytest.raises(ValueError, match="limit"):
         read_icom_archive(tmp_path / "unused.xz", limit=limit)
+
+
+def test_concatenated_xz_records_remain_supported(tmp_path):
+    path = tmp_path / "concatenated.xz"
+    path.write_bytes(
+        lzma.compress(b"delivery-one") + b"\x00" * 4
+        + lzma.compress(b"delivery-two")
+    )
+    assert read_icom_archive(path) == b"delivery-onedelivery-two"
+
+
+def test_decoder_memory_budget_is_enforced(tmp_path, monkeypatch):
+    path = tmp_path / "archive.xz"
+    path.write_bytes(lzma.compress(b"synthetic delivery"))
+    monkeypatch.setattr(archive, "MAX_LZMA_DECODER_MEMORY", 1)
+
+    with pytest.raises(ValueError, match="Unsafe or invalid"):
+        read_icom_archive(path)
+
+
+def test_compressed_input_budget_is_enforced(tmp_path, monkeypatch):
+    path = tmp_path / "archive.xz"
+    path.write_bytes(lzma.compress(b"synthetic delivery"))
+    monkeypatch.setattr(archive, "MAX_COMPRESSED_ICOM_BYTES", 16)
+
+    with pytest.raises(ValueError, match="compressed size limit"):
+        read_icom_archive(path)
