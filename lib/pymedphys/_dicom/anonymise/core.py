@@ -17,7 +17,7 @@ import functools
 import json
 import logging
 from copy import copy  # , deepcopy
-from glob import glob
+from pathlib import Path
 from os.path import abspath, basename, dirname
 from os.path import join as pjoin
 
@@ -326,9 +326,10 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
     ``*.dcm`` in a directory hold only empty or dummy values.
 
     This function applies ``is_anonymised_file`` to files matching
-    ``*.dcm`` in the directory and its subdirectories. Matching follows
-    Python's ``glob`` rules, including case-insensitive matching on
-    Windows; other files are not checked. It is very likely to return
+    ``*.dcm`` in the directory and its subdirectories. The supplied
+    directory is treated literally, including any glob metacharacters.
+    File suffix matching is case-insensitive on Windows; other files
+    are not checked. It is very likely to return
     ``False`` for files processed by a different tool.
 
     ``True`` does not mean that the data cannot identify anyone. The
@@ -360,7 +361,7 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
         checked, ``False`` otherwise.
     """
     is_anonymised = True
-    dicom_filepaths = glob(str(dirpath) + "/**/*.dcm", recursive=True)
+    dicom_filepaths = Path(dirpath).rglob("*.dcm")
 
     for dicom_filepath in dicom_filepaths:
         if not is_anonymised_file(
