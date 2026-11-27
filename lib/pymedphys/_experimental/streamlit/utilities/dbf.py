@@ -2,7 +2,7 @@ from pymedphys._imports import dbfread
 from pymedphys._imports import streamlit as st
 
 
-@st.cache_data()
+@st.cache_data(scope="session")
 def get_dbf_table(path):
     try:
         return dbfread.DBF(path)
