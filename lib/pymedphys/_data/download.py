@@ -76,6 +76,24 @@ DATA_DIR_ENVIRONMENT_VARIABLE = "PYMEDPHYS_DATA_DIR"
 _CHUNK_SIZE = 64 * 1024
 
 
+def _validated_cache_name(filename):
+    """Refuse names that could place a cache file outside the data directory."""
+    name = str(filename).replace(os.sep, "/")
+    posix_path = pathlib.PurePosixPath(name)
+    windows_path = pathlib.PureWindowsPath(name)
+    if (
+        not posix_path.parts
+        or posix_path.is_absolute()
+        or windows_path.root
+        or windows_path.drive
+        or ".." in posix_path.parts
+        or ".." in windows_path.parts
+    ):
+        raise ValueError("Cache filename must be a relative path without '..'")
+
+    return name
+
+
 class _NoProgress:
     """Stands in for tqdm's progress bar where tqdm is not installed."""
 
@@ -270,7 +288,7 @@ def data_path(
     url=None,
     hash_filepath=None,
 ):
-    filename = str(filename).replace(os.sep, "/")
+    filename = _validated_cache_name(filename)
     filepath = get_data_dir().joinpath(filename)
 
     containing_directory = pathlib.Path(filepath).parent
@@ -572,6 +590,7 @@ def zip_data_paths(
     extract_directory=None,
     hash_filepath=None,
 ):
+    filename = _validated_cache_name(filename)
     cache_directory = get_data_dir().joinpath(
         pathlib.Path(os.path.splitext(filename)[0])
     )
