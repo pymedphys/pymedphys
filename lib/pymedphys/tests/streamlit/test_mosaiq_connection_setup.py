@@ -361,3 +361,28 @@ alias = "Clinic Mosaiq"
     assert utl.widget(app_test.text_input, _username_label(app_test)).value == ""
     assert credential_store[(HOSTNAME, 1433, "MOSAIQ")] == {"username": "north-user"}
     assert (OTHER_HOSTNAME, 1433, "MOSAIQ") not in credential_store
+
+
+def test_configured_sql_connection_is_not_shared_between_sessions(
+    config_dir, credential_store, connections
+):
+    (config_dir / "config.toml").write_text(
+        'version = 0\n[[site]]\nname = "test"\n[site.mosaiq]\nhostname = "'
+        + HOSTNAME
+        + '"\n',
+        encoding="utf-8",
+    )
+    _store_credentials(credential_store)
+
+    first_session = _start()
+    second_session = _start()
+    utl.assert_no_exception(first_session)
+    utl.assert_no_exception(second_session)
+
+    expected = f"physicist@{HOSTNAME}:1433/MOSAIQ"
+    assert _connected(first_session) == [expected]
+    assert _connected(second_session) == [expected]
+    assert connections == [expected, expected]
+
+    utl.widget(first_session.text_input, "Patient ID").input("SYNTHETIC").run()
+    assert connections == [expected, expected]
