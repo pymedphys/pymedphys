@@ -39,6 +39,7 @@
 # SOFTWARE.
 
 
+import contextlib
 import logging
 import os
 import sys
@@ -90,9 +91,13 @@ def extract_tar(archive_path, destination):
 
 
 def export_cli(args):
-    """
-    expose a cli to allow export of Pinnacle raw data to DICOM objects
-    """
+    """Export Pinnacle data, removing temporary patient files on every exit."""
+    with contextlib.ExitStack() as scratch:
+        return _export_cli(args, scratch)
+
+
+def _export_cli(args, scratch):
+    """Run the Pinnacle export within a managed scratch-file lifecycle."""
 
     output_directory = args.output_directory
     verbose = args.verbose
@@ -127,7 +132,7 @@ def export_cli(args):
     # If a TAR archive was supplied, extract it and determine the path
     # to the patient directory
     if os.path.isfile(input_path) and tarfile.is_tarfile(input_path):
-        tmp_dir = tempfile.mkdtemp()
+        tmp_dir = scratch.enter_context(tempfile.TemporaryDirectory(prefix="pymedphys-pinnacle-"))
 
         logger.info("Extracting TAR archive to: %s", tmp_dir)
 
@@ -161,7 +166,7 @@ def export_cli(args):
 
         input_path = pat_dirs[0]
 
-        logger.info("Using Patient directory: %s", input_path)
+        logger.info("Using the extracted Pinnacle patient directory.")
 
     # Create Pinnacle object given input path
     p = PinnacleExport(input_path, logger)
