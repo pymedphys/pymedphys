@@ -17,7 +17,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq.delivery import NoMosaiqEntries as _NoMosaiqEntries
-from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities
+from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities, _patient_pattern
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 from pymedphys._trf.decode import header as _header
@@ -183,7 +183,15 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
         )
         st.write(patient_id)
 
-        filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
+        try:
+            literal_patient_id = _patient_pattern.escape_patient_id(patient_id)
+        except ValueError:
+            st.error("Patient ID must be a single directory component.")
+            return {"patient_id": patient_id}
+
+        filepaths = list(
+            indexed_trf_directory.glob(f"*/{literal_patient_id}_*/*/*/*/*.trf")
+        )
 
         raw_timestamps = [
             "_".join(path.parent.name.split("_")[0:2]) for path in filepaths
