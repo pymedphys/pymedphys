@@ -118,12 +118,12 @@ def _load_dicom_file(fh: BinaryIO):
     try:
         ds = pydicom.dcmread(fh)
     except pydicom.errors.InvalidDicomError as e:
-        raise ValueError(f"'{fh.name}' is not a valid DICOM file") from e
+        raise ValueError("An uploaded file is not a valid DICOM file") from e
 
     try:
         _validate_dicom_dataset(ds)
     except ValueError:
-        st.error(f"When trying to load {fh.name}, the following error occurred:")
+        st.error("Unable to validate an uploaded DICOM file:")
 
         raise
 
