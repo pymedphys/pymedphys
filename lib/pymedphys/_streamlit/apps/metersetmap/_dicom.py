@@ -36,6 +36,14 @@ def load_dicom_file_if_plan(filepath):
     return None
 
 
+def _find_patient_plan_files(export_directory, patient_id):
+    """Match a literal patient ID, not a filename glob supplied by a caller."""
+    prefix = f"{patient_id}_"
+    return [
+        path for path in export_directory.glob("*.dcm") if path.name.startswith(prefix)
+    ]
+
+
 def dicom_input_method(  # pylint: disable = too-many-return-statements
     config, key_namespace="", patient_id="", site=None, **_
 ):
@@ -101,7 +109,9 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
         )
 
-        found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}_*.dcm"))
+        found_dicom_files = _find_patient_plan_files(
+            monaco_export_directory, patient_id
+        )
 
         dicom_plans = {}
 

@@ -43,6 +43,17 @@ def load_icom_streams(icom_paths):
 
 # TODO: Split this up to search by site
 # See <https://github.com/pymedphys/pymedphys/issues/1141>
+def _find_patient_icom_files(directory, patient_id):
+    """Find delivery records only under directories with the literal patient ID."""
+    prefix = f"{patient_id}_"
+    return [
+        record
+        for patient_directory in directory.glob("*")
+        if patient_directory.is_dir() and patient_directory.name.startswith(prefix)
+        for record in patient_directory.glob("*.xz")
+    ]
+
+
 def icom_input_method(
     config, patient_id="", key_namespace="", advanced_mode=False, **_
 ):
@@ -120,7 +131,7 @@ def icom_input_method(
 
     icom_deliveries = []
     for path in icom_directories:
-        icom_deliveries += list(path.glob(f"{patient_id}_*/*.xz"))
+        icom_deliveries += _find_patient_icom_files(path, patient_id)
 
     icom_deliveries = sorted(icom_deliveries)
 
