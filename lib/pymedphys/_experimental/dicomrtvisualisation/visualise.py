@@ -154,7 +154,7 @@ def check_all_slices_aligned(preprocessed_data: Sequence[CTSlice]) -> None:
             )
 
 
-@st.cache_data(show_spinner=False, persist=True)
+@st.cache_data(show_spinner=False)
 def compute_patient_coordinates(
     height: int,
     width: int,
@@ -206,7 +206,7 @@ def compute_patient_coordinates(
     return X, Y
 
 
-@st.cache_data(show_spinner=True, persist=True)
+@st.cache_data(show_spinner=True)
 def load_ct_as_memmap(
     dirpath: str | os.PathLike, memmap_file: str = "ct_volume.dat"
 ) -> Tuple[
@@ -347,7 +347,7 @@ def load_ct_as_memmap(
     return memmap, ct_headers, X, Y, pixel_min, pixel_max, wl_default, ww_default
 
 
-@st.cache_data(show_spinner=True, persist=True)
+@st.cache_data(show_spinner=True)
 def load_rt_structures(fpath: str | os.PathLike) -> Dict[str, Dict[str, Any]]:
     """
     Load RT structures from a RTSTRUCT DICOM file and cache the results.
@@ -456,7 +456,7 @@ def preprocess_contours(
     return contour_map
 
 
-@st.cache_data(show_spinner=True, persist=True)
+@st.cache_data(show_spinner=True)
 def load_rt_dose(
     fpath: str | os.PathLike, ct_headers: Sequence[Dict[str, Any]]
 ) -> Tuple[Dict[int, np.ndarray], str, Dict[int, np.ndarray], Dict[int, np.ndarray]]:
