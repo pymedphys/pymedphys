@@ -166,18 +166,19 @@ class DicomListener(DicomConnectBase):
             # (converting to JSON string to perform comparison)
             existing_ds = pydicom.dcmread(filepath)
 
-            if not existing_ds.to_json() == dataset.to_json():
-                # If the contents don't match, save conflicting incoming file in an
-                # "orphan" sub-directory.
+            if existing_ds.to_json() == dataset.to_json():
+                # An identical resend is already committed to disk. Rewriting it
+                # risks modifying a valid clinical record unnecessarily.
+                return status_ds
 
-                # Just give the file a unique name in the orphan directory
-                filename = str(uuid.uuid4())
-                filepath = series_dir.joinpath("orphan", filename)
-                filepath.parent.mkdir(exist_ok=True)
-
-                logging.warning(
-                    "DICOM file exists, storing in orphan directory: %s", filename
-                )
+            # Preserve both copies when the received object conflicts with
+            # one already stored under the same SOP Instance UID.
+            filename = str(uuid.uuid4())
+            filepath = series_dir.joinpath("orphan", filename)
+            filepath.parent.mkdir(exist_ok=True)
+            logging.warning(
+                "DICOM file exists, storing in orphan directory: %s", filename
+            )
 
         context = event.context
         meta = pydicom.Dataset()
