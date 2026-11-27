@@ -1,4 +1,4 @@
-# Copyright (C) 2026 PyMedPhys contributors
+# Copyright (C) 2026 Jeffrey D. Cooney
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 import os
 import stat
 from importlib import import_module
-from pathlib import Path
 
 from pymedphys._imports import pytest
 
