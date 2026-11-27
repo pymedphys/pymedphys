@@ -660,3 +660,51 @@ def test_zenodo_downloads_require_hashes_unless_skipped(
     (path,) = download.zenodo_data_paths("review-record", check_hash=False)
     assert path.read_text(encoding="utf-8") == "contents"
     assert hashes.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../escape.txt",
+        "nested/../../escape.txt",
+        "/tmp/escape.txt",
+        r"..\\escape.txt",
+        r"C:\\escape.txt",
+        "",
+    ],
+)
+def test_download_cache_rejects_paths_outside_cache(cache, tmp_path, name):
+    data_dir, _ = cache
+    source = tmp_path / "source.txt"
+    source.write_text("downloaded", encoding="utf-8")
+    protected = tmp_path / "escape.txt"
+    protected.write_text("original", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Cache filename"):
+        download.data_path(name, check_hash=False, url=source.as_uri())
+
+    assert protected.read_text(encoding="utf-8") == "original"
+    assert not data_dir.exists()
+
+
+@pytest.mark.parametrize("name", ["../escape.zip", "/tmp/escape.zip", r"..\\escape.zip"])
+def test_zip_cache_rejects_paths_before_creating_locks(cache, name):
+    data_dir, _ = cache
+
+    with pytest.raises(ValueError, match="Cache filename"):
+        download.zip_data_paths(name, check_hash=False)
+
+    assert not data_dir.exists()
+
+
+def test_nested_relative_cache_names_remain_supported(cache, tmp_path):
+    data_dir, _ = cache
+    source = tmp_path / "source.txt"
+    source.write_text("downloaded", encoding="utf-8")
+
+    result = download.data_path(
+        "nested/example.txt", check_hash=False, url=source.as_uri()
+    )
+
+    assert result == (data_dir / "nested" / "example.txt").resolve()
+    assert result.read_text(encoding="utf-8") == "downloaded"
