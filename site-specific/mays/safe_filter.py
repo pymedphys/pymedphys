@@ -31,13 +31,22 @@ def evaluate_filter(column, condition):
             raise ValueError("filter expression is too deeply nested")
         if isinstance(node, ast.Name) and node.id == "_":
             return column
-        if isinstance(node, ast.Constant) and type(node.value) in (int, float, str, bool):
+        if isinstance(node, ast.Constant) and type(node.value) in (
+            int,
+            float,
+            str,
+            bool,
+        ):
             return node.value
         if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY:
             return _UNARY[type(node.op)](value(node.operand, depth + 1))
         if isinstance(node, ast.BinOp) and type(node.op) in _BOOLEAN:
-            return _BOOLEAN[type(node.op)](value(node.left, depth + 1), value(node.right, depth + 1))
-        if isinstance(node, ast.Compare) and all(type(op) in _COMPARISONS for op in node.ops):
+            return _BOOLEAN[type(node.op)](
+                value(node.left, depth + 1), value(node.right, depth + 1)
+            )
+        if isinstance(node, ast.Compare) and all(
+            type(op) in _COMPARISONS for op in node.ops
+        ):
             left = value(node.left, depth + 1)
             result = None
             for op, operand in zip(node.ops, node.comparators):
