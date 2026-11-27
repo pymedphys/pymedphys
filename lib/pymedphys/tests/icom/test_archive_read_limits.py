@@ -72,3 +72,22 @@ def test_compressed_input_budget_is_enforced(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="compressed size limit"):
         read_icom_archive(path)
+
+
+def test_selected_archive_budget_limits_combined_output(tmp_path, monkeypatch):
+    pytest.importorskip("streamlit")
+    from pymedphys._streamlit.apps.metersetmap import _icom
+
+    first = tmp_path / "first.xz"
+    second = tmp_path / "second.xz"
+    first.write_bytes(lzma.compress(b"a" * 8))
+    second.write_bytes(lzma.compress(b"b" * 8))
+    monkeypatch.setattr(_icom, "MAX_SELECTED_ICOM_BYTES", 10)
+    monkeypatch.setattr(
+        _icom,
+        "load_icom_stream",
+        lambda path, limit: read_icom_archive(path, limit=limit),
+    )
+
+    with pytest.raises(ValueError, match="decompressed size limit"):
+        _icom.load_icom_streams([first, second])
