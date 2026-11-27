@@ -25,7 +25,9 @@ def test_missing_dbf_exception_hides_sensitive_path(monkeypatch):
         raise dbf.dbfread.DBFNotFound(path)
 
     monkeypatch.setattr(dbf.dbfread, "DBF", missing)
-    with pytest.raises(FileNotFoundError, match="DBF table could not be opened") as error:
+    with pytest.raises(
+        FileNotFoundError, match="DBF table could not be opened"
+    ) as error:
         dbf.get_dbf_table("/patients/PrivateName/clinical.DBF")
     assert "PrivateName" not in str(error.value)
     assert error.value.__suppress_context__
