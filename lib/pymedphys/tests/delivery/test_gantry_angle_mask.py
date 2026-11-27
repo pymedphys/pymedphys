@@ -18,6 +18,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 import pymedphys
+from pymedphys._dicom.delivery import utilities
 
 
 def _simple_beam_delivery(gantry_angles, mu):
@@ -38,8 +39,8 @@ def _item(**elements):
     return item
 
 
-def _ap_pa_plan(metersets):
-    """Return a two-beam step-and-shoot RT Plan at gantry 0 and 180 degrees."""
+def _two_beam_plan(metersets, gantry_angles=(0.0, 180.0)):
+    """Return a two-beam step-and-shoot RT Plan, by default at gantry 0 and 180 degrees."""
     jaw = [-50.0, 60.0]
     control_point_specs = [
         (0.0, [-5.0, -6.0, -7.0, -8.0, 5.0, 6.0, 7.0, 8.0]),
@@ -48,7 +49,7 @@ def _ap_pa_plan(metersets):
         (1.0, [-15.0, -16.0, -17.0, -18.0, 15.0, 16.0, 17.0, 18.0]),
     ]
     beams = []
-    for beam_number, gantry_angle in [(1, 0.0), (2, 180.0)]:
+    for beam_number, gantry_angle in zip([1, 2], gantry_angles, strict=True):
         control_points = []
         for index, (weight, mlc) in enumerate(control_point_specs):
             cp = _item(
@@ -123,8 +124,8 @@ def test_metersetmap_handles_gantry_crossing_180_boundary(pa_target, pa_measured
 
 
 def test_to_dicom_handles_pa_beam_crossing_180_boundary():
-    template = _ap_pa_plan(metersets=[100.0, 50.0])
-    delivered = pymedphys.Delivery.from_dicom(_ap_pa_plan(metersets=[80.0, 40.0]))
+    template = _two_beam_plan(metersets=[100.0, 50.0])
+    delivered = pymedphys.Delivery.from_dicom(_two_beam_plan(metersets=[80.0, 40.0]))
 
     # Simulate linac gantry drift across the +/-180 degree boundary during the PA beam.
     drifted_gantry = np.array([0.0, 0.0, 0.1, 0.1, 179.9, 179.9, -179.9, -179.9])
@@ -145,6 +146,77 @@ def test_to_dicom_handles_pa_beam_crossing_180_boundary():
     assert len(pa_beam.ControlPointSequence) == 4
     pa_angles = [float(cp.GantryAngle) for cp in pa_beam.ControlPointSequence]
     np.testing.assert_allclose(pa_angles, [179.9, 179.9, 180.1, 180.1])
+
+
+@pytest.mark.parametrize(
+    ("pa_gantry", "expected_directions"),
+    [
+        # Clockwise drift (DICOM 179.9 to 180.1 degrees) between control
+        # points with the same meterset, then while 20 MU are delivered.
+        ([179.9, 179.9, -179.9, -179.9], ["NONE", "CW", "NONE", "NONE"]),
+        ([179.9, -179.9, -179.9, -179.9], ["CW", "NONE", "NONE", "NONE"]),
+        # Counter-clockwise drift (DICOM 180.1 to 179.9 degrees), likewise.
+        ([-179.9, -179.9, 179.9, 179.9], ["NONE", "CC", "NONE", "NONE"]),
+        ([-179.9, -179.9, -179.9, 179.9], ["NONE", "NONE", "CC", "NONE"]),
+    ],
+)
+def test_to_dicom_writes_short_way_rotation_across_180_boundary(
+    pa_gantry, expected_directions
+):
+    template = _two_beam_plan(metersets=[100.0, 50.0])
+    delivered = pymedphys.Delivery.from_dicom(_two_beam_plan(metersets=[80.0, 40.0]))
+    drifted_delivery = pymedphys.Delivery(
+        delivered.monitor_units,
+        np.concatenate(([0.0, 0.0, 0.1, 0.1], pa_gantry)),
+        delivered.collimator,
+        delivered.mlc,
+        delivered.jaw,
+    )
+
+    written = drifted_delivery.to_dicom(template)
+
+    ap_beam, pa_beam = written.BeamSequence
+    ap_directions = [cp.GantryRotationDirection for cp in ap_beam.ControlPointSequence]
+    pa_directions = [cp.GantryRotationDirection for cp in pa_beam.ControlPointSequence]
+    assert ap_directions == ["NONE", "CW", "NONE", "NONE"]
+    assert pa_directions == expected_directions
+
+
+def test_to_dicom_keeps_neighbouring_beams_across_180_boundary_separate():
+    template = _two_beam_plan(metersets=[100.0, 50.0], gantry_angles=(179.0, 181.0))
+    delivered = pymedphys.Delivery.from_dicom(
+        _two_beam_plan(metersets=[80.0, 40.0], gantry_angles=(179.0, 181.0))
+    )
+
+    written = delivered.to_dicom(template)
+
+    referenced = written.FractionGroupSequence[0].ReferencedBeamSequence
+    assert [float(beam.BeamMeterset) for beam in referenced] == [80.0, 40.0]
+    for beam, gantry_angle in zip(written.BeamSequence, [179.0, 181.0], strict=True):
+        control_points = beam.ControlPointSequence
+        assert [float(cp.GantryAngle) for cp in control_points] == [gantry_angle] * 4
+        assert [float(cp.CumulativeMetersetWeight) for cp in control_points] == [
+            0.0,
+            0.5,
+            0.5,
+            1.0,
+        ]
+
+
+@pytest.mark.parametrize(
+    ("gantry_angles", "expected"),
+    [
+        # Half the spacing on the circle, less 0.1 degrees, capped at 3.
+        ((179.0, -179.0), 0.9),
+        ((-179.0, 180.0), 0.4),
+        ((0.0, 2.0), 0.9),
+        ((0.0, 180.0), 3.0),
+    ],
+)
+def test_gantry_tolerance_uses_circular_beam_spacing(gantry_angles, expected):
+    tolerance = utilities.gantry_tol_from_gantry_angles(gantry_angles)
+
+    assert tolerance == pytest.approx(expected)
 
 
 @pytest.mark.parametrize(
