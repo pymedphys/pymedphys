@@ -52,11 +52,11 @@ class DicomBase:
         with a privately created, complete DICOM file; this avoids world-readable
         outputs, partial writes and following an existing destination symlink.
         """
-        if not isinstance(fp, (str, os.PathLike)):
+        if not isinstance(fp, (str, bytes, os.PathLike)):
             self.dataset.save_as(fp)
             return
 
-        destination = pathlib.Path(fp)
+        destination = pathlib.Path(os.fsdecode(fp))
         descriptor, temporary = tempfile.mkstemp(
             prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
         )
