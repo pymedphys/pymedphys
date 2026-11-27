@@ -182,7 +182,9 @@ class DeliveryBase(DeliveryNamedTuple):
         return masks
 
     def _gantry_angle_mask(self, gantry_angle, gantry_angle_tol):
-        near_angle = np.abs(np.array(self.gantry) - gantry_angle) <= gantry_angle_tol
+        angular_diff = np.abs(np.array(self.gantry) - gantry_angle) % 360
+        angular_diff = np.minimum(angular_diff, 360 - angular_diff)
+        near_angle = angular_diff <= gantry_angle_tol
         assert np.all(np.diff(np.where(near_angle)[0]) == 1)
 
         return near_angle
