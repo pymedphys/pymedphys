@@ -12,26 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Read archived iCOM records without unbounded LZMA expansion."""
+"""Read archived iCOM records with bounded output, input, and decoder memory."""
 
 import lzma
 
-# A single archive is one recorded delivery, not an entire treatment dataset.
-# This allows large deliveries while bounding an accidental or hostile LZMA bomb.
+# Per-record output budget and resource limits for the compressed decoder.
 MAX_DECOMPRESSED_ICOM_BYTES = 256 * 1024 * 1024
+MAX_COMPRESSED_ICOM_BYTES = 128 * 1024 * 1024
+MAX_LZMA_DECODER_MEMORY = 128 * 1024 * 1024
+ICOM_INPUT_CHUNK_BYTES = 64 * 1024
 
 
 def read_icom_archive(path, *, limit=MAX_DECOMPRESSED_ICOM_BYTES):
-    """Return archive bytes or reject an overlong decompressed stream.
+    """Read a single archive without unbounded expansion or dictionary use.
 
-    The exception intentionally omits the source path and decompressed content,
-    which could identify a patient.
+    The fixed errors deliberately omit source path and decompressed content.
+    Concatenated XZ streams are accepted, as with lzma.open.
     """
-    if not isinstance(limit, int) or limit < 0:
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit < 0:
         raise ValueError("iCOM decompression limit must be non-negative")
 
-    with lzma.open(path, "rb") as archive:
-        data = archive.read(limit + 1)
-    if len(data) > limit:
-        raise ValueError("iCOM archive exceeds the decompressed size limit")
-    return data
+    output = bytearray()
+    compressed_bytes = 0
+    pending = b""
+    decoder = None
+    seen_stream = False
+    with open(path, "rb") as source:
+        while True:
+            if decoder is None:
+                if pending:
+                    chunk, pending = pending, b""
+                else:
+                    chunk = source.read(ICOM_INPUT_CHUNK_BYTES)
+                    compressed_bytes += len(chunk)
+                if not chunk:
+                    if not seen_stream:
+                        raise ValueError("Empty or invalid iCOM archive")
+                    break
+
+                if seen_stream:
+                    # XZ permits zero padding between concatenated streams.
+                    chunk = chunk.lstrip(b"\x00")
+                    if not chunk:
+                        continue
+                decoder = lzma.LZMADecompressor(
+                    format=lzma.FORMAT_AUTO, memlimit=MAX_LZMA_DECODER_MEMORY
+                )
+            elif decoder.needs_input:
+                if pending:
+                    chunk, pending = pending, b""
+                else:
+                    chunk = source.read(ICOM_INPUT_CHUNK_BYTES)
+                    compressed_bytes += len(chunk)
+                if not chunk:
+                    raise ValueError("Incomplete iCOM archive")
+            else:
+                chunk = b""
+
+            if compressed_bytes > MAX_COMPRESSED_ICOM_BYTES:
+                raise ValueError("iCOM archive exceeds the compressed size limit")
+            try:
+                data = decoder.decompress(
+                    chunk,
+                    max_length=min(
+                        ICOM_INPUT_CHUNK_BYTES, limit - len(output) + 1
+                    ),
+                )
+            except lzma.LZMAError:
+                raise ValueError("Unsafe or invalid iCOM archive") from None
+
+            output.extend(data)
+            if len(output) > limit:
+                raise ValueError("iCOM archive exceeds the decompressed size limit")
+            if decoder.eof:
+                seen_stream = True
+                pending = decoder.unused_data + pending
+                decoder = None
+
+    return bytes(output)
