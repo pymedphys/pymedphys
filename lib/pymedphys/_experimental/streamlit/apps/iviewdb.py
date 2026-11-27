@@ -28,7 +28,7 @@ CATEGORY = categories.DRAFT
 TITLE = "iView Database Explorer"
 
 
-@st.cache_data()
+@st.cache_data(scope="session")
 def get_files_for_extension(directory: pathlib.Path, extension: str):
     """Cached file list.
 
