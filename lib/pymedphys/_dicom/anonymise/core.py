@@ -16,6 +16,7 @@
 import functools
 import json
 import logging
+import os
 from copy import copy  # , deepcopy
 from pathlib import Path
 from os.path import abspath, basename, dirname
@@ -360,6 +361,28 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
         ``True`` if ``is_anonymised_file`` is ``True`` for every file
         checked, ``False`` otherwise.
     """
+    # rglob intentionally does not descend into linked directories. Treat
+    # such trees as unverified rather than silently returning a passing audit.
+    # Linked DICOM files are likewise not considered a trustworthy input set.
+    def raise_walk_error(error):
+        raise error
+
+    try:
+        for current_dir, directory_names, file_names in os.walk(
+            dirpath, followlinks=False, onerror=raise_walk_error
+        ):
+            current = Path(current_dir)
+            if any((current / name).is_symlink() for name in directory_names):
+                return False
+            if any(
+                (current / name).is_symlink()
+                for name in file_names
+                if name.lower().endswith(".dcm")
+            ):
+                return False
+    except OSError:
+        return False
+
     is_anonymised = True
     dicom_filepaths = Path(dirpath).rglob("*.dcm")
 
