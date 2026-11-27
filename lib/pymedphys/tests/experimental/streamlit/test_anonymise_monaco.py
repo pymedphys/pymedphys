@@ -16,6 +16,7 @@
 
 import os
 import pathlib
+import stat
 
 from pymedphys._imports import pytest
 
@@ -25,6 +26,7 @@ pytest.importorskip("streamlit")
 # come after the skip guard.
 from pymedphys._experimental.streamlit.apps.anonymise_monaco import (  # noqa: E402
     _path_within,
+    _reserve_private_export,
 )
 
 
@@ -98,3 +100,29 @@ def test_symbolic_link_to_a_file_outside_directory_is_refused(tmp_path):
 
     with pytest.raises(ValueError):
         _path_within(directory, "012345.zip")
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permissions are not portable to Windows")
+def test_export_archive_is_reserved_with_private_permissions(tmp_path):
+    export = tmp_path / "anonymised.zip"
+    _reserve_private_export(export)
+
+    assert export.is_file()
+    assert stat.S_IMODE(export.stat().st_mode) & 0o077 == 0
+
+    with pytest.raises(FileExistsError):
+        _reserve_private_export(export)
+
+
+def test_export_archive_reservation_refuses_symlink(tmp_path):
+    destination = tmp_path / "destination.zip"
+    destination.write_bytes(b"existing private contents")
+    link = tmp_path / "anonymised.zip"
+    try:
+        link.symlink_to(destination)
+    except OSError:
+        pytest.skip("Creating symbolic links is not permitted here")
+
+    with pytest.raises(FileExistsError):
+        _reserve_private_export(link)
+    assert destination.read_bytes() == b"existing private contents"
