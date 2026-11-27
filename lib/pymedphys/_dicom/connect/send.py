@@ -91,10 +91,7 @@ class DicomSender(DicomConnectBase):
                 if not isinstance(dataset, pydicom.Dataset):
                     dataset = pydicom.dcmread(dataset)
 
-                logging.debug(
-                    "Sending DICOM object with SOPInstanceUID: %s",
-                    dataset.SOPInstanceUID,
-                )
+                logging.debug("Sending DICOM object")
 
                 statuses.append(assoc.send_c_store(dataset))
 
@@ -121,7 +118,7 @@ def send_cli(args):
         try:
             pydicom.dcmread(dcm_file_path)
         except pydicom.errors.InvalidDicomError:
-            logging.error("Invalid DICOM file provided: %s", dcm_file)
+            logging.error("Invalid DICOM file provided")
             return
 
         dcm_file_paths.append(dcm_file_path)
