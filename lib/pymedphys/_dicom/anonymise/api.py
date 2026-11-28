@@ -19,7 +19,7 @@ import os
 import pprint
 import sys
 from copy import deepcopy
-from glob import glob
+from pathlib import Path
 from os.path import dirname, isdir, isfile
 
 from pymedphys._imports import pydicom
@@ -392,7 +392,7 @@ def anonymise_directory(
     dicom_dirpath = str(dicom_dirpath)
 
     # Sorted so that the file numbers in log messages are reproducible.
-    dicom_filepaths = sorted(glob(dicom_dirpath + "/**/*.dcm", recursive=True))
+    dicom_filepaths = sorted(str(path) for path in Path(dicom_dirpath).rglob("*.dcm"))
     failing_filepaths = []
     anon_filepaths = []
     errors = []

@@ -27,6 +27,7 @@ from uuid import uuid4
 
 from pymedphys._imports import pydicom, pytest
 
+import pymedphys._dicom.anonymise.api as anonymise_api
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._data import download
 from pymedphys._dicom import compat
@@ -649,3 +650,28 @@ def test_anonymise_dataset_without_file_meta():
 
     assert is_anonymised_dataset(anon_ds)
     assert anon_ds.PatientName == "ANONYMOUS^PATIENT"
+
+def test_anonymise_directory_treats_bracketed_patient_root_as_literal(tmp_path, monkeypatch):
+    """A bracketed directory name must not select other patients' files."""
+    patient_dir = tmp_path / "PAT[1]"
+    other_patient = tmp_path / "PAT1"
+    patient_dir.mkdir()
+    other_patient.mkdir()
+    intended = patient_dir / "plan.dcm"
+    unrelated = other_patient / "other.dcm"
+    intended.write_bytes(b"placeholder")
+    unrelated.write_bytes(b"placeholder")
+
+    visited = []
+
+    def mock_anonymise_file(dicom_filepath, **_):
+        visited.append(dicom_filepath)
+        return dicom_filepath
+
+    monkeypatch.setattr(anonymise_api, "anonymise_file", mock_anonymise_file)
+
+    result = anonymise_directory(patient_dir)
+
+    assert result == [str(intended)]
+    assert visited == [str(intended)]
+
