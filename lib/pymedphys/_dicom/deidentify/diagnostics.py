@@ -26,9 +26,10 @@ The redaction is scoped, not a filter: it adds nothing to Python's warning
 filters, which are process-wide and cannot be removed safely while other
 threads run, so warnings are still shown, recorded, or raised as the
 caller's filters say, and every other thread, and this one outside the
-context, sees the original messages. It works through two hooks, each
-wrapped once with a function that redacts only within the context and
-otherwise passes everything on unchanged: the log record factory
+context, sees the original messages unless the separate CLI-wide
+redaction context is active. It works through two hooks, each wrapped once
+with a function that redacts only within the relevant context and otherwise
+passes everything on unchanged: the log record factory
 (:func:`logging.setLogRecordFactory`), and the function to which CPython's
 :mod:`warnings` passes each warning to be shown or recorded,
 ``warnings._showwarnmsg``. That hook, unlike :func:`warnings.showwarning`,
@@ -67,6 +68,9 @@ SUMMARY = (
 WARNING_SUMMARY = (
     "A warning was issued while reading DICOM data. Details are not shown "
     "because they can contain file paths or DICOM values."
+)
+CLI_SUMMARY = (
+    "DICOM dependency diagnostic details suppressed (may contain patient data)"
 )
 
 # pydicom's messages can quote values, and can include file paths without
@@ -131,10 +135,18 @@ class _Scope(threading.local):
 
 _SCOPE = _Scope()
 _LOCK = threading.Lock()
+# CLI protection covers every thread while at least one listener context is
+# active. Unlike redacted_diagnostics(), it also handles pynetdicom records.
+_CLI_USERS = 0
+_CLI_WARNING_RESTORE: tuple[Callable[..., object], bool] | None = None
 
 
 def _redacting() -> bool:
     return bool(_SCOPE.active)
+
+
+def _cli_redacting() -> bool:
+    return _CLI_USERS > 0
 
 
 def _wrapped_factory(
@@ -162,6 +174,15 @@ def _wrapped_factory(
                 setattr(record, _REDACTED_MARK, True)
                 for counts in _SCOPE.active:
                     counts.log_records += 1
+            record.args = ()
+            record.exc_info = None
+            record.exc_text = None
+            record.stack_info = None
+        if _cli_redacting() and (
+            name in ("pydicom", "pynetdicom", "py.warnings")
+            or name.startswith(("pydicom.", "pynetdicom."))
+        ):
+            record.msg = CLI_SUMMARY
             record.args = ()
             record.exc_info = None
             record.exc_text = None
@@ -216,20 +237,27 @@ def _wrapped_showwarnmsg(
     """Wrap ``warnings._showwarnmsg`` to summarise warnings within the context."""
 
     def showwarnmsg(message: warnings.WarningMessage) -> None:
-        if _redacting() and not getattr(message, _REDACTED_MARK, False):
-            # The location can be the source file's path when pydicom warns
-            # from code that a caller passed in, so it is not shown either.
-            summary = safe_summary(str(message.message), WARNING_SUMMARY)
+        if not getattr(message, _REDACTED_MARK, False):
+            if _cli_redacting():
+                summary = CLI_SUMMARY
+                location = "<redacted>"
+            elif _redacting():
+                summary = safe_summary(str(message.message), WARNING_SUMMARY)
+                location = "<pydicom>"
+            else:
+                show(message)
+                return
+
+            # Build a new warning rather than mutating the caller's object.
+            # catch_warnings(record=True) retains this already-redacted copy.
             message = warnings.WarningMessage(
                 _summary_warning(message.category, summary),
                 message.category,
-                "<pydicom>",
+                location,
                 0,
                 message.file,
                 "",
             )
-            # As for records, a warning passes through every wrapper of
-            # chained hooks, and is redacted and counted by the first.
             setattr(message, _REDACTED_MARK, True)
             for counts in _SCOPE.active:
                 counts.warnings += 1
@@ -253,6 +281,42 @@ def _install() -> None:
     show = warnings._showwarnmsg  # type: ignore[attr-defined]  # pylint: disable = protected-access
     if not getattr(show, "redacts", False):
         warnings._showwarnmsg = _wrapped_showwarnmsg(show)  # type: ignore[attr-defined]  # pylint: disable = protected-access
+
+
+@contextlib.contextmanager
+def redacted_cli_diagnostics() -> Iterator[None]:
+    """Protect dependency diagnostics for all concurrent CLI listener contexts.
+
+    Log record and warning hooks are shared with redacted_diagnostics() and
+    remain installed as inactive wrappers after CLI shutdown. Warning capture
+    is enabled only while required, preserving any caller's prior warning hook
+    or pre-existing logging.captureWarnings configuration.
+    """
+    global _CLI_USERS, _CLI_WARNING_RESTORE
+
+    with _LOCK:
+        _install()
+        if _CLI_USERS == 0:
+            previous_showwarning = warnings.showwarning
+            was_capturing = getattr(logging, "_warnings_showwarning", None) is not None
+            _CLI_WARNING_RESTORE = (previous_showwarning, was_capturing)
+            if not was_capturing:
+                logging.captureWarnings(True)
+        _CLI_USERS += 1
+
+    try:
+        yield
+    finally:
+        with _LOCK:
+            _CLI_USERS -= 1
+            if _CLI_USERS == 0:
+                restore = _CLI_WARNING_RESTORE
+                assert restore is not None
+                previous_showwarning, was_capturing = restore
+                if not was_capturing:
+                    logging.captureWarnings(False)
+                warnings.showwarning = previous_showwarning
+                _CLI_WARNING_RESTORE = None
 
 
 @contextlib.contextmanager

@@ -16,13 +16,19 @@
 
 # pylint: disable=redefined-outer-name, no-member
 
+import copy
+import io
+import logging
 import pathlib
 import re
 import shutil
 import socket
 import subprocess
 import tempfile
+import threading
 import types
+import warnings
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from unittest.mock import Mock
 
@@ -31,6 +37,7 @@ from pymedphys._imports import psutil, pydicom, pynetdicom, pytest
 import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.connect.listen import (
     DicomListener,
+    _redacted_cli_diagnostics,
     hierarchical_dicom_storage_directory,
 )
 from pymedphys._dicom.connect.send import DicomSender
@@ -305,6 +312,341 @@ def test_listen_help_describes_stored_names(capsys, monkeypatch):
     help_text = " ".join(capsys.readouterr().out.split())
     assert "written as % and their two-digit hexadecimal code" in help_text
     assert "as %2E and %2E%2E." in help_text
+
+
+@pytest.mark.pydicom
+def test_listener_logs_do_not_expose_patient_identifiers(
+    tmp_path, test_dataset, caplog
+):
+    """The storage path contains PatientID and UIDs, which logs must not expose."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+    with caplog.at_level(logging.INFO):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0x0000
+    assert "DICOM object received and stored successfully" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert test_dataset.StudyInstanceUID not in caplog.text
+    assert test_dataset.SeriesInstanceUID not in caplog.text
+    assert test_dataset.SOPInstanceUID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_listener_failure_logs_omit_storage_path(
+    tmp_path, test_dataset, caplog, monkeypatch
+):
+    """Failed writes must not emit patient-identifying archive locations."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+
+    def reject_write(_self, *_args, **_kwargs):
+        raise OSError("synthetic error mentioning patient name and source path")
+
+    monkeypatch.setattr(pydicom.dataset.FileDataset, "save_as", reject_write)
+    with caplog.at_level(logging.ERROR):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0xA700
+    assert "Could not write file" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert test_dataset.StudyInstanceUID not in caplog.text
+    assert test_dataset.SeriesInstanceUID not in caplog.text
+    assert test_dataset.SOPInstanceUID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+    assert "synthetic error" not in caplog.text
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("failure", ["directory", "existing_read", "orphan_directory"])
+def test_listener_prewrite_io_failures_do_not_expose_identifiers(
+    tmp_path, test_dataset, caplog, monkeypatch, failure
+):
+    """Directory and existing-file failures return a safe storage error."""
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    event = types.SimpleNamespace(
+        dataset=test_dataset,
+        context=types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        ),
+    )
+    series_dir = hierarchical_dicom_storage_directory(tmp_path, test_dataset)
+    filepath = _build_hierarchical_path_to_plan(tmp_path, test_dataset)
+
+    if failure != "directory":
+        series_dir.mkdir(parents=True)
+        filepath.touch()
+
+    original_mkdir = pathlib.Path.mkdir
+
+    if failure == "directory":
+
+        def fail_directory(self, *args, **kwargs):
+            if self == series_dir:
+                raise OSError(f"cannot make {self}")
+            return original_mkdir(self, *args, **kwargs)
+
+        monkeypatch.setattr(pathlib.Path, "mkdir", fail_directory)
+
+    elif failure == "existing_read":
+
+        def fail_read(_filepath):
+            raise OSError(f"cannot read {filepath}")
+
+        monkeypatch.setattr(pydicom, "dcmread", fail_read)
+
+    else:
+        monkeypatch.setattr(pydicom, "dcmread", lambda _filepath: pydicom.Dataset())
+
+        def fail_orphan(self, *args, **kwargs):
+            if self.name == "orphan":
+                raise OSError(f"cannot make {self}")
+            return original_mkdir(self, *args, **kwargs)
+
+        monkeypatch.setattr(pathlib.Path, "mkdir", fail_orphan)
+
+    with caplog.at_level(logging.ERROR):
+        status = dicom_listener.on_c_store(event)
+
+    assert status.Status == 0xA700
+    assert status.ErrorComment == "SCP internal error - Unable to write file"
+    assert "Could not write file" in caplog.text
+    assert test_dataset.PatientID not in caplog.text
+    assert test_dataset.StudyInstanceUID not in caplog.text
+    assert test_dataset.SeriesInstanceUID not in caplog.text
+    assert test_dataset.SOPInstanceUID not in caplog.text
+    assert str(tmp_path) not in caplog.text
+    assert "cannot" not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_listener_redacts_pydicom_warnings_during_dataset_access(
+    tmp_path, test_dataset, caplog
+):
+    """Warnings and log records from deferred dataset reads omit DICOM values."""
+    sentinel = "ZZPATIENT-IDENTIFIERZZ"
+
+    class DeferredEvent:
+        context = types.SimpleNamespace(
+            transfer_syntax=pydicom.uid.ImplicitVRLittleEndian
+        )
+
+        @property
+        def dataset(self):
+            pydicom.misc.warn_and_log(f"Invalid value for VR PN: '{sentinel}'")
+            return test_dataset
+
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with caplog.at_level(logging.WARNING, logger="pydicom"):
+            status = dicom_listener.on_c_store(DeferredEvent())
+
+    assert status.Status == 0x0000
+    assert caught
+    assert sentinel not in caplog.text
+    assert all(sentinel not in str(w.message) for w in caught)
+
+
+@pytest.mark.pydicom
+def test_listener_cli_redacts_prehandler_dependency_logs_and_warnings(caplog, capsys):
+    """Redact early, debug and exception records, including direct log handlers."""
+    sentinel = "ZZPATIENT-IDENTIFIERZZ"
+    direct_stream = io.StringIO()
+    direct_handler = logging.StreamHandler(direct_stream)
+    dependency_logger = logging.getLogger("pynetdicom")
+    dependency_logger.addHandler(direct_handler)
+    try:
+        with caplog.at_level(logging.DEBUG):
+            with caplog.at_level(logging.DEBUG, logger="pynetdicom"):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("always")
+                    with _redacted_cli_diagnostics():
+                        dependency_logger.debug(
+                            "Incoming SOP Instance UID: %s", sentinel
+                        )
+                        try:
+                            raise OSError(f"patient archive path /{sentinel}")
+                        except OSError:
+                            dependency_logger.exception("Failed for %s", sentinel)
+                        logging.getLogger("pydicom.pixels.decoders.base").warning(
+                            "Invalid value: %s", sentinel
+                        )
+                        pydicom.misc.warn_and_log(
+                            f"Invalid value for VR PN: '{sentinel}'"
+                        )
+    finally:
+        dependency_logger.removeHandler(direct_handler)
+
+    assert sentinel not in caplog.text
+    assert sentinel not in direct_stream.getvalue()
+    assert sentinel not in capsys.readouterr().err
+    assert "DICOM dependency diagnostic details suppressed" in caplog.text
+    assert any(
+        record.name == "py.warnings"
+        and "DICOM dependency diagnostic details suppressed" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+@pytest.mark.pydicom
+def test_listener_cli_redacts_recorded_dependency_warnings(caplog):
+    """A warning recorder must receive sanitised messages and source paths."""
+    sentinel = "ZZPATIENT-IDENTIFIERZZ"
+    with caplog.at_level(logging.WARNING):
+        with _redacted_cli_diagnostics():
+            with warnings.catch_warnings(record=True) as captured:
+                warnings.simplefilter("always")
+                warnings.warn_explicit(
+                    f"Invalid DICOM value {sentinel}",
+                    UserWarning,
+                    f"/patient/{sentinel}/input.dcm",
+                    10,
+                )
+
+    assert len(captured) == 1
+    assert sentinel not in str(captured[0].message)
+    assert sentinel not in captured[0].filename
+    assert "DICOM dependency diagnostic details suppressed" in str(captured[0].message)
+    assert sentinel not in caplog.text
+
+
+@pytest.mark.pydicom
+def test_listener_cli_overlapping_contexts_keep_redaction(caplog):
+    """The first context may exit before the second without losing protection."""
+    sentinel = "ZZPATIENT-IDENTIFIERZZ"
+    first = _redacted_cli_diagnostics()
+    second = _redacted_cli_diagnostics()
+    first.__enter__()
+    first_active = True
+    try:
+        second.__enter__()
+        try:
+            first.__exit__(None, None, None)
+            first_active = False
+            with caplog.at_level(logging.WARNING):
+                logging.getLogger("pynetdicom").warning("UID: %s", sentinel)
+                with warnings.catch_warnings(record=True) as captured:
+                    warnings.simplefilter("always")
+                    warnings.warn(f"Invalid DICOM element {sentinel}")
+
+            assert len(captured) == 1
+            assert sentinel not in str(captured[0].message)
+            assert sentinel not in caplog.text
+            assert "DICOM dependency diagnostic details suppressed" in caplog.text
+        finally:
+            second.__exit__(None, None, None)
+    finally:
+        if first_active:
+            first.__exit__(None, None, None)
+
+
+@pytest.mark.pydicom
+def test_listener_cli_preserves_custom_warning_handler(monkeypatch):
+    """Leave an application warning sink installed after CLI cleanup."""
+    calls = []
+
+    def custom_warning(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(warnings, "showwarning", custom_warning)
+    with _redacted_cli_diagnostics():
+        assert warnings.showwarning is not custom_warning
+    assert warnings.showwarning is custom_warning
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("always")
+        warnings.warn("test custom warning sink")
+    assert calls
+
+
+@pytest.mark.pydicom
+def test_listener_concurrent_store_keeps_conflict_in_orphan(
+    tmp_path, test_dataset, monkeypatch
+):
+    """Concurrent stores for a single SOP UID must not overwrite either object."""
+    first_dataset = copy.deepcopy(test_dataset)
+    second_dataset = copy.deepcopy(test_dataset)
+    first_dataset.Manufacturer = "ConcurrentFirst"
+    second_dataset.Manufacturer = "ConcurrentSecond"
+    dicom_listener = DicomListener(storage_directory=tmp_path)
+    context = types.SimpleNamespace(transfer_syntax=pydicom.uid.ImplicitVRLittleEndian)
+    first_event = types.SimpleNamespace(dataset=first_dataset, context=context)
+    second_event = types.SimpleNamespace(dataset=second_dataset, context=context)
+    canonical = _build_hierarchical_path_to_plan(tmp_path, first_dataset)
+    actual_exists = pathlib.Path.exists
+    collision = threading.Barrier(2)
+
+    def simultaneous_exists(path):
+        if path == canonical:
+            already_exists = actual_exists(path)
+            if not already_exists:
+                try:
+                    collision.wait(timeout=0.5)
+                except threading.BrokenBarrierError:
+                    pass
+            return already_exists
+        return actual_exists(path)
+
+    monkeypatch.setattr(pathlib.Path, "exists", simultaneous_exists)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_first = executor.submit(dicom_listener.on_c_store, first_event)
+        future_second = executor.submit(dicom_listener.on_c_store, second_event)
+        statuses = [future_first.result(), future_second.result()]
+
+    assert all(status.Status == 0x0000 for status in statuses)
+    stored = pydicom.dcmread(canonical)
+    orphan_files = list(canonical.parent.joinpath("orphan").glob("*"))
+    assert len(orphan_files) == 1
+    orphan = pydicom.dcmread(orphan_files[0])
+    assert {stored.Manufacturer, orphan.Manufacturer} == {
+        "ConcurrentFirst",
+        "ConcurrentSecond",
+    }
+
+
+@pytest.mark.pydicom
+def test_listener_release_callback_tracks_each_association(tmp_path, test_dataset):
+    """Interleaved associations report their own last stored series directory."""
+    observed = []
+    dicom_listener = DicomListener(
+        storage_directory=tmp_path, on_released_callback=observed.append
+    )
+    first_assoc, second_assoc = object(), object()
+    first_dataset = copy.deepcopy(test_dataset)
+    second_dataset = copy.deepcopy(test_dataset)
+    second_dataset.SeriesInstanceUID = pydicom.uid.generate_uid()
+    context = types.SimpleNamespace(transfer_syntax=pydicom.uid.ImplicitVRLittleEndian)
+
+    for association in (first_assoc, second_assoc):
+        dicom_listener.on_association_accepted(types.SimpleNamespace(assoc=association))
+    for association, dataset in (
+        (first_assoc, first_dataset),
+        (second_assoc, second_dataset),
+    ):
+        status = dicom_listener.on_c_store(
+            types.SimpleNamespace(assoc=association, dataset=dataset, context=context)
+        )
+        assert status.Status == 0x0000
+
+    dicom_listener.on_association_released(types.SimpleNamespace(assoc=first_assoc))
+    dicom_listener.on_association_released(types.SimpleNamespace(assoc=second_assoc))
+    assert observed == [
+        hierarchical_dicom_storage_directory(tmp_path, first_dataset),
+        hierarchical_dicom_storage_directory(tmp_path, second_dataset),
+    ]
+    assert not dicom_listener._association_directories
 
 
 @pytest.mark.pydicom

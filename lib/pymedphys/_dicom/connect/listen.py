@@ -14,18 +14,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import logging
 import pathlib
 import signal
 import sys
 import tempfile
+import threading
 import uuid
 
 from pymedphys._imports import pydicom, pynetdicom
 
 from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
+from pymedphys._dicom.deidentify.diagnostics import (
+    redacted_cli_diagnostics as _redacted_cli_diagnostics,
+    redacted_diagnostics,
+)
 from pymedphys._utilities.filesystem import encode_file_name
+
+
+# Serialise check/compare/write of an SOP instance path across connections and
+# listener objects in this process. Waiters count as users until they exit.
+_STORAGE_PATH_LOCKS_GUARD = threading.Lock()
+_STORAGE_PATH_LOCKS = {}
+
+
+@contextlib.contextmanager
+def _locked_storage_path(filepath):
+    """Keep one path locked across its existence check, comparison and write."""
+    with _STORAGE_PATH_LOCKS_GUARD:
+        if filepath in _STORAGE_PATH_LOCKS:
+            lock, users = _STORAGE_PATH_LOCKS[filepath]
+        else:
+            lock, users = threading.Lock(), 0
+        _STORAGE_PATH_LOCKS[filepath] = (lock, users + 1)
+
+    try:
+        with lock:
+            yield
+    finally:
+        with _STORAGE_PATH_LOCKS_GUARD:
+            _, users = _STORAGE_PATH_LOCKS[filepath]
+            if users == 1:
+                del _STORAGE_PATH_LOCKS[filepath]
+            else:
+                _STORAGE_PATH_LOCKS[filepath] = (lock, users - 1)
 
 
 def hierarchical_dicom_storage_directory(
@@ -74,13 +108,16 @@ class DicomListener(DicomConnectBase):
         # data from that association was stored
         self.on_released_callback = on_released_callback
 
-        # Keep track of the directory where data for the current association is stored
+        # Legacy last-directory attribute for embedded callers; release
+        # callbacks use an association-specific mapping instead.
         self.association_directory = None
+        self._association_directories = {}
+        self._association_directories_lock = threading.Lock()
 
         # The application entity
         self.ae = None
 
-        logging.debug("Will store files received in: %s", self.storage_directory)
+        logging.debug("DICOM listener storage directory configured")
 
     def start(self):
         """Start the listener.
@@ -111,6 +148,7 @@ class DicomListener(DicomConnectBase):
             (pynetdicom.evt.EVT_C_ECHO, self.on_c_echo),
             (pynetdicom.evt.EVT_ACCEPTED, self.on_association_accepted),
             (pynetdicom.evt.EVT_RELEASED, self.on_association_released),
+            (pynetdicom.evt.EVT_ABORTED, self.on_association_aborted),
         ]
 
         # Start listening for incoming association requests
@@ -130,14 +168,47 @@ class DicomListener(DicomConnectBase):
         logging.debug("C-ECHO!")
         return 0x0000
 
-    def on_association_accepted(self, _):
-        self.association_directory = None
+    def on_association_accepted(self, event):
+        association = getattr(event, "assoc", None)
+        if association is None:
+            self.association_directory = None
+            return
+        with self._association_directories_lock:
+            self._association_directories[association] = None
 
-    def on_association_released(self, _):
+    def on_association_released(self, event):
+        association = getattr(event, "assoc", None)
+        if association is None:
+            directory = self.association_directory
+        else:
+            with self._association_directories_lock:
+                directory = self._association_directories.pop(association, None)
         if self.on_released_callback:
-            self.on_released_callback(self.association_directory)
+            self.on_released_callback(directory)
+
+    def on_association_aborted(self, event):
+        association = getattr(event, "assoc", None)
+        if association is not None:
+            with self._association_directories_lock:
+                self._association_directories.pop(association, None)
 
     def on_c_store(self, event):
+        """Handle C-STORE, including filesystem failures during archive preparation."""
+        with redacted_diagnostics():
+            try:
+                return self._store_c_store(event)
+            except OSError:
+                # Paths and exception messages can contain Patient IDs and UIDs.
+                logging.error("Could not write file to specified directory:")
+                logging.error(
+                    "Directory may not exist or you may not have write permission"
+                )
+                status_ds = pydicom.Dataset()
+                status_ds.ErrorComment = "SCP internal error - Unable to write file"
+                status_ds.Status = 0xA700  # Failed - Out of Resources - IOError
+                return status_ds
+
+    def _store_c_store(self, event):
         dataset = event.dataset
 
         try:
@@ -150,6 +221,10 @@ class DicomListener(DicomConnectBase):
         )
         series_dir.mkdir(parents=True, exist_ok=True)
         self.association_directory = series_dir
+        association = getattr(event, "assoc", None)
+        if association is not None:
+            with self._association_directories_lock:
+                self._association_directories[association] = series_dir
 
         filename = pathlib.Path(
             "{!s}.{!s}.dcm".format(
@@ -158,6 +233,10 @@ class DicomListener(DicomConnectBase):
         )
         filepath = series_dir.joinpath(filename)
 
+        with _locked_storage_path(filepath):
+            return self._persist_c_store(dataset, event.context, series_dir, filepath)
+
+    def _persist_c_store(self, dataset, context, series_dir, filepath):
         status_ds = pydicom.Dataset()
         status_ds.Status = 0x0000
 
@@ -179,7 +258,6 @@ class DicomListener(DicomConnectBase):
                     "DICOM file exists, storing in orphan directory: %s", filename
                 )
 
-        context = event.context
         meta = pydicom.Dataset()
         meta.MediaStorageSOPClassUID = dataset.SOPClassUID
         meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
@@ -200,29 +278,21 @@ class DicomListener(DicomConnectBase):
         )
         file_ds.update(dataset)
 
-        try:
-            # `enforce_file_format` ensures that a compliant File Meta
-            # Information Header is written
-            file_ds.save_as(filepath, enforce_file_format=True)
-            status_ds.Status = 0x0000  # Success
-
-            logging.info("DICOM object received: %s", filepath)
-        except OSError:
-            logging.error("Could not write file to specified directory:")
-            logging.error("    %s", filepath)
-            logging.error(
-                "Directory may not exist or you may not have write permission"
-            )
-
-            status_ds.ErrorComment = "SCP internal error - Unable to write file"
-            status_ds.Status = 0xA700  # Failed - Out of Resources - IOError
-
+        # `enforce_file_format` ensures that a compliant File Meta
+        # Information Header is written.
+        file_ds.save_as(filepath, enforce_file_format=True)
+        status_ds.Status = 0x0000  # Success
+        logging.info("DICOM object received and stored successfully")
         return status_ds
 
 
 def listen_cli(args):
-    """Start a DICOM listener from the command line interface"""
+    """Start a DICOM listener with a redacted CLI diagnostic stream."""
+    with _redacted_cli_diagnostics():
+        _run_listener_cli(args)
 
+
+def _run_listener_cli(args):
     # Start the listener
     dicom_listener = DicomListener(
         host=args.host,
