@@ -250,6 +250,8 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### Bug fixes
 
+- `Delivery.metersetmap` and `Delivery.to_dicom` now compare gantry angles using circular angular distance modulo 360 degrees, so control points whose measured gantry angle crosses the +/-180 degree boundary (such as a 180 degree beam with control points at 179.9 and -179.9 degrees) are matched to the beam instead of failing with `AssertionError`. `Delivery.to_dicom` writes the Gantry Rotation Direction of such a crossing the short way round (CW from 179.9 to 180.1 degrees, not CC), and spaces template beams on the same circle, so beams at 179 and 181 degrees keep separate control points. [PR #2765](https://github.com/pymedphys/pymedphys/pull/2765)
+
 - **[Security]** The mock Mosaiq SQL Server backup restore helper now passes the administrator password to Docker through environment-variable forwarding rather than embedding its value in `docker run` process arguments. This prevents exposure of the password through process command-line listings and logs; Docker still receives it as an environment variable. [PR #2631](https://github.com/pymedphys/pymedphys/pull/2631)
 
 - **[Security]** The `pymedphys` command line no longer retries a subcommand
