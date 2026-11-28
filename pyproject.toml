@@ -81,7 +81,7 @@ user = [
   "requests",
   "scikit-learn",
   "scipy",
-  "shapely>=1.7.0",
+  "shapely>=2.1.0",
   "sqlalchemy",
   "streamlit>=1.61",
   "timeago",
@@ -140,7 +140,7 @@ dicom = [
   "pydicom>=3.0.2",
   "pynetdicom",
   "scipy",
-  "shapely>=1.7.0",
+  "shapely>=2.1.0",
   "toml",
 ]
 # Text detection: finds burned-in text for DICOM de-identification's Clean

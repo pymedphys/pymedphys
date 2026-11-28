@@ -23,8 +23,12 @@ pytest.importorskip("streamlit")
 pytestmark = pytest.mark.usefixtures("demo_working_directory")
 
 
-def test_demo_plan_factor_matches_the_baseline():
-    """The retired Cypress scenario: the demo electron plan models to 1.0618."""
+def test_demo_plan_factor_matches_the_independent_reference():
+    """The demo electron plan models to 1.0571.
+
+    This replaces the retired Cypress baseline of 1.0618, which came from an
+    optimiser that underestimated the largest circle in the demo insert.
+    """
     app_test = utl.load_app("electrons", timeout=utl.DEMO_TIMEOUT_SECONDS)
 
     config = utl.widget(app_test.sidebar.radio, "Config file to use")
@@ -39,4 +43,11 @@ def test_demo_plan_factor_matches_the_baseline():
     utl.widget(app_test.button, "Calculate").click().run()
     utl.assert_no_exception(app_test)
 
-    assert utl.code_values(app_test, "Factor") == ["1.0618"]
+    # Independent reference for the 16-sided demo contour. Distances to the
+    # contour segments bound the largest possible radius, and the model was
+    # fitted to the 49 measurements matching the demo beam:
+    #   width  = 3.098986 cm  (old optimiser: 2.851803 cm)
+    #   length = 8.450195 cm  (old optimiser: 9.182625 cm)
+    #   factor = 1.05707488   (old optimiser: 1.06182336)
+    # Reference supplied by Matthew Jennings on PR #2527.
+    assert utl.code_values(app_test, "Factor") == ["1.0571"]
