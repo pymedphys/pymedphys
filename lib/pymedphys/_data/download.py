@@ -400,7 +400,8 @@ def zenodo_data_paths(
             if filename in filenames
         }
 
-    logging.debug("File URLS are %s", file_urls)
+    # Zenodo download URLs may be signed: log names, never credential-bearing URLs.
+    logging.debug("Zenodo filenames are %s", list(file_urls))
 
     record_directory = get_data_dir().joinpath(record_name)
     record_directory.mkdir(exist_ok=True)
