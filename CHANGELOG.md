@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### MOSAIQ patient queries no longer reuse shared caches
+
+MetersetMap now queries patient names and field records on each request instead of using Streamlit's process-wide cache keyed to the connection's Python object identity. This prevents reuse of stale or another session's patient query results. [PR #2792](https://github.com/pymedphys/pymedphys/pull/2792)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes

@@ -22,12 +22,11 @@ from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
 
-@st.cache_data(hash_funcs={pymedphys.mosaiq.Connection: id})
+# Patient data must be obtained for the current connection and session.
 def get_patient_fields(connection, patient_id):
     return msq_helpers.get_patient_fields(connection, patient_id)
 
 
-@st.cache_data(hash_funcs={pymedphys.mosaiq.Connection: id})
 def get_patient_name(connection, patient_id):
     return msq_helpers.get_patient_name(connection, patient_id)
 
