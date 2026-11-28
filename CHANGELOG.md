@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### Pseudonymised ZIP downloads avoid unsafe HTML
+
+The DICOM Pseudonymisation app now uses Streamlit's native ZIP download control instead of interpolating a filename and base64 archive into unsafe HTML markup. Suggested download filenames are restricted to the basename. The archive contents are unchanged. [PR #2795](https://github.com/pymedphys/pymedphys/pull/2795)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes

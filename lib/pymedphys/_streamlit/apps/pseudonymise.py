@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import datetime
 import io
 import logging
@@ -62,11 +61,15 @@ def link_to_zipbuffer_download(filename: str, zip_bytes: bytes):
         the bytes from an IOBytes in which a ZipFile wrote its contents, or the bytes
         read directly from a zip file on disk
     """
-    b64 = base64.b64encode(zip_bytes).decode()
-    href = f"<a href=\"data:file/zip;base64,{b64}\" download='{filename}'>\
-        Click to download {filename}\
-    </a>"
-    st.sidebar.markdown(href, unsafe_allow_html=True)
+    # Use Streamlit's native download handling rather than injecting a
+    # caller-provided filename into an unsafe HTML attribute.
+    safe_filename = pathlib.PureWindowsPath(filename).name or "pseudonymised.zip"
+    st.sidebar.download_button(
+        "Download pseudonymised ZIP",
+        data=zip_bytes,
+        file_name=safe_filename,
+        mime="application/zip",
+    )
 
 
 def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
