@@ -780,6 +780,15 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 - `pymedphys dicom listen` stores objects whose Patient ID contains `% / \ : * ? " < > |` or a control character in a folder with those characters encoded, for example `AB%2F123` for the Patient ID `AB/123`, which earlier versions stored in the nested folders `AB/123`. Objects stored before upgrading stay where they are, so move them, or allow for both layouts, if your workflow finds a patient's files by folder name. [PR #2152](https://github.com/pymedphys/pymedphys/pull/2152)
 - On Linux and macOS, `pymedphys icom listen` now names the archive folder of a patient whose ID or name contains a double quote with `%22` in its place, for example `123456_SMITH, JOHN %22JACK%22`, so later deliveries for such a patient go to a new folder. Earlier versions kept the double quote, which Windows does not allow. [PR #2154](https://github.com/pymedphys/pymedphys/pull/2154)
 
+- `pymedphys.zip_data_paths()` refuses ZIP members with parent traversal,
+  absolute or drive-qualified paths, Windows-reserved device names, invalid
+  filename characters, trailing dots or spaces, and case-insensitive path
+  collisions, as well as existing symlink or hard-link extraction targets.
+  Archive validation errors omit filenames that may identify patients; unsafe
+  archives now raise `ValueError`. Valid root entries and duplicate member
+  names continue to work, and extraction preserves caller-managed edits.
+  [PR #2625](https://github.com/pymedphys/pymedphys/pull/2625)
+
 ## [0.41.0]
 
 ### New features and enhancements

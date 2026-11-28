@@ -196,6 +196,7 @@ PYMEDPHYS_DIR = PACKAGE_DIR.parents[1]
 # does not.
 OUTSIDE_MODULES = (
     "_config.py",
+    "_data/_zip_safe.py",
     "_data/download.py",
     "_data/retry.py",
     "_data/zenodo.py",
