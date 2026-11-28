@@ -411,9 +411,9 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 ### Contributor facing changes
 
 - **[Contributor facing only]** `AGENTS.md` explains when clinical tools may
-  show or log patient identifiers and how to scope and document caches containing
-  identifiable data. It also clarifies which rules apply specifically to DICOM
-  de-identification.
+  show or log patient identifiers, what to tell users about identifiable output,
+  and how to scope and document caches containing identifiable data. It also
+  clarifies which rules apply specifically to DICOM de-identification.
   [PR #2798](https://github.com/pymedphys/pymedphys/pull/2798)
 
 - **[Contributor facing only]** The distribution verifier rejects TAR and wheel

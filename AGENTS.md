@@ -361,26 +361,40 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
 7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. Comments, tests, and docstrings outside the public API may cite a decision by its number, such as D-024, which refers to that document; a pull request that renumbers or removes a decision updates the code that cites it. Nothing users see may cite a decision number: describe what the decision requires instead in the public API's docstrings, user documentation, command-line help, error, warning, and log messages, and every file or DICOM value that a run or command writes, such as the release report, QC pack, attestation, conformance statement, and De-identification Method (0012,0063). The design document, its requirements register, the requirements matrix generated from the register, and contributor documentation may cite numbers. In new or modified code for DICOM de-identification workflows:
    - never put source attribute values, keys, or original paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or reports; use attribute paths and opaque identifiers;
    - never describe output as "anonymised", or as "de-identified" without naming the PS3.15 edition, profile, and options it has been validated against;
-   - claim the Clean Pixel Data Option, and set Burned In Annotation to NO, or the Clean Recognizable Visual Features Option, and set Recognizable Visual Features to NO, only in an instance that satisfies the option as the design document specifies;
-   - regenerate rule tables generated from the DICOM standard, and vocabularies converted from source spreadsheets, with their generators; never edit them by hand.
+   - claim the Clean Pixel Data Option, and set Burned In Annotation to NO, or the Clean Recognizable Visual Features Option, and set Recognizable Visual Features to NO, only in an instance that satisfies the option as the design document specifies.
 
 ### Clinical data handling
 
 PyMedPhys clinical tools are intended for workstations and protected clinical
 networks. Use patient identifiers in clinical screens, validation messages, or
 local logs when authorised operators need them to verify a patient, correct an
-input, or investigate a problem. Follow the de-identification rules above for
+input, or investigate a problem. Tell users which screens, logs, and output files
+can contain patient identifiers. Follow the de-identification rules above for
 workflows that remove identifiers and the
 [public posting policy](CONTRIBUTING.md#keep-patient-data-out-of-public-posts)
 when posting examples, logs, or screenshots publicly.
 
-Cache identifiable data when it benefits a clinical workflow. Match cache access
-to the underlying data permissions, using session scoping where appropriate, and
-set retention to suit how long the data remains useful and current. Tell users
+In library exceptions, prefer an input position or another non-identifying
+reference. Apps may show the relevant identifiers to authorised operators who
+need them to resolve the error.
+
+Identifiable data may be cached when it benefits a clinical workflow. Share
+cached results only with users who are already authorised to retrieve the
+underlying records. Streamlit's `st.cache_data` and `st.cache_resource` caches
+are shared across sessions by default, and the PyMedPhys GUI has no login.
+Every session using the same database connection object sees the same `id()`.
+Where permissions differ, cache within an authorised session or check the user's
+permissions before returning a shared result.
+
+Set retention to suit how long the data remains useful and current. Tell users
 where identifiable data is cached, who can access it, when it expires, and how to
 clear persistent caches.
 
 ## Common Development Patterns
+
+Regenerate tables derived from standards, vocabularies converted from
+spreadsheets, and other generated files with their generators. Make changes in
+the generator or its inputs.
 
 When implementing new features:
 
