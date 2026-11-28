@@ -385,4 +385,6 @@ def test_configured_sql_connection_is_not_shared_between_sessions(
     assert connections == [expected, expected]
 
     utl.widget(first_session.text_input, "Patient ID").input("SYNTHETIC").run()
+    utl.assert_no_exception(first_session)
+    assert _connected(first_session) == [expected]
     assert connections == [expected, expected]
