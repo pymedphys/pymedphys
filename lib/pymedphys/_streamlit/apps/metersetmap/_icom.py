@@ -13,30 +13,38 @@
 # limitations under the License.
 
 
-import lzma
 import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+from pymedphys._icom.archive import (
+    MAX_DECOMPRESSED_ICOM_BYTES,
+    read_icom_archive,
+)
 from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._utilities import patient as utl_patient
 
 
-@st.cache_data
-def load_icom_stream(icom_path):
-    with lzma.open(icom_path, "r") as f:
-        contents = f.read()
+MAX_SELECTED_ICOM_BYTES = 256 * 1024 * 1024
 
-    return contents
+
+@st.cache_data
+def load_icom_stream(icom_path, limit=MAX_DECOMPRESSED_ICOM_BYTES):
+    return read_icom_archive(icom_path, limit=limit)
 
 
 def load_icom_streams(icom_paths):
     icom_streams = []
+    remaining = MAX_SELECTED_ICOM_BYTES
 
     for icom_path in icom_paths:
-        icom_streams += [load_icom_stream(icom_path)]
+        data = load_icom_stream(
+            icom_path, limit=min(MAX_DECOMPRESSED_ICOM_BYTES, remaining)
+        )
+        icom_streams.append(data)
+        remaining -= len(data)
 
     return icom_streams
 
