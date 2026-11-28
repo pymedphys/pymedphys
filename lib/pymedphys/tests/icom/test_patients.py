@@ -14,6 +14,10 @@
 
 import logging
 import lzma
+import os
+import stat
+
+import pytest
 
 from pymedphys._icom import patients
 
@@ -75,3 +79,20 @@ def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, ca
     assert archive.parent.name == "654321_JONES"
     with lzma.open(archive) as f:
         assert f.read() == next_delivery
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file modes only")
+def test_icom_patient_archive_files_and_directories_are_private(tmp_path):
+    item = _icom_item(0, patient_id="123456", patient_name="SMITH")
+    patients.save_patient_data(START, [item], tmp_path)
+
+    (archive,) = tmp_path.rglob("*.xz")
+    assert stat.S_IMODE(archive.stat().st_mode) == 0o600
+    assert stat.S_IMODE(archive.parent.stat().st_mode) == 0o700
+
+    # An archive opened again must not keep a pre-existing permissive mode.
+    archive.chmod(0o644)
+    patients.save_patient_data(START, [item], tmp_path)
+    assert stat.S_IMODE(archive.stat().st_mode) == 0o600
+    with lzma.open(archive) as compressed:
+        assert compressed.read() == item
+

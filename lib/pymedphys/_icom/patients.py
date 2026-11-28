@@ -1,5 +1,6 @@
 import logging
 import lzma
+import os
 import pathlib
 import traceback
 
@@ -61,7 +62,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
 
     # Windows does not allow the double quotes that patient names can contain.
     patient_dir = output_dir.joinpath(encode_file_name(f"{patient_id}_{patient_name}"))
-    patient_dir.mkdir(parents=True, exist_ok=True)
+    patient_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
 
     logging.debug(
         "The patient archive directory to be used is %(patient_dir)s.",
@@ -93,11 +94,11 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
         return
 
     except UnableToReadIcom as _:
-        new_location = filename.parent.parent.joinpath(
-            "unknown_error_in_record", filename.parent.name, filename.name
-        )
+        error_root = filename.parent.parent / "unknown_error_in_record"
+        error_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        new_location = error_root.joinpath(filename.parent.name, filename.name)
         new_dir = new_location.parent
-        new_dir.mkdir(parents=True, exist_ok=True)
+        new_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
 
         filename = new_location
 
@@ -107,8 +108,21 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
             f"Will instead save the record within {str(filename)}."
         )
 
-    with lzma.open(filename, "w") as f:
-        f.write(data)
+    # Clinical delivery bytes must not inherit a permissive process umask or
+    # an earlier archive's mode. Open the file with owner-only permissions,
+    # and reject a symlink at the final path where POSIX supports O_NOFOLLOW.
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(filename, flags, 0o600)
+    try:
+        if os.name == "posix":
+            os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb") as output:
+            descriptor = -1
+            with lzma.LZMAFile(output, mode="wb") as compressed:
+                compressed.write(data)
+    finally:
+        if descriptor != -1:
+            os.close(descriptor)
 
 
 class PatientIcomData:
