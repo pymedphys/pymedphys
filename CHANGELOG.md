@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### Clinical delivery calculations are no longer shared between sessions
+
+MetersetMap no longer globally caches parsed TRF, iCOM, Monaco TEL or MOSAIQ treatment-delivery data. A new request reconstructs delivery data from its current source rather than returning a stale patient-bearing cache entry. [PR #2794](https://github.com/pymedphys/pymedphys/pull/2794)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes

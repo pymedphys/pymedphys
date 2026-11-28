@@ -13,29 +13,26 @@
 # limitations under the License.
 
 
-from pymedphys._imports import streamlit as st
-
 import pymedphys
 
 
-@st.cache_data()
+# Treatment deliveries may contain patient-specific data and can change when
+# their source files or database records are updated. Do not share the parsed
+# results between independent Streamlit sessions.
 def delivery_from_trf(pandas_table):
     return pymedphys.Delivery._from_pandas(  # pylint: disable = protected-access
         pandas_table
     )
 
 
-@st.cache_data()
 def delivery_from_icom(icom_stream):
     return pymedphys.Delivery.from_icom(icom_stream)
 
 
-@st.cache_data()
 def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
 
 
-@st.cache_data(hash_funcs={pymedphys.mosaiq.Connection: id})
 def delivery_from_mosaiq(connection_and_field_id):
     connection, field_id = connection_and_field_id
     return pymedphys.Delivery.from_mosaiq(connection, field_id)
