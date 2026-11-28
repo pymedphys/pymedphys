@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### iView database XML preview stays within its root
+
+The experimental iView database XML preview now refuses files outside the selected database directory, including symlinks, and refuses individual XML files over 64 MiB. It no longer reads unbounded input before XML parsing. [PR #2790](https://github.com/pymedphys/pymedphys/pull/2790)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes

@@ -19,6 +19,7 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xmltodict
 
+from pymedphys._experimental.streamlit.apps import _iviewdb_xml
 from pymedphys._experimental.streamlit.utilities import dbf
 from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import config as _config
@@ -104,12 +105,13 @@ def main():
 
     chosen_file = st.selectbox("Select XML file", options=xml_files)
 
-    try:
-        xml_path = database_directory.joinpath(chosen_file)
-    except TypeError:
+    if chosen_file is None:
         st.stop()
 
-    with open(xml_path) as fd:
-        doc = xmltodict.parse(fd.read())
+    try:
+        xml_contents = _iviewdb_xml.read_database_xml(database_directory, chosen_file)
+    except (OSError, ValueError):
+        st.error("The selected XML file could not be safely read.")
+        st.stop()
 
-    st.write(doc)
+    st.write(xmltodict.parse(xml_contents))
