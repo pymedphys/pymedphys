@@ -104,10 +104,9 @@ def _load_and_check_files_valid(
         ds = _load_dicom_file(fh)
 
         if ds.PatientID != ds0.PatientID:
-            st.error(
-                f"'{fh.name}' has a different PatientID ({ds.PatientID}) "
-                f"from '{files[0].name}' ({ds0.PatientID})."
-            )
+            # Never produce a combined treatment dose for different patients.
+            # This diagnostic must not echo identifiers or input filenames.
+            raise ValueError("The RT Dose files have different patient identifiers.")
 
         datasets.append(ds)
 
