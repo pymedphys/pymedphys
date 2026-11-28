@@ -40,7 +40,7 @@ ANTHROPIC_API_LIMIT = 2
 
 
 def main():
-    _key_handling()
+    anthropic_api_key = _key_handling()
 
     _initialise_state()
 
@@ -87,7 +87,7 @@ def main():
 
     trio.run(
         recursively_append_message_responses,
-        _async_anthropic(anthropic_api_limit),
+        _async_anthropic(anthropic_api_limit, anthropic_api_key),
         _mosaiq_connection(),
         st.session_state.messages,
     )
@@ -95,11 +95,13 @@ def main():
     st.rerun()
 
 
-@st.cache_resource
-def _async_anthropic(anthropic_api_limit: int):
+@st.cache_resource(scope="session")
+def _async_anthropic(anthropic_api_limit: int, anthropic_api_key: str):
     limits = httpx2.Limits(max_connections=anthropic_api_limit)
     client = httpx2.AsyncClient(limits=limits)
-    return AsyncAnthropic(http_client=client, max_retries=10)
+    return AsyncAnthropic(
+        api_key=anthropic_api_key, http_client=client, max_retries=10
+    )
 
 
 @st.cache_resource
@@ -128,14 +130,19 @@ def _key_handling():
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 
     if not anthropic_api_key:
-        anthropic_api_key = st.text_input("Anthropic API key", type="password")
-        os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
+        # Password widgets retain their values within the Streamlit session.
+        # Writing here to os.environ would expose this user's key to all sessions.
+        anthropic_api_key = st.text_input(
+            "Anthropic API key", type="password", key="anthropic_api_key"
+        )
     if not anthropic_api_key:
         st.write(
             "To continue, please make sure the `ANTHROPIC_API_KEY`"
             " environment variable is set"
         )
         st.stop()
+
+    return anthropic_api_key
 
 
 def _transcript_downloads():
