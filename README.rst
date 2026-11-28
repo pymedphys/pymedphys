@@ -165,26 +165,21 @@ Run automated tests with:
 Our Team
 ========
 
-PyMedPhys is what it is today due to its maintainers and contributors, both
-past and present. Here is our team.
+PyMedPhys is built and supported by its maintainers and contributors, past and
+present.
 
 Maintainers
 ***********
 
-* `Simon Biggs`_
-    * `Anthropic PBC`_
-
-.. _`Simon Biggs`: https://github.com/SimonBiggs
-
-* `Stuart Swerdloff`_
-    * `SJS Targeted Solutions, LLP`_, New Zealand
-
-.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
-
-* `Matthew Jennings`_
+* `Matthew Jennings`_ (day-to-day maintainer contact)
     * `Icon Group`_, Australia
 
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
+
+* `Simon Biggs`_ (founder)
+    * `Anthropic PBC`_
+
+.. _`Simon Biggs`: https://github.com/SimonBiggs
 
 * `Phillip Chlap`_
     * `Radformation Inc.`_, USA
@@ -192,64 +187,88 @@ Maintainers
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
+* `Stuart Swerdloff`_
+    * `SJS Targeted Solutions, LLP`_, New Zealand
+
+.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
+
 
 |sjs| |rah|
 
-Active contributors
-*******************
+Recent contributors
+********************
 
-* `Derek Lane`_
-    * `ELEKTA AB`_, Houston TX
+Recent contributions include code, review, testing, documentation, and user
+support.
 
-.. _`Derek Lane`: https://github.com/dg1an3
-
-* `Marcelo Jordao`_
-    * `ELEKTA AB`_, Hong Kong SAR
-
-.. _`Marcelo Jordao`: https://github.com/mguerrajordao
-
-* `Jake Rembish`_
-    * `UT Health San Antonio`_, USA
-
-.. _`Jake Rembish`: https://github.com/rembishj
-
-* `Nicola Lambri`_
-    * `IRCCS Humanitas Research Hospital`_, Italy
-    * `Humanitas University`_, Italy
-
-.. _`Nicola Lambri`: https://github.com/nlambriICH
+* `Jeffrey D. Cooney <https://github.com/jdotc1>`_ (core contributor)
 
 * `Cody Crewson`_
     * `Saskatchewan Cancer Agency`_, Canada
 
 .. _`Cody Crewson`: https://github.com/crcrewso
 
-* `Fada Guan`_
-    * `Yale University School of Medicine`_, USA
+* `Derek Lane`_
+    * `ELEKTA AB`_, Houston TX
 
-.. _`Fada Guan`: https://github.com/guanfada
+.. _`Derek Lane`: https://github.com/dg1an3
 
-* `Marcus Fisk`_
-    * `Cancer Care Riverina`_, Australia
-
-.. _`Marcus Fisk`: https://github.com/laser47-hue
+* `Marchant Van der Walt <https://github.com/kkushsyndrome-stack>`_
 
 * `Vishu`_
     * Hansraj College, India
 
 .. _`Vishu`: https://github.com/httpsVishu
 
+* `Matthew Ward <https://github.com/MattAWard>`_
+
+Contributor acknowledgements
+****************************
+
+* `Rafael Ayala <https://github.com/ayalalazaro>`_ (QuickCheck tools and tests)
+* `Cedric Belanger <https://github.com/cedricbelanger>`_ (RT Dose pixel spacing)
+* `David Buckle <https://github.com/db72-git>`_ (plan complexity tools)
+* `Matthew Cooper <https://github.com/matthewdeancooper>`_ (auto-contouring)
+* `Marcus Fisk`_ (Streamlit and iCOM)
+    * `Cancer Care Riverina`_, Australia
+
+.. _`Marcus Fisk`: https://github.com/laser47-hue
+
+* `Fada Guan`_ (gamma examples)
+    * `Yale University School of Medicine`_, USA
+
+.. _`Fada Guan`: https://github.com/guanfada
+
+* `Marcelo Jordao`_ (TRF decoding)
+    * `ELEKTA AB`_, Hong Kong SAR
+
+.. _`Marcelo Jordao`: https://github.com/mguerrajordao
+
+* `Paul King <https://github.com/kingrpaul>`_ (sinograms and profiles)
+* `Nicola Lambri`_ (gamma tutorials and development tooling)
+    * `IRCCS Humanitas Research Hospital`_, Italy
+    * `Humanitas University`_, Italy
+
+.. _`Nicola Lambri`: https://github.com/nlambriICH
+
+* `Pedro Martinez <https://github.com/peterg1t>`_ (graticule QA)
+* `Jacob McAloney <https://github.com/JacobMcAloney>`_ (film comparison)
+* `mfizyczka <https://github.com/mfizyczka>`_ (TRF test data and format investigation)
+* `Jake Rembish`_ (transfer-check tools)
+    * `UT Health San Antonio`_, USA
+
+.. _`Jake Rembish`: https://github.com/rembishj
+
+* `Matthew Sobolewski <https://github.com/msobolewski>`_ (early Winston–Lutz
+  development)
+* `Milo Vermeulen <https://github.com/mivermeu>`_ (package path handling)
+* `Philip Yarra <https://github.com/PhilipYarra>`_ (Pinnacle export)
+
 |uth| |ccr|
 
-Past contributors
-*****************
+See the `GitHub contributor history`_ for more contributors.
 
-* `Matthew Cooper <https://github.com/matthewdeancooper>`_
-* `Pedro Martinez <https://github.com/peterg1t>`_
-* `Rafael Ayala <https://github.com/ayalalazaro>`_
-* `Matthew Sobolewski <https://github.com/msobolewski>`_
-* `Paul King <https://github.com/kingrpaul>`_
-* `Jacob McAloney <https://github.com/JacobMcAloney>`_
+.. _`GitHub contributor history`: https://github.com/pymedphys/pymedphys/graphs/contributors
 
 Third-party content
 *******************
