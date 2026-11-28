@@ -1008,8 +1008,9 @@ class WorkflowContractTests(unittest.TestCase):
             re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
         )
         self.assertIn("\npermissions:\n  contents: read\n", text)
-        # Runs of different models, variants, or grids go side by side, and
-        # a second run of the same ones waits for the first, never cancels.
+        # Runs of different models, variants, or grids go side by side; of
+        # the same ones, a running run is protected, though a pending run
+        # can still be replaced by a newer one.
         self.assertIn(
             "\nconcurrency:\n"
             "  group: text-detector-evaluation-${{ github.ref }}-"

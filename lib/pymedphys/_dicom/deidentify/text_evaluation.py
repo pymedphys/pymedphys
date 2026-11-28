@@ -81,12 +81,10 @@ exception's type and place, never its message, and its frames are dropped.
 
 from __future__ import annotations
 
-import concurrent.futures
 import dataclasses
 import functools
 import hashlib
 import importlib.metadata
-import multiprocessing
 import platform
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -111,6 +109,7 @@ from .text_evaluation_injection import InjectionPlan, inject, zone_of
 from .text_evaluation_intervals import cluster_bootstrap, seed_of, wilson
 from .text_evaluation_benchmarks import tier_of
 from .text_evaluation_models import BoxPoint
+from .text_evaluation_parts import check_workers, measured_in_workers
 from .text_evaluation_sources import CaseSource, Skipped
 
 FORMAT = "pymedphys-deid-text-detector-evaluation/3"
@@ -376,6 +375,7 @@ def evaluate(
     settings: EvaluationSettings,
     *,
     workers: int = 1,
+    weights: Sequence[float] | None = None,
 ) -> Evaluation:
     """Measure the cases, as the module describes.
 
@@ -390,38 +390,36 @@ def evaluate(
     settings : EvaluationSettings
     workers : int
         Processes that measure the cases; one measures them here.
+    weights : sequence of float, optional
+        About how long each case takes, with which workers measure a large
+        case in parts (:mod:`~.text_evaluation_parts`), to the same results.
     """
-    if workers < 1:
-        raise EvaluationRefused("There must be at least one worker.")
+    check_workers(len(cases), workers, weights)
     made = detector()
-    method = dict(made.method)
     if workers == 1:
-        results = [_case(each, made, settings) for each in cases]
-        return Evaluation(settings, method, results)
-    with concurrent.futures.ProcessPoolExecutor(
-        max_workers=workers,
-        mp_context=multiprocessing.get_context("spawn"),
-        initializer=_start_worker,
-        initargs=(detector,),
-    ) as pool:
-        results = list(pool.map(_case_in_worker, cases, [settings] * len(cases)))
-    return Evaluation(settings, method, results)
+        results = [_case_part(each, made, settings, 0, 1)[0] for each in cases]
+    else:
+        results = measured_in_workers(
+            cases,
+            detector,
+            settings,
+            workers=workers,
+            weights=weights,
+            case_part=_case_part,
+        )
+    return Evaluation(settings, dict(made.method), results)
 
 
-_WORKER: dict[str, MeasuredDetector] = {}
-
-
-def _start_worker(detector: Callable[[], MeasuredDetector]) -> None:
-    _WORKER["detector"] = detector()
-
-
-def _case_in_worker(source: CaseSource, settings: EvaluationSettings) -> CaseResult:
-    return _case(source, _WORKER["detector"], settings)
-
-
-def _case(
-    source: CaseSource, detector: MeasuredDetector, settings: EvaluationSettings
-) -> CaseResult:
+def _case_part(
+    source: CaseSource,
+    detector: MeasuredDetector,
+    settings: EvaluationSettings,
+    part: int,
+    parts: int,
+) -> tuple[CaseResult, int | None]:
+    """Every ``parts``-th item of a case from ``part``, counted as one measure
+    of the whole case counts them, and where it raised, if it did: twice an
+    item's place reading it, and that plus one measuring it."""
     subject = subject_of(source)
     namespace = namespace_of(source)
     split = split_of(
@@ -446,17 +444,21 @@ def _case(
         namespace=namespace,
     )
     if not evaluated:
-        return result
+        return result, None
+    at = 0
     try:
-        for item in source.read():
-            if isinstance(item, Skipped):
-                result.tally.count("skipped", item.reason)
-                continue
-            _frame(item, detector, settings, result)
+        for place, item in enumerate(source.read()):
+            if place % parts == part:
+                at = 2 * place + 1
+                if isinstance(item, Skipped):
+                    result.tally.count("skipped", item.reason)
+                else:
+                    _frame(item, detector, settings, result)
+            at = 2 * (place + 1)
     # A case that raises is counted by where, and its counts dropped; the
     # message, which could quote a value, is never kept.
     except Exception as error:  # pylint: disable = broad-exception-caught
-        return CaseResult(
+        crashed = CaseResult(
             source.collection,
             split,
             evaluated,
@@ -464,7 +466,8 @@ def _case(
             public=public,
             subject=subject,
         )
-    return result
+        return crashed, at
+    return result, None
 
 
 def _frame(
