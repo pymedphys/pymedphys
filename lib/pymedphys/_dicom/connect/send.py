@@ -39,18 +39,15 @@ class DicomSender(DicomConnectBase):
         # Associate with a peer DICOM AE
         assoc = ae.associate(self.host, self.port, ae_title=self.ae_title)
 
-        result = None
+        if not assoc.is_established:
+            return False
 
-        if assoc.is_established:
+        try:
             status = assoc.send_c_echo()
-
-            if status:
-                result = status.Status
-
-            # Release the association
+            # A response with a failure Status is not successful verification.
+            return status is not None and getattr(status, "Status", None) == 0x0000
+        finally:
             assoc.release()
-
-        return result is not None
 
     def send(self, dcm_files):
         """Send each DICOM object to the configured DICOM location
