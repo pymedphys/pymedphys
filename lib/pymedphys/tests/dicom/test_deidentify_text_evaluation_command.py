@@ -18,6 +18,8 @@ synthetic series, and a stand-in network."""
 import argparse
 import functools
 import json
+import pathlib
+import re
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
@@ -33,6 +35,13 @@ from pymedphys._dicom.deidentify import text_evaluation_search as search
 from . import _classic_images as classic
 from .test_deidentify_text_evaluation_idc import UUID, _row, _series_folder
 from .test_deidentify_text_evaluation_phantom_report import _phantom_file
+
+WORKFLOW = (
+    pathlib.Path(command.__file__).parents[4]
+    / ".github"
+    / "workflows"
+    / "text-detector-evaluation.yml"
+)
 
 
 def bright(tensor):
@@ -484,3 +493,16 @@ def test_a_shard_must_be_k_of_n(tmp_path, shard):
                 str(tmp_path / "o"),
             ]
         )
+
+
+def test_the_workflow_offers_every_adapter_and_no_other():
+    """The workflow's model is a choice of the adapters' names, sorted as the
+    command's own choices, with today's model as its default, so that a name
+    that the command would refuse is refused at dispatch instead."""
+    if not WORKFLOW.exists():
+        pytest.skip("needs the repository, not an installed package")
+    text = WORKFLOW.read_text(encoding="utf-8")
+    model = re.search(r"\n      model:\n(.*?)\n        default: ([^\n]+)\n", text, re.S)
+    assert model is not None
+    assert re.findall(r"\n          - (.+)", model.group(1)) == sorted(command.MODELS)
+    assert model.group(2) == command.PP_OCRV6_SMALL.name

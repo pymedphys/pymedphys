@@ -1008,6 +1008,26 @@ class WorkflowContractTests(unittest.TestCase):
             re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
         )
         self.assertIn("\npermissions:\n  contents: read\n", text)
+        # Runs of different models, variants, or grids go side by side, and
+        # a second run of the same ones waits for the first, never cancels.
+        self.assertIn(
+            "\nconcurrency:\n"
+            "  group: text-detector-evaluation-${{ github.ref }}-"
+            "${{ inputs.model || 'PP-OCRv6 small' }}-${{ inputs.variant }}-"
+            "${{ inputs.grid }}\n"
+            "  cancel-in-progress: false\n",
+            text,
+        )
+        # The model is one of the adapters, by name, so a misspelt name is
+        # refused at dispatch, not after the downloads; the library's tests
+        # check that the options are its adapters.
+        self.assertIn(
+            "\n      model:\n"
+            "        description: The model's adapter, by name.\n"
+            "        type: choice\n"
+            "        options:\n",
+            triggers,
+        )
         # Each of its three jobs can only read.
         self.assertEqual(
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),

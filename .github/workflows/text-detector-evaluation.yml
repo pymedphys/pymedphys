@@ -50,9 +50,9 @@ name: Text Detector Evaluation
 # A tuning run (D-056, step 3) names one detector variant and one
 # post-processing grid, each by its name in text_evaluation_search, in both
 # jobs: the variant needs a pass of the network of its own, and one pass
-# measures every point of the grid. Runs of different variants and grids
-# can run side by side. Only the tuning part is measured until a candidate
-# is chosen.
+# measures every point of the grid. Runs of different models, variants,
+# and grids can run side by side. Only the tuning part is measured until a
+# candidate is chosen.
 on:
   workflow_dispatch:
     inputs:
@@ -63,7 +63,18 @@ on:
         default: all
       model:
         description: The model's adapter, by name.
-        type: string
+        type: choice
+        options:
+          - PP-OCRv5 mobile (PaddlePaddle)
+          - PP-OCRv5 mobile (RapidOCR conversion)
+          - PP-OCRv5 server (PaddlePaddle)
+          - PP-OCRv5 server (RapidOCR conversion)
+          - PP-OCRv6 medium (PaddlePaddle)
+          - PP-OCRv6 medium (RapidOCR conversion)
+          - PP-OCRv6 small
+          - PP-OCRv6 small (PaddlePaddle)
+          - PP-OCRv6 tiny (PaddlePaddle)
+          - PP-OCRv6 tiny (RapidOCR conversion)
         default: PP-OCRv6 small
       settings:
         description: Today's settings, or the model's publishers'.
@@ -133,10 +144,10 @@ on:
 permissions:
   contents: read
 
-# Runs of different variants and grids search side by side; a second run of
-# the same ones waits for the first.
+# Runs of different models, variants, and grids search side by side; a
+# second run of the same ones waits for the first.
 concurrency:
-  group: text-detector-evaluation-${{ github.ref }}-${{ inputs.variant }}-${{ inputs.grid }}
+  group: text-detector-evaluation-${{ github.ref }}-${{ inputs.model || 'PP-OCRv6 small' }}-${{ inputs.variant }}-${{ inputs.grid }}
   cancel-in-progress: false
 
 jobs:
