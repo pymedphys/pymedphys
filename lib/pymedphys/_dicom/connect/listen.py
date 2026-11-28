@@ -38,11 +38,16 @@ def hierarchical_dicom_storage_directory(
     ``pymedphys._utilities.filesystem``), so no value can place the folder
     outside ``storage_directory``.
     """
+    root = pathlib.Path(storage_directory).resolve()
     series_path = pathlib.Path(storage_directory).joinpath(
         encode_file_name(ds.PatientID),
         encode_file_name(ds.StudyInstanceUID),
         encode_file_name(ds.SeriesInstanceUID),
     )
+    # Each identifier is encoded, but a pre-existing patient or study
+    # directory can still be a symlink to a destination outside storage.
+    if not series_path.resolve().is_relative_to(root):
+        raise ValueError("DICOM storage path resolves outside the storage directory")
     return series_path
 
 
