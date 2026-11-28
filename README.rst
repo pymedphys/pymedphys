@@ -171,8 +171,8 @@ present.
 Maintainers
 ***********
 
-* `Matthew Jennings`_ (day-to-day maintainer contact)
-    * `Icon Group`_, Australia
+* `Matthew Jennings`_
+    * `Icon Oncology Group`_, UK
 
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
@@ -193,7 +193,7 @@ Maintainers
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 
-|sjs| |rah|
+|sjs|
 
 Recent contributors
 ********************
@@ -208,15 +208,16 @@ support.
 
 .. _`Cody Crewson`: https://github.com/crcrewso
 
-* `Derek Lane`_
+* `Derek Lane`_ (`DLaneAtElekta`_)
     * `ELEKTA AB`_, Houston TX
 
 .. _`Derek Lane`: https://github.com/dg1an3
+.. _`DLaneAtElekta`: https://github.com/DLaneAtElekta
 
 * `Marchant Van der Walt <https://github.com/kkushsyndrome-stack>`_
 
 * `Vishu`_
-    * Hansraj College, India
+    * `Hansraj College`_, India
 
 .. _`Vishu`: https://github.com/httpsVishu
 
@@ -251,11 +252,15 @@ Contributor acknowledgements
 
 .. _`Nicola Lambri`: https://github.com/nlambriICH
 
-* `Pedro Martinez <https://github.com/peterg1t>`_ (graticule QA)
+* `Pedro Martinez <https://github.com/peterg1t>`_ (linac QA tools for
+  graticules, jaws, and light and radiation field alignment, plus Oncentra
+  brachytherapy utilities)
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_ (film comparison)
 * `mfizyczka <https://github.com/mfizyczka>`_ (TRF test data and format investigation)
-* `Jake Rembish`_ (transfer-check tools)
-    * `UT Health San Antonio`_, USA
+* `Jake Rembish`_ (plan transfer, weekly chart checks, plan scoring, and the
+  JOSS paper)
+
+  * `UT Health San Antonio`_, USA
 
 .. _`Jake Rembish`: https://github.com/rembishj
 
@@ -309,9 +314,6 @@ States trademark of Regenstrief Institute, Inc.
    GitHub within README.rst files. So... unfortunately we have some duplication
    below.
 
-.. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
-    :target: https://www.rah.sa.gov.au/
-
 .. |uth| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/UTHSA_logo.png
     :target: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
@@ -323,29 +325,13 @@ States trademark of Regenstrief Institute, Inc.
 
 .. _`Anthropic PBC`: https://www.anthropic.com/
 
-.. _`ELEKTA Pty Ltd`: https://www.elekta.com/
-
 .. _`ELEKTA AB`: https://www.elekta.com/
 
-.. _`Icon Group`: https://icongroup.global/
+.. _`Icon Oncology Group`: https://icongroup.global/en/our-services/cancer-services-united-kingdom/
 
 .. _`University of New South Wales`: https://www.unsw.edu.au/
 
-.. _`South Western Sydney Local Health District`: https://www.swslhd.health.nsw.gov.au/
-
-.. _`Anderson Regional Cancer Center`: https://www.andersonregional.org/services/cancer-care/
-
-.. _`Northern Beaches Cancer Care`: https://www.northernbeachescancercare.com.au/
-
-.. _`University of Calgary`: https://www.ucalgary.ca/
-
-.. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
-
 .. _`UT Health San Antonio`: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
-
-.. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
-
-.. _`Swerdloff Family`: https://github.com/sjswerdloff
 
 .. _`SJS Targeted Solutions, LLP`: https://github.com/sjswerdloff
 
