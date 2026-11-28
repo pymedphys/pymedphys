@@ -75,3 +75,35 @@ def test_a_delivery_that_cannot_be_archived_does_not_stop_recording(tmp_path, ca
     assert archive.parent.name == "654321_JONES"
     with lzma.open(archive) as f:
         assert f.read() == next_delivery
+
+def test_icom_patient_details_never_appear_in_logs(tmp_path, caplog, capsys):
+    """Debug, warning and error logs must not expose iCOM patient identifiers."""
+    patient_id = "SECRET_ID_654321"
+    patient_name = "PRIVATE_PATIENT_NAME"
+    item = _icom_item(0, patient_id=patient_id, patient_name=patient_name)
+    data = patients.PatientIcomData(tmp_path)
+
+    with caplog.at_level(logging.DEBUG):
+        data.update_data(IP, item)
+        data.update_data(IP, _icom_item(1))
+
+    captured = capsys.readouterr()
+    output = caplog.text + captured.out + captured.err
+    for secret in (patient_id, patient_name):
+        assert secret not in output
+
+
+def test_icom_archive_failure_does_not_log_identifying_path(tmp_path, caplog):
+    output_dir = tmp_path / "archives"
+    output_dir.write_text("")
+    data = patients.PatientIcomData(output_dir)
+    item = _icom_item(0, patient_id="PRIVATE123", patient_name="PRIVATE_SNAME")
+
+    with caplog.at_level(logging.DEBUG):
+        data.update_data(IP, item)
+        data.update_data(IP, _icom_item(1))
+
+    assert "Could not archive the delivery" in caplog.text
+    assert "PRIVATE123" not in caplog.text
+    assert "PRIVATE_SNAME" not in caplog.text
+
