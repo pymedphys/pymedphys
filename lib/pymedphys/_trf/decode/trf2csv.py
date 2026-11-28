@@ -18,6 +18,7 @@
 import logging
 import os
 import pathlib
+import tempfile
 from glob import glob
 
 from .trf2pandas import trf2pandas
@@ -26,6 +27,33 @@ from .trf2pandas import trf2pandas
 def _redact_progress_paths():
     """Opt in when conversion logs may leave a clinical workstation."""
     return os.environ.get("PYMEDPHYS_REDACT_TRF_PATHS") == "1"
+
+
+def _write_private_csv(frame, destination):
+    """Write clinical CSV through a private temporary file, then replace atomically.
+
+    A normal DataFrame.to_csv(path) creates a new file using the process umask
+    (often 0644). The temporary file is 0600 even if the destination previously
+    existed with broader permissions. Replacing a symlink does not follow it.
+    """
+    destination = pathlib.Path(destination)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=".pmp-csv-", suffix=".tmp", dir=destination.parent
+    )
+    try:
+        # Keep the exclusive file descriptor open while writing. Reopening a
+        # temporary pathname allows an attacker to substitute a symlink.
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as stream:
+            identity = os.fstat(stream.fileno())
+            frame.to_csv(stream)
+
+        current = os.stat(temporary, follow_symlinks=False)
+        if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
+            raise OSError("Temporary clinical CSV changed during export")
+        os.replace(temporary, destination)
+    finally:
+        if os.path.lexists(temporary):
+            os.unlink(temporary)
 
 
 def trf2csv_by_directory(input_directory, output_directory):
@@ -44,8 +72,8 @@ def trf2csv_by_directory(input_directory, output_directory):
             print("Converting {}".format(filepath))
 
         header, table = trf2pandas(filepath)
-        header.to_csv(header_csv_filepath)
-        table.to_csv(table_csv_filepath)
+        _write_private_csv(header, header_csv_filepath)
+        _write_private_csv(table, table_csv_filepath)
 
 
 def trf2csv(trf_filepath, output_directory=None):
@@ -73,7 +101,7 @@ def trf2csv(trf_filepath, output_directory=None):
     dataframes["header"], dataframes["table"] = trf2pandas(trf_filepath)
 
     for key, df in dataframes.items():
-        df.to_csv(filepaths[key])
+        _write_private_csv(df, filepaths[key])
 
     return filepaths["header"], filepaths["table"]
 

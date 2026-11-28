@@ -16,14 +16,13 @@
 
 import importlib
 import logging
-from pathlib import Path
 
 trf2csv_module = importlib.import_module("pymedphys._trf.decode.trf2csv")
 
 
 class _FakeFrame:
     def to_csv(self, filepath):
-        Path(filepath).write_text("synthetic\n")
+        filepath.write("synthetic\n")
 
 
 def test_trf_to_csv_does_not_log_patient_bearing_paths(tmp_path, caplog, monkeypatch):
