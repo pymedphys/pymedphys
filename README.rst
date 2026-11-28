@@ -165,26 +165,21 @@ Run automated tests with:
 Our Team
 ========
 
-PyMedPhys is what it is today due to its maintainers and contributors, both
-past and present. Here is our team.
+PyMedPhys is built and supported by its maintainers and contributors, past and
+present.
 
 Maintainers
 ***********
 
-* `Simon Biggs`_
+* `Matthew Jennings`_
+    * `Icon Oncology Group`_, UK
+
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
+
+* `Simon Biggs`_ (founder)
     * `Anthropic PBC`_
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
-
-* `Stuart Swerdloff`_
-    * `SJS Targeted Solutions, LLP`_, New Zealand
-
-.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
-
-* `Matthew Jennings`_
-    * `Icon Group`_, Australia
-
-.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 * `Phillip Chlap`_
     * `Radformation Inc.`_, USA
@@ -192,64 +187,93 @@ Maintainers
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
+* `Stuart Swerdloff`_
+    * `SJS Targeted Solutions, LLP`_, New Zealand
 
-|sjs| |rah|
+.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
-Active contributors
-*******************
 
-* `Derek Lane`_
-    * `ELEKTA AB`_, Houston TX
+|sjs|
 
-.. _`Derek Lane`: https://github.com/dg1an3
+Recent contributors
+********************
 
-* `Marcelo Jordao`_
-    * `ELEKTA AB`_, Hong Kong SAR
+Recent contributions include code, review, testing, documentation, and user
+support.
 
-.. _`Marcelo Jordao`: https://github.com/mguerrajordao
-
-* `Jake Rembish`_
-    * `UT Health San Antonio`_, USA
-
-.. _`Jake Rembish`: https://github.com/rembishj
-
-* `Nicola Lambri`_
-    * `IRCCS Humanitas Research Hospital`_, Italy
-    * `Humanitas University`_, Italy
-
-.. _`Nicola Lambri`: https://github.com/nlambriICH
+* `Jeffrey D. Cooney <https://github.com/jdotc1>`_ (core contributor)
 
 * `Cody Crewson`_
     * `Saskatchewan Cancer Agency`_, Canada
 
 .. _`Cody Crewson`: https://github.com/crcrewso
 
-* `Fada Guan`_
-    * `Yale University School of Medicine`_, USA
+* `Derek Lane`_ (`DLaneAtElekta`_)
+    * `ELEKTA AB`_, Houston TX
 
-.. _`Fada Guan`: https://github.com/guanfada
+.. _`Derek Lane`: https://github.com/dg1an3
+.. _`DLaneAtElekta`: https://github.com/DLaneAtElekta
 
-* `Marcus Fisk`_
+* `Marchant Van der Walt <https://github.com/kkushsyndrome-stack>`_
+
+* `Vishu`_
+    * `Hansraj College`_, India
+
+.. _`Vishu`: https://github.com/httpsVishu
+
+* `Matthew Ward <https://github.com/MattAWard>`_
+
+Contributor acknowledgements
+****************************
+
+* `Rafael Ayala <https://github.com/ayalalazaro>`_ (QuickCheck tools and tests)
+* `Cedric Belanger <https://github.com/cedricbelanger>`_ (RT Dose pixel spacing)
+* `David Buckle <https://github.com/db72-git>`_ (plan complexity tools)
+* `Matthew Cooper <https://github.com/matthewdeancooper>`_ (auto-contouring)
+* `Marcus Fisk`_ (Streamlit and iCOM)
     * `Cancer Care Riverina`_, Australia
 
 .. _`Marcus Fisk`: https://github.com/laser47-hue
 
-* `Vishu`_
-    * Hansraj College, India
+* `Fada Guan`_ (gamma examples)
+    * `Yale University School of Medicine`_, USA
 
-.. _`Vishu`: https://github.com/httpsVishu
+.. _`Fada Guan`: https://github.com/guanfada
+
+* `Marcelo Jordao`_ (TRF decoding)
+    * `ELEKTA AB`_, Hong Kong SAR
+
+.. _`Marcelo Jordao`: https://github.com/mguerrajordao
+
+* `Paul King <https://github.com/kingrpaul>`_ (sinograms and profiles)
+* `Nicola Lambri`_ (gamma tutorials and development tooling)
+    * `IRCCS Humanitas Research Hospital`_, Italy
+    * `Humanitas University`_, Italy
+
+.. _`Nicola Lambri`: https://github.com/nlambriICH
+
+* `Pedro Martinez <https://github.com/peterg1t>`_ (linac QA tools for
+  graticules, jaws, and light and radiation field alignment, plus Oncentra
+  brachytherapy utilities)
+* `Jacob McAloney <https://github.com/JacobMcAloney>`_ (film comparison)
+* `mfizyczka <https://github.com/mfizyczka>`_ (TRF test data and format investigation)
+* `Jake Rembish`_ (plan transfer, weekly chart checks, plan scoring, and the
+  JOSS paper)
+
+  * `UT Health San Antonio`_, USA
+
+.. _`Jake Rembish`: https://github.com/rembishj
+
+* `Matthew Sobolewski <https://github.com/msobolewski>`_ (early Winston–Lutz
+  development)
+* `Milo Vermeulen <https://github.com/mivermeu>`_ (package path handling)
+* `Philip Yarra <https://github.com/PhilipYarra>`_ (Pinnacle export)
 
 |uth| |ccr|
 
-Past contributors
-*****************
+See the `GitHub contributor history`_ for more contributors.
 
-* `Matthew Cooper <https://github.com/matthewdeancooper>`_
-* `Pedro Martinez <https://github.com/peterg1t>`_
-* `Rafael Ayala <https://github.com/ayalalazaro>`_
-* `Matthew Sobolewski <https://github.com/msobolewski>`_
-* `Paul King <https://github.com/kingrpaul>`_
-* `Jacob McAloney <https://github.com/JacobMcAloney>`_
+.. _`GitHub contributor history`: https://github.com/pymedphys/pymedphys/graphs/contributors
 
 Third-party content
 *******************
@@ -290,9 +314,6 @@ States trademark of Regenstrief Institute, Inc.
    GitHub within README.rst files. So... unfortunately we have some duplication
    below.
 
-.. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
-    :target: https://www.rah.sa.gov.au/
-
 .. |uth| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/UTHSA_logo.png
     :target: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
@@ -304,29 +325,13 @@ States trademark of Regenstrief Institute, Inc.
 
 .. _`Anthropic PBC`: https://www.anthropic.com/
 
-.. _`ELEKTA Pty Ltd`: https://www.elekta.com/
-
 .. _`ELEKTA AB`: https://www.elekta.com/
 
-.. _`Icon Group`: https://icongroup.global/
+.. _`Icon Oncology Group`: https://icongroup.global/en/our-services/cancer-services-united-kingdom/
 
 .. _`University of New South Wales`: https://www.unsw.edu.au/
 
-.. _`South Western Sydney Local Health District`: https://www.swslhd.health.nsw.gov.au/
-
-.. _`Anderson Regional Cancer Center`: https://www.andersonregional.org/services/cancer-care/
-
-.. _`Northern Beaches Cancer Care`: https://www.northernbeachescancercare.com.au/
-
-.. _`University of Calgary`: https://www.ucalgary.ca/
-
-.. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
-
 .. _`UT Health San Antonio`: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
-
-.. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
-
-.. _`Swerdloff Family`: https://github.com/sjswerdloff
 
 .. _`SJS Targeted Solutions, LLP`: https://github.com/sjswerdloff
 

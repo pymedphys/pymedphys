@@ -715,6 +715,9 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### News around this release
 
+- The team roster lists the maintainers, thanks recent contributors, and
+  records earlier contributions.
+  [PR #2799](https://github.com/pymedphys/pymedphys/pull/2799)
 - PyMedPhys no longer has a Discourse group. Forum-like conversation and
   collaboration have moved to [GitHub Discussions](https://github.com/pymedphys/pymedphys/discussions).
   [PR #1896](https://github.com/pymedphys/pymedphys/pull/1896)
