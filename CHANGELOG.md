@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### Clinical DBF tables are no longer globally cached
+
+The experimental iView DBF loader no longer caches clinical table objects between Streamlit sessions. Missing-file errors now omit filesystem paths that could contain patient identifiers. [PR #2791](https://github.com/pymedphys/pymedphys/pull/2791)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes
