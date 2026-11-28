@@ -2,7 +2,7 @@
 
 # ruff: noqa
 
-# unused import required to allow 'eval' of date filters
+# Binary search supports identifying the clicked table column.
 from bisect import bisect
 
 import matplotlib
@@ -11,6 +11,8 @@ import pandas as pd
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+
+from safe_filter import evaluate_filter
 
 try:
     import wx
@@ -126,10 +128,8 @@ class ListCtrlDataFrame(wx.ListCtrl):
             for column, condition in conditions:
                 if condition.strip() == "":
                     continue
-                condition = condition.replace("_", "self.df_orig['{}']".format(column))
-                print("Evaluating condition:", condition)
                 try:
-                    tmp_mask = eval(condition)
+                    tmp_mask = evaluate_filter(self.df_orig[column], condition)
                     if isinstance(tmp_mask, pd.Series) and tmp_mask.dtype == np.bool:
                         self.mask &= tmp_mask
                 except Exception as e:

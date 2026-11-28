@@ -12,6 +12,14 @@ This project adheres to
 
 ## Unreleased
 
+### Restrict executable filters in the legacy Mays DataFrame GUI
+
+The site-specific Mays DataFrame GUI now supports literal column comparisons and
+boolean combinations but rejects arbitrary Python expressions in filters.
+Previously, entering a Python expression in a filter executed it with `eval()`.
+Existing filters containing function calls or attribute access must be replaced
+with literal comparisons. [PR #2786](https://github.com/pymedphys/pymedphys/pull/2786)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes
