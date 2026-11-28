@@ -16,8 +16,9 @@
 import functools
 import json
 import logging
+import os
 from copy import copy  # , deepcopy
-from glob import glob
+from pathlib import Path
 from os.path import abspath, basename, dirname
 from os.path import join as pjoin
 
@@ -326,9 +327,10 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
     ``*.dcm`` in a directory hold only empty or dummy values.
 
     This function applies ``is_anonymised_file`` to files matching
-    ``*.dcm`` in the directory and its subdirectories. Matching follows
-    Python's ``glob`` rules, including case-insensitive matching on
-    Windows; other files are not checked. It is very likely to return
+    ``*.dcm`` in the directory and its subdirectories. The supplied
+    directory is treated literally, including any glob metacharacters.
+    File suffix matching is case-insensitive on Windows; other files
+    are not checked. It is very likely to return
     ``False`` for files processed by a different tool.
 
     ``True`` does not mean that the data cannot identify anyone. The
@@ -359,8 +361,30 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
         ``True`` if ``is_anonymised_file`` is ``True`` for every file
         checked, ``False`` otherwise.
     """
+    # rglob intentionally does not descend into linked directories. Treat
+    # such trees as unverified rather than silently returning a passing audit.
+    # Linked DICOM files are likewise not considered a trustworthy input set.
+    def raise_walk_error(error):
+        raise error
+
+    try:
+        for current_dir, directory_names, file_names in os.walk(
+            dirpath, followlinks=False, onerror=raise_walk_error
+        ):
+            current = Path(current_dir)
+            if any((current / name).is_symlink() for name in directory_names):
+                return False
+            if any(
+                (current / name).is_symlink()
+                for name in file_names
+                if name.lower().endswith(".dcm")
+            ):
+                return False
+    except OSError:
+        return False
+
     is_anonymised = True
-    dicom_filepaths = glob(str(dirpath) + "/**/*.dcm", recursive=True)
+    dicom_filepaths = Path(dirpath).rglob("*.dcm")
 
     for dicom_filepath in dicom_filepaths:
         if not is_anonymised_file(
