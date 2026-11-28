@@ -280,14 +280,27 @@ def trf_input_method(config, patient_id="", key_namespace="", **_):
     }
 
 
-@st.cache_data()
-def _read_trf(path_or_binary):
+# Prevent oversized clinical logfiles from exhausting the Streamlit process.
+MAX_TRF_INPUT_BYTES = 512 * 1024 * 1024
+
+
+def _read_limited_trf_bytes(path_or_binary):
     try:
         path_or_binary.seek(0)
-        trf_contents = path_or_binary.read()
+        contents = path_or_binary.read(MAX_TRF_INPUT_BYTES + 1)
     except AttributeError:
         with open(path_or_binary, "rb") as f:
-            trf_contents = f.read()
+            contents = f.read(MAX_TRF_INPUT_BYTES + 1)
+
+    if len(contents) > MAX_TRF_INPUT_BYTES:
+        raise ValueError("TRF logfile exceeds the allowed input size")
+    return contents
+
+
+def _read_trf(path_or_binary):
+    # Raw patient-bearing data and parsed deliveries must not be cached
+    # across independent Streamlit sessions.
+    trf_contents = _read_limited_trf_bytes(path_or_binary)
 
     trf_header_contents, trf_table_contents = _partition.split_into_header_table(
         trf_contents

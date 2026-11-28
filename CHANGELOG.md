@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### Bounded TRF logfile import
+
+MetersetMap now refuses TRF input files over 512 MiB and re-reads patient logfile data for each request instead of sharing a process-wide cache. Sites with larger logfiles must review that limit. [PR #2789](https://github.com/pymedphys/pymedphys/pull/2789)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes
