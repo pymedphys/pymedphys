@@ -19,7 +19,12 @@ import pathlib
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities
+from pymedphys._streamlit.apps.metersetmap import (
+    _config,
+    _deliveries,
+    _utilities,
+    _patient_pattern,
+)
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._utilities import patient as utl_patient
 
@@ -118,9 +123,15 @@ def icom_input_method(
         )
         st.write(patient_id)
 
+    try:
+        literal_patient_id = _patient_pattern.escape_patient_id(patient_id)
+    except ValueError:
+        st.error("Patient ID must be a single directory component.")
+        return {"patient_id": patient_id}
+
     icom_deliveries = []
     for path in icom_directories:
-        icom_deliveries += list(path.glob(f"{patient_id}_*/*.xz"))
+        icom_deliveries += list(path.glob(f"{literal_patient_id}_*/*.xz"))
 
     icom_deliveries = sorted(icom_deliveries)
 
