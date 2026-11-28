@@ -47,3 +47,43 @@ def test_distinct_object_names_are_downloaded(tmp_path, monkeypatch):
     assert IDCMODULE.fetch(UUID, tmp_path) == 2
     assert (tmp_path / UUID / "first.dcm").is_file()
     assert (tmp_path / UUID / "second.dcm").is_file()
+
+
+def _s3_page(*, keys, truncated, token=None):
+    namespace = "http://s3.amazonaws.com/doc/2006-03-01/"
+    listed = "".join(f"<Contents><Key>{key}</Key></Contents>" for key in keys)
+    continuation = (
+        f"<NextContinuationToken>{token}</NextContinuationToken>"
+        if token is not None
+        else ""
+    )
+    return (
+        f'<ListBucketResult xmlns="{namespace}">'
+        f"{listed}<IsTruncated>{str(truncated).lower()}</IsTruncated>"
+        f"{continuation}</ListBucketResult>"
+    ).encode()
+
+
+def test_repeated_s3_continuation_token_is_rejected(monkeypatch):
+    page = _s3_page(keys=[f"{UUID}/one.dcm"], truncated=True, token="stuck")
+    monkeypatch.setattr(IDCMODULE, "_get", lambda *_args, **_kwargs: page)
+    with pytest.raises(ValueError, match="repeated a continuation token"):
+        IDCMODULE.keys(UUID)
+
+
+def test_truncated_s3_listing_without_token_is_rejected(monkeypatch):
+    page = _s3_page(keys=[f"{UUID}/one.dcm"], truncated=True)
+    monkeypatch.setattr(IDCMODULE, "_get", lambda *_args, **_kwargs: page)
+    with pytest.raises(ValueError, match="no continuation token"):
+        IDCMODULE.keys(UUID)
+
+
+def test_s3_pagination_still_returns_all_objects(monkeypatch):
+    pages = iter(
+        [
+            _s3_page(keys=[f"{UUID}/one.dcm"], truncated=True, token="next"),
+            _s3_page(keys=[f"{UUID}/two.dcm"], truncated=False),
+        ]
+    )
+    monkeypatch.setattr(IDCMODULE, "_get", lambda *_args, **_kwargs: next(pages))
+    assert IDCMODULE.keys(UUID) == [f"{UUID}/one.dcm", f"{UUID}/two.dcm"]
