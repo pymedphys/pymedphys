@@ -12,6 +12,10 @@ This project adheres to
 
 ## Unreleased
 
+### DICOM RT plans are reread when requested
+
+MetersetMap now reloads exported DICOM RT Plans from disk instead of caching datasets by their filename. Replacing an export with a revised plan under the same filename is therefore reflected on subsequent requests, and patient-bearing plans are not retained in the process-wide cache. [PR #2793](https://github.com/pymedphys/pymedphys/pull/2793)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes

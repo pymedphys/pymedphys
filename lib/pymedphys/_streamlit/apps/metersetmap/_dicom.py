@@ -23,12 +23,9 @@ from pymedphys._streamlit.utilities import misc as st_misc
 from pymedphys._utilities import patient as utl_patient
 
 
-def pydicom_hash_function(dicom):
-    return hash(dicom.SOPInstanceUID)
-
-
-@st.cache_data(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_function})
 def load_dicom_file_if_plan(filepath):
+    # Export files may be replaced under the same name as plans are revised.
+    # Never reuse a potentially stale, patient-bearing DICOM plan across sessions.
     dcm = pydicom.dcmread(str(filepath), force=True, stop_before_pixels=True)
     if dcm.SOPClassUID == DICOM_PLAN_UID:
         return dcm
