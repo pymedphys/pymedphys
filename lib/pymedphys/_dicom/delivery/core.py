@@ -229,10 +229,16 @@ class DeliveryDicom(DeliveryBase):
         Parameters
         ----------
         dicom_template : pydicom.Dataset
-            An RT Plan whose beams each have a single gantry angle. The
-            delivery's control points go to the beam at their gantry
-            angle. Each beam must define one ASYMY jaw pair and one MLCX
-            beam limiting device.
+            An RT Plan whose beams each have a single gantry angle, with
+            no two beams of a fraction group less than 0.2 degree apart.
+            The delivery's control points are assigned by gantry angle to
+            the beams of the fraction group written, each to the beam
+            within a tolerance of its own angle: half the smallest spacing
+            between that fraction group's beam angles, less 0.1 degree,
+            and at most 3 degrees, which is the tolerance for a fraction
+            group with one beam. Control points with no change in monitor
+            units on either side are left out. Each beam must define one
+            ASYMY jaw pair and one MLCX beam limiting device.
         fraction_group_number : int, optional
             The fraction group to write. By default, the template's only
             fraction group, or the one whose Beam Metersets and gantry
@@ -275,6 +281,12 @@ class DeliveryDicom(DeliveryBase):
         does not record. Other control point attributes are copied from
         the template's first control point for the first, and from its
         last control point for the rest.
+
+        Gantry angles, and the spacing between beams, are taken from
+        -180 to 180 degrees without wrapping round at 180 degrees, so
+        beams at 179 and 181 degrees count as 358 degrees apart, and a
+        lone beam at 180 degrees takes control points at 179.5 degrees
+        but not at 180.5 degrees.
         """
         filtered = self._filter_cps()
         if fraction_group_number is None:
