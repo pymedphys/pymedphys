@@ -285,7 +285,6 @@ def _get_all_columns(connection, table):
     return columns, types
 
 
-@st.cache_data(ttl=86400, hash_funcs={pymedphys.mosaiq.Connection: id})
 def _get_filtered_table(connection, table, column_name, column_value):
     """Get the rows from an MSSQL table where the column_value matches
     within the given column_name."""
