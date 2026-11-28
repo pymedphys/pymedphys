@@ -98,10 +98,14 @@ def monaco_tel_files_picker(
     tel_paths = []
 
     if selected_monaco_plan is not None:
-        current_plans = list(
-            monaco_directory.glob(f"*~{patient_id}/plan/{selected_monaco_plan}")
-        )
-        current_plans = [path.resolve() for path in current_plans]
+        # The radio choice is a literal relative filename, not a glob pattern.
+        # Resolve only the already-enumerated file and reject escaping links.
+        current_plans = [
+            path.resolve()
+            for path in all_tel_paths
+            if str(path.relative_to(plan_directory)) == selected_monaco_plan
+            and path.resolve().is_relative_to(plan_directory.resolve())
+        ]
         if len(current_plans) != 1:
             st.write("Plans found:", current_plans)
             raise ValueError("Exactly one plan should have been found")
@@ -140,7 +144,9 @@ def monaco_patient_directory_picker(
     if patient_id == "":
         st.stop()
 
-    plan_directories = list(monaco_directory.glob(f"*~{patient_id}/plan"))
+    # A patient ID is data, not a glob pattern (e.g., '[' or '*' can be
+    # present in an ID). Compare the patient directory suffix literally.
+    plan_directories = find_monaco_patient_plans(monaco_directory, patient_id)
     if len(plan_directories) == 0:
         if patient_id != "":
             st.write(
@@ -163,6 +169,20 @@ def monaco_patient_directory_picker(
     patient_directory = pathlib.Path(plan_directory).parent
 
     return monaco_site, monaco_directory, patient_id, plan_directory, patient_directory
+
+
+
+def find_monaco_patient_plans(monaco_directory, patient_id):
+    """Return plan folders for the exact Monaco patient ID, never a glob."""
+    root = pathlib.Path(monaco_directory)
+    suffix = f"~{patient_id}"
+    return sorted(
+        folder / "plan"
+        for folder in root.iterdir()
+        if folder.is_dir()
+        and folder.name.endswith(suffix)
+        and (folder / "plan").is_dir()
+    )
 
 
 @st.cache_data
